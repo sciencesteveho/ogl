@@ -1,0 +1,54 @@
+resources:
+  tissue: 'mammary'
+  tissue_name: 'Breast - Mammary Tissue'
+  locop_tissue: 'Breast_Mammary_Tissue'
+  chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+  fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+
+dirs:
+  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/mammary'  # place where unprocessed files exists
+  root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+  shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+  poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+
+tissue_specific:
+  cpg: 'ENCFF478RLX.bed'
+  dnase: 'ENCFF628QME.bed'
+  H3K27ac: 'H3K27ac_breast_ENCFF547WSF.bed'
+  H3K27me3: 'H3K27me3_breast_ENCFF776EQU.bed'
+  H3K36me3: 'H3K36me3_breast_ENCFF907LDT.bed'
+  H3K4me1: 'H3K4me1_breast_ENCFF810PYC.bed'
+  H3K4me3: 'H3K4me3_breast_ENCFF486ACA.bed'
+  H3K9ac: 'H3K9ac_breast_ENCFF730WPS.bed'
+  H3K9me3: 'H3K9me3_breast_ENCFF037JZB.bed'
+  chromhmm: 'E119_18_core_K27ac_hg38lift_mnemonics.bed'
+  chromatinloops: 'Rao_2014.HMEC.hg38.peakachu-merged.loops'
+  regulatorybuild: 'homo_sapiens.GRCh38.mammary_epithelial_1.Regulatory_Build.regulatory_activity.20210107.gff'
+  enhancers: 'HMEC_EP.txt'
+  tads: 'HMEC_Rao_2014-raw_TADs.txt'
+  ctcf: 'ENCSR661NXJ.bed'
+  polr2a: 'ENCFF294TAI.bed'
+
+shared:
+  cpgislands: 'cpgislands_hg38_parsed.bed'
+  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+  regions: 'gene_regions_250000.bed'
+  microsatellites: 'microsatellites_hg38_parsed.bed'
+  phastcons: 'phastcons_gt_0.9_h38.bed'
+  repeatmasker: 'repeatmasker_hg38_parsed.bed'
+  sumplerepeats: 'simplerepeats_hg38.bed'
+
+interaction:
+    id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+    gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    circuits: 'breast_adult.txt'
+    cops: 'all_cops_gtex.tsv'
+    shared_eqtls: 'shared_eqtls_gtex.tsv'
+    polyadenylation: 'Breast_Mammary_Tissue.txt'
+    ppis: 'breast.tsv'
+
+options:
+  cpg_liftover: False
+  cpg_filetype: 'ENCODE' #ENCODE or GEO

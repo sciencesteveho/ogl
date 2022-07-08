@@ -83,22 +83,31 @@ class GraphConstructor:
         ) -> None:
         """Initialize the class"""
 
+        self.gencode = params['shared']['gencode']
+        self.locop_tissue = params['resources']['locop_tissue']
+        self.interaction_files = params['interaction']
+        self.shared_data = params['shared']
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
         self.tissue_specific = params['tissue_specific']
-        self.locop_tissue = params['resources']['locop_tissue']
-        self.gencode = params['shared']['gencode']
-        self.interaction_files = params['interaction']
 
         self.root_dir = params['dirs']['root_dir']
         self.shared_dir = params['dirs']['shared_dir']
         self.interaction_dir = f'{self.shared_dir}/interaction'
         self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
         self.graph_dir = f"{self.parse_dir}/graphs"
+
+        self.parsed_features = {
+            'cpg': self.tissue_specific['cpg'],
+            'ctcf': self.tissue_specific['ctcf'],
+            'dnase': self.tissue_specific['dnase'],
+            'microsatellites': self.shared_data['microsatellites'],
+            'phastcons': self.shared_data['phastcons'],
+            'polr2a': self.tissue_specific['polr2a'],
+            'simplerepeats': self.shared_data['simplerepeats'],
+        }
+
         dir_check_make(self.graph_dir)
-
-        self._gene_symbol_to_gencode_ref
-
         self.gencode_to_genesymbol, self.ensembl_to_gencode, self.gencode_no_transcript = self._gene_symbol_to_gencode_ref(
             id_file=f"{self.interaction_dir}/{self.interaction_files['id_lookup']}",
             gencode_file=f"{self.interaction_dir}/{self.interaction_files['gencode']}",
@@ -339,7 +348,7 @@ class GraphConstructor:
             attribute_df = attribute_df[['node', 'start', 'end', 'size', 'gc']]
 
             for attr in self.ATTRIBUTES:
-                if bool_check_attributes(attr, self.tissue_specific[attr]):
+                if bool_check_attributes(attr, self.parsed_features[attr]):
                     attr_df = pd.read_csv(
                         f'{self.parse_dir}/attributes/{attr}/genes/{gene}',
                         sep='\t',

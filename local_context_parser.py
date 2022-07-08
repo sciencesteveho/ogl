@@ -119,6 +119,17 @@ class LocalContextFeatures:
         self.tissue_specific = params['tissue_specific']
         self.chromfile = params['resources']['chromfile']
         self.fasta = params['resources']['fasta']
+        self.shared_data = params['shared']
+        self.parsed_features = {
+            'cpg': self.tissue_specific['cpg'],
+            'ctcf': self.tissue_specific['ctcf'],
+            'dnase': self.tissue_specific['dnase'],
+            'microsatellites': self.shared_data['microsatellites'],
+            'phastcons': self.shared_data['phastcons'],
+            'polr2a': self.tissue_specific['polr2a'],
+            'simplerepeats': self.shared_data['simplerepeats'],
+        }
+
         self.root_dir = params['dirs']['root_dir']
         self.parse_dir = f'{self.root_dir}/{self.tissue}/parsing'
         self.attribute_dir = f"{self.parse_dir}/attributes"
@@ -134,7 +145,7 @@ class LocalContextFeatures:
             dir_check_make(f'{self.parse_dir}/{directory}')
 
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.tissue_specific[attribute]):
+            if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 dir_check_make(f'{self.attribute_dir}/{attribute}/genes')
 
     @time_decorator(print_args=True)
@@ -375,7 +386,7 @@ class LocalContextFeatures:
             .sort()
 
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.tissue_specific[attribute]):
+            if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 print(f'{attribute} for {node_type}')
                 if attribute == 'gc':
                     b.nucleotide_content(fi=self.fasta)\
@@ -446,7 +457,7 @@ class LocalContextFeatures:
         """
         attr_dict, set_dict = {}, {}  # dict[gene] = [chr, start, end, size, gc]
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.tissue_specific[attribute]):
+            if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 if node == 'repeatmasker':
                     filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage_uniq'
                     sort_uniq = f'cut -f1,2,3,4,6,7 \
