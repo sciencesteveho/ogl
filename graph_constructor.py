@@ -12,7 +12,6 @@ import argparse
 import csv
 import os
 import pickle
-import sys
 
 import numpy as np
 import pybedtools
@@ -23,7 +22,7 @@ from itertools import repeat
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
-from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
+from utils import dir_check_make, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -96,16 +95,6 @@ class GraphConstructor:
         self.interaction_dir = f'{self.shared_dir}/interaction'
         self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
         self.graph_dir = f"{self.parse_dir}/graphs"
-
-        self.parsed_features = {
-            'cpg': self.tissue_specific['cpg'],
-            'ctcf': self.tissue_specific['ctcf'],
-            'dnase': self.tissue_specific['dnase'],
-            'microsatellites': self.shared_data['microsatellites'],
-            'phastcons': self.shared_data['phastcons'],
-            'polr2a': self.tissue_specific['polr2a'],
-            'simplerepeats': self.shared_data['simplerepeats'],
-        }
 
         dir_check_make(self.graph_dir)
         self.gencode_to_genesymbol, self.ensembl_to_gencode, self.gencode_no_transcript = self._gene_symbol_to_gencode_ref(
@@ -336,51 +325,7 @@ class GraphConstructor:
 
         def _node_attributes(reference_attrs, node_idxs):
             """_lorem ipsum"""
-            attribute_df = pd.read_csv(
-                f'{self.parse_dir}/attributes/gc/genes/{gene}',
-                sep='\t',
-                header=None,
-                usecols=[1,2,3,5,6],
-                names=['start', 'end', 'node', 'size', 'gc']
-            )
-            
-            ### add empty type, reorder so type is first followed by node
-            attribute_df = attribute_df[['node', 'start', 'end', 'size', 'gc']]
-
-            for attr in self.ATTRIBUTES:
-                if bool_check_attributes(attr, self.parsed_features[attr]):
-                    attr_df = pd.read_csv(
-                        f'{self.parse_dir}/attributes/{attr}/genes/{gene}',
-                        sep='\t',
-                        header=None,
-                        usecols=[6],
-                        names=[f'{attr}']
-                    )
-                    attribute_df[f'{attr}'] = attr_df[f'{attr}']
-                    del attr_df
-                
-            for feat in ['polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3',]:
-                attribute_df[feat] = 0
-
-            for _, row in attribute_df.iterrows():
-                if row['node'] in polyadenylation:
-                    row['polyadenylation'] = 1
-                if 'histone' in row['node']:
-                    row['H3K27ac'] = row['node'].split(',')[1], 
-                    row['H3K27me3'] = row['node'].split(',')[2], 
-                    row['H3K36me3'] = row['node'].split(',')[3], 
-                    row['H3K4me1'] = row['node'].split(',')[4], 
-                    row['H3K4me3'] = row['node'].split(',')[5], 
-                    row['H3K9ac'] = row['node'].split(',')[6], 
-                    row['H3K9me3'] = row['node'].split(',')[7],
-
-            nodes_to_add = list(
-                set(
-                    [gene for gene in node_idxs
-                    if gene not in list(attribute_df['node'])
-                ]))
-            
-            df_nodes_to_add = pd.DataFrame(
+            attribute_df = pd.DataFrame(
                 columns=[
                     'node',
                     'start',
@@ -404,62 +349,24 @@ class GraphConstructor:
                     'H3K9me3',
                 ])
 
-            for node in nodes_to_add:
+            for index, node in enumerate(node_idxs):
+                attribute_df = attribute_df.append(reference_attrs[node], ignore_index=True)
+                attribute_df.loc[index, 'node'] = node
+                if node in polyadenylation:
+                    attribute_df.loc[index, 'polyadenylation'] = 1
                 if 'histone' in node:
-                    df_nodes_to_add.loc[len(df_nodes_to_add.index)] = [
-                        node,
-                        reference_attrs[node]['start'], 
-                        reference_attrs[node]['end'], 
-                        reference_attrs[node]['size'], 
-                        reference_attrs[node]['gc'], 
-                        reference_attrs[node]['cpg'], 
-                        reference_attrs[node]['ctcf'], 
-                        reference_attrs[node]['dnase'], 
-                        reference_attrs[node]['microsatellites'], 
-                        reference_attrs[node]['phastcons'], 
-                        reference_attrs[node]['polr2a'], 
-                        reference_attrs[node]['simplerepeats'],
-                        reference_attrs[node]['polyadenylation'],
-                        node.split(',')[1], 
-                        node.split(',')[2], 
-                        node.split(',')[3], 
-                        node.split(',')[4], 
-                        node.split(',')[5], 
-                        node.split(',')[6], 
-                        node.split(',')[7],
-                    ]
-                else:
-                    df_nodes_to_add.loc[len(df_nodes_to_add.index)] = [
-                        node,
-                        reference_attrs[node]['start'], 
-                        reference_attrs[node]['end'], 
-                        reference_attrs[node]['size'], 
-                        reference_attrs[node]['gc'], 
-                        reference_attrs[node]['cpg'], 
-                        reference_attrs[node]['ctcf'], 
-                        reference_attrs[node]['dnase'], 
-                        reference_attrs[node]['microsatellites'], 
-                        reference_attrs[node]['phastcons'], 
-                        reference_attrs[node]['polr2a'], 
-                        reference_attrs[node]['simplerepeats'],
-                        reference_attrs[node]['polyadenylation'],
-                        0, 
-                        0, 
-                        0, 
-                        0, 
-                        0, 
-                        0, 
-                        0,
-                    ]
+                    attribute_df.loc[index, 'H3K27ac'] = node.split(',')[1]
+                    attribute_df.loc[index, 'H3K27me3'] = node.split(',')[2]
+                    attribute_df.loc[index, 'H3K36me3'] = node.split(',')[3]
+                    attribute_df.loc[index, 'H3K4me1'] = node.split(',')[4]
+                    attribute_df.loc[index, 'H3K4me3'] = node.split(',')[5]
+                    attribute_df.loc[index, 'H3K9ac'] = node.split(',')[6]
+                    attribute_df.loc[index, 'H3K9me3'] = node.split(',')[7]
 
-            all_attr_df = pd.concat([attribute_df, df_nodes_to_add], ignore_index=True, axis=0)
-            try:
-                all_attr_df['node'] = all_attr_df['node'].apply(lambda node: node_idxs[node])
-            except KeyError:
-                print(f'Keyerror! Offending gene is {gene}')
-                sys.exit(1)
-            all_attr_df = all_attr_df.sort_values('node', ignore_index=True)
-            return tf.convert_to_tensor(all_attr_df[self.NODE_FEATS].astype('float32'))
+            attribute_df = attribute_df.fillna(0)
+            attribute_df['node'] = attribute_df['node'].apply(lambda node: node_idxs[node])
+            attribute_df = attribute_df.sort_values('node', ignore_index=True)
+            return tf.convert_to_tensor(attribute_df[self.NODE_FEATS].astype('float32'))
 
         def _get_edge_index(df):
             """_lorem"""
