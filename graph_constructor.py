@@ -10,9 +10,9 @@
 
 import argparse
 import csv
-from lib2to3.pgen2.tokenize import generate_tokens
 import os
 import pickle
+import sys
 
 import numpy as np
 import pybedtools
@@ -453,7 +453,11 @@ class GraphConstructor:
                     ]
 
             all_attr_df = pd.concat([attribute_df, df_nodes_to_add], ignore_index=True, axis=0)
-            all_attr_df['node'] = all_attr_df['node'].apply(lambda node: node_idxs[node])
+            try:
+                all_attr_df['node'] = all_attr_df['node'].apply(lambda node: node_idxs[node])
+            except KeyError:
+                print(f'Keyerror! Offending gene is {gene}')
+                sys.exit(1)
             all_attr_df = all_attr_df.sort_values('node', ignore_index=True)
             return tf.convert_to_tensor(all_attr_df[self.NODE_FEATS].astype('float32'))
 
@@ -503,17 +507,17 @@ class GraphConstructor:
 
             ### get shared nodes between local and interaction edges
             uniq_local_nodes = _uniq_nodes_from_df(edges)
-            # uniq_interact_nodes = list(
-            #     set([tup[0] for tup in interaction_edges] + [tup[1] for tup in interaction_edges])
-            # )
+            uniq_interact_nodes = list(
+                set([tup[0] for tup in interaction_edges] + [tup[1] for tup in interaction_edges])
+            )
 
-            # common_nodes = list(
-            #     set(uniq_local_nodes) & set(uniq_interact_nodes)
-            # )
+            common_nodes = list(
+                set(uniq_local_nodes) & set(uniq_interact_nodes)
+            )
 
             all_edges = _add_interactions(
                 df=edges,
-                node_list=uniq_local_nodes,
+                node_list=common_nodes,
                 interaction_edges=interaction_edges,
             )
 
