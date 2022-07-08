@@ -321,6 +321,7 @@ class GraphConstructor:
             node_idxs = {node: id for id, node in enumerate(uniq_nodes)}
             for nodes in ['node_1', 'node_2']:
                 df[nodes] = df[nodes].apply(lambda name: node_idxs[name])
+            df.sort_values('node_1', ignore_index=True)
             return df, len(node_idxs), node_idxs
 
         def _node_attributes(reference_attrs, node_idxs):
