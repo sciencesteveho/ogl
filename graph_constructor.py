@@ -390,6 +390,7 @@ class GraphConstructor:
 
         ### only prepare tensors if file does not exist
         if (os.path.exists(f'{self.graph_dir}/{gene}') and os.stat(f'{self.graph_dir}/{gene}').st_size != 0):
+            print(f'{gene} already done. Moving to next gene')
             pass
         else:
             ### open parsed edge file
