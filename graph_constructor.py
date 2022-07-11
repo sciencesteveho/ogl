@@ -432,7 +432,7 @@ class GraphConstructor:
 
             _, num_nodes, node_idxs = _reindex_nodes(all_edges)
 
-            output = open(f'{self.graph_dir}/{gene}', 'wb')
+            output = open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb')
             try:
                 pickle.dump({
                 'edge_index': _get_edge_index(all_edges),
@@ -478,11 +478,20 @@ class GraphConstructor:
             in pickle.load(open(f'{gencode_ref}', 'rb')).keys()
         ]
 
+        genes_to_construct = [
+            gene for gene in genes
+            if (os.path.exists(f'{self.graph_dir}/{gene}') and os.stat(f'{self.graph_dir}/{gene}').st_size != 0)
+        ]
+
+        ### temp check, removing later
+        with open(f'{self.parse_dir}/gene_check.pkl', 'wb') as f:
+            pickle.dump(genes_to_construct, f)
+
         ### parse graph into tensors and save
         pool = Pool(processes=32)
         pool.starmap(
             self._prepare_graph_tensors,
-            zip(genes,
+            zip(genes_to_construct,
             repeat(interaction_edges),
             repeat(reference_attrs),
             repeat(polyadenylation))
