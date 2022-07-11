@@ -480,12 +480,9 @@ class GraphConstructor:
 
         genes_to_construct = [
             gene for gene in genes
-            if (os.path.exists(f'{self.graph_dir}/{gene}') and os.stat(f'{self.graph_dir}/{gene}').st_size != 0)
+            if not (os.path.exists(f'{self.graph_dir}/{gene}')
+            and os.stat(f'{self.graph_dir}/{gene}').st_size > 0)
         ]
-
-        ### temp check, removing later
-        with open(f'{self.parse_dir}/gene_check.pkl', 'wb') as f:
-            pickle.dump(genes_to_construct, f)
 
         ### parse graph into tensors and save
         pool = Pool(processes=32)
