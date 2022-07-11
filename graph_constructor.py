@@ -289,7 +289,7 @@ class GraphConstructor:
         polyadenylation: Any,
         ) -> Any:
         """_lorem ipsum"""
-
+        print(f'starting _prepare_graph_tensors on {gene}')
         def _uniq_nodes_from_df(df: pd.DataFrame) -> np.ndarray:
             all_nodes = pd.Series(df[['node_1', 'node_2']].values.ravel())
             return sorted(all_nodes.unique())
@@ -448,18 +448,7 @@ class GraphConstructor:
 
     @time_decorator(print_args=True)
     def generate_graphs(self) -> None:
-        """_summary_
-
-        Args:
-            a // _description_
-            b // _description_
-
-        Raises:
-            AssertionError: _description_
-        
-        Returns:
-            c -- _description_
-        """
+        """Constructs graphs in parallel"""
         ### base reference
         gencode_ref = f'{self.root_dir}/{self.tissue}/parsing/attributes/gencode_reference.pkl'
 
@@ -485,7 +474,7 @@ class GraphConstructor:
         ]
 
         ### parse graph into tensors and save
-        pool = Pool(processes=32)
+        pool = Pool(processes=18)
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
