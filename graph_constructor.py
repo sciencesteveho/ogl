@@ -57,15 +57,28 @@ class GraphConstructor:
         Lorem
 
     # Helpers
-        NODE_FEATS --
         ATTRIBUTES --
+        HISTONE_IDXS --
         NODES --
+        NODE_FEATS --
         ONEHOT_EDGETYPE --
     """
 
-    NODE_FEATS = ['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3']
     ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats']  # no gc; hardcoded in as initial file
+
+    HISTONE_IDXS = {
+        'H3K27ac': 1,
+        'H3K27me3': 2,
+        'H3K36me3': 3,
+        'H3K4me1': 4,
+        'H3K4me3': 5,
+        'H3K9ac': 6,
+        'H3K9me3': 7,
+    }
+
     NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'histones', 'regulatorybuild', 'repeatmasker', 'tads']  # no gencode; hardcoded in as initial file 
+
+    NODE_FEATS = ['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3']
 
     ONEHOT_EDGETYPE = {
         'local': [1,0,0,0,0,0],
@@ -326,43 +339,20 @@ class GraphConstructor:
 
         def _node_attributes(reference_attrs, node_idxs):
             """_lorem ipsum"""
-            attribute_df = pd.DataFrame(
-                columns=[
-                    'node',
-                    'start',
-                    'end',
-                    'size',
-                    'gc',
-                    'cpg',
-                    'ctcf',
-                    'dnase', 
-                    'microsatellites', 
-                    'phastcons',
-                    'polr2a',
-                    'simplerepeats',
-                    'polyadenylation',
-                    'H3K27ac',
-                    'H3K27me3',
-                    'H3K36me3',
-                    'H3K4me1',
-                    'H3K4me3',
-                    'H3K9ac',
-                    'H3K9me3',
-                ])
+            attribute_df = pd.DataFrame.from_dict({node:reference_attrs[node] for node in node_idxs}, orient='index', columns=['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3'])
 
-            for index, node in enumerate(node_idxs):
-                attribute_df = attribute_df.append(reference_attrs[node], ignore_index=True)
-                attribute_df.loc[index, 'node'] = node
-                if node in polyadenylation:
-                    attribute_df.loc[index, 'polyadenylation'] = 1
-                if 'histone' in node:
-                    attribute_df.loc[index, 'H3K27ac'] = node.split(',')[1]
-                    attribute_df.loc[index, 'H3K27me3'] = node.split(',')[2]
-                    attribute_df.loc[index, 'H3K36me3'] = node.split(',')[3]
-                    attribute_df.loc[index, 'H3K4me1'] = node.split(',')[4]
-                    attribute_df.loc[index, 'H3K4me3'] = node.split(',')[5]
-                    attribute_df.loc[index, 'H3K9ac'] = node.split(',')[6]
-                    attribute_df.loc[index, 'H3K9me3'] = node.split(',')[7]
+            ### set index to be a column
+            attribute_df.reset_index(inplace=True)
+            attribute_df = attribute_df.rename(columns={'index': 'node'})
+            
+            ### add polyadenylation 
+            attribute_df['polyadenylation'] = attribute_df['node'].apply(lambda x: 1 if x in polyadenylation else 0)
+
+            ### add histones
+            for histone in self.HISTONE_IDXS:
+                attribute_df[histone] = attribute_df['node'].apply(
+                    lambda x: x.split(',')[self.HISTONE_IDXS[histone]] if 'histone' in x else 0
+                ) 
 
             attribute_df = attribute_df.fillna(0)
             attribute_df['node'] = attribute_df['node'].apply(lambda node: node_idxs[node])
