@@ -435,8 +435,6 @@ class GraphConstructor:
             finally:
                 output.close()
 
-            print(f'finished graph tensors for {gene}')
-
 
     @time_decorator(print_args=True)
     def generate_graphs(self) -> None:
@@ -466,7 +464,7 @@ class GraphConstructor:
         ]
 
         ### parse graph into tensors and save
-        pool = Pool(processes=16)
+        pool = Pool(processes=32)
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
