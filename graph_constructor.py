@@ -435,6 +435,8 @@ class GraphConstructor:
             finally:
                 output.close()
 
+            print(f'finished graph tensors for {gene}')
+
 
     @time_decorator(print_args=True)
     def generate_graphs(self) -> None:
