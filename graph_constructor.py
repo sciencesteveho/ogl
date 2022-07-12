@@ -461,12 +461,12 @@ class GraphConstructor:
 
         genes_to_construct = [
             gene for gene in genes
-            if not (os.path.exists(f'{self.graph_dir}/{gene}')
+            if not (os.path.exists(f'{self.graph_dir}/{gene}_{self.tissue}')
             and os.stat(f'{self.graph_dir}/{gene}').st_size > 0)
         ]
 
         ### parse graph into tensors and save
-        pool = Pool(processes=18)
+        pool = Pool(processes=16)
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
