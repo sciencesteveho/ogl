@@ -460,7 +460,7 @@ class GraphConstructor:
         genes_to_construct = [
             gene for gene in genes
             if not (os.path.exists(f'{self.graph_dir}/{gene}_{self.tissue}')
-            and os.stat(f'{self.graph_dir}/{gene}').st_size > 0)
+            and os.stat(f'{self.graph_dir}/{gene}_{self.tissue}').st_size > 0)
         ]
 
         ### parse graph into tensors and save
