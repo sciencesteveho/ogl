@@ -434,6 +434,7 @@ class GraphConstructor:
                 )
             finally:
                 output.close()
+            print(f'Finished _prepare_graph_tensors on {gene}')
 
 
     @time_decorator(print_args=True)
