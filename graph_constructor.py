@@ -434,7 +434,10 @@ class GraphConstructor:
                 )
             finally:
                 output.close()
-            print(f'Finished _prepare_graph_tensors on {gene}')
+                print(f'Finished _prepare_graph_tensors on {gene}')
+
+            del edges
+            del all_edges
 
 
     @time_decorator(print_args=True)
