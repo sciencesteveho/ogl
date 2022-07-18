@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
+# - [ ] PRIORITY ** Fix memory leak! 
 # - [ ] Fix filepaths. They are super ugly! 
-# - [ ] one-hot encode node_feattype
+# - [ ] one-hot encode node_feat type?
 # - [ ] scale feats... 
 
 """Create graphs from parsed genomic data"""

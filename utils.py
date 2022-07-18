@@ -3,9 +3,11 @@
 
 """Utilities for graph processing"""
 
+import csv
 import functools
 import inspect
 import os
+import random
 import time
 import yaml
 
@@ -22,6 +24,23 @@ def bool_check_attributes(
         return True
     else:
         return bool(attribute_file)
+
+
+def chunk_genes(
+    gff: str,
+    chunks: int,
+    ) -> None:
+    """Constructs graphs in parallel"""
+    ### get list of all gencode V26 genes
+    with open(gff, newline = '') as file:
+        genes = [line[3] for line in csv.reader(file, delimiter='\t')]
+
+    for num in range(0, 5):
+        random.shuffle(genes)
+
+    split_list = lambda l, chunks: [l[n:n+chunks] for n in range(0, len(l), chunks)]
+    split_genes = split_list(genes, chunks)
+    return {index:gene_list for index, gene_list in enumerate(split_genes)}
 
 
 def dir_check_make(dir: str) -> None:
@@ -60,7 +79,15 @@ def time_decorator(print_args: bool = False, display_arg: str ="") -> Callable:
     return _time_decorator_func
     
 
-# def tpm_from_gct(gct: str, tissue: str) -> pd.DataFrame:
-#     """_lorem ipsum"""
-#     gtex_tpm = parse(gct, cid=[tissue])
-#     return gtex_tpm.data_df
+"""
+### Code for saving chunked genes
+dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
+chunks = 1124
+chunk_dict = chunk_genes(gff, chunks)
+output = open(f'{dir}/gencode_chunks_{chunks}.pkl', 'wb)
+try:
+    pickle.dump(chunk_dict, output)
+finally:
+    output.close()
+"""
