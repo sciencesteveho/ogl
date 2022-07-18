@@ -12,7 +12,7 @@ import time
 import yaml
 
 from datetime import timedelta
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, List, Union
 
 
 def bool_check_attributes(
@@ -29,7 +29,7 @@ def bool_check_attributes(
 def chunk_genes(
     gff: str,
     chunks: int,
-    ) -> None:
+    ) -> Dict[int, List[str]]:
     """Constructs graphs in parallel"""
     ### get list of all gencode V26 genes
     with open(gff, newline = '') as file:
