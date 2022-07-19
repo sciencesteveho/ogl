@@ -423,8 +423,7 @@ class GraphConstructor:
 
             _, num_nodes, node_idxs = _reindex_nodes(all_edges)
 
-            output = open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb')
-            try:
+            with open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb') as output:
                 pickle.dump({
                 'edge_index': _get_edge_index(all_edges),
                 'edge_feat': _get_edge_features(all_edges, weight=False),
@@ -433,9 +432,7 @@ class GraphConstructor:
                 },
                 output
                 )
-            finally:
-                output.close()
-                print(f'Finished _prepare_graph_tensors on {gene}')
+            print(f'Finished _prepare_graph_tensors on {gene}')
 
             del edges
             del all_edges

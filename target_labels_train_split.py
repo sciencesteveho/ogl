@@ -44,12 +44,21 @@ def main() -> None:
     """Pipeline to generate dataset split and target values"""
 
     gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
-    
+    test_chrs=['chr8', 'chr9']
+    val_chrs=['chr7', 'chr13']
+
     test = chr_split_train_test_val(
         gff=gff,
-        test_chrs=['chr8', 'chr9'],
-        val_chrs=['chr7', 'chr13'],
+        test_chrs=test_chrs,
+        val_chrs=val_chrs,
     )
+
+    output = open(f'', 'wb')
+    try:
+        pickle.dump(test, output)
+    finally:
+        output.close()
+
 
 if __name__ == '__main__':
     main()
