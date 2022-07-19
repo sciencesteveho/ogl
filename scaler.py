@@ -45,7 +45,7 @@ def main() -> None:
     """Pipeline to generate individual graphs"""
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--tissue', type=str, required=True)
-    parser.add_Argument('-p', '--partition', type=str, required=True)
+    parser.add_argument('-p', '--partition', type=str, required=True)
     args = parser.parse_args()
 
     if args.partition == 'all':
