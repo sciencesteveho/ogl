@@ -108,6 +108,12 @@ def dir_check_make(dir: str) -> None:
         pass
 
 
+def genes_from_gff(gff: str) -> List[str]:
+    """Get list of gtex genes from GFF file"""
+    with open(gff, newline = '') as file:
+        return {line[3]: line[0] for line in csv.reader(file, delimiter='\t')}
+
+
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
     """Load yaml for parsing"""
     with open(config_file, 'r') as stream:
