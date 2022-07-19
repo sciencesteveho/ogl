@@ -15,6 +15,64 @@ from datetime import timedelta
 from typing import Any, Callable, Dict, List, Union
 
 
+TISSUE_TPM_KEYS = {
+    "Adipose - Subcutaneous": 3,
+    "Adipose - Visceral (Omentum)": 4,
+    "Adrenal Gland": 5,
+    "Artery - Aorta": 6,
+    "Artery - Coronary": 7,
+    "Artery - Tibial": 8,
+    "Bladder": 9,
+    "Brain - Amygdala": 10,
+    "Brain - Anterior cingulate cortex (BA24)": 11,
+    "Brain - Caudate (basal ganglia)": 12,
+    "Brain - Cerebellar Hemisphere": 13,
+    "Brain - Cerebellum": 14,
+    "Brain - Cortex": 15,
+    "Brain - Frontal Cortex (BA9)": 16,
+    "Brain - Hippocampus": 17,
+    "Brain - Hypothalamus": 18,
+    "Brain - Nucleus accumbens (basal ganglia)": 19,
+    "Brain - Putamen (basal ganglia)": 20,
+    "Brain - Spinal cord (cervical c-1)": 21,
+    "Brain - Substantia nigra": 22,
+    "Breast - Mammary Tissue": 23,
+    "Cells - Cultured fibroblasts": 24,
+    "Cells - EBV-transformed lymphocytes": 25,
+    "Cervix - Ectocervix": 26,
+    "Cervix - Endocervix": 27,
+    "Colon - Sigmoid": 28,
+    "Colon - Transverse": 29,
+    "Esophagus - Gastroesophageal Junction": 30,
+    "Esophagus - Mucosa": 31,
+    "Esophagus - Muscularis": 32,
+    "Fallopian Tube": 33,
+    "Heart - Atrial Appendage": 34,
+    "Heart - Left Ventricle": 35,
+    "Kidney - Cortex": 36,
+    "Kidney - Medulla": 37,
+    "Liver": 38,
+    "Lung": 39,
+    "Minor Salivary Gland": 40,
+    "Muscle - Skeletal": 41,
+    "Nerve - Tibial": 42,
+    "Ovary": 43,
+    "Pancreas": 44,
+    "Pituitary": 45,
+    "Prostate": 46,
+    "Skin - Not Sun Exposed (Suprapubic)": 47,
+    "Skin - Sun Exposed (Lower leg)": 48,
+    "Small Intestine - Terminal Ileum": 49,
+    "Spleen": 50,
+    "Stomach": 51,
+    "Testis": 52,
+    "Thyroid": 53,
+    "Uterus": 54,
+    "Vagina": 55,
+    "Whole Blood": 56,
+    }
+
+
 def bool_check_attributes(
     attribute: str,
     attribute_file: str
@@ -81,13 +139,18 @@ def time_decorator(print_args: bool = False, display_arg: str ="") -> Callable:
 
 """
 ### Code for saving chunked genes
+import pickle 
+
 dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
 gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
 chunks = 1124
-chunk_dict = chunk_genes(gff, chunks)
-output = open(f'{dir}/gencode_chunks_{chunks}.pkl', 'wb)
+
+output = open(f'{dir}/gencode_chunks_{chunks}.pkl', 'wb')
 try:
-    pickle.dump(chunk_dict, output)
+    pickle.dump(
+        chunk_genes(gff, chunks),
+        output
+    )
 finally:
     output.close()
 """
