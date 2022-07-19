@@ -67,7 +67,7 @@ def main() -> None:
             compare_df, compare_nodes = _tensor_min_max_and_numnodes(f'{directory}/{gene}_{args.tissue}')
             min_max_df, max_nodes = _keep_vals(min_max_df, compare_df, max_nodes, compare_nodes)
 
-    with open(f'{shared_dir}/min_max_{args.tissue}_{args.partition}.pkl', 'rb') as output:
+    with open(f'{shared_dir}/min_max_{args.tissue}_{args.partition}.pkl', 'wb') as output:
         pickle.dump((min_max_df, max_nodes), output)
 
 if __name__ == '__main__':
