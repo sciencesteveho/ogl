@@ -58,7 +58,7 @@ def main() -> None:
         genes = list(partition['train'])
 
     directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
-    shared_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/'
+    shared_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
 
     for idx, gene in enumerate(genes):
         if idx == 0:
