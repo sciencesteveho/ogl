@@ -85,14 +85,11 @@ def bool_check_attributes(
 
 
 def chunk_genes(
-    gff: str,
+    genes: List[str],
     chunks: int,
     ) -> Dict[int, List[str]]:
     """Constructs graphs in parallel"""
     ### get list of all gencode V26 genes
-    with open(gff, newline = '') as file:
-        genes = [line[3] for line in csv.reader(file, delimiter='\t')]
-
     for num in range(0, 5):
         random.shuffle(genes)
 
@@ -102,6 +99,7 @@ def chunk_genes(
 
 
 def dir_check_make(dir: str) -> None:
+    """Utility to make directories only if they do not already exist"""
     try:
         os.makedirs(dir)
     except FileExistsError:
@@ -149,12 +147,14 @@ import pickle
 
 dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
 gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
-chunks = 1124
+# chunks = 1124
+genes = list(genes_from_gff(gff))
+chunks = 14050
 
 output = open(f'{dir}/gencode_chunks_{chunks}.pkl', 'wb')
 try:
     pickle.dump(
-        chunk_genes(gff, chunks),
+        chunk_genes(genes, chunks),
         output
     )
 finally:
