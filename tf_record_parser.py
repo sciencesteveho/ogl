@@ -66,13 +66,13 @@ def get_arguments():
     parser.add_argument(
         "--name",
         type=str,
-        default="ogbg-molchembl",
-        help="name of the dataset to call OGBGDataProcessor with",
+        default="genomic-graph-mutagenesis",
+        help="name of the dataset to call GGraphMutagenesisTFRecordProcessor with",
     )
     parser.add_argument(
         "--output_name",
         type=str,
-        default="ogbg-molchembl",
+        default="genomic-graph-mutagenesis",
         help="name of the dataset; i.e. prefix to use for TFRecord names",
     )
 
@@ -86,7 +86,7 @@ def get_arguments():
     return params
 
 
-class OGBGTFRecordProcessor:
+class GGraphMutagenesisTFRecordProcessor:
     """Data Processor for handling OGB's graph prediction data.
 
     :param dict params: Model configuration parameters.
@@ -116,6 +116,12 @@ class OGBGTFRecordProcessor:
         self.output_name = output_name
         self.num_files = max(num_files, 1)
 
+        ### add targets
+        path = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+        with open(f'{path}/targets.pkl', 'rb') as f:
+            targets = pickle.load(f)
+        self.targets = targets
+
         # initialize file reading once
         self._prepare_output_processor()
 
@@ -137,9 +143,11 @@ class OGBGTFRecordProcessor:
             processed_dir, "processed_graphs.pickle"
         )
 
-    def _open_graph(self):
+    def _open_graph(self, gene):
         '''utility to open the graph file'''
-
+        tissue = gene.split('_')[1]
+        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs/{gene}_{tissue}', 'rb') as f:
+            return pickle.load(f)
 
     def create_tfrecords(self, mode="train"):
         """
@@ -161,20 +169,15 @@ class OGBGTFRecordProcessor:
 
         print("Processing to TFRecords ...")
         for idx in tqdm(split_idx, total=len(split_idx)):
-            graph = graphs[idx]
-            label = labels[idx]
+            graph = self._open_graph(idx)
+            label = self.targets[self.split][idx]
             num_nodes = graph["num_nodes"]
-            edge_feat = graph["edge_feat"]
-            edge_index = graph["edge_index"]
+            edge_feat = graph["edge_feat"].numpy()
+            edge_index = graph["edge_index"].numpy()
+            node_feat = graph["node_feat"].numpy()
 
-            # get node features from edge features if none exists
-            node_feat = (
-                self._compute_node_feat(edge_feat, edge_index, reduce="sum")
-                if graph["node_feat"] is None
-                else graph["node_feat"]
-            )
             # form adj. matrix
-            row, col = graph["edge_index"]
+            row, col = edge_index
             adj = sp.coo_matrix(
                 (np.ones_like(row), (row, col)), shape=(num_nodes, num_nodes)
             ).toarray()
@@ -208,9 +211,9 @@ class OGBGTFRecordProcessor:
 
             features = collections.OrderedDict()
             features["adj"] = self._create_float_feature(adj.astype(np.float32))
-            features["node_feat"] = self._create_int_feature(node_feat)
+            features["node_feat"] = self._create_float_feature(node_feat)
             features["node_mask"] = self._create_float_feature(node_mask)
-            features["label"] = self._create_int_feature(label.astype(np.int64))
+            features["label"] = self._create_float_feature(label.astype(np.int64))
 
             tf_example = tf.train.Example(
                 features=tf.train.Features(feature=features)
@@ -224,17 +227,103 @@ class OGBGTFRecordProcessor:
         for writer in writers:
             writer.close()
 
+    def _create_int_feature(self, values):
+        """Returns an int64_list from a bool / enum / int / uint."""
+        if values is None:
+            values = []
+        if isinstance(values, np.ndarray) and values.ndim > 1:
+            values = values.reshape(-1)
+        if not isinstance(values, list):
+            values = values.tolist()
+        return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
+
+    def _create_float_feature(self, values):
+        """Returns a float_list from a float / double."""
+        if values is None:
+            values = []
+        if isinstance(values, np.ndarray) and values.ndim > 1:
+            values = values.reshape(-1)
+        if not isinstance(values, list):
+            values = values.tolist()
+        return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 
-    
-def main() -> None:
-    """Pipeline to generate dataset split and target values"""
+    def _normalize_adj(self, A, symmetric=False):
+        """
+        Computes the graph filter described in
+        [Kipf & Welling (2017)](https://arxiv.org/abs/1609.02907).
 
-if __name__ == '__main__':
-    main()
+        :param A: array with rank 2;
+        :param symmetric: boolean, whether to normalize the matrix as
+        \(\D^{-\frac{1}{2}}\A\D^{-\frac{1}{2}}\) or as \(\D^{-1}\A\);
+        :return: array with rank 2, same as A;
+        """
+        fltr = A.copy()
+        I = np.eye(A.shape[-1], dtype=A.dtype)
+        A_tilde = A + I
+        fltr = self._degrees(A_tilde, symmetric=symmetric)
+        return fltr
+
+    def _degrees(self, A, symmetric):
+        """
+        Normalizes the given adjacency matrix using the degree matrix as either
+        \(\D^{-1}\A\) or \(\D^{-1/2}\A\D^{-1/2}\) (symmetric normalization).
+
+        :param A: rank 2 array
+        :param symmetric: boolean, compute symmetric normalization;
+        :return: the normalized adjacency matrix.
+        """
+        if symmetric:
+            normalized_D = self._degree_power(A, -0.5)
+            output = normalized_D.dot(A).dot(normalized_D)
+        else:
+            normalized_D = self._degree_power(A, -1.0)
+            output = normalized_D.dot(A)
+        return output
+
+    def _degree_power(self, A, k):
+        """
+        Computes \(\D^{k}\) from the given adjacency matrix.
+
+        :param A: rank 2 array or sparse matrix.
+        :param k: exponent to which elevate the degree matrix.
+        :return: D^k
+        """
+        degrees = np.power(np.array(A.sum(1)), k).flatten()
+        degrees[np.isinf(degrees)] = 0.0
+        return np.diag(degrees)
 
 
-'''
-self.num_files = 400 if each is .375
+    def _get_split_idx(self, split_type=None):
+        if split_type is None:
+            split_type = self.split
 
-'''
+        return {"train": list(self.targets['train'].keys()), 
+        "valid": list(self.targets['validation'].keys()), 
+        "test": list(self.targets['test'].keys())
+        }
+
+
+if __name__ == "__main__":
+    params = get_arguments()
+
+    name = params["name"]
+    output_name = params["output_name"]
+    output_dir = params["output_dir"]
+    num_files = params["num_files"]
+    mode = params["mode"]
+    if mode == "train":
+        init_params = params["train"]
+    elif mode == "valid":
+        init_params = params["valid"]
+    elif mode == "test":
+        init_params = params["test"]
+    else:
+        raise ValueError("Mode must be 'train', 'valid', or 'test'")
+
+    ogbObject = GGraphMutagenesisTFRecordProcessor(
+        init_params, name, osp.join(output_dir, mode), output_name, num_files,
+    )
+    ogbObject.create_tfrecords(mode=mode)
+
+    print("Data preprocessing complete.")
