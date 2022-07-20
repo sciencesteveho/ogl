@@ -72,3 +72,76 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
+    
+'''
+files = ['min_max_hippocampus_all.pkl', 'min_max_left_ventricle_all.pkl', 'min_max_mammary_all.pkl']
+
+files = ['min_max_hippocampus_train.pkl', 'min_max_left_ventricle_train.pkl', 'min_max_mammary_train.pkl']
+
+max_nodes = 0
+for file in files:
+    with open(file, 'rb') as f:
+        tup = pickle.load(f)
+    if file == files[0]:
+        min_max_df, max_nodes = tup
+    else:
+        compare_df, compare_nodes = tup
+        min_max_df, max_nodes = _keep_vals(min_max_df, compare_df, max_nodes, compare_nodes)
+
+
+ALL
+In [15]: min_max_df
+Out[15]:
+      min          max
+0     0.0  248946000.0
+1   647.0  248956416.0
+2     1.0   35158064.0
+3     0.0    9396924.0
+4     0.0     342414.0
+5     0.0      90880.0
+6     0.0     273898.0
+7     0.0      17328.0
+8     0.0    1149831.0
+9     0.0      93172.0
+10    0.0    5055102.0
+11    0.0          1.0
+12    0.0     166624.0
+13    0.0      58156.0
+14    0.0     100982.0
+15    0.0     103221.0
+16    0.0      22345.0
+17    0.0      25363.0
+18    0.0      58156.0
+
+In [16]: max_nodes
+Out[16]: 41200
+
+TRAIN
+In [18]: min_max_df
+Out[18]:
+      min          max
+0     0.0  248946000.0
+1   647.0  248956416.0
+2     1.0   26000000.0
+3     0.0    9396924.0
+4     0.0     342414.0
+5     0.0      90880.0
+6     0.0     273898.0
+7     0.0      17328.0
+8     0.0    1149831.0
+9     0.0      93172.0
+10    0.0    5055102.0
+11    0.0          1.0
+12    0.0     166624.0
+13    0.0      42376.0
+14    0.0     100982.0
+15    0.0     103221.0
+16    0.0      22345.0
+17    0.0      25363.0
+18    0.0      42376.0
+
+In [19]: max_nodes
+Out[19]: 41200
+'''

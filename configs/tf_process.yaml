@@ -1,0 +1,20 @@
+train:
+  root_dir: "path/to/data"
+  add_inverse_edge: True
+  split: "scaffold"
+  max_num_nodes: 41200
+  shuffle_raw_train_data: True
+
+valid:
+  root_dir: "path/to/data"
+  add_inverse_edge: True
+  split: "scaffold"
+  max_num_nodes: 41200
+  shuffle_raw_train_data: False # avoid any shuffling in val data
+
+test:
+  root_dir: "path/to/data"
+  add_inverse_edge: True
+  split: "scaffold"
+  max_num_nodes: 41200
+  shuffle_raw_train_data: False # avoid any shuffling in test data
