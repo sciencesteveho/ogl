@@ -102,15 +102,9 @@ class GGraphMutagenesisTFRecordProcessor:
         self.name = name
         self.feature_dim = feature_dim
         self.shuffle_raw_train_data = params.get("shuffle_raw_train_data", True)
-        self.split = params.get("split", "scaffold")
         self.max_num_nodes = params.get("max_num_nodes", 41200)
         self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
-
-        root_dir = params["root_dir"]
-        self.dir_name = "_".join(self.name.split("-"))
-        self.original_root_dir = root_dir
-        self.root_dir = osp.join(root_dir, self.dir_name)
 
         self.output_dir = output_dir
         self.output_name = output_name
@@ -126,8 +120,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self._prepare_output_processor()
 
     def _prepare_output_processor(self):
-        processed_dir = osp.join(self.root_dir, "processed")
-        tfrecords_dir = osp.join(processed_dir, self.output_dir)
+        tfrecords_dir = self.output_dir
         if not osp.isdir(tfrecords_dir):
             os.makedirs(tfrecords_dir)
 
@@ -139,9 +132,7 @@ class GGraphMutagenesisTFRecordProcessor:
         ]
 
         self.output_files = output_files
-        self.pre_processed_file = osp.join(
-            processed_dir, "processed_graphs.pickle"
-        )
+
 
     def _open_graph(self, gene):
         '''utility to open the graph file'''
@@ -163,7 +154,7 @@ class GGraphMutagenesisTFRecordProcessor:
         writer_index = 0
         total_written = 0
 
-        split_idx = self._get_split_idx(self.split)[mode]
+        split_idx = self._get_split_idx()[mode]
         if mode == "train" and self.shuffle_raw_train_data:
             random.shuffle(split_idx)
 
@@ -294,10 +285,7 @@ class GGraphMutagenesisTFRecordProcessor:
         return np.diag(degrees)
 
 
-    def _get_split_idx(self, split_type=None):
-        if split_type is None:
-            split_type = self.split
-
+    def _get_split_idx(self):
         return {"train": list(self.targets['train'].keys()), 
         "valid": list(self.targets['validation'].keys()), 
         "test": list(self.targets['test'].keys())
