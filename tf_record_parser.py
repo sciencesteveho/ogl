@@ -123,7 +123,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
     def _prepare_output_processor(self):
         tfrecords_dir = self.output_dir
-        dir_check_make(tfrecords_dir)
+        # dir_check_make(tfrecords_dir)
 
         output_files = [
             os.path.join(
