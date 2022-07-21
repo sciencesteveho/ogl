@@ -26,6 +26,8 @@ import tensorflow as tf
 import yaml
 from tqdm import tqdm
 
+from utils import dir_check_make
+
 
 def get_params(params_file):
     # Load yaml into params
@@ -121,8 +123,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
     def _prepare_output_processor(self):
         tfrecords_dir = self.output_dir
-        if not osp.isdir(tfrecords_dir):
-            os.makedirs(tfrecords_dir)
+        dir_check_make(tfrecords_dir)
 
         output_files = [
             os.path.join(
@@ -310,7 +311,7 @@ if __name__ == "__main__":
         raise ValueError("Mode must be 'train', 'valid', or 'test'")
 
     ogbObject = GGraphMutagenesisTFRecordProcessor(
-        init_params, name, osp.join(output_dir, mode), output_name, num_files,
+        init_params, name, output_dir+'/'+mode, output_name, num_files,
     )
     ogbObject.create_tfrecords(mode=mode)
 
