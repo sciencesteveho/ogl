@@ -138,7 +138,7 @@ class GGraphMutagenesisTFRecordProcessor:
     def _open_graph(self, gene):
         '''utility to open the graph file'''
         tissue = gene.split('_')[1]
-        with open(f'{tissue}/parsing/graphs/{gene}_{tissue}', 'rb') as f:
+        with open(f'{tissue}/parsing/graphs/{gene}', 'rb') as f:
             return pickle.load(f)
 
     def create_tfrecords(self, mode="train"):
