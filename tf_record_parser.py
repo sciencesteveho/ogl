@@ -113,7 +113,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.num_files = max(num_files, 1)
 
         ### add targets
-        path = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+        path = 'shared_data'
         with open(f'{path}/targets.pkl', 'rb') as f:
             targets = pickle.load(f)
         self.targets = targets
@@ -138,7 +138,7 @@ class GGraphMutagenesisTFRecordProcessor:
     def _open_graph(self, gene):
         '''utility to open the graph file'''
         tissue = gene.split('_')[1]
-        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs/{gene}_{tissue}', 'rb') as f:
+        with open(f'{tissue}/parsing/graphs/{gene}_{tissue}', 'rb') as f:
             return pickle.load(f)
 
     def create_tfrecords(self, mode="train"):
