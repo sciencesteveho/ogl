@@ -162,7 +162,7 @@ class GGraphMutagenesisTFRecordProcessor:
         print("Processing to TFRecords ...")
         for idx in tqdm(split_idx, total=len(split_idx)):
             graph = self._open_graph(idx)
-            label = self.targets[self.split][idx]
+            label = self.targets[mode][idx]
             num_nodes = graph["num_nodes"]
             edge_feat = graph["edge_feat"].numpy()
             edge_index = graph["edge_index"].numpy()
