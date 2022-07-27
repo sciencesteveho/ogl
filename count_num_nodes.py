@@ -33,7 +33,7 @@ def main() -> None:
 
     nodes = []
     for idx, gene in enumerate(genes):
-        nodes.append(_num_nodes_from_graph(f'{gene}_{args.tissue}'))
+        nodes.append(_num_nodes_from_graph(f'{directory}/{gene}_{args.tissue}'))
 
     with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
         pickle.dump(nodes, output)
