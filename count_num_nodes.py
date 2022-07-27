@@ -31,9 +31,9 @@ def main() -> None:
     directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
     node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/count_num_nodes'
 
-    nodes = []
-    for idx, gene in enumerate(genes):
-        nodes.append(_num_nodes_from_graph(f'{directory}/{gene}_{args.tissue}'))
+    nodes = {}
+    for _, gene in enumerate(genes):
+        nodes[gene] = _num_nodes_from_graph(f'{directory}/{gene}_{args.tissue}')
 
     with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
         pickle.dump(nodes, output)

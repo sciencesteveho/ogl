@@ -92,8 +92,7 @@ class GraphConstructor:
 
     def __init__(
         self,
-        params: Dict[str, Dict[str, str]],
-        ) -> None:
+        params: Dict[str, Dict[str, str]]):
         """Initialize the class"""
 
         self.gencode = params['shared']['gencode']

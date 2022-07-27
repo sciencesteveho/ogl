@@ -134,7 +134,6 @@ class GGraphMutagenesisTFRecordProcessor:
 
         self.output_files = output_files
 
-
     def _open_graph(self, gene):
         '''utility to open the graph file'''
         tissue = gene.split('_')[1]
@@ -164,12 +163,10 @@ class GGraphMutagenesisTFRecordProcessor:
             graph = self._open_graph(idx)
             label = self.targets[mode][idx]
             num_nodes = graph["num_nodes"]
-            edge_feat = graph["edge_feat"].numpy()
-            edge_index = graph["edge_index"].numpy()
             node_feat = graph["node_feat"].numpy()
 
             # form adj. matrix
-            row, col = edge_index
+            row, col = graph["edge_index"].numpy()
             adj = sp.coo_matrix(
                 (np.ones_like(row), (row, col)), shape=(num_nodes, num_nodes)
             ).toarray()
