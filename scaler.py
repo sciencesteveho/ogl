@@ -23,7 +23,6 @@ def _tensor_min_max_and_numnodes(filename: str) -> Tuple[pd.DataFrame, int]:
     """Lorem ipsum"""
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
-    file.close()
     return pd.DataFrame([
         [np.min(arr), np.max(arr)]
         for index, arr in enumerate(np.stack(graph['node_feat'].numpy(), axis=1))],
