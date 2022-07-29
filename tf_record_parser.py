@@ -234,7 +234,7 @@ class GGraphMutagenesisTFRecordProcessor:
                 features=tf.train.Features(feature=features)
             )
 
-            writers[writer_index].write(np_to_protobuf(tf_example))
+            writers[writer_index].write(tf_example.SerializeToString())
             writer_index = (writer_index + 1) % len(writers)
 
             total_written += 1
