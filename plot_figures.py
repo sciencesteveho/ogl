@@ -37,6 +37,6 @@ if __name__ == '__main__':
 
     ### plot with absolute values
     sns.distplot(all_nodes, kde=False)
-    plt.title('Distribution of num_nodes')
-    plt.xlabel('Number of graphs')
-    plt.ylabel('Number of nodes')
+    plt.title('Distribution of num_nodes', fontsize=7)
+    plt.xlabel('Number of graphs', fontsize=7)
+    plt.ylabel('Number of nodes', fontsize=7)
