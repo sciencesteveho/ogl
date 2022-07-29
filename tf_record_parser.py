@@ -162,7 +162,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
     def _open_graph(self, gene):
         '''utility to open the graph file'''
-        tissue = gene.split('_')[1]
+        tissue = gene.split('_')[1:]
         with open(f'{tissue}/parsing/graphs/{gene}', 'rb') as f:
             return pickle.load(f)
 
