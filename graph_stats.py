@@ -13,10 +13,10 @@ from utils import genes_from_gff, time_decorator
 
 
 @time_decorator(print_args=True)
-def _num_nodes_from_graph(filename: str) -> int:
+def _nodes_edges_from_graph(filename: str) -> int:
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
-    return graph['num_nodes']
+    return graph['num_nodes'], graph['edge_index'].shape[1]
 
 
 def main() -> None:
@@ -31,12 +31,12 @@ def main() -> None:
     directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
     node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/count_num_nodes'
 
-    nodes = {}
+    graph_stats = {}
     for _, gene in enumerate(genes):
-        nodes[gene] = _num_nodes_from_graph(f'{directory}/{gene}_{args.tissue}')
+        graph_stats[gene] = _nodes_edges_from_graph(f'{directory}/{gene}_{args.tissue}')
 
     with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
-        pickle.dump(nodes, output)
+        pickle.dump(graph_stats, output)
 
 
 if __name__ == '__main__':
