@@ -248,7 +248,15 @@ def main() -> None:
         protein_median_file = 'protein_relative_abundance_median_gtex.csv',
         )
 
-    filtered_targets = tpm_filtered_targets(tissue_params, targets)
+    filtered_targets = tpm_filtered_targets(tissue_params, targets)  # 84070 total
+
+    ### only keep <= 20,000 nodes in filtered_targets
+    filtered_targets_20k = {gene:value for gene, value in filtered_stats.items() if value[0] <= 20000}  #84070-83259 = 811
+    ### new max num_nodes = 19987
+    filtered_genes = list(filtered_targets_20k.keys())
+
+    for key in targets.keys():
+        targets[key] = {gene: targets[key][gene] for gene in targets[key].keys() if gene in filtered_genes}
 
 
 if __name__ == '__main__':

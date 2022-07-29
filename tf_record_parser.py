@@ -130,7 +130,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.name = name
         self.feature_dim = feature_dim
         self.shuffle_raw_train_data = params.get("shuffle_raw_train_data", True)
-        self.max_num_nodes = params.get("max_num_nodes", 41200)
+        self.max_num_nodes = params.get("max_num_nodes", 19987)
         self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
 
@@ -140,7 +140,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
         ### add targets
         path = 'shared_data'
-        with open(f'{path}/targets.pkl', 'rb') as f:
+        with open(f'{path}/targets_filtered_20k.pkl', 'rb') as f:
             targets = pickle.load(f)
         self.targets = targets
 
