@@ -140,7 +140,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
         ### add targets
         path = 'shared_data'
-        with open(f'{path}/targets_filtered_20k.pkl', 'rb') as f:
+        with open(f'{path}/targets_filtered_10k.pkl', 'rb') as f:
             targets = pickle.load(f)
         self.targets = targets
 

@@ -255,9 +255,16 @@ def main() -> None:
     ### new max num_nodes = 19987
     filtered_genes = list(filtered_targets_20k.keys())
 
+    ### only keep <= 10,000 nodes in filtered_targets
+    filtered_targets_10k = {gene:value for gene, value in filtered_stats.items() if value[0] <= 10000}  #84070-73877 = 10193
+    ### new max num_nodes = 9999
+    filtered_genes = list(filtered_targets_10k.keys())
+
     for key in targets.keys():
         targets[key] = {gene: targets[key][gene] for gene in targets[key].keys() if gene in filtered_genes}
 
+    with open('targets_filtered_10k.pkl', 'wb') as output:
+        pickle.dump(targets, output)
 
 if __name__ == '__main__':
     main()
