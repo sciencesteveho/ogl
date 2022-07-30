@@ -215,6 +215,7 @@ def tpm_filtered_targets(
 
 def max_node_filter(max_nodes, filtered_stats, targets):
     filtered_targets = {gene:value for gene, value in filtered_stats.items() if value[0] <= max_nodes}
+    print(f'max_nodes = {max([value[0] for idx, value in filtered_targets.items()])} for max_nodes {max_nodes}')
     filtered_genes = list(filtered_targets.keys())
     filtered_dict = {}
     for key in ['train', 'test', 'validation']:
@@ -284,3 +285,10 @@ if __name__ == '__main__':
 # gct_file = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
 # df = parse(gct_file).data_df
 # '''        .apply(lambda x: boxcox1p(x,0.25))'''
+
+# max_nodes = 297 for max_nodes 300
+# max_nodes = 493 for max_nodes 500
+# max_nodes = 999 for max_nodes 1000
+# max_nodes = 2500 for max_nodes 2500
+# max_nodes = 3000 for max_nodes 3000
+# max_nodes = 5000 for max_nodes 5000
