@@ -106,7 +106,7 @@ def get_arguments():
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_2500.pkl",
+        default="targets_filtered_1750.pkl",
     )
 
     args = parser.parse_args(sys.argv[1:])
@@ -135,7 +135,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.name = name
         self.feature_dim = feature_dim
         self.shuffle_raw_train_data = params.get("shuffle_raw_train_data", True)
-        self.max_num_nodes = params.get("max_num_nodes", 2500)
+        self.max_num_nodes = params.get("max_num_nodes", 1750)
         self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
 

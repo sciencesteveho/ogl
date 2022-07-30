@@ -268,7 +268,7 @@ def main() -> None:
     with open('targets.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [300, 500, 1000, 2500, 3000, 5000]:
+    for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -280,6 +280,68 @@ if __name__ == '__main__':
     main()
 
 
+# def print_stats(num):
+#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#         targets = pickle.load(file)
+#     print(f'max_nodes = {num}')
+#     print(f"train = {len(targets['train'])}")
+#     print(f"test = {len(targets['test'])}")
+#     print(f"validation = {len(targets['validation'])}")
+#     print('\n')
+
+# for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 5000]:
+#     print_stats(num)
+
+# max_nodes = 300
+# train = 114
+# test = 0
+# validation = 0
+
+# max_nodes = 500
+# train = 153
+# test = 0
+# validation = 0
+
+# max_nodes = 750
+# train = 212
+# test = 70
+# validation = 2
+
+# max_nodes = 1000
+# train = 307
+# test = 187
+# validation = 2
+
+# max_nodes = 1250
+# train = 555
+# test = 224
+# validation = 13
+
+# max_nodes = 1500
+# train = 1043
+# test = 259
+# validation = 48
+
+# max_nodes = 1750
+# train = 1938
+# test = 385
+# validation = 163
+
+# max_nodes = 2000
+# train = 3508
+# test = 620
+# validation = 347
+
+# max_nodes = 2500
+# train = 7887
+# test = 960
+# validation = 843
+
+# max_nodes = 5000
+# train = 36951
+# test = 3770
+# validation = 3325
+
 # import pandas as pd
 # from cmapPy.pandasGEXpress.parse_gct import parse
 # gct_file = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
@@ -288,7 +350,9 @@ if __name__ == '__main__':
 
 # max_nodes = 297 for max_nodes 300
 # max_nodes = 493 for max_nodes 500
+# max_nodes = 749 for max_nodes 750
 # max_nodes = 999 for max_nodes 1000
-# max_nodes = 2500 for max_nodes 2500
-# max_nodes = 3000 for max_nodes 3000
-# max_nodes = 5000 for max_nodes 5000
+# max_nodes = 1250 for max_nodes 1250
+# max_nodes = 1500 for max_nodes 1500
+# max_nodes = 1750 for max_nodes 1750
+# max_nodes = 2000 for max_nodes 2000
