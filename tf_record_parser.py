@@ -28,31 +28,31 @@ from tqdm import tqdm
 
 from utils import dir_check_make
 
-from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
+# from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
 
-def dtypes_as_dtype(dtype):
-    if dtype == "float32":
-        return types_pb2.DT_FLOAT
-    raise Exception("dtype %s is not supported" % dtype)
-
-
-def make_tensor_proto(data):
-    shape = data.shape
-    dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in shape]
-    proto_shape = tensor_shape_pb2.TensorShapeProto(dim=dims)
-
-    proto_dtype = dtypes_as_dtype(data.dtype)
-
-    tensor_proto = tensor_pb2.TensorProto(dtype=proto_dtype, tensor_shape=proto_shape)
-    tensor_proto.tensor_content = data.tostring()
-
-    return tensor_proto
+# def dtypes_as_dtype(dtype):
+#     if dtype == "float32":
+#         return types_pb2.DT_FLOAT
+#     raise Exception("dtype %s is not supported" % dtype)
 
 
-def np_to_protobuf(data):
-    if data.dtype != "float32":
-        data = data.astype("float32")
-    return make_tensor_proto(data)
+# def make_tensor_proto(data):
+#     shape = data.shape
+#     dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in shape]
+#     proto_shape = tensor_shape_pb2.TensorShapeProto(dim=dims)
+
+#     proto_dtype = dtypes_as_dtype(data.dtype)
+
+#     tensor_proto = tensor_pb2.TensorProto(dtype=proto_dtype, tensor_shape=proto_shape)
+#     tensor_proto.tensor_content = data.tostring()
+
+#     return tensor_proto
+
+
+# def np_to_protobuf(data):
+#     if data.dtype != "float32":
+#         data = data.astype("float32")
+#     return make_tensor_proto(data)
 
 
 def get_params(params_file):
@@ -103,6 +103,11 @@ def get_arguments():
         default="genomic-graph-mutagenesis",
         help="name of the dataset; i.e. prefix to use for TFRecord names",
     )
+    parser.add_argument(
+        "--target_file",
+        type=str,
+        default="targets_filtered_2500.pkl",
+    )
 
     args = parser.parse_args(sys.argv[1:])
     params = get_params(args.params)
@@ -125,7 +130,7 @@ class GGraphMutagenesisTFRecordProcessor:
     """
 
     def __init__(
-        self, params, name, output_dir, output_name, num_files, feature_dim=9
+        self, params, name, output_dir, output_name, num_files, target_file, feature_dim=9
     ):
         self.name = name
         self.feature_dim = feature_dim
@@ -137,10 +142,10 @@ class GGraphMutagenesisTFRecordProcessor:
         self.output_dir = output_dir
         self.output_name = output_name
         self.num_files = max(num_files, 1)
-
+        self.target_file = target_file
         ### add targets
         path = 'shared_data'
-        with open(f'{path}/targets_filtered_10k.pkl', 'rb') as f:
+        with open(f'{path}/{self.target_file}', 'rb') as f:
             targets = pickle.load(f)
         self.targets = targets
 
@@ -323,6 +328,7 @@ if __name__ == "__main__":
     output_name = params["output_name"]
     output_dir = params["output_dir"]
     num_files = params["num_files"]
+    target_file = params['target_file']
     mode = params["mode"]
     if mode == "train":
         init_params = params["train"]
@@ -334,7 +340,7 @@ if __name__ == "__main__":
         raise ValueError("Mode must be 'train', 'valid', or 'test'")
 
     ogbObject = GGraphMutagenesisTFRecordProcessor(
-        init_params, name, output_dir+'/'+mode, output_name, num_files,
+        init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
     )
     ogbObject.create_tfrecords(mode=mode)
 

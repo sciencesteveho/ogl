@@ -13,7 +13,7 @@ import numpy as np
 
 from typing import List, Tuple
 
-from scipy.special import boxcox
+# from scipy.special import boxcox
 from cmapPy.pandasGEXpress.parse_gct import parse
 
 from utils import genes_from_gff, time_decorator, TISSUE_TPM_KEYS
@@ -213,6 +213,16 @@ def tpm_filtered_targets(
     return targets
 
 
+def max_node_filter(max_nodes, filtered_stats, targets):
+    filtered_targets = {gene:value for gene, value in filtered_stats.items() if value[0] <= max_nodes}
+    filtered_genes = list(filtered_targets.keys())
+    filtered_dict = {}
+    for key in ['train', 'test', 'validation']:
+        filtered_dict[key] = {gene: value for gene, value in targets[key].items() if gene in filtered_genes} 
+    with open(f'targets_filtered_{max_nodes}.pkl', 'wb') as output:
+        pickle.dump(filtered_dict, output)
+
+
 def main() -> None:
     """Pipeline to generate dataset split and target values"""
 
@@ -250,21 +260,20 @@ def main() -> None:
 
     filtered_targets = tpm_filtered_targets(tissue_params, targets)  # 84070 total
 
-    ### only keep <= 20,000 nodes in filtered_targets
-    filtered_targets_20k = {gene:value for gene, value in filtered_stats.items() if value[0] <= 20000}  #84070-83259 = 811
-    ### new max num_nodes = 19987
-    filtered_genes = list(filtered_targets_20k.keys())
+    ### code to get max_node filtered targets for end-to-end debugging
+    with open('filtered_stats.pkl', 'rb') as file:
+        filtered_stats = pickle.load(file)
 
-    ### only keep <= 10,000 nodes in filtered_targets
-    filtered_targets_10k = {gene:value for gene, value in filtered_stats.items() if value[0] <= 10000}  #84070-73877 = 10193
-    ### new max num_nodes = 9999
-    filtered_genes = list(filtered_targets_10k.keys())
+    with open('targets.pkl', 'rb') as file:
+        targets = pickle.load(file)
 
-    for key in targets.keys():
-        targets[key] = {gene: targets[key][gene] for gene in targets[key].keys() if gene in filtered_genes}
+    for num in [300, 500, 1000, 2500, 3000, 5000]:
+        max_node_filter(
+            max_nodes=num,
+            filtered_stats=filtered_stats,
+            targets=targets
+        )
 
-    with open('targets_filtered_10k.pkl', 'wb') as output:
-        pickle.dump(targets, output)
 
 if __name__ == '__main__':
     main()
