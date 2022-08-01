@@ -280,12 +280,12 @@ def main() -> None:
     with open('targets.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
+    for num in [10000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
             targets=targets,
-            randomizer=True
+            randomizer=False
         )
 
 

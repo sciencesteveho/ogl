@@ -1,14 +1,11 @@
 train:
   split: "scaffold"
-  max_num_nodes: 41200
   shuffle_raw_train_data: True
 
-valid:
+validation:
   split: "scaffold"
-  max_num_nodes: 41200
   shuffle_raw_train_data: False # avoid any shuffling in val data
 
 test:
   split: "scaffold"
-  max_num_nodes: 41200
   shuffle_raw_train_data: False # avoid any shuffling in test data
