@@ -316,7 +316,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
     def _get_split_idx(self):
         return {"train": list(self.targets['train'].keys()), 
-        "valid": list(self.targets['validation'].keys()), 
+        "validation": list(self.targets['validation'].keys()), 
         "test": list(self.targets['test'].keys())
         }
 
