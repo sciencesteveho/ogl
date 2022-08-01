@@ -332,12 +332,12 @@ if __name__ == "__main__":
     mode = params["mode"]
     if mode == "train":
         init_params = params["train"]
-    elif mode == "valid":
-        init_params = params["valid"]
+    elif mode == "validation":
+        init_params = params["validation"]
     elif mode == "test":
         init_params = params["test"]
     else:
-        raise ValueError("Mode must be 'train', 'valid', or 'test'")
+        raise ValueError("Mode must be 'train', 'validation', or 'test'")
 
     ogbObject = GGraphMutagenesisTFRecordProcessor(
         init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
