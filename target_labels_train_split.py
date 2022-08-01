@@ -7,9 +7,11 @@
 """Get dataset train/val/split split"""
 
 
+from math import radians
 import pickle
 import pandas as pd
 import numpy as np
+import random
 
 from typing import List, Tuple
 
@@ -213,15 +215,25 @@ def tpm_filtered_targets(
     return targets
 
 
-def max_node_filter(max_nodes, filtered_stats, targets):
+def max_node_filter(max_nodes, filtered_stats, targets, randomizer=False):
     filtered_targets = {gene:value for gene, value in filtered_stats.items() if value[0] <= max_nodes}
     print(f'max_nodes = {max([value[0] for idx, value in filtered_targets.items()])} for max_nodes {max_nodes}')
     filtered_genes = list(filtered_targets.keys())
     filtered_dict = {}
-    for key in ['train', 'test', 'validation']:
-        filtered_dict[key] = {gene: value for gene, value in targets[key].items() if gene in filtered_genes} 
-    with open(f'targets_filtered_{max_nodes}.pkl', 'wb') as output:
-        pickle.dump(filtered_dict, output)
+    if randomizer:
+        randomkeys = {'train': 0, 'test': 1, 'validation': 2}
+        random.shuffle(filtered_genes)
+        randomized = np.array_split(filtered_genes, 3)
+        alltargets = {**targets['train'], **targets['test'], **targets['validation']}
+        for key in randomkeys:
+            filtered_dict[key] = {gene: value for gene, value in alltargets.items() if gene in randomized[randomkeys[key]]}
+        with open(f'targets_filtered_random_{max_nodes}.pkl', 'wb') as output:
+            pickle.dump(filtered_dict, output)
+    else:
+        for key in ['train', 'test', 'validation']:
+            filtered_dict[key] = {gene: value for gene, value in targets[key].items() if gene in filtered_genes}
+        with open(f'targets_filtered_{max_nodes}.pkl', 'wb') as output:
+            pickle.dump(filtered_dict, output)
 
 
 def main() -> None:
@@ -272,7 +284,8 @@ def main() -> None:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
-            targets=targets
+            targets=targets,
+            randomizer=True
         )
 
 
@@ -281,7 +294,7 @@ if __name__ == '__main__':
 
 
 # def print_stats(num):
-#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#     with open(f'targets_filtered_random_{num}.pkl', 'rb') as file:
 #         targets = pickle.load(file)
 #     print(f'max_nodes = {num}')
 #     print(f"train = {len(targets['train'])}")
@@ -289,58 +302,56 @@ if __name__ == '__main__':
 #     print(f"validation = {len(targets['validation'])}")
 #     print('\n')
 
-# for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 5000]:
+# for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
 #     print_stats(num)
 
 # max_nodes = 300
-# train = 114
-# test = 0
-# validation = 0
+# train = 38
+# test = 38
+# validation = 38
+
 
 # max_nodes = 500
-# train = 153
-# test = 0
-# validation = 0
+# train = 51
+# test = 51
+# validation = 51
+
 
 # max_nodes = 750
-# train = 212
-# test = 70
-# validation = 2
+# train = 95
+# test = 95
+# validation = 94
+
 
 # max_nodes = 1000
-# train = 307
-# test = 187
-# validation = 2
+# train = 166
+# test = 165
+# validation = 165
+
 
 # max_nodes = 1250
-# train = 555
-# test = 224
-# validation = 13
+# train = 264
+# test = 264
+# validation = 264
+
 
 # max_nodes = 1500
-# train = 1043
-# test = 259
-# validation = 48
+# train = 450
+# test = 450
+# validation = 450
+
 
 # max_nodes = 1750
-# train = 1938
-# test = 385
-# validation = 163
+# train = 829
+# test = 829
+# validation = 828
+
 
 # max_nodes = 2000
-# train = 3508
-# test = 620
-# validation = 347
+# train = 1492
+# test = 1492
+# validation = 1491
 
-# max_nodes = 2500
-# train = 7887
-# test = 960
-# validation = 843
-
-# max_nodes = 5000
-# train = 36951
-# test = 3770
-# validation = 3325
 
 # import pandas as pd
 # from cmapPy.pandasGEXpress.parse_gct import parse
