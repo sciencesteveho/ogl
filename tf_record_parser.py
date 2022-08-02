@@ -314,7 +314,7 @@ if __name__ == "__main__":
     )
     
     ### process data in parallel
-    cores=24
+    cores=32
     split_list = ogbObject._get_split_idx()[mode]
     split_idxs = list(range(1, cores+1))
     split_pool = np.array_split(split_list, cores)
