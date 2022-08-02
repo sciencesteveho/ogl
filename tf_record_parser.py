@@ -317,8 +317,7 @@ if __name__ == "__main__":
     )
     
     ### process data in parallel
-    split_dict = ogbObject._get_split_idx()[mode]
-    split_list = list(split_dict.keys())
+    split_list = ogbObject._get_split_idx()[mode]
     split_idxs = list(range(0,60,5))
     split_pool = np.array_split(split_list, 12)
     pool = Pool(processes=12)
