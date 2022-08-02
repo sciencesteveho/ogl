@@ -280,7 +280,7 @@ def main() -> None:
     with open('targets.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [10000]:
+    for num in [5000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -293,14 +293,17 @@ if __name__ == '__main__':
     main()
 
 
-# def print_stats(num):
-#     with open(f'targets_filtered_random_{num}.pkl', 'rb') as file:
-#         targets = pickle.load(file)
-#     print(f'max_nodes = {num}')
-#     print(f"train = {len(targets['train'])}")
-#     print(f"test = {len(targets['test'])}")
-#     print(f"validation = {len(targets['validation'])}")
-#     print('\n')
+def print_stats(num):
+    with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+        targets = pickle.load(file)
+    print(f'max_nodes = {num}')
+    print(f"train = {len(targets['train'])}")
+    print(f"test = {len(targets['test'])}")
+    print(f"validation = {len(targets['validation'])}")
+    print('\n')
+
+for num in [5000]:
+    print_stats(num)
 
 # for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
 #     print_stats(num)
@@ -351,6 +354,8 @@ if __name__ == '__main__':
 # train = 1492
 # test = 1492
 # validation = 1491
+
+# max_nodes = 9999 for max_nodes 10000
 
 
 # import pandas as pd

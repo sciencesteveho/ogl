@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] Look into synder paper for mass spec values as a potential target
+# - [ ] 
 
 """Convert tensors to TFrecords for running on CS-2
 
@@ -25,35 +25,21 @@ import scipy.sparse as sp
 import tensorflow as tf
 import yaml
 from tqdm import tqdm
+from multiprocessing import Pool
 
-from utils import dir_check_make
+# from utils import dir_check_make
 
-# from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
-
-# def dtypes_as_dtype(dtype):
-#     if dtype == "float32":
-#         return types_pb2.DT_FLOAT
-#     raise Exception("dtype %s is not supported" % dtype)
-
-
-# def make_tensor_proto(data):
-#     shape = data.shape
-#     dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in shape]
-#     proto_shape = tensor_shape_pb2.TensorShapeProto(dim=dims)
-
-#     proto_dtype = dtypes_as_dtype(data.dtype)
-
-#     tensor_proto = tensor_pb2.TensorProto(dtype=proto_dtype, tensor_shape=proto_shape)
-#     tensor_proto.tensor_content = data.tostring()
-
-#     return tensor_proto
-
-
-# def np_to_protobuf(data):
-#     if data.dtype != "float32":
-#         data = data.astype("float32")
-#     return make_tensor_proto(data)
-
+def get_chunks(x, size=10):
+    """Adopted from https://stackoverflow.com/questions/57122144/separate-one-big-dictionary-into-smaller-dictionaries-inside-a-list"""
+    out = {}
+    for i, k in enumerate(x, 1):
+        if i % size == 0:
+            yield out
+            out = {}
+        out[k] = x[k]
+    # last chunk:
+    if out:
+        yield out
 
 def get_params(params_file):
     # Load yaml into params
@@ -138,6 +124,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.max_num_nodes = params.get("max_num_nodes", 999)
         self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
+        self.mode = params['mode']
 
         self.output_dir = output_dir
         self.output_name = output_name
@@ -171,7 +158,7 @@ class GGraphMutagenesisTFRecordProcessor:
         with open(f"{'_'.join(tissue)}/parsing/graphs/{gene}", 'rb') as f:
             return pickle.load(f)
 
-    def create_tfrecords(self, mode="train"):
+    def create_tfrecords(self, writer_index, split_idx):
         """
         Create TFRecrods from graphs, labels
 
@@ -182,17 +169,16 @@ class GGraphMutagenesisTFRecordProcessor:
         writers = []
         for output_file in self.output_files:
             writers.append(tf.io.TFRecordWriter(output_file))
-        writer_index = 0
+        # writer_index = 0
         total_written = 0
 
-        split_idx = self._get_split_idx()[mode]
-        if mode == "train" and self.shuffle_raw_train_data:
+        if self.mode == "train" and self.shuffle_raw_train_data:
             random.shuffle(split_idx)
 
         print("Processing to TFRecords ...")
         for idx in tqdm(split_idx, total=len(split_idx)):
             graph = self._open_graph(idx)
-            label = self.targets[mode][idx]
+            label = self.targets[self.mode][idx]
             num_nodes = graph["num_nodes"]
             node_feat = graph["node_feat"].numpy()
 
@@ -336,12 +322,23 @@ if __name__ == "__main__":
         init_params = params["validation"]
     elif mode == "test":
         init_params = params["test"]
-    else:
-        raise ValueError("Mode must be 'train', 'validation', or 'test'")
 
+    ### initialize the object
     ogbObject = GGraphMutagenesisTFRecordProcessor(
         init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
     )
-    ogbObject.create_tfrecords(mode=mode)
+    
+    ### retrieve split
+    split_idx = ogbObject._get_split_idx()[mode]
+
+    ### process in parallel, chunking if mode=train
+    if mode == "train":
+        idxs = list(range(0,60,5))
+        split_pool = list(get_chunks(split_idx, size=5701))
+        pool = Pool(processes=12)
+        pool.starmap(ogbObject.create_tfrecords, zip(idxs, split_pool))
+        pool.close()
+    else:
+        ogbObject.create_tfrecords(writer_index=0, split_idx=split_idx)
 
     print("Data preprocessing complete.")
