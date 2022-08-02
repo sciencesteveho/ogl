@@ -356,6 +356,11 @@ for num in [5000]:
 
 # max_nodes = 9999 for max_nodes 10000
 
+# max_nodes = 5000
+# train = 36951
+# test = 3770
+# validation = 3325
+
 
 # import pandas as pd
 # from cmapPy.pandasGEXpress.parse_gct import parse

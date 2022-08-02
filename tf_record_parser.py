@@ -313,13 +313,18 @@ if __name__ == "__main__":
     elif mode == "test":
         init_params = params["test"]
 
+    cores=params["cores"]
+
+    for i in range(1, cores+1):
+        os.mkdir(f'{output_dir}/{mode}_{i}')
+
     ### initialize the object
     ogbObject = GGraphMutagenesisTFRecordProcessor(
         init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
     )
     
     ### process data in parallel
-    cores=params["cores"]
+
     split_list = ogbObject._get_split_idx()[mode]
     split_idxs = list(range(1, cores+1))
     split_pool = np.array_split(split_list, cores)
