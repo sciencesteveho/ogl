@@ -84,8 +84,8 @@ def get_arguments():
     )
     parser.add_argument(
         "--cores",
-        type=str,
-        default="12",
+        type=int,
+        default=12,
     )
 
     args = parser.parse_args(sys.argv[1:])
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     ### process data in parallel
     cores=params["cores"]
     split_list = ogbObject._get_split_idx()[mode]
-    split_idxs = list(range(1, str(cores)+1))
+    split_idxs = list(range(1, cores+1))
     split_pool = np.array_split(split_list, cores)
     pool = Pool(processes=cores)
     pool.starmap(ogbObject.create_tfrecords, zip(split_pool, split_idxs))
