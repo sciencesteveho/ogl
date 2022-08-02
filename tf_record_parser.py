@@ -158,7 +158,7 @@ class GGraphMutagenesisTFRecordProcessor:
         with open(f"{'_'.join(tissue)}/parsing/graphs/{gene}", 'rb') as f:
             return pickle.load(f)
 
-    def create_tfrecords(self, split_idx):
+    def create_tfrecords(self, writer_index, split_idx):
         """
         Create TFRecrods from graphs, labels
 
@@ -169,7 +169,7 @@ class GGraphMutagenesisTFRecordProcessor:
         writers = []
         for output_file in self.output_files:
             writers.append(tf.io.TFRecordWriter(output_file))
-        writer_index = 0
+        # writer_index = 0
         total_written = 0
 
         if self.mode == "train" and self.shuffle_raw_train_data:
@@ -336,9 +336,9 @@ if __name__ == "__main__":
         idxs = list(range(0,60,5))
         split_pool = list(get_chunks(split_idx, size=5701))
         pool = Pool(processes=12)
-        pool.starmap(ogbObject.create_tfrecords, zip(split_pool))
+        pool.starmap(ogbObject.create_tfrecords, zip(idxs, split_pool))
         pool.close()
     else:
-        ogbObject.create_tfrecords(split_idx=split_idx)
+        ogbObject.create_tfrecords(writer_index=0, split_idx=split_idx)
 
     print("Data preprocessing complete.")
