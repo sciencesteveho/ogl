@@ -279,7 +279,7 @@ def main() -> None:
     with open('targets.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [5000]:
+    for num in [41200]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -301,7 +301,7 @@ def print_stats(num):
     print(f"validation = {len(targets['validation'])}")
     print('\n')
 
-for num in [5000]:
+for num in [10000]:
     print_stats(num)
 
 # for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
@@ -360,6 +360,27 @@ for num in [5000]:
 # train = 36951
 # test = 3770
 # validation = 3325
+
+# max_nodes = 7000 / 7000
+# train = 51244
+# test = 5224
+# validation = 4405
+
+
+# max_nodes = 7500 / 7500
+# train = 53850
+# test = 5401
+# validation = 4577
+
+# max_nodes = 10000
+# train = 62721
+# test = 5999
+# validation = 5157
+
+# max_nodes = 41200
+# train = 72076
+# test = 6326
+# validation = 5668
 
 
 # import pandas as pd

@@ -40,3 +40,9 @@ if __name__ == '__main__':
     plt.title('Distribution of num_nodes', fontsize=7)
     plt.xlabel('Number of graphs', fontsize=7)
     plt.ylabel('Number of nodes', fontsize=7)
+
+
+idx=0
+for i in all_nodes:
+    if i <= 7500:
+        idx+=1
