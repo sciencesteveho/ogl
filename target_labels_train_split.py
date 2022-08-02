@@ -7,7 +7,6 @@
 """Get dataset train/val/split split"""
 
 
-from math import radians
 import pickle
 import pandas as pd
 import numpy as np
