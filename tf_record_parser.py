@@ -114,7 +114,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.normalize = params.get("normalize", True)
         self.mode = params['mode']
 
-        self.output_dir = output_dir
+        self.output_dir = output_dir 
         self.output_name = output_name
         self.num_files = max(num_files, 1)
         self.target_file = target_file
@@ -124,11 +124,8 @@ class GGraphMutagenesisTFRecordProcessor:
             targets = pickle.load(f)
         self.targets = targets
 
-        # initialize file reading once
-        self._prepare_output_processor()
-
-    def _prepare_output_processor(self):
-        tfrecords_dir = self.output_dir
+    def _prepare_output_processor(self, idx):
+        tfrecords_dir = self.output_dir + f'_{idx}'
         # dir_check_make(tfrecords_dir)
 
         output_files = [
@@ -138,7 +135,7 @@ class GGraphMutagenesisTFRecordProcessor:
             for fidx in range(self.num_files)
         ]
 
-        self.output_files = output_files
+        return output_files
 
     def _open_graph(self, gene):
         '''utility to open the graph file'''
@@ -146,7 +143,7 @@ class GGraphMutagenesisTFRecordProcessor:
         with open(f"{'_'.join(tissue)}/parsing/graphs/{gene}", 'rb') as f:
             return pickle.load(f)
 
-    def create_tfrecords(self, writer_index, split_idx):
+    def create_tfrecords(self, split_idx, output_idx):
         """
         Create TFRecrods from graphs, labels
 
@@ -155,9 +152,9 @@ class GGraphMutagenesisTFRecordProcessor:
         """
 
         writers = []
-        for output_file in self.output_files:
+        for output_file in self._prepare_output_processor(output_idx):
             writers.append(tf.io.TFRecordWriter(output_file))
-        # writer_index = 0
+        writer_index = 0
         total_written = 0
 
         if self.mode == "train" and self.shuffle_raw_train_data:
@@ -317,12 +314,12 @@ if __name__ == "__main__":
     )
     
     ### process data in parallel
-    cores=24
+    cores=12
     split_list = ogbObject._get_split_idx()[mode]
     split_idxs = list(range(0,60,5))
     split_pool = np.array_split(split_list, 24)
-    pool = Pool(processes=24)
-    pool.starmap(ogbObject.create_tfrecords, zip(split_idxs, split_pool))
+    pool = Pool(processes=12)
+    pool.starmap(ogbObject.create_tfrecords, zip(split_pool, split_idxs))
     pool.close()
 
     print("Data preprocessing complete.")
