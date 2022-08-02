@@ -328,17 +328,12 @@ if __name__ == "__main__":
         init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
     )
     
-    ### retrieve split
+    ### process data in parallel
     split_idx = ogbObject._get_split_idx()[mode]
-
-    ### process in parallel, chunking if mode=train
-    if mode == "train":
-        idxs = list(range(0,60,5))
-        split_pool = list(get_chunks(split_idx, size=5701))
-        pool = Pool(processes=12)
-        pool.starmap(ogbObject.create_tfrecords, zip(idxs, split_pool))
-        pool.close()
-    else:
-        ogbObject.create_tfrecords(writer_index=0, split_idx=split_idx)
+    idxs = list(range(0,60,5))
+    split_pool = list(get_chunks(split_idx, size=5701))
+    pool = Pool(processes=12)
+    pool.starmap(ogbObject.create_tfrecords, zip(idxs, split_pool))
+    pool.close()
 
     print("Data preprocessing complete.")
