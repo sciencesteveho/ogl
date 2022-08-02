@@ -121,7 +121,7 @@ class GGraphMutagenesisTFRecordProcessor:
         self.name = name
         self.feature_dim = feature_dim
         self.shuffle_raw_train_data = params.get("shuffle_raw_train_data", True)
-        self.max_num_nodes = params.get("max_num_nodes", 999)
+        self.max_num_nodes = params.get("max_num_nodes", 9999)
         self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
         self.mode = params['mode']
