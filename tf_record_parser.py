@@ -316,9 +316,9 @@ if __name__ == "__main__":
     ### process data in parallel
     cores=12
     split_list = ogbObject._get_split_idx()[mode]
-    split_idxs = list(range(1,13))
-    split_pool = np.array_split(split_list, 24)
-    pool = Pool(processes=12)
+    split_idxs = list(range(1, cores+1))
+    split_pool = np.array_split(split_list, cores)
+    pool = Pool(processes=cores)
     pool.starmap(ogbObject.create_tfrecords, zip(split_pool, split_idxs))
     pool.close()
 
