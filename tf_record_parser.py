@@ -29,18 +29,6 @@ from multiprocessing import Pool
 
 # from utils import dir_check_make
 
-def get_chunks(x, size=10):
-    """Adopted from https://stackoverflow.com/questions/57122144/separate-one-big-dictionary-into-smaller-dictionaries-inside-a-list"""
-    out = {}
-    for i, k in enumerate(x, 1):
-        if i % size == 0:
-            yield out
-            out = {}
-        out[k] = x[k]
-    # last chunk:
-    if out:
-        yield out
-
 def get_params(params_file):
     # Load yaml into params
     with open(params_file, 'r') as stream:
@@ -329,11 +317,11 @@ if __name__ == "__main__":
     )
     
     ### process data in parallel
-    split_idx = ogbObject._get_split_idx()[mode]
-    idxs = list(range(0,60,5))
-    split_pool = list(get_chunks(split_idx, size=5701))
+    split_list = list(ogbObject._get_split_idx()[mode].keys())
+    split_idxs = list(range(0,60,5))
+    split_pool = np.array_split(split_list, 12)
     pool = Pool(processes=12)
-    pool.starmap(ogbObject.create_tfrecords, zip(idxs, split_pool))
+    pool.starmap(ogbObject.create_tfrecords, zip(split_idxs, split_pool))
     pool.close()
 
     print("Data preprocessing complete.")
