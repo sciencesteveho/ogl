@@ -92,7 +92,7 @@ def get_arguments():
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_1000.pkl",
+        default="targets_filtered_random_1000.pkl",
     )
 
     args = parser.parse_args(sys.argv[1:])
