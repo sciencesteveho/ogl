@@ -1,7 +1,7 @@
 # Params for GCN on Cerebras CS-2
 train_input:
   data_processor: OGBGMOLCHEMBLDataProcessor
-  dataset_dir: "/ocean/projects/bio210019p/stevesho/data/preprocess/tfrecords"
+  dataset_dir: "/ocean/projects/bio210019p/stevesho/data/preprocess"
   num_targets: 4
   max_num_nodes: 5000
   # 9 atom features
