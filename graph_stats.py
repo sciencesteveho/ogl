@@ -126,7 +126,7 @@ def main() -> None:
     genes = list(genes_from_gff(gff))
     sparse = []
     for gene in genes:
-        sparse.append(f'{directory}/{gene}_{args.tissue}')
+        sparse.append(_graph_sparsity(f'{directory}/{gene}_{args.tissue}'))
 
     with open(f'{savedir}/sparse_vals_{args.tissue}.pkl', 'wb') as output:
         pickle.dump(sparse, output)
