@@ -116,7 +116,7 @@ def main() -> None:
     # total_nodes, total_edges = _summed_counts(filtered_stats)
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--tissue', type=str, required=True)
-    parser.add_argument('-p', '--partition', type=str, required=True)
+    # parser.add_argument('-p', '--partition', type=str, required=True)
     args = parser.parse_args()
 
     savedir = '/ocean/projects/bio210019p/stevesho/data/preprocess/sparse_check'
