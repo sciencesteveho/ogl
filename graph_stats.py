@@ -59,6 +59,7 @@ def _summed_counts(graph_stats):
     )
 
 
+@time_decorator(print_args=True)
 def _graph_sparsity(filename):
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
@@ -72,7 +73,19 @@ def _graph_sparsity(filename):
     zeros = np.count_nonzero(adj)
     nonzero = adj.size - zeros
     sparse_percentage = zeros/adj.size
-    return (adj.size, nonzero, "{:.1%}".format(sparse_percentage))
+    return (adj.size, nonzero, "{:.1%}".format(sparse_percentage))  # tup[2] is calculated incorrectly
+
+
+def _percentage_of_zeroes(tup_list):
+    tups = []
+    for lst in tup_list:
+        with open(lst, "rb") as file:
+            intermediate_list = pickle.load(file)
+        tups += intermediate_list
+    return[
+        "{:.2%}".format(tup[1]/tup[0])
+        for tup in tups
+    ]
 
 
 def main() -> None:
@@ -114,23 +127,25 @@ def main() -> None:
     #     if gene in filtered_genes
     # }
     # total_nodes, total_edges = _summed_counts(filtered_stats)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--tissue', type=str, required=True)
-    # parser.add_argument('-p', '--partition', type=str, required=True)
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-t', '--tissue', type=str, required=True)
+    # # parser.add_argument('-p', '--partition', type=str, required=True)
+    # args = parser.parse_args()
 
-    savedir = '/ocean/projects/bio210019p/stevesho/data/preprocess/sparse_check'
-    directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
-    gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
+    # savedir = '/ocean/projects/bio210019p/stevesho/data/preprocess/sparse_check'
+    # directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
+    # gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
 
-    genes = list(genes_from_gff(gff))
-    sparse = []
-    for gene in genes:
-        sparse.append(_graph_sparsity(f'{directory}/{gene}_{args.tissue}'))
-        print(f'{gene}')
+    # genes = list(genes_from_gff(gff))
+    # sparse = []
+    # for gene in genes:
+    #     sparse.append(_graph_sparsity(f'{directory}/{gene}_{args.tissue}'))
 
-    with open(f'{savedir}/sparse_vals_{args.tissue}.pkl', 'wb') as output:
-        pickle.dump(sparse, output)
+    # with open(f'{savedir}/sparse_vals_{args.tissue}.pkl', 'wb') as output:
+    #     pickle.dump(sparse, output)
+
+    sparse_files = ['sparse_vals_hippocampus.pkl', 'sparse_vals_left_ventricle.pkl', 'sparse_vals_mammary.pkl']
+    percent_zeros_in_graphs = _percentage_of_zeroes(sparse_files)
     
     
 if __name__ == '__main__':

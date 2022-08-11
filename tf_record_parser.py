@@ -207,7 +207,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
             features = collections.OrderedDict()
             features["adj"] = self._create_float_feature(adj.astype(np.float32))
-            features["node_feat"] = self._create_float_feature(node_feat)
+            features["node_feat"] = self._create_int_feature(node_feat)
             features["node_mask"] = self._create_float_feature(node_mask)
             features["label"] = self._create_float_feature(label.astype(np.int64))
 

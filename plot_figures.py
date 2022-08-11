@@ -6,6 +6,7 @@
 import csv
 import pickle
 
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -44,7 +45,16 @@ def plot_num_nodes_dist(all_nodes, fontsize, kde_option=False):
     plt.title('Distribution of num_nodes', fontsize=fontsize)
     plt.xlabel('Number of graphs', fontsize=fontsize)
     plt.ylabel('Number of nodes', fontsize=fontsize)
-    return plt
+    return plt    
+
+
+def plot_sparsity(zeros, fontsize):
+    _set_matplotlib_publication_parameters()
+    sns.ecdfplot(zeros)
+    plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
+    plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
+    plt.ylabel('Number of graphs', fontsize=fontsize)
+    return plt    
 
 
 def barplot_feats(uniq_feats):
@@ -69,6 +79,12 @@ if __name__ == '__main__':
     feats = feat_list('chromhmm_mammary.bed', 3)
     uniq = uniq_feats(feats)
     sns.barplot(x=list(uniq.keys()), y=list(uniq.values()), order=list(uniq.values()).sort())
+
+    ### percentage zeroes
+    with open('zero_percents.pkl', 'rb') as f:
+        zeros = pickle.load(f)
+
+    zeros = [float(zero.split('%')[0]) for zero in zeros]
 
 
 
