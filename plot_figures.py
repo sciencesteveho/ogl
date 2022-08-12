@@ -50,7 +50,7 @@ def plot_num_nodes_dist(all_nodes, fontsize, kde_option=False):
 
 def plot_sparsity(zeros, fontsize):
     _set_matplotlib_publication_parameters()
-    sns.ecdfplot(zeros)
+    sns.distplot(zeros)
     plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
     plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
     plt.ylabel('Number of graphs', fontsize=fontsize)
