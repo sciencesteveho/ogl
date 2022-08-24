@@ -76,7 +76,7 @@ if __name__ == '__main__':
     absolute_plt = plot_num_nodes_dist(all_nodes, 7, kde_option=False)
 
     ### uniq_feats for chromHMM
-    feats = feat_list('chromhmm_mammary.bed', 3)
+    feats = feat_list('E095_15_coreMarks_hg38lift_mnemonics.bed', 3)
     uniq = uniq_feats(feats)
     sns.barplot(x=list(uniq.keys()), y=list(uniq.values()), order=list(uniq.values()).sort())
 

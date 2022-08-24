@@ -79,9 +79,16 @@ class LocalContextFeatures:
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors 
     """
 
+    # list helpers
     ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'gencode', 'histones', 'regulatorybuild', 'repeatmasker', 'tads']
+
+    # dict helpers
+    BED_FILTERS = {
+        'repeatmasker': ['DNA?', 'Low_complexity', 'LTR?', 'RC', 'RC?', 'RNA', 'rRNA', 'scRNA', 'Simple_repeat', 'SINE?', 'snRNA', 'srpRNA', 'tRNA', 'Unknown'],
+        'chromhmm': ['11_BivFlnk', '13_ReprPC', '14_ReprPCWk', '15_Quies', '9_Het']
+    }
 
     ONEHOT_NODETYPE = {
         'chromatinloops': [1,0,0,0,0,0,0,0],
@@ -189,13 +196,14 @@ class LocalContextFeatures:
         col_idx = ab.field_count()  # get number of columns
 
         # take specific regions and format each file
-        regioned = ab.cut(list(range(3, col_idx)))
-        if prefix == 'repeatmasker':
+        regioned = ab.cut(list(range(3, col_idx))) 
+        if prefix in self.BED_FILTERS.keys():
             filtered = regioned.filter(
-                lambda x: x[3] != 'Simple_repeat' and x[3] != 'Low_complexity' and "?" not in x[3])
-            result = filtered.cut([0, 1, 2, 4])\
-                .each(rename_feat_chr_start)\
-                .saveas()
+                lambda x: x[3] not in self.BED_FILTERS[prefix])
+            if prefix == 'repeatmasker':
+                filtered = filtered.cut([0, 1, 2, 4])\
+                    .each(rename_feat_chr_start)\
+                    .saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         elif prefix in self.NODES and prefix != 'gencode':
             result = regioned.each(rename_feat_chr_start)\

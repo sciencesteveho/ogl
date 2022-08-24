@@ -24,9 +24,10 @@ tissue_specific:
   H3K9me3: 'H3K9me3_breast_ENCFF037JZB.bed'
   chromhmm: 'E119_18_core_K27ac_hg38lift_mnemonics.bed'
   chromatinloops: 'Rao_2014.HMEC.hg38.peakachu-merged.loops'
-  regulatorybuild: 'homo_sapiens.GRCh38.mammary_epithelial_1.Regulatory_Build.regulatory_activity.20210107.gff'
-  enhancers: 'HMEC_EP.txt'
+  enhancers_e_e: 'HMEC_EP.txt'
+  enhancers_e_g: ''
   tads: 'HMEC_Rao_2014-raw_TADs.txt'
+  tf_binding: ''
   ctcf: 'ENCSR661NXJ.bed'
   polr2a: 'ENCFF294TAI.bed'
 

@@ -24,9 +24,10 @@ tissue_specific:
   H3K9me3: 'H3K9me3_lv_ENCFF242JDO.bed'
   chromhmm: 'E095_18_core_K27ac_hg38lift_mnemonics.bed'
   chromatinloops: 'Leung_2015.VentricleLeft.hg38.peakachu-merged.loops'
-  regulatorybuild: 'homo_sapiens.GRCh38.left_ventricle.Regulatory_Build.regulatory_activity.20210107.gff'
-  enhancers: 'Left_ventricle_EP.txt'
+  enhancers_e_e: 'HMEC_EP.txt'
+  enhancers_e_g: ''
   tads: 'VentricleLeft_STL003_Leung_2015-raw_TADs.txt'
+  tf_binding: ''
   ctcf: 'ENCFF165RCX.bed'
   polr2a: 'ENCFF371CYY.bed'
 

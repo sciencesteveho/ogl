@@ -195,7 +195,7 @@ class GenomeDataPreprocessor:
         as HINT footprints are motif agnostic. Motifs are merged with bedtools if they overlap bases.
         """
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{sub(/:/, \"\t\", $1); sub(/-/, \"\t\", $1)}}1' {bed} \
-            | awk -v FS='\t' -v OFS='\t' '$11 > 200' \
+            | awk -v FS='\t' -v OFS='\t' '$11 >= 200' \
             | cut -f1,2,3,7 \
             | sort -k1,1 -k2,2n \
             | sed -e 's/-/\t/g' -e 's/_/\t/g' \
@@ -315,21 +315,15 @@ class GenomeDataPreprocessor:
                     os.symlink(src, dst)
                 except FileExistsError:
                     pass
-        
-        self._split_chromatinloops(self.tissue_specific['chromatinloops'])
+        # self._split_chromatinloops(self.tissue_specific['chromatinloops'])
 
-        self._add_TAD_id(self.tissue_specific['tads'])
+        # self._add_TAD_id(self.tissue_specific['tads'])
 
-        self._format_enhancer_atlas(self.tissue_specific['enhancers'])
+        # self._format_enhancer_atlas(self.tissue_specific['enhancers'])
 
-        # self._prepare_ensembl(
-        #     self.tissue_specific['regulatorybuild'],
-        #     self.tissue_specific['enhancers']
-        #     )
+        # self._merge_cpg(self.tissue_specific['cpg'])
 
-        self._merge_cpg(self.tissue_specific['cpg'])
-
-        self._combine_histones()
+        # self._combine_histones()
 
 
 def main() -> None:
@@ -348,6 +342,13 @@ def main() -> None:
 
     preprocessObject = GenomeDataPreprocessor(params)
     preprocessObject.prepare_data_files()
+
+    preprocessObject._format_enhancer_atlas(
+        preprocessObject.tissue_specific['ehancers_e_e'],
+        preprocessObject.tissue_specific['enhaners_e_g'],
+    )
+
+    preprocessObject._fenrir_enhancers(preprocessObject.tissue_specific['tf_binding'])
 
     print("Preprocessing complete!")
 
