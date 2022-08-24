@@ -194,7 +194,7 @@ class GenomeDataPreprocessor:
         We use 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints,
         as HINT footprints are motif agnostic. Motifs are merged with bedtools if they overlap bases.
         """
-        cmd = f"awk -v FS='\t' -v OFS='\t' '{{sub(/:/, \"\t\", $1); sub(/-/, \"\t\", $1)}}1' {bed} \
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{sub(/:/, \"\t\", $1); sub(/-/, \"\t\", $1)}}1' {self.root_tissue}/unprocessed/{bed} \
             | awk -v FS='\t' -v OFS='\t' '$11 > 200' \
             | cut -f1,2,3,7 \
             | sort -k1,1 -k2,2n \
@@ -338,7 +338,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
+    params = parse_yaml('genomic_graph_mutagenesis/configs/mammary.yaml')
 
     preprocessObject = GenomeDataPreprocessor(params)
     preprocessObject.prepare_data_files()
