@@ -195,7 +195,7 @@ class GenomeDataPreprocessor:
         as HINT footprints are motif agnostic. Motifs are merged with bedtools if they overlap bases.
         """
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{sub(/:/, \"\t\", $1); sub(/-/, \"\t\", $1)}}1' {bed} \
-            | awk -v FS='\t' -v OFS='\t' '$11 >= 200' \
+            | awk -v FS='\t' -v OFS='\t' '$11 > 200' \
             | cut -f1,2,3,7 \
             | sort -k1,1 -k2,2n \
             | sed -e 's/-/\t/g' -e 's/_/\t/g' \
