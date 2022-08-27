@@ -117,8 +117,7 @@ class GenomeDataPreprocessor:
             for file in self.shared.values():
                 download(f'https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}', f'{self.root_dir}/shared_data/local_feats/{file}')
 
-
-    @time_decorator
+    @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.root_tissue}/unprocessed/{bed} \
@@ -126,25 +125,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-
-    @time_decorator
-    def _format_enhancer_atlas(self, bed: str) -> None:
-        """Format enhancer atlas to bed"""
-        tab_delim = f"sed -e 's/:/\t/g' -e 's/_EN/\tEN/g' -e 's/\$/\t/g' -e 's/-/\t/g' {self.root_tissue}/unprocessed/{bed} \
-            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_ATLAS_\"$1\"_\"$2}}' \
-            > {self.root_tissue}/interaction/{bed}.interaction"
-
-        tabbed = f"sed -e 's/:/\t/g' -e 's/_EN/\tEN/g' -e 's/\$/\t/g' {self.root_tissue}/unprocessed/{bed} \
-            | sort -k1,1 -k2,2n \
-            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, \"enhancer_ATLAS\"}}' \
-            | sed -e 's/-/\t/' \
-            > {self.root_tissue}/interaction/{bed}.tabbed"
-
-        for cmd in [tab_delim, tabbed]:
-            self._run_cmd(cmd)
-
-
-    @time_decorator
+    @time_decorator(print_args=True)
     def _split_chromatinloops(self, bed: str) -> None:
         """Split chromatinloop file in separate entries"""
         split_1 = f"sort -k 1,1 -k2,2n {self.root_tissue}/unprocessed/{bed} \
@@ -160,22 +141,25 @@ class GenomeDataPreprocessor:
         for cmd in [split_1, split_2, loop_cat]:
             self._run_cmd(cmd)
 
-
-    @time_decorator
+    @time_decorator(print_args=True)
     def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
         """
         Get a list of the individual enhancer sites from FENRIR (Chen et al., Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer networks and sorting
         """
         split_1 = f"tail -n +2 {self.root_tissue}/unprocessed/{e_e_bed} \
             | cut -f1 \
+            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
             > {self.root_tissue}/unprocessed/{e_e_bed}_1"
         split_2 = f"tail -n +2 {self.root_tissue}/unprocessed/{e_e_bed} \
             | cut -f2 \
+            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
             > {self.root_tissue}/unprocessed/{e_e_bed}_2"
         enhancer_cat = f"tail -n +2 {self.root_tissue}/unprocessed/{e_g_bed} \
             | cut -f1 \
+            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
             | cat - {self.root_tissue}/unprocessed/{e_e_bed}_1 {self.root_tissue}/unprocessed/{e_e_bed}_2 \
-            | sort -u \
+            | sort -k1,1 -k2,2n \
+            | uniq \
             > {self.root_tissue}/unprocessed/enhancers.bed"
 
         liftover_sort = f"./shared_data/liftOver \
@@ -187,26 +171,25 @@ class GenomeDataPreprocessor:
         for cmd in [split_1, split_2, enhancer_cat, liftover_sort]:
             self._run_cmd(cmd)
 
-    @time_decorator
-    def _tf_binding_sites(self, bed: str) -> None:
+    @time_decorator(print_args=True)
+    def _tf_binding_clusters(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites from Funk et al., Cell Reports, 2020.
         We use 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints,
-        as HINT footprints are motif agnostic. Motifs are merged with bedtools if they overlap bases.
+        as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp, from Chen et al. 2015, Scientific Reports)
         """
-        cmd = f"awk -v FS='\t' -v OFS='\t' '{{sub(/:/, \"\t\", $1); sub(/-/, \"\t\", $1)}}1' {bed} \
-            | awk -v FS='\t' -v OFS='\t' '$11 > 200' \
-            | cut -f1,2,3,7 \
-            | sort -k1,1 -k2,2n \
-            | sed -e 's/-/\t/g' -e 's/_/\t/g' \
+        cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.root_tissue}/unprocessed/{bed} \
+            | cut -f1,2,3,4 \
+            | sed 's/-/\t/g' \
             | cut -f1,2,3,6 \
             | sed 's/\..*$//g' \
-            | bedtools merge -i - -c 4 -o distinct \
+            | sort -k1,1 -k2,2n \
+            | bedtools merge -i - -d 46 -c 4 -o distinct \
             > {self.root_tissue}/local/tf_binding_sites_{self.tissue}.bed"
         
         self._run_cmd(cmd)
 
-    @time_decorator
+    @time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:
         """Merge individual CPGs with optional liftover"""
         if self.options['cpg_liftover'] == True:
@@ -234,7 +217,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(bedtools_cmd)
 
-    @time_decorator
+    @time_decorator(print_args=True)
     def _combine_histones(self) -> None:
         """Overlap and merge histone chip-seq bedfiles. Histone marks are combined if they overlap and their measurement is score / base pairs
         
@@ -292,7 +275,7 @@ class GenomeDataPreprocessor:
         ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9ac H3K9me3
         self._run_cmd(bedtools_merge)
 
-    @time_decorator
+    @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles"""
 
@@ -316,16 +299,16 @@ class GenomeDataPreprocessor:
                 except FileExistsError:
                     pass
         
-        self._split_chromatinloops(self.tissue_specific['chromatinloops'])
-
         self._add_TAD_id(self.tissue_specific['tads'])
 
-        self._format_enhancer_atlas(self.tissue_specific['enhancers'])
+        self._split_chromatinloops(self.tissue_specific['chromatinloops'])
 
-        # self._prepare_ensembl(
-        #     self.tissue_specific['regulatorybuild'],
-        #     self.tissue_specific['enhancers']
-        #     )
+        self._fenrir_enhancers(
+            self.tissue_specific['enhancers_e_e'],
+            self.tissue_specific['enhancers_e_g'],
+            )
+
+        self._tf_binding_clusters(self.tissue_specific['tf_binding'])
 
         self._merge_cpg(self.tissue_specific['cpg'])
 

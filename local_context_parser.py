@@ -80,9 +80,9 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'repeatmasker', 'simplerepeats']
     DIRECT = ['chromatinloops', 'tads']
-    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'gencode', 'histones', 'regulatorybuild', 'repeatmasker', 'tads']
+    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'gencode', 'histones', 'tads']
 
     # dict helpers
     BED_FILTERS = {
