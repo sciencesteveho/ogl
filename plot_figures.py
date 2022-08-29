@@ -88,7 +88,47 @@ if __name__ == '__main__':
 
 
 
-idx=0
-for i in all_nodes:
-    if i <= 7500:
-        idx+=1
+# idx=0
+# for i in all_nodes:
+#     if i <= 7500:
+#         idx+=1
+
+#!/usr/bin/python
+
+# import numpy as np
+# import pybedtools
+
+# import matplotlib.pyplot as plt
+# import seaborn as sns
+
+
+# def _set_matplotlib_publication_parameters():
+#     plt.rcParams.update({'font.size': 7})  # set font size
+#     plt.rcParams["font.family"] = 'Helvetica'  # set font
+
+
+# def plot_sparsity(distances, fontsize):
+#     _set_matplotlib_publication_parameters()
+#     sns.distplot(distances)
+#     plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
+#     plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
+#     plt.ylabel('Number of graphs', fontsize=fontsize)
+#     return plt    
+
+
+# def bed_distances(bed): 
+#     a = pybedtools.BedTool(bed)
+#     starts = np.array([int(line[1]) for line in a])
+#     ends = np.array([int(line[2]) for line in a])
+#     return np.subtract(
+#         starts[1:len(starts)],
+#         ends[:len(ends)-1],
+#     )
+
+
+# testbed = 'chr1_50.bed'
+# _set_matplotlib_publication_parameters()
+
+# distances = bed_distances(testbed)
+
+# plot = plot_sparsity(distances,7)

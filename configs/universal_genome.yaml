@@ -1,0 +1,57 @@
+resources:
+    tissue: 'universal_genome'
+    tissue_name: ''
+    locop_tissue: ''
+    chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+    fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+  
+  dirs:
+    data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome'  # place where unprocessed files exists
+    root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+    shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+    ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+    poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+  
+  tissue_specific:
+    cpg: 'cpg_methyl_ENCFF532PDE.bed'
+    dnase: 'ENCFF591LZL.bed'
+    H3K27ac: 'H3K27ac_lv_ENCFF635VBV.bed'
+    H3K27me3: 'H3K27me3_lv_ENCFF242JDO.bed'
+    H3K36me3: 'H3K36me3_lv_ENCFF767VOC.bed'
+    H3K4me1: 'H3K4me1_lv_ENCFF194KSV.bed'
+    H3K4me3: 'H3K4me3_lv_ENCFF175CMC.bed'
+    H3K9me3: 'H3K9me3_lv_ENCFF242JDO.bed'
+    chromhmm: 'E096_15_coreMarks_mnemonics.bed'
+    chromatinloops: 'Leung_2015.VentricleLeft.hg38.peakachu-merged.loops'
+    enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
+    enhancers_e_g: 'Enhancer_gene_network_082619.txt'
+    tads: 'VentricleLeft_STL003_Leung_2015-raw_TADs.txt'
+    tf_binding: 'heart_hint_20-footprint.bed'
+    ctcf: 'ENCFF165RCX.bed'
+    polr2a: 'ENCFF371CYY.bed'
+  
+  shared:
+    cpgislands: 'cpgislands_hg38_parsed.bed'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    regions: 'gene_regions_250000.bed'
+    microsatellites: 'microsatellites_hg38_parsed.bed'
+    phastcons: 'phastcons_gt_0.9_h38.bed'
+    repeatmasker: 'repeatmasker_hg38_parsed.bed'
+    simplerepeats: 'simplerepeats_hg38.bed'
+  
+  interaction:
+      id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+      gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+      gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+      circuits: 'left_ventricle_adult.txt'
+      cops: 'all_cops_gtex.tsv'
+      shared_eqtls: 'shared_eqtls_gtex.tsv'
+      polyadenylation: 'Lung.txt'
+      ppis: 'heart_muscle_myocytes.tsv'
+  
+  options:
+    cpg_liftover: False
+    cpg_filetype: 'ENCODE' #ENCODE or GEO
+  
+  ### Note: if we have to remove something.. remove H3K9ac
+  

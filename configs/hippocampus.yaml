@@ -20,7 +20,6 @@ tissue_specific:
   H3K36me3: 'H3K36me3_hippocampus_ENCFF442BXP.bed'
   H3K4me1: 'H3K4me1_hippocampus_ENCFF328YWW.bed'
   H3K4me3: 'H3K4me3_hippocampus_ENCFF451IGE.bed'
-  H3K9ac: 'H3K9ac_astrocyte_ENCFF649IVK.bed'
   H3K9me3: 'H3K9me3_hippocampus_ENCFF265CFH.bed'
   chromhmm: 'E071_15_coreMarks_hg38lift_mnemonics.bed'
   chromatinloops: 'Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops'

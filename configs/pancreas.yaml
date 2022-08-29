@@ -1,0 +1,57 @@
+resources:
+    tissue: 'pancreas'
+    tissue_name: 'Pancreas'
+    locop_tissue: 'Pancreas'
+    chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+    fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+  
+  dirs:
+    data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/pancreas'  # place where unprocessed files exists
+    root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+    shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+    ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+    poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+  
+  tissue_specific:
+    cpg: 'cpg_methyl_ENCFF556VBV.bed'
+    dnase: 'ENCFF517PFR.bed'
+    H3K27ac: 'H3K27ac_pancreas_ENCFF731GWD.bed'
+    H3K27me3: 'H3K27me3_pancreas_ENCFF578BBF.bed'
+    H3K36me3: 'H3K36me3_pancreas_ENCFF283YWD.bed'
+    H3K4me1: 'H3K4me1_pancreas_ENCFF098CNJ.bed'
+    H3K4me3: 'H3K4me3_pancreas_ENCFF067NZN.bed'
+    H3K9me3: 'H3K9me3_pancreas_ENCFF334VVE.bed'
+    chromhmm: 'E098_15_coreMarks_mnemonics.bed'
+    chromatinloops: 'Schmitt_2016.Pancreas.hg38.peakachu-merged.loops'
+    enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
+    enhancers_e_g: 'Enhancer_gene_network_082619.txt'
+    tads: 'Pancreas_Schmitt2016-raw_TADs.txtt'
+    tf_binding: 'pancreas_hint_20-footprint.bed'
+    ctcf: 'ENCFF225IGV.bed'
+    polr2a: 'ENCFF618BDP.bed'
+  
+  shared:
+    cpgislands: 'cpgislands_hg38_parsed.bed'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    regions: 'gene_regions_250000.bed'
+    microsatellites: 'microsatellites_hg38_parsed.bed'
+    phastcons: 'phastcons_gt_0.9_h38.bed'
+    repeatmasker: 'repeatmasker_hg38_parsed.bed'
+    simplerepeats: 'simplerepeats_hg38.bed'
+  
+  interaction:
+      id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+      gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+      gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+      circuits: 'pancreas_adult.txt'
+      cops: 'all_cops_gtex.tsv'
+      shared_eqtls: 'shared_eqtls_gtex.tsv'
+      polyadenylation: 'Pancreas.txt'
+      ppis: 'pancreas.tsv'
+  
+  options:
+    cpg_liftover: False
+    cpg_filetype: 'ENCODE' #ENCODE or GEO
+  
+  ### Note: if we have to remove something.. remove H3K9ac
+  

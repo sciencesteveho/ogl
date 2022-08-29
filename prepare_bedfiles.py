@@ -59,7 +59,7 @@ class GenomeDataPreprocessor:
     # Helpers
         HISTONES -- list of histone features
     """
-    HISTONES = ['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3',]
+    HISTONES = ['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3',]
 
     def __init__(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize the class"""
@@ -116,6 +116,12 @@ class GenomeDataPreprocessor:
         else:
             for file in self.shared.values():
                 download(f'https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}', f'{self.root_dir}/shared_data/local_feats/{file}')
+
+    @time_decorator(print_args=True)
+    def _partition_repeats(self, bed: str) -> None:
+        """Split repeatmasker bed into classes. Retrotransposons are grouped with LTRs"""
+
+
 
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
@@ -176,7 +182,7 @@ class GenomeDataPreprocessor:
         """
         Parse tissue-specific transcription factor binding sites from Funk et al., Cell Reports, 2020.
         We use 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints,
-        as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp, from Chen et al. 2015, Scientific Reports)
+        as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp, from Chen et al., Scientific Reports, 2015)
         """
         cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.root_tissue}/unprocessed/{bed} \
             | cut -f1,2,3,4 \
@@ -231,8 +237,7 @@ class GenomeDataPreprocessor:
             'H3K36me3': 6,
             'H3K4me1': 7,
             'H3K4me3': 8,
-            'H3K9ac': 9,
-            'H3K9me3': 10,
+            'H3K9me3': 9,
         }
 
         def _add_histone_feat(feature: str, histone: str) -> str:
@@ -240,7 +245,7 @@ class GenomeDataPreprocessor:
             return feature
 
         def count_histone_bp(feature: str) -> str:
-            feature = extend_fields(feature, 12)
+            feature = extend_fields(feature, 11)
             for histone in histone_idx:
                 if histone in feature[3]:
                     feature[histone_idx[histone]] = feature.length
@@ -263,7 +268,7 @@ class GenomeDataPreprocessor:
             > {self.root_tissue}/histones/histones_partition.bed"
         bedmap = f"bedmap --echo --echo-map-id --delim '\t' {self.root_tissue}/histones/histones_partition.bed {self.root_tissue}/histones/histones_union.bed \
             > {self.root_tissue}/histones/histones_collapsed.bed"
-        bedtools_merge = f"bedtools merge -i {self.root_tissue}/histones/histones_collapsed_bp.bed -c 5,6,7,8,9,10,11 -o sum \
+        bedtools_merge = f"bedtools merge -i {self.root_tissue}/histones/histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum \
             > {self.root_tissue}/local/histones_merged_{self.tissue}.bed"
 
         for command in [bedops_everything, bedops_partition, bedmap]:
@@ -272,7 +277,7 @@ class GenomeDataPreprocessor:
         a = pybedtools.BedTool(f'{self.root_tissue}/histones/histones_collapsed.bed')
         b = a.each(count_histone_bp).sort().saveas(f'{self.root_tissue}/histones/histones_collapsed_bp.bed')
 
-        ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9ac H3K9me3
+        ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
         self._run_cmd(bedtools_merge)
 
     @time_decorator(print_args=True)

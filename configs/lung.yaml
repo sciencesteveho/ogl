@@ -1,0 +1,57 @@
+resources:
+    tissue: 'lung'
+    tissue_name: 'Lung'
+    locop_tissue: 'Lung'
+    chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+    fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+  
+  dirs:
+    data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/lung'  # place where unprocessed files exists
+    root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+    shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+    ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+    poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+  
+  tissue_specific:
+    cpg: 'cpg_methyl_ENCFF532PDE.bed'
+    dnase: 'ENCFF041XPT.bed'
+    H3K27ac: 'H3K27ac_lung_ENCFF496RDA.bed'
+    H3K27me3: 'H3K27me3_lung_ENCFF248IPH.bed'
+    H3K36me3: 'H3K36me3_lung_ENCFF459IYH.bed'
+    H3K4me1: 'H3K4me1_lung_ENCFF926YKP.bed'
+    H3K4me3: 'H3K4me3_lung_ENCFF843JPR.bed'
+    H3K9me3: 'H3K9me3_lung_ENCFF080ZRB.bed'
+    chromhmm: 'E096_15_coreMarks_mnemonics.bed'
+    chromatinloops: 'Schmitt_2016.Lung.hg38.peakachu-merged.loops'
+    enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
+    enhancers_e_g: 'Enhancer_gene_network_082619.txt'
+    tads: 'Lung_Schmitt2016-raw_TADs.txt'
+    tf_binding: 'lung_hint_20-footprint.bed'
+    ctcf: 'ENCFF629UDP.bed'
+    polr2a: 'ENCFF389ZBU.bed'
+  
+  shared:
+    cpgislands: 'cpgislands_hg38_parsed.bed'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    regions: 'gene_regions_250000.bed'
+    microsatellites: 'microsatellites_hg38_parsed.bed'
+    phastcons: 'phastcons_gt_0.9_h38.bed'
+    repeatmasker: 'repeatmasker_hg38_parsed.bed'
+    simplerepeats: 'simplerepeats_hg38.bed'
+  
+  interaction:
+      id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+      gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+      gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+      circuits: 'lung_adult.txt'
+      cops: 'all_cops_gtex.tsv'
+      shared_eqtls: 'shared_eqtls_gtex.tsv'
+      polyadenylation: 'Lung.txt'
+      ppis: 'lung.tsv'
+  
+  options:
+    cpg_liftover: False
+    cpg_filetype: 'ENCODE' #ENCODE or GEO
+  
+  ### Note: if we have to remove something.. remove H3K9ac
+  

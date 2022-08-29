@@ -80,9 +80,10 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'repeatmasker', 'simplerepeats']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'dna_repeat', 'LINE', 'LTR', 'SINE']
+    REPEAT_ATTRIBUTES = ['DNA', 'LTR', 'Retrotransposon']
     DIRECT = ['chromatinloops', 'tads']
-    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'gencode', 'histones', 'tads']
+    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'enhancers', 'gencode', 'histones', 'repeatmasker', 'tads', 'tf_binding_clusters']
 
     # dict helpers
     BED_FILTERS = {
@@ -91,24 +92,25 @@ class LocalContextFeatures:
     }
 
     ONEHOT_NODETYPE = {
-        'chromatinloops': [1,0,0,0,0,0,0,0],
-        'chromhmm': [0,1,0,0,0,0,0,0],
-        'cpgislands': [0,0,1,0,0,0,0,0], 
-        'gencode': [0,0,0,1,0,0,0,0],
-        'histones': [0,0,0,0,1,0,0,0],
-        'regulatorybuild': [0,0,0,0,0,1,0,0],
-        'enhancers': [0,0,0,0,0,1,0,0],
-        'repeatmasker': [0,0,0,0,0,0,1,0],
-        'tads': [0,0,0,0,0,0,0,1],
+        'chromatinloops': [1,0,0,0,0,0,0,0,0],
+        'chromhmm': [0,1,0,0,0,0,0,0,0],
+        'cpgislands': [0,0,1,0,0,0,0,0,0], 
+        'enhancers': [0,0,0,1,0,0,0,0,0], 
+        'gencode': [0,0,0,0,1,0,0,0,0], 
+        'histones': [0,0,0,0,0,1,0,0,0], 
+        'repeatmasker': [0,0,0,0,0,0,1,0,0], 
+        'tads': [0,0,0,0,0,0,0,1,0], 
+        'tf_binding_clusters': [0,0,0,0,0,0,0,0,1], 
     }
 
     FEAT_WINDOWS = {
         'chromhmm' : 1000,
         'cpgislands' : 500,
+        'enhancers': 5000,
         'gencode': 1000,
         'histones' : 1000,
-        'regulatorybuild': 5000, 
         'repeatmasker' : 500,
+        'tf_binding_clusters': 1000,
         }
 
     def __init__(
