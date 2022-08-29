@@ -80,14 +80,12 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'dna_repeat', 'LINE', 'LTR', 'SINE']
-    REPEAT_ATTRIBUTES = ['DNA', 'LTR', 'Retrotransposon']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'LINE', 'LTR', 'SINE']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'enhancers', 'gencode', 'histones', 'repeatmasker', 'tads', 'tf_binding_clusters']
 
     # dict helpers
     BED_FILTERS = {
-        'repeatmasker': ['DNA?', 'Low_complexity', 'LTR?', 'RC', 'RC?', 'RNA', 'rRNA', 'scRNA', 'Simple_repeat', 'SINE?', 'snRNA', 'srpRNA', 'tRNA', 'Unknown'],
         'chromhmm': ['11_BivFlnk', '13_ReprPC', '14_ReprPCWk', '15_Quies', '9_Het']
     }
 

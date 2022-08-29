@@ -1,55 +1,58 @@
 resources:
-    tissue: 'liver'
-    tissue_name: 'Liver'
-    locop_tissue: 'Liver'
-    chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
-    fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+  tissue: 'liver'
+  tissue_name: 'Liver'
+  locop_tissue: 'Liver'
+  chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+  fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   
-  dirs:
-    data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver'  # place where unprocessed files exists
-    root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
-    shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-    ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
-    poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+dirs:
+  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver'  # place where unprocessed files exists
+  root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+  shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+  poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+
+tissue_specific:
+  cpg: 'cpg_methyl_ENCFF080ETP.bed'
+  dnase: 'ENCFF905THS.bed'
+  H3K27ac: 'H3K27ac_liver_ENCFF382EMP.bed'
+  H3K27me3: 'H3K27me3_liver_ENCFF210DQA.bed'
+  H3K36me3: 'H3K36me3_liver_ENCFF808ULR.bed'
+  H3K4me1: 'H3K4me1_liver_ENCFF003KVZ.bed'
+  H3K4me3: 'H3K4me3_liver_ENCFF522CRH.bed'
+  H3K9me3: 'H3K9me3_liver_ENCFF789WSF.bed'
+  chromhmm: 'E066_15_coreMarks_mnemonics.bed'
+  chromatinloops: 'Leung_2015.Liver.hg38.peakachu-merged.loops'
+  enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
+  enhancers_e_g: 'Enhancer_gene_network_082619.txt'
+  tads: 'Liver_STL011_Leung_2015-raw_TADs'
+  tf_binding: 'liver_hint_20-footprint.bed'
+  ctcf: 'ENCFF046XEZ.bed'
+  polr2a: 'ENCFF064ASM.bed'
   
-  tissue_specific:
-    cpg: 'cpg_methyl_ENCFF080ETP.bed'
-    dnase: 'ENCFF905THS.bed'
-    H3K27ac: 'H3K27ac_liver_ENCFF382EMP.bed'
-    H3K27me3: 'H3K27me3_liver_ENCFF210DQA.bed'
-    H3K36me3: 'H3K36me3_liver_ENCFF808ULR.bed'
-    H3K4me1: 'H3K4me1_liver_ENCFF003KVZ.bed'
-    H3K4me3: 'H3K4me3_liver_ENCFF522CRH.bed'
-    H3K9me3: 'H3K9me3_liver_ENCFF789WSF.bed'
-    chromhmm: 'E066_15_coreMarks_mnemonics.bed'
-    chromatinloops: 'Leung_2015.Liver.hg38.peakachu-merged.loops'
-    enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
-    enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-    tads: 'Liver_STL011_Leung_2015-raw_TADs'
-    tf_binding: 'liver_hint_20-footprint.bed'
-    ctcf: 'ENCFF046XEZ.bed'
-    polr2a: 'ENCFF064ASM.bed'
+shared:
+  cpgislands: 'cpgislands_hg38_parsed.bed'
+  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+  line: 'line_hg38.bed'
+  ltr: 'ltr_hg38.bed'
+  regions: 'gene_regions_250000.bed'
+  microsatellites: 'microsatellites_hg38_parsed.bed'
+  phastcons: 'phastcons_gt_0.9_h38.bed'
+  rnarepeat: 'rnarepeat_hg38.bed'
+  simplerepeats: 'simplerepeats_hg38.bed'
+  sine: 'sine_hg38.bed'
   
-  shared:
-    cpgislands: 'cpgislands_hg38_parsed.bed'
-    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-    regions: 'gene_regions_250000.bed'
-    microsatellites: 'microsatellites_hg38_parsed.bed'
-    phastcons: 'phastcons_gt_0.9_h38.bed'
-    repeatmasker: 'repeatmasker_hg38_parsed.bed'
-    simplerepeats: 'simplerepeats_hg38.bed'
-  
-  interaction:
-      id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
-      gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
-      gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-      circuits: 'liver_adult.txt'
-      cops: 'all_cops_gtex.tsv'
-      shared_eqtls: 'shared_eqtls_gtex.tsv'
-      polyadenylation: 'Liver.txt'
-      ppis: 'liver.tsv'
-  
-  options:
-    cpg_liftover: False
-    cpg_filetype: 'ENCODE' #ENCODE or GEO
+interaction:
+  id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+  gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+  circuits: 'liver_adult.txt'
+  cops: 'all_cops_gtex.tsv'
+  shared_eqtls: 'shared_eqtls_gtex.tsv'
+  polyadenylation: 'Liver.txt'
+  ppis: 'liver.tsv'
+
+options:
+  cpg_liftover: False
+  cpg_filetype: 'ENCODE' #ENCODE or GEO
   

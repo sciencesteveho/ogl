@@ -33,21 +33,24 @@ tissue_specific:
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+  line: 'line_hg38.bed'
+  ltr: 'ltr_hg38.bed'
   regions: 'gene_regions_250000.bed'
   microsatellites: 'microsatellites_hg38_parsed.bed'
   phastcons: 'phastcons_gt_0.9_h38.bed'
-  repeatmasker: 'repeatmasker_hg38_parsed.bed'
+  rnarepeat: 'rnarepeat_hg38.bed'
   simplerepeats: 'simplerepeats_hg38.bed'
+  sine: 'sine_hg38.bed'
 
 interaction:
-    id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
-    gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
-    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-    circuits: 'breast_adult.txt'
-    cops: 'all_cops_gtex.tsv'
-    shared_eqtls: 'shared_eqtls_gtex.tsv'
-    polyadenylation: 'Breast_Mammary_Tissue.txt'
-    ppis: 'breast.tsv'
+  id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+  gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+  circuits: 'breast_adult.txt'
+  cops: 'all_cops_gtex.tsv'
+  shared_eqtls: 'shared_eqtls_gtex.tsv'
+  polyadenylation: 'Breast_Mammary_Tissue.txt'
+  ppis: 'breast.tsv'
 
 options:
   cpg_liftover: False

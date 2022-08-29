@@ -118,12 +118,6 @@ class GenomeDataPreprocessor:
                 download(f'https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}', f'{self.root_dir}/shared_data/local_feats/{file}')
 
     @time_decorator(print_args=True)
-    def _partition_repeats(self, bed: str) -> None:
-        """Split repeatmasker bed into classes. Retrotransposons are grouped with LTRs"""
-
-
-
-    @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.root_tissue}/unprocessed/{bed} \
