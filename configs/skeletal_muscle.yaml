@@ -20,7 +20,7 @@ tissue_specific:
   H3K36me3: 'H3K36me3_muscle_ENCFF489DQX.bed'
   H3K4me1: 'H3K4me1_muscle_ENCFF851MDY.bed'
   H3K4me3: 'H3K4me3_muscle_ENCFF640JXX.bed'
-  H3K9me3: 'H3K9me3_muscle_ENCFF301KYN.bed'ls
+  H3K9me3: 'H3K9me3_muscle_ENCFF301KYN.bed'
   chromhmm: 'E100_15_coreMarks_hg38lift_mnemonics.bed'
   chromatinloops: 'Schmitt_2016.Psoas.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
@@ -55,4 +55,3 @@ interaction:
 options:
   cpg_liftover: False
   cpg_filetype: 'ENCODE' #ENCODE or GEO
-  

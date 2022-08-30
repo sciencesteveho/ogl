@@ -25,7 +25,7 @@ tissue_specific:
   chromatinloops: 'Leung_2015.Liver.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'Liver_STL011_Leung_2015-raw_TADs'
+  tads: 'Liver_STL011_Leung_2015-raw_TADs.txt'
   tf_binding: 'liver_hint_20-footprint.bed'
   ctcf: 'ENCFF046XEZ.bed'
   polr2a: 'ENCFF064ASM.bed'
