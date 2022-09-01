@@ -80,9 +80,9 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'LINE', 'LTR', 'SINE']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'line', 'ltr', 'sine']
     DIRECT = ['chromatinloops', 'tads']
-    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'enhancers', 'gencode', 'histones', 'repeatmasker', 'tads', 'tf_binding_clusters']
+    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'tads', 'tfbindingclusters', 'tss']
 
     # dict helpers
     BED_FILTERS = {
@@ -90,15 +90,15 @@ class LocalContextFeatures:
     }
 
     ONEHOT_NODETYPE = {
-        'chromatinloops': [1,0,0,0,0,0,0,0,0],
-        'chromhmm': [0,1,0,0,0,0,0,0,0],
-        'cpgislands': [0,0,1,0,0,0,0,0,0], 
-        'enhancers': [0,0,0,1,0,0,0,0,0], 
-        'gencode': [0,0,0,0,1,0,0,0,0], 
-        'histones': [0,0,0,0,0,1,0,0,0], 
-        'repeatmasker': [0,0,0,0,0,0,1,0,0], 
-        'tads': [0,0,0,0,0,0,0,1,0], 
-        'tf_binding_clusters': [0,0,0,0,0,0,0,0,1], 
+        'chromatinloops': [1,0,0,0,0,0,0,0,0,0],
+        'chromhmm': [0,1,0,0,0,0,0,0,0,0],
+        'cpgislands': [0,0,1,0,0,0,0,0,0,0],
+        'enhancers': [0,0,0,1,0,0,0,0,0,0],
+        'gencode': [0,0,0,0,1,0,0,0,0,0],
+        'histones': [0,0,0,0,0,1,0,0,0,0],
+        'tads': [0,0,0,0,0,0,0,1,0,0],
+        'tf_binding_clusters': [0,0,0,0,0,0,0,0,1,0],
+        'tss': [0,0,0,0,0,0,0,0,0,1],
     }
 
     FEAT_WINDOWS = {
@@ -107,8 +107,7 @@ class LocalContextFeatures:
         'enhancers': 5000,
         'gencode': 1000,
         'histones' : 1000,
-        'repeatmasker' : 500,
-        'tf_binding_clusters': 1000,
+        'tfbindingclusters': 1000,
         }
 
     def __init__(

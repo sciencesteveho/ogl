@@ -185,7 +185,7 @@ class GenomeDataPreprocessor:
             | sed 's/\..*$//g' \
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - -d 46 -c 4 -o distinct \
-            > {self.root_tissue}/local/tf_binding_sites_{self.tissue}.bed"
+            > {self.root_tissue}/local/tfbindingclusters_{self.tissue}.bed"
         
         self._run_cmd(cmd)
 

@@ -14,7 +14,6 @@ import random
 
 from typing import List, Tuple
 
-# from scipy.special import boxcox
 from cmapPy.pandasGEXpress.parse_gct import parse
 
 from utils import genes_from_gff, time_decorator, TISSUE_TPM_KEYS
@@ -59,8 +58,8 @@ def _tissue_std_dev_and_mean() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 def _protein_abundance_all_tissue_median(protein_file: str):
     '''
-    For now, "BRAIN-CORTEX" values are being used for hippocampus due to the
-    similarites shown between the tissues in GTEx Consortium, Science, 2020.
+    For now, "BRAIN-CORTEX" values are being used for hippocampus. We choose cortex due
+    to similarites shown between the tissues in GTEx Consortium, Science, 2020.
     Values are log2 so we inverse log them (2^x)
     '''
     df = pd.read_csv(

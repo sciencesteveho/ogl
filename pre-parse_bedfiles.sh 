@@ -1,0 +1,35 @@
+#!/bin/bash
+
+'''
+Scripts to filter shared bedfiles before generating graphs. 
+'''
+
+# poly-(A) target sites for hg38 are downloaded from PolyASite, homo sapiens v2.0, release 21/04/2020
+# filter poly-(A) targets for clusters supported by at least 1% of samples
+awk -v FS='\t' -v OFS='\t' '$7 >= 0.01' atlas.clusters.2.0.GRCh38.96.bed \
+    | cut -f 1,2,3,4,10 \
+    | awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"polya_"$4_$5}' \
+    > polyasites_filtered_hg38.bed
+
+# transcription start sites for hg38 are downloaded from refTSS v3.3, release 18/08/2021
+awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"tss_"$4}' refTSS_v3.3_human_coordinate.hg38.bed \
+    > tss_parsed_hg38.bed
+
+# micro RNA (miRNA) target sites for hg19 are downloaded from TargetScanHuman 7.2, release 03/2018
+# target sites are lifted over to hg38
+shared_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+./preprocess/shared_data/liftOver \
+    Predicted_Target_Locations.default_predictions.hg19.bed \
+    ${shared_dir}/hg19ToHg38.over.chain.gz \
+    miRNAtargets_lifted_hg38.bed \
+    mirRNA_unlifted
+
+awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' miRNAtargets_lifted_hg38.bed \
+    > miRNAtargets_parsed_hg38.bed
+
+# POSTAR
+# We filter out disease, cancer cell lines or tissues
+# KEEP - adrenal gland, Brain, Cardiac, HK-2, T_cell
+# Filter if sites overlap w/ 2 or more samples
+
+awk -v FS='\t' -v OFS='\t' '($8 == "adrenal gland)||($8 == "Brain)||($8 == "Cardiac)||($8 == "HK-2)||($8 == "T_cell")' human.txt > test.txt

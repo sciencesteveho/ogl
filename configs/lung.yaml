@@ -37,10 +37,13 @@ shared:
   ltr: 'ltr_hg38.bed'
   regions: 'gene_regions_250000.bed'
   microsatellites: 'microsatellites_hg38_parsed.bed'
+  mirnatargets: 'mirnatargets_parsed_hg38.bed'
   phastcons: 'phastcons_gt_0.9_h38.bed'
+  polyasites: 'polyasites_filtered_hg38.bed'
   rnarepeat: 'rnarepeat_hg38.bed'
   simplerepeats: 'simplerepeats_hg38.bed'
   sine: 'sine_hg38.bed'
+  tss: 'tss_parsed_hg38.bed'
   
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'

@@ -22,6 +22,11 @@ from pybedtools.featurefuncs import extend_fields
 from utils import dir_check_make, parse_yaml, time_decorator
 
 
+def concensus_overlap_by_samples(dir: str, samples: int):
+    '''
+    '''
+    
+
 class UniversalGenomePreprocessor:
     """Data preprocessor for dealing with differences in bed files.
 
