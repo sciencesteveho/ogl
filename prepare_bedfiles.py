@@ -187,7 +187,7 @@ class GenomeDataPreprocessor:
             seg = segmentation.split('_')[1]
             cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
                 > {self.root_tissue}/local/{seg}.bed"
-            self._run(cmd)
+            self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
