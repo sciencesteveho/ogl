@@ -186,7 +186,7 @@ class GenomeDataPreprocessor:
         for segmentation in segmentations:
             seg = segmentation.split('_')[1]
             cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
-                > {self.root_tissue}/local/{seg}.bed"
+                > {self.root_tissue}/local/{seg.casefold()}.bed"
             self._run_cmd(cmd)
 
     @time_decorator(print_args=True)

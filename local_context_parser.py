@@ -78,17 +78,65 @@ class LocalContextFeatures:
         FEAT_WINDOWS -- dictionary of each nodetype: overlap windows
         NODES -- list of nodetypes
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors 
+
+    The following features have node representations:
+        Tissue-specific
+            chromatinloops
+            enhancers (tissue-specific)
+            histone binding clusters (collapsed)
+            transcription factor binding clusters
+            tads
+
+        Genome-static
+            cpgislands
+            gencode (genes)
+            miRNA targets
+            poly(a) binding sites
+            promoters 
+            rna binding protein binding sites
+            transcription start sites
+
+    The following are represented as attributes:
+        Tissue-specific
+            CpG methylation
+
+            ChIP-seq peaks
+                ctcf ChIP-seq peaks
+                DNase ChIP-seq peaks
+                H3K27ac ChIP-seq peaks
+                H3K27me3 ChIP-seq peaks
+                H3K36me3 ChIP-seq peaks
+                H3K4me1 ChIP-seq peaks
+                H3K4me3 ChIP-seq peaks
+                H3K9me3 ChIP-seq peaks
+                polr2a ChIP-seq peaks
+
+            ChromHMM segmentations
+                enhancers
+                bivalent enhancers
+                genic enhancers
+                active TSS
+                flanking active TSS
+                bivalent TSS
+                flanking transcription
+                active transcription
+                weak transcription
+                zinc-finger proteins
+
+        Genome-static
+            gc content
+            microsatellites
+            conservation (phastcons)
+            simple repeats
+            LINEs
+            long terminal repeats
+            SINEs
     """
 
     # list helpers
     ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf/rpts']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
-
-    # dict helpers
-    BED_FILTERS = {
-        'chromhmm': ['9_Het', '11_BivFlnk', '13_ReprPC', '14_ReprPCWk', '15_Quies']
-    }
 
     ONEHOT_NODETYPE = {
         'chromatinloops': [1,0,0,0,0,0,0,0,0,0],
@@ -119,14 +167,6 @@ class LocalContextFeatures:
         'tf_binding_clusters': 2000,
         'tss': 2000,
     }
-
-    FEAT_WINDOWS = {
-        'cpgislands' : 500,
-        'enhancers': 5000,
-        'gencode': 1000,
-        'histones' : 1000,
-        'tfbindingclusters': 1000,
-        }
 
     def __init__(
         self,
@@ -174,23 +214,7 @@ class LocalContextFeatures:
     @time_decorator(print_args=True)
     def _region_specific_features_dict(self, bed: str) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
         """
-        The following features have node representations:
-            chromatinloops
-            chromhmm
-            cpgislands
-            gencode (genes)
-            histones (collapsed)
-            regulatorybuild
-            repeatmasker
-            tads
-        The following are represented as attributes:
-            CpGmethyl
-            ctcf
-            dnase
-            microsatellites
-            phastcons
-            polr2a
-            simplerepeats
+        _lorem
         """
         def rename_feat_chr_start(feature: str) -> str:
             """Add chr, start to feature name
@@ -214,15 +238,7 @@ class LocalContextFeatures:
 
         # take specific regions and format each file
         regioned = ab.cut(list(range(3, col_idx))) 
-        if prefix in self.BED_FILTERS.keys():
-            filtered = regioned.filter(
-                lambda x: x[3] not in self.BED_FILTERS[prefix])
-            if prefix == 'repeatmasker':
-                filtered = filtered.cut([0, 1, 2, 4])\
-                    .each(rename_feat_chr_start)\
-                    .saveas()
-            bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
-        elif prefix in self.NODES and prefix != 'gencode':
+        if prefix in self.NODES and prefix != 'gencode':
             result = regioned.each(rename_feat_chr_start)\
                 .saveas()\
                 .cut([0, 1, 2, 3])
