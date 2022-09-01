@@ -40,6 +40,7 @@ shared:
   mirnatargets: 'mirnatargets_parsed_hg38.bed'
   phastcons: 'phastcons_gt_0.9_h38.bed'
   polyasites: 'polyasites_filtered_hg38.bed'
+  promoters: 'promoters_parsed_hg38.bed'
   rbpbindingistes: 'rbpbindingsites_parsed_hg38.bed'
   rnarepeat: 'rnarepeat_hg38.bed'
   simplerepeats: 'simplerepeats_hg38.bed'

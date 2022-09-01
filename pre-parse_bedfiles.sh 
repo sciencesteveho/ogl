@@ -30,10 +30,13 @@ awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' miRNAtargets_lift
 # RNA Binding protein sites were downloaded from POSTAR 3
 # We first merged sites within 50 base pairs to create RBP binding site clusters
 # We keep sites present in at least 2 samples and covering 5% of the represented RNA binding proteins (11)
-
 bedtools merge -d 50 -i human.txt -c 6,6,8 -o distinct,count_distinct,count_distinct > rnab_merged_50.bed
 awk '($5 >= 11)&&($6 >= 2)' rnab_merged_50.bed \
     | cut -f1,2,3,4 \
     | sed 's/,/_/g' \
     | awk -v FS='\t' -v OFS='\t' '{print $1, $2, $3, "rnab_"$4}' \
     > rbpbindingsites_50_parsed_hg38.bed
+
+# ENCODE SCREEN candidate promoters from SCREEN registry of cCREs V3
+awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"promoter_"$1"_"$2}' GRCh38-PLS.bed \
+     > promoters_parsed_hg38.bed

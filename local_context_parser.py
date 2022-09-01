@@ -30,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 from subprocess import Popen, PIPE
 
 from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
+from target_labels_train_split import _filter_low_tpm
 
 
 @time_decorator(print_args=True)
@@ -80,29 +81,46 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'line', 'ltr', 'sine']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf/rpts']
     DIRECT = ['chromatinloops', 'tads']
-    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'tads', 'tfbindingclusters', 'tss']
+    NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
     # dict helpers
     BED_FILTERS = {
-        'chromhmm': ['11_BivFlnk', '13_ReprPC', '14_ReprPCWk', '15_Quies', '9_Het']
+        'chromhmm': ['9_Het', '11_BivFlnk', '13_ReprPC', '14_ReprPCWk', '15_Quies']
     }
 
     ONEHOT_NODETYPE = {
         'chromatinloops': [1,0,0,0,0,0,0,0,0,0],
-        'chromhmm': [0,1,0,0,0,0,0,0,0,0],
         'cpgislands': [0,0,1,0,0,0,0,0,0,0],
         'enhancers': [0,0,0,1,0,0,0,0,0,0],
         'gencode': [0,0,0,0,1,0,0,0,0,0],
         'histones': [0,0,0,0,0,1,0,0,0,0],
+        'mirnatargets': [],
+        'polyasites': [],
+        'rbpbindingsites': [],
         'tads': [0,0,0,0,0,0,0,1,0,0],
         'tf_binding_clusters': [0,0,0,0,0,0,0,0,1,0],
         'tss': [0,0,0,0,0,0,0,0,0,1],
     }
 
+    # cpgislands - 2kb, baced on precedence from CpGcluster
+    # enhancers - can vary widely, so dependent on 3d chromatin structure and from FENRIR networks
+    # direct binding, such as mirna, polyasites, rbps are set to 500bp
     FEAT_WINDOWS = {
-        'chromhmm' : 1000,
+        'cpgislands': 2000,
+        'enhancers': 2000,
+        'gencode': 2500,
+        'histones': [0,0,0,0,0,1,0,0,0,0],
+        'mirnatargets': 500,
+        'polyasites': 500,
+        'promoters': 1000,
+        'rbpbindingsites': 500,
+        'tf_binding_clusters': 2000,
+        'tss': 2000,
+    }
+
+    FEAT_WINDOWS = {
         'cpgislands' : 500,
         'enhancers': 5000,
         'gencode': 1000,

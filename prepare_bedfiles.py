@@ -45,13 +45,15 @@ class GenomeDataPreprocessor:
         split double columned file to single column
     _add_tad_id:
         add IDs to tad file
-    _format_enhancer_atlas:
-        format enhancer atlas as tab delimited file
-    _prepare_ensembl:
-        remove redundant features and combine with enhancer atlas
+    _fenrir_enhancers:
+        enhancers from fenrir bayesian network
+    _chromhmm_to_attribute:
+        selected chromhmm genome segmentations to attributes
+    _tf_binding_clusters:
+        clusters of tf binding sites
     _merge_cpg:
         merge book-ended cpg features
-    _combine_histones:
+    _combine_and_split_histones:
         collapse histones into a single file with bp count
     prepare_data_files:
         main pipeline function
@@ -172,6 +174,22 @@ class GenomeDataPreprocessor:
             self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
+    def _chromhmm_to_attribute(self, bed: str) -> None:
+        """
+        Split chromhmm to individual files of the following for node attributes:
+        ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF/Rpts']
+        """
+        segmentations = [
+            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF/Rpts', '10_TssBiv', '12_EnhBiv',
+            ]
+
+        for segmentation in segmentations:
+            seg = segmentation.split('_')[1]
+            cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
+                > {self.root_tissue}/local/{seg}.bed"
+            self._run(cmd)
+
+    @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites from Funk et al., Cell Reports, 2020.
@@ -218,11 +236,12 @@ class GenomeDataPreprocessor:
         self._run_cmd(bedtools_cmd)
 
     @time_decorator(print_args=True)
-    def _combine_histones(self) -> None:
+    def _combine_and_split_histones(self) -> None:
         """Overlap and merge histone chip-seq bedfiles. Histone marks are combined if they overlap and their measurement is score / base pairs
         
         1 - Histone marks are collapsed, base pairs are kept constant
-        2 - Adjacent marks are combined, and number of base pairs are kept for each histone mark across the combined feature
+        2 - Clusters are kept only if more than 1 type of histone mark is represented
+        3 - Adacent marks are combined, and number of base pairs are kept for each histone mark across the combined feature
         """
 
         histone_idx = {
@@ -239,7 +258,7 @@ class GenomeDataPreprocessor:
             return feature
 
         def count_histone_bp(feature: str) -> str:
-            feature = extend_fields(feature, 11)
+            feature = extend_fields(feature, 10)
             for histone in histone_idx:
                 if histone in feature[3]:
                     feature[histone_idx[histone]] = feature.length
@@ -261,17 +280,17 @@ class GenomeDataPreprocessor:
         bedops_partition = f"bedops --partition {' '.join(all_histones)} \
             > {self.root_tissue}/histones/histones_partition.bed"
         bedmap = f"bedmap --echo --echo-map-id --delim '\t' {self.root_tissue}/histones/histones_partition.bed {self.root_tissue}/histones/histones_union.bed \
-            > {self.root_tissue}/histones/histones_collapsed.bed"
-        bedtools_merge = f"bedtools merge -i {self.root_tissue}/histones/histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum \
-            > {self.root_tissue}/local/histones_merged_{self.tissue}.bed"
-
+            | grep ';' - \
+            > {self.root_tissue}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
         for command in [bedops_everything, bedops_partition, bedmap]:
             self._run_cmd(command)
 
+        ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
         a = pybedtools.BedTool(f'{self.root_tissue}/histones/histones_collapsed.bed')
         b = a.each(count_histone_bp).sort().saveas(f'{self.root_tissue}/histones/histones_collapsed_bp.bed')
 
-        ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
+        bedtools_merge = f"bedtools merge -i {self.root_tissue}/histones/histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum \
+            > {self.root_tissue}/local/histones_merged_{self.tissue}.bed"
         self._run_cmd(bedtools_merge)
 
     @time_decorator(print_args=True)
@@ -288,7 +307,7 @@ class GenomeDataPreprocessor:
                     pass
 
         ### Make symlinks and rename files that do not need preprocessing
-        nochange = ['dnase', 'ctcf', 'polr2a', 'chromhmm']
+        nochange = ['ctcf' 'dnase', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'polr2a']
         for datatype in nochange:
             if self.tissue_specific[datatype]:
                 src = f'{self.data_dir}/{self.tissue_specific[datatype]}'
@@ -297,6 +316,8 @@ class GenomeDataPreprocessor:
                     os.symlink(src, dst)
                 except FileExistsError:
                     pass
+
+        self._chromhmm_to_attribute(self.tissue_specific['chromhmm'])
         
         self._add_TAD_id(self.tissue_specific['tads'])
 
@@ -311,7 +332,7 @@ class GenomeDataPreprocessor:
 
         self._merge_cpg(self.tissue_specific['cpg'])
 
-        self._combine_histones()
+        self._combine_and_split_histones()
 
 
 def main() -> None:
