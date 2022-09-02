@@ -18,17 +18,25 @@ from cmapPy.pandasGEXpress.parse_gct import parse
 
 from utils import genes_from_gff, time_decorator, TISSUE_TPM_KEYS
 
+
 @time_decorator(print_args=True)
-def _filter_low_tpm(tissue: str, file: str,) -> List[str]:
+def _filter_low_tpm(
+    tissue: str,
+    file: str,
+    return_list: False,
+    ) -> List[str]:
     """Remove genes expressing less than 0.10 TPM across 20% of samples"""
     df = pd.read_table(file, index_col=0, header=[2])
     sample_n = len(df.columns)
     df['total'] = df.select_dtypes(np.number).gt(0.10).sum(axis=1)
     df['result'] = df['total'] >= (.2 * sample_n)
-    return [
-        f'{gene}_{tissue}' for gene
-        in list(df.loc[df['result'] == True].index)
-    ]
+    if return_list == False:
+        return [
+            f'{gene}_{tissue}' for gene
+            in list(df.loc[df['result'] == True].index)
+        ]
+    else:
+        return list(df.loc[df['result'] == True].index)
 
 
 @time_decorator(print_args=True)
@@ -291,17 +299,17 @@ if __name__ == '__main__':
     main()
 
 
-def print_stats(num):
-    with open(f'targets_filtered_{num}.pkl', 'rb') as file:
-        targets = pickle.load(file)
-    print(f'max_nodes = {num}')
-    print(f"train = {len(targets['train'])}")
-    print(f"test = {len(targets['test'])}")
-    print(f"validation = {len(targets['validation'])}")
-    print('\n')
+# def print_stats(num):
+#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#         targets = pickle.load(file)
+#     print(f'max_nodes = {num}')
+#     print(f"train = {len(targets['train'])}")
+#     print(f"test = {len(targets['test'])}")
+#     print(f"validation = {len(targets['validation'])}")
+#     print('\n')
 
-for num in [10000]:
-    print_stats(num)
+# for num in [10000]:
+#     print_stats(num)
 
 # for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
 #     print_stats(num)

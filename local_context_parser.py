@@ -34,13 +34,35 @@ from target_labels_train_split import _filter_low_tpm
 
 
 @time_decorator(print_args=True)
-def bed_dictionary(region_file: str, dir: str) -> Tuple[pybedtools.bedtool.BedTool, List[str]]:
+def _filtered_gene_windows(
+    gencode: str,
+    chromfile: str,
+    tissue: str,
+    tpm_file: str,
+    ):
     """
-    Returns bedtool object representing the regions covered by all protein
-    coding genes +/=250kb up and downstream and a list of bedfiles within
-    the directory.
+    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of samples in that tissue.
+    Return pybedtools object with +/- 250kb windows around that gene
     """
-    return pybedtools.BedTool(region_file), [file for file in os.listdir(dir) if os.path.isfile(f'{dir}/{file}') and file != region_file.split('/')[-1]]
+    tpm_filtered_genes = _filter_low_tpm(
+        tissue,
+        tpm_file,
+        return_list=True,
+    )
+    genes = pybedtools.BedTool(gencode)
+    genes_filtered = genes.filter(lambda x: x[4] in tpm_filtered_genes)
+    return genes_filtered.slop(g=chromfile, b=250000).sort()
+
+
+@time_decorator(print_args=True)
+def gene_window(dir: str) -> List[str]:
+    """
+    Returns a list of bedfiles within the directory.
+    """
+    return [
+        file for file in os.listdir(dir)
+        if os.path.isfile(f'{dir}/{file}')
+        ]
 
 
 class LocalContextFeatures:
@@ -48,15 +70,15 @@ class LocalContextFeatures:
 
     Args:
         bedfiles // dictionary containing each local genomic datatype as bedtool obj
-        regions // bedtool object of regions +/- 250k of protein coding genes
+        windows // bedtool object of windows +/- 250k of protein coding genes
         params // configuration vals from yaml 
 
     Methods
     ----------
     _make_directories:
         prepare necessary directories
-    _region_specific_features_dict:
-        retrieve bed info for specific regions
+    _window_specific_features_dict:
+        retrieve bed info for specific windows
     _slop_sort:
         apply slop to each bed and sort it
     _save_feature_indexes:
@@ -171,11 +193,11 @@ class LocalContextFeatures:
     def __init__(
         self,
         bedfiles: List[str],
-        regions: pybedtools.bedtool.BedTool,
+        windows: pybedtools.bedtool.BedTool,
         params: Dict[str, Dict[str, str]]):
         """Initialize the class"""
         self.bedfiles = bedfiles
-        self.regions = regions
+        self.windows = windows
 
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
@@ -236,10 +258,10 @@ class LocalContextFeatures:
         bed_dict = {}
         prefix = bed.split("_")[0]
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
-        ab = self.regions.intersect(b, wb=True, sorted=True)
+        ab = self.windows.intersect(b, wb=True, sorted=True)
         col_idx = ab.field_count()  # get number of columns
 
-        # take specific regions and format each file
+        # take specific windows and format each file
         regioned = ab.cut(list(range(3, col_idx))) 
         if prefix in self.NODES and prefix != 'gencode':
             result = regioned.each(rename_feat_chr_start)\
@@ -590,7 +612,7 @@ class LocalContextFeatures:
                         )
                 outfile.close()
 
-        ### process regions and renaming 
+        ### process windows and renaming 
         pool = Pool(processes=32)
         bedinstance = pool.map(self._region_specific_features_dict,\
             [bed for bed in self.bedfiles])
@@ -599,16 +621,11 @@ class LocalContextFeatures:
         ### convert back to dictionary
         bedinstance = {key.casefold():value for element in bedinstance for key, value in element.items()}
 
-        ### sort and extend regions according to FEAT_WINDOWS
+        ### sort and extend windows according to FEAT_WINDOWS
         bedinstance_sorted, bedinstance_slopped = self._slop_sort(bedinstance=bedinstance, chromfile=self.chromfile)
 
         ### save a list of the nodes and their indexes
         self._save_feature_indexes(bedinstance_sorted)
-
-        ### save nodes gencode file
-        gencode_regions = f'{self.root_dir}/shared_data/genes_slopped.bed'
-        if not os.path.exists(gencode_regions):
-            bedinstance_sorted['gencode'].slop(g=self.chromfile, b=250000).sort().saveas(gencode_regions)
 
         ### save intermediate files
         _save_intermediate(bedinstance_sorted, folder='sorted')
@@ -664,15 +681,21 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-     ### get features within 500kb of protein coding regions
-    regions, bedfiles = bed_dictionary(
-        region_file=f"{params['dirs']['root_dir']}/shared_data/local/{params['shared']['regions']}",
+    windows = _filtered_gene_windows(
+        f"shared_data/local/{params['shared']['gencode']}",
+        params['resources']['chromfile'],
+        params['resources']['tissue'],
+        params['resources']['tpm'],
+    )
+
+    ### get features within 500kb of protein coding regions
+    bedfiles = gene_window(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
-        )
+    )
 
     localparseObject = LocalContextFeatures(
         bedfiles=bedfiles,
-        regions=regions,
+        windows=windows,
         params=params,
     )
 
