@@ -50,12 +50,12 @@ def _filtered_gene_windows(
         return_list=True,
     )
     genes = pybedtools.BedTool(gencode)
-    genes_filtered = genes.filter(lambda x: x[4] in tpm_filtered_genes)
-    return genes_filtered.slop(g=chromfile, b=250000).sort()
+    genes_filtered = genes.filter(lambda x: x[3] in tpm_filtered_genes)
+    return genes_filtered.slop(g=chromfile, b=250000).sort(), tpm_filtered_genes
 
 
 @time_decorator(print_args=True)
-def gene_window(dir: str) -> List[str]:
+def _gene_window(dir: str) -> List[str]:
     """
     Returns a list of bedfiles within the directory.
     """
@@ -156,22 +156,23 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf/rpts']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
     ONEHOT_NODETYPE = {
-        'chromatinloops': [1,0,0,0,0,0,0,0,0,0],
-        'cpgislands': [0,0,1,0,0,0,0,0,0,0],
-        'enhancers': [0,0,0,1,0,0,0,0,0,0],
-        'gencode': [0,0,0,0,1,0,0,0,0,0],
-        'histones': [0,0,0,0,0,1,0,0,0,0],
-        'mirnatargets': [],
-        'polyasites': [],
-        'rbpbindingsites': [],
-        'tads': [0,0,0,0,0,0,0,1,0,0],
-        'tf_binding_clusters': [0,0,0,0,0,0,0,0,1,0],
-        'tss': [0,0,0,0,0,0,0,0,0,1],
+        'chromatinloops': [1,0,0,0,0,0,0,0,0,0,0,0],
+        'cpgislands': [0,1,0,0,0,0,0,0,0,0,0,0],
+        'enhancers': [0,0,1,0,0,0,0,0,0,0,0,0],
+        'gencode': [0,0,0,1,0,0,0,0,0,0,0,0],
+        'histones': [0,0,0,0,1,0,0,0,0,0,0,0],
+        'mirnatargets': [0,0,0,0,0,1,0,0,0,0,0,0],
+        'polyasites': [0,0,0,0,0,0,1,0,0,0,0,0],
+        'promoters': [0,0,0,0,0,0,0,1,0,0,0,0],
+        'rbpbindingsites': [0,0,0,0,0,0,0,0,1,0,0,0],
+        'tads': [0,0,0,0,0,0,0,0,0,1,0,0],
+        'tfbindingclusters': [0,0,0,0,0,0,0,0,0,0,1,0],
+        'tss': [0,0,0,0,0,0,0,0,0,0,0,1],
     }
 
     # cpgislands - 2kb, baced on precedence from CpGcluster
@@ -181,12 +182,12 @@ class LocalContextFeatures:
         'cpgislands': 2000,
         'enhancers': 2000,
         'gencode': 2500,
-        'histones': [0,0,0,0,0,1,0,0,0,0],
+        'histones': 2000,
         'mirnatargets': 500,
         'polyasites': 500,
         'promoters': 1000,
         'rbpbindingsites': 500,
-        'tf_binding_clusters': 2000,
+        'tfbindingclusters': 2000,
         'tss': 2000,
     }
 
@@ -199,25 +200,47 @@ class LocalContextFeatures:
         self.bedfiles = bedfiles
         self.windows = windows
 
+        self.root_dir = params['dirs']['root_dir']
+        self.parse_dir = f'{self.root_dir}/{self.tissue}/parsing'
+        self.local_dir = f'{self.root_dir}/{self.tissue}/local'
+        self.attribute_dir = f"{self.parse_dir}/attributes"
+
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
         self.tissue_specific = params['tissue_specific']
         self.chromfile = params['resources']['chromfile']
         self.fasta = params['resources']['fasta']
         self.shared_data = params['shared']
+
         self.parsed_features = {
             'cpg': self.tissue_specific['cpg'],
             'ctcf': self.tissue_specific['ctcf'],
             'dnase': self.tissue_specific['dnase'],
+            'enh': f'{self.local_dir}/enh.bed',
+            'enhbiv': f'{self.local_dir}/enhiv.bed',
+            'enhg': f'{self.local_dir}/enhg.bed',
+            'H3K27ac': self.tissue_specific['H3K27ac'],
+            'H3K27me3': self.tissue_specific['H3K27me3'],
+            'H3K36me3': self.tissue_specific['H3K36me3'],
+            'H3K4me1': self.tissue_specific['H3K4me1'],
+            'H3K4me3': self.tissue_specific['H3K4me3'],
+            'H3K9me3': self.tissue_specific['H3K9me3'],
             'microsatellites': self.shared_data['microsatellites'],
             'phastcons': self.shared_data['phastcons'],
             'polr2a': self.tissue_specific['polr2a'],
+            'rnarepeats': self.shared_data['rnarepeats'],
             'simplerepeats': self.shared_data['simplerepeats'],
+            'line': self.shared_data['rnarepeats'],
+            'ltr': self.shared_data['rnarepeats'],
+            'sine': self.shared_data['rnarepeats'],
+            'tssa': f'{self.local_dir}/tssa.bed',
+            'tssaflnk': f'{self.local_dir}/tssaflnk.bed',
+            'tssbiv': f'{self.local_dir}/tssbiv.bed',
+            'txflnk': f'{self.local_dir}/txflnk.bed',
+            'tx': f'{self.local_dir}/tx.bed',
+            'txwk': f'{self.local_dir}/txwk.bed',
+            'znf': f'{self.local_dir}/znf.bed',
         }
-
-        self.root_dir = params['dirs']['root_dir']
-        self.parse_dir = f'{self.root_dir}/{self.tissue}/parsing'
-        self.attribute_dir = f"{self.parse_dir}/attributes"
 
         # make directories
         self._make_directories()
@@ -681,7 +704,7 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    windows = _filtered_gene_windows(
+    windows, tpm_filtered_genes = _filtered_gene_windows(
         f"shared_data/local/{params['shared']['gencode']}",
         params['resources']['chromfile'],
         params['resources']['tissue'],
@@ -689,7 +712,7 @@ def main() -> None:
     )
 
     ### get features within 500kb of protein coding regions
-    bedfiles = gene_window(
+    bedfiles = _gene_window(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
     )
 

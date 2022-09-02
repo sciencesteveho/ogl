@@ -177,10 +177,10 @@ class GenomeDataPreprocessor:
     def _chromhmm_to_attribute(self, bed: str) -> None:
         """
         Split chromhmm to individual files of the following for node attributes:
-        ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF/Rpts']
+        ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF']
         """
         segmentations = [
-            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF/Rpts', '10_TssBiv', '12_EnhBiv',
+            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '10_TssBiv', '12_EnhBiv',
             ]
 
         for segmentation in segmentations:
