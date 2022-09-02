@@ -134,7 +134,7 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf/rpts']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf/rpts']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
@@ -221,10 +221,13 @@ class LocalContextFeatures:
             Cpgislands add prefix to feature names
             Histones add an additional column
             """
-            if prefix == 'cpgislands':
-                feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'
-            elif prefix == 'histones':
-                feature[3] = f'{prefix}_{feature[0]}_{feature[1]},{feature[3]},{feature[4]},{feature[5]},{feature[6]},{feature[7]},{feature[8]},{feature[9]}'
+            rename_strings = {
+                'cpgislands': f'CgI_{feature[0]}_{feature[1]}',
+                'histones': f'histonecluster_{feature[0]}_{feature[1]},{feature[3]},{feature[4]},{feature[5]},{feature[6]},{feature[7]},{feature[8]},{feature[9]}',
+                'enhancers': f'enhancer_{feature[0]}_{feature[1]}'
+            }
+            if prefix in rename_strings.keys():
+                feature[3] = rename_strings[prefix]
             else:
                 feature[3] = f'{feature[3]}_{feature[0]}_{feature[1]}'
             return feature
