@@ -54,7 +54,7 @@ def _filtered_gene_windows(
     genes_filtered = genes.filter(
         lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY']
         )
-    return genes_filtered.slop(g=chromfile, b=250000).sort(), tpm_filtered_genes
+    return genes_filtered.slop(g=chromfile, b=250000).sort().saveas(), tpm_filtered_genes
 
 
 @time_decorator(print_args=True)
