@@ -54,7 +54,10 @@ def _filtered_gene_windows(
     genes_filtered = genes.filter(
         lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY']
         )
-    return genes_filtered.slop(g=chromfile, b=250000).sort(), tpm_filtered_genes
+
+    return genes_filtered.slop(g=chromfile, b=250000)\
+        .cut([0, 1, 2, 3])\
+        .sort(), tpm_filtered_genes
 
 
 @time_decorator(print_args=True)
@@ -352,18 +355,20 @@ class LocalContextFeatures:
             output.close()
 
     @time_decorator(print_args=True)
-    def _bed_intersect(self, node_type: str, all_files: str) -> None:
-        """_summary_
+    def _bed_intersect(
+        self,
+        node_type: str,
+        all_files: str
+        ) -> None:
+        """Function to intersect a slopped bed entry with all other node types.
+        Each bed is slopped then intersected twice. First, it is intersected with every other node type. Then, the intersected bed is filtered to only keep edges within the gene region.
 
         Args:
-            a // _description_
-            b // _description_
+            node_type // _description_
+            all_files // _description_
 
         Raises:
             AssertionError: _description_
-        
-        Returns:
-            c -- _description_
         """
         print(f'starting combinations {node_type}')
 
@@ -420,12 +425,14 @@ class LocalContextFeatures:
             cut_cmd = 'cut -f1,2,3,4,5,6,7,8,9,13'
 
         print(f'finished intersect for {node_type}. proceeding with windows')
+        
         window_cmd = f'bedtools intersect \
             -wa \
             -wb \
             -sorted \
             -a {self.parse_dir}/edges/{node_type}_dupes_removed \
-            -b {self.root_dir}/shared_data/genes_slopped.bed | '
+            -b {self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed | '
+
         with open(f'{self.parse_dir}/edges/{node_type}_genewindow.txt', "w") as outfile:
             subprocess.run(
                 window_cmd + cut_cmd,
@@ -440,10 +447,7 @@ class LocalContextFeatures:
         then aggregate total nucleotides, gc content, and all other attributes
 
         Args:
-            a // _description_
-        
-        Returns:
-            c -- _description_
+            node_type // node datatype in self.NODES
         """
         # start_time = time.monotonic()
         def add_size(feature: str) -> str:
@@ -466,7 +470,7 @@ class LocalContextFeatures:
         
         ### total basepair number for phastcons // columns should be ordered as below
         ### chr str end feat    size    gene
-        b = sorted.intersect(f'{self.root_dir}/shared_data/genes_slopped.bed', \
+        b = sorted.intersect(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed', \
             wa=True, \
             wb=True, \
             sorted=True)\
@@ -546,23 +550,12 @@ class LocalContextFeatures:
         attr_dict, set_dict = {}, {}  # dict[gene] = [chr, start, end, size, gc]
         for attribute in self.ATTRIBUTES:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                if node == 'repeatmasker':
-                    filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage_uniq'
-                    sort_uniq = f'cut -f1,2,3,4,6,7 \
-                    {self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage \
-                    | LC_ALL=C sort -u --parallel=16 -S 80% \
-                    > {filename}'
-                    subprocess.run(sort_uniq, stdout=None, shell=True)
-                else:
-                    filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
+                filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
                 with open(filename, 'r') as file:
                     lines = []
                     for line in file:
                         stripped_line = line.rstrip().split('\t')
-                        if node == 'repeatmasker':
-                            pass
-                        else:
-                            del stripped_line[4]
+                        del stripped_line[4]
                         lines.append(tuple(stripped_line))
                     set_dict[attribute] = set(lines)
 
@@ -665,10 +658,6 @@ class LocalContextFeatures:
         pool = Pool(processes=32)
         pool.starmap(self._bed_intersect, zip(combinations.keys(), repeat(all_files)))
         pool.close()
-
-        ### prep enhancer file, which is required for node_feats during graph construction
-        mv = f"cp {self.root_dir}/{self.tissue}/interaction/{self.tissue_specific['enhancers']}.interaction \
-             {self.parse_dir}/intermediate/sorted{self.tissue_specific['enhancers']}.interaction/"
 
         ### get size and all attributes
         pool = Pool(processes=32)
