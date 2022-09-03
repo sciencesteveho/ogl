@@ -54,7 +54,7 @@ def _filtered_gene_windows(
     genes_filtered = genes.filter(
         lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY']
         )
-    return genes_filtered.slop(g=chromfile, b=250000).sort().saveas(), tpm_filtered_genes
+    return genes_filtered.slop(g=chromfile, b=250000).sort(), tpm_filtered_genes
 
 
 @time_decorator(print_args=True)
@@ -198,11 +198,9 @@ class LocalContextFeatures:
     def __init__(
         self,
         bedfiles: List[str],
-        windows: pybedtools.bedtool.BedTool,
         params: Dict[str, Dict[str, str]]):
         """Initialize the class"""
         self.bedfiles = bedfiles
-        self.windows = windows
 
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
@@ -281,8 +279,9 @@ class LocalContextFeatures:
         # prepare data as pybedtools objects
         bed_dict = {}
         prefix = bed.split("_")[0]
+        a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
-        ab = self.windows.intersect(b, wb=True, sorted=True)
+        ab = a.intersect(b, wb=True, sorted=True)
         col_idx = ab.field_count()  # get number of columns
 
         # take specific windows and format each file
@@ -677,7 +676,7 @@ class LocalContextFeatures:
         pool.close()
 
         ### parse attributes into individual files
-        pool = Pool(processes=8)
+        pool = Pool(processes=28)
         pool.map(self._genesort_attributes, self.ATTRIBUTES)
         pool.close()
 
@@ -685,8 +684,8 @@ class LocalContextFeatures:
         self._generate_edges()
 
         ### save node attributes as reference for later
-        pool = Pool(processes=8)
-        pool.map(self._save_node_attributes, self.NODES+['enhancers'])
+        pool = Pool(processes=12)
+        pool.map(self._save_node_attributes, self.NODES)
         pool.close()
 
 
@@ -705,12 +704,15 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    windows, tpm_filtered_genes = _filtered_gene_windows(
+    window, tpm_filtered_genes = _filtered_gene_windows(
         f"shared_data/local/{params['shared']['gencode']}",
         params['resources']['chromfile'],
         params['resources']['tissue'],
         params['resources']['tpm'],
     )
+
+    ### save window file
+    window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
     ### get features within 500kb of protein coding regions
     bedfiles = _gene_window(
@@ -719,7 +721,6 @@ def main() -> None:
 
     localparseObject = LocalContextFeatures(
         bedfiles=bedfiles,
-        windows=windows,
         params=params,
     )
 
