@@ -217,6 +217,7 @@ class LocalContextFeatures:
         self.attribute_dir = f"{self.parse_dir}/attributes"
 
         self.parsed_features = {
+            'gc': '_',
             'cpg': self.tissue_specific['cpg'],
             'ctcf': self.tissue_specific['ctcf'],
             'dnase': self.tissue_specific['dnase'],
