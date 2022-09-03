@@ -204,17 +204,17 @@ class LocalContextFeatures:
         self.bedfiles = bedfiles
         self.windows = windows
 
-        self.root_dir = params['dirs']['root_dir']
-        self.parse_dir = f'{self.root_dir}/{self.tissue}/parsing'
-        self.local_dir = f'{self.root_dir}/{self.tissue}/local'
-        self.attribute_dir = f"{self.parse_dir}/attributes"
-
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
         self.tissue_specific = params['tissue_specific']
         self.chromfile = params['resources']['chromfile']
         self.fasta = params['resources']['fasta']
         self.shared_data = params['shared']
+
+        self.root_dir = params['dirs']['root_dir']
+        self.parse_dir = f'{self.root_dir}/{self.tissue}/parsing'
+        self.local_dir = f'{self.root_dir}/{self.tissue}/local'
+        self.attribute_dir = f"{self.parse_dir}/attributes"
 
         self.parsed_features = {
             'cpg': self.tissue_specific['cpg'],
