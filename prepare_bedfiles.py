@@ -180,7 +180,7 @@ class GenomeDataPreprocessor:
         ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF']
         """
         segmentations = [
-            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '10_TssBiv', '12_EnhBiv',
+            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '9_Het', '10_TssBiv', '12_EnhBiv', 'ReprPC'
             ]
 
         for segmentation in segmentations:

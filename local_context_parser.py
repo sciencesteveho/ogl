@@ -162,7 +162,7 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
@@ -231,9 +231,11 @@ class LocalContextFeatures:
             'H3K4me1': self.tissue_specific['H3K4me1'],
             'H3K4me3': self.tissue_specific['H3K4me3'],
             'H3K9me3': self.tissue_specific['H3K9me3'],
+            'het': f'{self.local_dir}/het.bed',
             'microsatellites': self.shared_data['microsatellites'],
             'phastcons': self.shared_data['phastcons'],
             'polr2a': self.tissue_specific['polr2a'],
+            'reprpc': f'{self.local_dir}/reprpc.bed',
             'rnarepeat': self.shared_data['rnarepeat'],
             'simplerepeats': self.shared_data['simplerepeats'],
             'line': self.shared_data['line'],
