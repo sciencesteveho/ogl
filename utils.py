@@ -78,10 +78,20 @@ def bool_check_attributes(
     attribute_file: str
     ) -> bool:
     """Checks that attribute files exists before making directory for it"""
-    if attribute in ['gc', 'microsatellites', 'phastcons', 'simplerepeats']:
-        return True
-    else:
+    if attribute in [
+        'ctcf',
+        'dnase',
+        'H3K27ac',
+        'H3K27me3',
+        'H3K36me3',
+        'H3K4me1',
+        'H3K4me3',
+        'H3K9me3',
+        'polr2a',
+        ]:
         return bool(attribute_file)
+    else:
+        return True
 
 
 def chunk_genes(

@@ -42,7 +42,8 @@ def _filtered_gene_windows(
     ):
     """
     Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of samples in that tissue.
-    Return pybedtools object with +/- 250kb windows around that gene
+    Additionally, we exclude analysis of sex chromosomes
+    Returns pybedtools object with +/- 250kb windows around that gene
     """
     tpm_filtered_genes = _filter_low_tpm(
         tissue,
@@ -50,7 +51,9 @@ def _filtered_gene_windows(
         return_list=True,
     )
     genes = pybedtools.BedTool(gencode)
-    genes_filtered = genes.filter(lambda x: x[3] in tpm_filtered_genes)
+    genes_filtered = genes.filter(
+        lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY']
+        )
     return genes_filtered.slop(g=chromfile, b=250000).sort(), tpm_filtered_genes
 
 
@@ -149,17 +152,18 @@ class LocalContextFeatures:
             gc content
             microsatellites
             conservation (phastcons)
-            simple repeats
             LINEs
             long terminal repeats
+            simple repeats
             SINEs
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'line', 'ltr', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9me3', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
+    # dict helpers
     ONEHOT_NODETYPE = {
         'chromatinloops': [1,0,0,0,0,0,0,0,0,0,0,0],
         'cpgislands': [0,1,0,0,0,0,0,0,0,0,0,0],
@@ -266,13 +270,9 @@ class LocalContextFeatures:
             Cpgislands add prefix to feature names
             Histones add an additional column
             """
-            rename_strings = {
-                'cpgislands': f'CgI_{feature[0]}_{feature[1]}',
-                'histones': f'histonecluster_{feature[0]}_{feature[1]},{feature[3]},{feature[4]},{feature[5]},{feature[6]},{feature[7]},{feature[8]},{feature[9]}',
-                'enhancers': f'enhancer_{feature[0]}_{feature[1]}'
-            }
-            if prefix in rename_strings.keys():
-                feature[3] = rename_strings[prefix]
+            rename_strings = ['cpgislands', 'histones', 'enhancers']
+            if prefix in rename_strings:
+                feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'
             else:
                 feature[3] = f'{feature[3]}_{feature[0]}_{feature[1]}'
             return feature

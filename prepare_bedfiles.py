@@ -229,7 +229,9 @@ class GenomeDataPreprocessor:
         else:
             file = f"{self.root_tissue}/unprocessed/{bed}_lifted"
             
-        bedtools_cmd = f"bedtools merge -i {file} -d 1 \
+        bedtools_cmd = f"bedtools merge \
+            -i {file} \
+            -d 1 \
             | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"cpg_methyl\"}}' \
             > {self.root_tissue}/local/cpg_{self.tissue}_parsed.bed"
 
@@ -289,7 +291,9 @@ class GenomeDataPreprocessor:
         a = pybedtools.BedTool(f'{self.root_tissue}/histones/histones_collapsed.bed')
         b = a.each(count_histone_bp).sort().saveas(f'{self.root_tissue}/histones/histones_collapsed_bp.bed')
 
-        bedtools_merge = f"bedtools merge -i {self.root_tissue}/histones/histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum \
+        #bedtools merge -i histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum
+        bedtools_merge = f"bedtools merge \
+            -i {self.root_tissue}/histones/histones_collapsed_bp.bed \
             > {self.root_tissue}/local/histones_merged_{self.tissue}.bed"
         self._run_cmd(bedtools_merge)
 
