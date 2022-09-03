@@ -288,7 +288,7 @@ class LocalContextFeatures:
         col_idx = ab.field_count()  # get number of columns
 
         # take specific windows and format each file
-        regioned = ab.cut(list(range(3, col_idx))) 
+        regioned = ab.cut(list(range(4, col_idx))) 
         if prefix in self.NODES and prefix != 'gencode':
             result = regioned.each(rename_feat_chr_start)\
                 .saveas()\
