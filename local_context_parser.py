@@ -375,7 +375,10 @@ class LocalContextFeatures:
         """
         print(f'starting combinations {node_type}')
 
-        def _unix_intersect(node_type: str, type: Optional[str]=None) -> None:
+        def _unix_intersect(
+            node_type: str,
+            type: Optional[str]=None
+            ) -> None:
             """Intersect and cut relevant columns"""
             if type == 'direct':
                 folder = 'sorted'
@@ -422,7 +425,7 @@ class LocalContextFeatures:
             _unix_intersect(node_type)
             a = pybedtools.BedTool(f'{self.parse_dir}/edges/{node_type}.bed')
             b = _filter_duplicate_bed_entries(a)\
-                .each(_add_distance)\
+                .each(_add_distance).saveas()\
                 .sort()\
                 .saveas(f'{self.parse_dir}/edges/{node_type}_dupes_removed')
             cut_cmd = 'cut -f1,2,3,4,5,6,7,8,9,13'
