@@ -276,6 +276,7 @@ class LocalContextFeatures:
             """
             rename_strings = ['cpgislands', 'histones', 'enhancers']
             if prefix in rename_strings:
+                feature = extend_fields(feature, 4)
                 feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'
             else:
                 feature[3] = f'{feature[3]}_{feature[0]}_{feature[1]}'
@@ -293,8 +294,8 @@ class LocalContextFeatures:
         regioned = ab.cut(list(range(4, col_idx))) 
         if prefix in self.NODES and prefix != 'gencode':
             result = regioned.each(rename_feat_chr_start)\
-                .saveas()\
-                .cut([0, 1, 2, 3])
+                .cut([0, 1, 2, 3])\
+                .saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
             bed_dict[prefix] = regioned.cut([0, 1, 2 ,3])
