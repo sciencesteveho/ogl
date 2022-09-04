@@ -189,7 +189,7 @@ class GenomeDataPreprocessor:
             else:
                 seg = segmentation.split('_')[1]
             cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
-                > {self.root_tissue}/local/{seg.casefold()}.bed"
+                > {self.root_tissue}/local/{seg.casefold()}_hg38.bed"
             self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
