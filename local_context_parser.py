@@ -292,17 +292,17 @@ class LocalContextFeatures:
         a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
         ab = b.intersect(a, sorted=True, u=True)
-        col_idx = ab.field_count()  # get number of columns
+        # col_idx = ab.field_count()  # get number of columns
 
         # take specific windows and format each file
-        regioned = ab.cut(list(range(4, col_idx))) 
+        # regioned = ab.cut(list(range(4, col_idx))) 
         if prefix in self.NODES and prefix != 'gencode':
-            result = regioned.each(rename_feat_chr_start)\
+            result = ab.each(rename_feat_chr_start)\
                 .cut([0, 1, 2, 3])\
                 .saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
-            bed_dict[prefix] = regioned.cut([0, 1, 2 ,3])
+            bed_dict[prefix] = ab.cut([0, 1, 2 ,3])
 
         return bed_dict
 
