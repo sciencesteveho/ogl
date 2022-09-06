@@ -33,13 +33,17 @@ from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decora
 from target_labels_train_split import _filter_low_tpm
 
 
+# def _sort_uniq_bedobj(bed: pybedtools.BedTool) -> pybedtools.BedTool:
+#     return pybedtools.BedTool(str(set(bed)))
+
+
 @time_decorator(print_args=True)
 def _filtered_gene_windows(
     gencode: str,
     chromfile: str,
     tissue: str,
     tpm_file: str,
-    ):
+    ) -> Tuple[pybedtools.BedTool, List[str]]:
     """
     Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of samples in that tissue.
     Additionally, we exclude analysis of sex chromosomes
@@ -52,7 +56,7 @@ def _filtered_gene_windows(
     )
     genes = pybedtools.BedTool(gencode)
     genes_filtered = genes.filter(
-        lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY']
+        lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY', 'chrM']
         )
 
     return genes_filtered.slop(g=chromfile, b=250000)\
@@ -287,7 +291,7 @@ class LocalContextFeatures:
         prefix = bed.split("_")[0]
         a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
-        ab = a.intersect(b, wb=True, sorted=True)
+        ab = b.intersect(a, sorted=True, u=True)
         col_idx = ab.field_count()  # get number of columns
 
         # take specific windows and format each file
