@@ -540,7 +540,7 @@ class LocalContextFeatures:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
                 with open(filename, 'r') as file:
-                    lines = [line.rstrip().split('\t') for line in file]
+                    lines = [tuple(line.rstrip().split('\t')) for line in file]
                     set_dict[attribute] = set(lines)
 
         for attribute in set_dict.keys():
@@ -578,76 +578,76 @@ class LocalContextFeatures:
         Returns:
             c -- _description_
         """
-        @time_decorator(print_args=True)
-        def _save_intermediate(
-            bed_dictionary: Dict[str, pybedtools.bedtool.BedTool],
-            folder: str
-            ) -> None:
-            """Save region specific bedfiles"""
-            for key in bed_dictionary:
-                file = f'{self.parse_dir}/intermediate/{folder}/{key}.bed'
-                if not os.path.exists(file):
-                    bed_dictionary[key].saveas(file)
+        # @time_decorator(print_args=True)
+        # def _save_intermediate(
+        #     bed_dictionary: Dict[str, pybedtools.bedtool.BedTool],
+        #     folder: str
+        #     ) -> None:
+        #     """Save region specific bedfiles"""
+        #     for key in bed_dictionary:
+        #         file = f'{self.parse_dir}/intermediate/{folder}/{key}.bed'
+        #         if not os.path.exists(file):
+        #             bed_dictionary[key].saveas(file)
 
-        @time_decorator(print_args=True)
-        def _pre_concatenate_all_files(all_files: str) -> None:
-            """Lorem Ipsum"""
-            if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
-                cat_cmd = ['cat'] + [f'{self.parse_dir}/intermediate/sorted/' + x + '.bed' for x in bedinstance_slopped]  
-                sort_cmd = 'sort -k1,1 -k2,2n'
-                concat = Popen(cat_cmd, stdout=PIPE)
-                with open(all_files, "w") as outfile:
-                    subprocess.run(
-                        sort_cmd,
-                        stdin=concat.stdout,
-                        stdout=outfile,
-                        shell=True
-                        )
-                outfile.close()
+        # @time_decorator(print_args=True)
+        # def _pre_concatenate_all_files(all_files: str) -> None:
+        #     """Lorem Ipsum"""
+        #     if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
+        #         cat_cmd = ['cat'] + [f'{self.parse_dir}/intermediate/sorted/' + x + '.bed' for x in bedinstance_slopped]  
+        #         sort_cmd = 'sort -k1,1 -k2,2n'
+        #         concat = Popen(cat_cmd, stdout=PIPE)
+        #         with open(all_files, "w") as outfile:
+        #             subprocess.run(
+        #                 sort_cmd,
+        #                 stdin=concat.stdout,
+        #                 stdout=outfile,
+        #                 shell=True
+        #                 )
+        #         outfile.close()
 
-        ### process windows and renaming 
-        pool = Pool(processes=32)
-        bedinstance = pool.map(self._region_specific_features_dict,\
-            [bed for bed in self.bedfiles])
-        pool.close()  # re-open and close pool after every multi-process
+        # ### process windows and renaming 
+        # pool = Pool(processes=32)
+        # bedinstance = pool.map(self._region_specific_features_dict,\
+        #     [bed for bed in self.bedfiles])
+        # pool.close()  # re-open and close pool after every multi-process
 
-        ### convert back to dictionary
-        bedinstance = {key.casefold():value for element in bedinstance for key, value in element.items()}
+        # ### convert back to dictionary
+        # bedinstance = {key.casefold():value for element in bedinstance for key, value in element.items()}
 
-        ### sort and extend windows according to FEAT_WINDOWS
-        bedinstance_sorted, bedinstance_slopped = self._slop_sort(bedinstance=bedinstance, chromfile=self.chromfile)
+        # ### sort and extend windows according to FEAT_WINDOWS
+        # bedinstance_sorted, bedinstance_slopped = self._slop_sort(bedinstance=bedinstance, chromfile=self.chromfile)
 
-        ### save a list of the nodes and their indexes
-        self._save_feature_indexes(bedinstance_sorted)
+        # ### save a list of the nodes and their indexes
+        # self._save_feature_indexes(bedinstance_sorted)
 
-        ### save intermediate files
-        _save_intermediate(bedinstance_sorted, folder='sorted')
-        _save_intermediate(bedinstance_slopped, folder='slopped')
+        # ### save intermediate files
+        # _save_intermediate(bedinstance_sorted, folder='sorted')
+        # _save_intermediate(bedinstance_slopped, folder='slopped')
 
-        # ### get keys for intersect features and attribute features
-        # combinations = _intersect_combinations(bedinstance_slopped)
+        # # ### get keys for intersect features and attribute features
+        # # combinations = _intersect_combinations(bedinstance_slopped)
 
-        ### pre-concatenate to save time
-        all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
-        _pre_concatenate_all_files(all_files)
+        # ### pre-concatenate to save time
+        # all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
+        # _pre_concatenate_all_files(all_files)
 
-        ### perform intersects across all feature types - one process per nodetype
-        pool = Pool(processes=self.NODE_CORES)
-        pool.starmap(self._bed_intersect, zip(self.NODES, repeat(all_files)))
-        pool.close()
-
-        ### get size and all attributes - one process per nodetype
-        pool = Pool(processes=self.NODE_CORES)
-        pool.map(self._aggregate_attributes, self.NODES)
-        pool.close()
-
-        # ### parse attributes into individual files - one process per attribute type
-        # pool = Pool(processes=self.ATTRIBUTE_CORES)
-        # pool.map(self._genesort_attributes, self.ATTRIBUTES)
+        # ### perform intersects across all feature types - one process per nodetype
+        # pool = Pool(processes=self.NODE_CORES)
+        # pool.starmap(self._bed_intersect, zip(self.NODES, repeat(all_files)))
         # pool.close()
 
-        ### parse edges into individual files
-        self._generate_edges()
+        # ### get size and all attributes - one process per nodetype
+        # pool = Pool(processes=self.NODE_CORES)
+        # pool.map(self._aggregate_attributes, self.NODES)
+        # pool.close()
+
+        # # ### parse attributes into individual files - one process per attribute type
+        # # pool = Pool(processes=self.ATTRIBUTE_CORES)
+        # # pool.map(self._genesort_attributes, self.ATTRIBUTES)
+        # # pool.close()
+
+        # ### parse edges into individual files
+        # self._generate_edges()
 
         ### save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
