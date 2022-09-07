@@ -549,7 +549,7 @@ class LocalContextFeatures:
         cmds = {
             'cat_cmd': [f"cat {self.parse_dir}/edges/*genewindow* >", \
                 f"{self.parse_dir}/edges/all_concat.bed"],
-            'sort_cmd': [f"LC_ALL=C sort --parallel=50 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed >", \
+            'sort_cmd': [f"LC_ALL=C sort --parallel=48 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed >", \
                 f"{self.parse_dir}/edges/all_concat_sorted.bed"],
         }
 
