@@ -540,7 +540,7 @@ class LocalContextFeatures:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
                 with open(filename, 'r') as file:
-                    lines = [line.rstrip().split('\t') for line in lines]
+                    lines = [line.rstrip().split('\t') for line in file]
                     set_dict[attribute] = set(lines)
 
         for attribute in set_dict.keys():
