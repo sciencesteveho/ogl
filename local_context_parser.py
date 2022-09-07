@@ -479,7 +479,20 @@ class LocalContextFeatures:
         sorted_with_size = pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
             .each(add_size)\
             .sort()
-        
+
+        for attribute in self.ATTRIBUTES:
+            if bool_check_attributes(attribute, self.parsed_features[attribute]):
+                print(f'{attribute} for {node_type}')
+                if attribute == 'gc':
+                    sorted_with_size.nucleotide_content(fi=self.fasta)\
+                    .each(sum_gc)\
+                    .groupby(g=[1,2,3,4], c=[5,14], o=['sum'])\
+                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
+                else:
+                    sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
+                    .groupby(g=[1,2,3,4], c=[5,10], o=['sum'])\
+                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
+
         # ### total basepair number for phastcons // columns should be ordered as below
         # ### chr str end feat    size    gene
         # b = sorted.intersect(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed', \
@@ -489,26 +502,26 @@ class LocalContextFeatures:
         #     .cut([0,1,2,3,8,4])\
         #     .sort()
 
-        for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                print(f'{attribute} for {node_type}')
-                if attribute == 'gc':
-                    sorted_with_size.nucleotide_content(fi=self.fasta)\
-                    .each(sum_gc)\
-                    .cut([0,1,2,3,4,13])\
-                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
-                else:
-                    sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
-                    .cut([0,1,2,3,4,9])\
-                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
+        # for attribute in self.ATTRIBUTES:
+        #     if bool_check_attributes(attribute, self.parsed_features[attribute]):
+        #         print(f'{attribute} for {node_type}')
+        #         if attribute == 'gc':
+        #             sorted_with_size.nucleotide_content(fi=self.fasta)\
+        #             .each(sum_gc)\
+        #             .cut([0,1,2,3,4,13])\
+        #             .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
+        #         else:
+        #             sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
+        #             .cut([0,1,2,3,4,9])\
+        #             .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
 
-                with open(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage', "w") as outfile:
-                    subprocess.run(
-                        f'datamash -s -g 1,2,3,4 sum 5,6 < {self.attribute_dir}/{attribute}/{node_type}_{attribute}',
-                        stdout=outfile,
-                        shell=True
-                        )
-                outfile.close()
+        #         with open(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage', "w") as outfile:
+        #             subprocess.run(
+        #                 f'datamash -s -g 1,2,3,4 sum 5,6 < {self.attribute_dir}/{attribute}/{node_type}_{attribute}',
+        #                 stdout=outfile,
+        #                 shell=True
+        #                 )
+        #         outfile.close()
 
     # @time_decorator(print_args=True)
     # def _genesort_attributes(self, attribute: str) -> None:
@@ -616,13 +629,6 @@ class LocalContextFeatures:
                 file = f'{self.parse_dir}/intermediate/{folder}/{key}.bed'
                 if not os.path.exists(file):
                     bed_dictionary[key].saveas(file)
-
-        # def _intersect_combinations(
-        #     bedinstance_slopped: Dict[str, pybedtools.bedtool.BedTool]
-        #     ) -> Dict[str, pybedtools.bedtool.BedTool]:
-        #     """Lorem Ipsum"""
-        #     nodes = [key for key in bedinstance_slopped]
-        #     return {key:nodes for key in self.NODES}
 
         @time_decorator(print_args=True)
         def _pre_concatenate_all_files(all_files: str) -> None:
