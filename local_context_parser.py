@@ -170,6 +170,10 @@ class LocalContextFeatures:
     DIRECT = ['chromatinloops', 'tads']
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
 
+    # var helpers
+    NODE_CORES=len(NODES)  # 12
+    ATTRIBUTE_CORES=len(ATTRIBUTES)  # 28
+
     # dict helpers
     ONEHOT_NODETYPE = {
         'chromatinloops': [1,0,0,0,0,0,0,0,0,0,0,0],
@@ -292,10 +296,8 @@ class LocalContextFeatures:
         a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
         ab = b.intersect(a, sorted=True, u=True)
-        # col_idx = ab.field_count()  # get number of columns
 
         # take specific windows and format each file
-        # regioned = ab.cut(list(range(4, col_idx))) 
         if prefix in self.NODES and prefix != 'gencode':
             result = ab.each(rename_feat_chr_start)\
                 .cut([0, 1, 2, 3])\
@@ -470,56 +472,56 @@ class LocalContextFeatures:
         def sum_gc(feature: str) -> str:
             """
             """
-            feature[14] = int(feature[9]) + int(feature[10])
+            feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
         ### Add size as 5th column for each entry 
-        sorted = pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
+        sorted_with_size = pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
             .each(add_size)\
             .sort()
         
-        ### total basepair number for phastcons // columns should be ordered as below
-        ### chr str end feat    size    gene
-        b = sorted.intersect(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed', \
-            wa=True, \
-            wb=True, \
-            sorted=True)\
-            .cut([0,1,2,3,8,4])\
-            .sort()
+        # ### total basepair number for phastcons // columns should be ordered as below
+        # ### chr str end feat    size    gene
+        # b = sorted.intersect(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed', \
+        #     wa=True, \
+        #     wb=True, \
+        #     sorted=True)\
+        #     .cut([0,1,2,3,8,4])\
+        #     .sort()
 
         for attribute in self.ATTRIBUTES:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 print(f'{attribute} for {node_type}')
                 if attribute == 'gc':
-                    b.nucleotide_content(fi=self.fasta)\
+                    sorted_with_size.nucleotide_content(fi=self.fasta)\
                     .each(sum_gc)\
-                    .cut([0,1,2,3,4,5,14])\
+                    .cut([0,1,2,3,4,13])\
                     .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
                 else:
-                    b.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
-                    .cut([0,1,2,3,4,5,10])\
+                    sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
+                    .cut([0,1,2,3,4,9])\
                     .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
 
                 with open(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage', "w") as outfile:
                     subprocess.run(
-                        f'datamash -s -g 1,2,3,4,5 sum 6,7 < {self.attribute_dir}/{attribute}/{node_type}_{attribute}',
+                        f'datamash -s -g 1,2,3,4 sum 5,6 < {self.attribute_dir}/{attribute}/{node_type}_{attribute}',
                         stdout=outfile,
                         shell=True
                         )
                 outfile.close()
 
-    @time_decorator(print_args=True)
-    def _genesort_attributes(self, attribute: str) -> None:
-        """Lorem"""
-        cat = f"cat {self.attribute_dir}/{attribute}/*_percentage* \
-            | sort -k5,5 --parallel=16 -S 50% \
-            > {self.attribute_dir}/{attribute}/all_{attribute}.txt"
+    # @time_decorator(print_args=True)
+    # def _genesort_attributes(self, attribute: str) -> None:
+    #     """Lorem"""
+    #     cat = f"cat {self.attribute_dir}/{attribute}/*_percentage* \
+    #         | sort -k5,5 --parallel=16 -S 50% \
+    #         > {self.attribute_dir}/{attribute}/all_{attribute}.txt"
 
-        awk = f"awk -F'\t' '{{print>\"{self.attribute_dir}/{attribute}/genes/\"$5}}' \
-            {self.attribute_dir}/{attribute}/all_{attribute}.txt"
+    #     awk = f"awk -F'\t' '{{print>\"{self.attribute_dir}/{attribute}/genes/\"$5}}' \
+    #         {self.attribute_dir}/{attribute}/all_{attribute}.txt"
 
-        for cmd in [cat, awk]:
-            subprocess.run(cmd, stdout=None, shell=True)
+    #     for cmd in [cat, awk]:
+    #         subprocess.run(cmd, stdout=None, shell=True)
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
@@ -534,7 +536,7 @@ class LocalContextFeatures:
         cmds = {
             'cat_cmd': [f"cat {self.parse_dir}/edges/*genewindow* >", \
                 f"{self.parse_dir}/edges/all_concat.bed"],
-            'sort_cmd': [f"LC_ALL=C sort --parallel=72 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed >", \
+            'sort_cmd': [f"LC_ALL=C sort --parallel=50 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed >", \
                 f"{self.parse_dir}/edges/all_concat_sorted.bed"],
         }
 
@@ -664,26 +666,26 @@ class LocalContextFeatures:
         all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
         _pre_concatenate_all_files(all_files)
 
-        ### perform intersects across all feature types
-        pool = Pool(processes=32)
+        ### perform intersects across all feature types - one process per nodetype
+        pool = Pool(processes=self.NODE_CORES)
         pool.starmap(self._bed_intersect, zip(combinations.keys(), repeat(all_files)))
         pool.close()
 
-        ### get size and all attributes
-        pool = Pool(processes=32)
+        ### get size and all attributes - one process per nodetype
+        pool = Pool(processes=self.NODE_CORES)
         pool.map(self._aggregate_attributes, combinations)
         pool.close()
 
-        ### parse attributes into individual files
-        pool = Pool(processes=28)
-        pool.map(self._genesort_attributes, self.ATTRIBUTES)
-        pool.close()
+        # ### parse attributes into individual files - one process per attribute type
+        # pool = Pool(processes=self.ATTRIBUTE_CORES)
+        # pool.map(self._genesort_attributes, self.ATTRIBUTES)
+        # pool.close()
 
         ### parse edges into individual files
         self._generate_edges()
 
-        ### save node attributes as reference for later
-        pool = Pool(processes=12)
+        ### save node attributes as reference for later - one process per nodetype
+        pool = Pool(processes=self.NODE_CORES)
         pool.map(self._save_node_attributes, self.NODES)
         pool.close()
 
