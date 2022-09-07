@@ -27,6 +27,7 @@ shared_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
     mirRNA_unlifted
 
 awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' miRNAtargets_lifted_hg38.bed \
+    sed 's/::/__/g' \
     > miRNAtargets_parsed_hg38.bed
 
 

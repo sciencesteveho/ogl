@@ -270,7 +270,7 @@ class LocalContextFeatures:
 
         for attribute in self.ATTRIBUTES:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                dir_check_make(f'{self.attribute_dir}/{attribute}/genes')
+                dir_check_make(f'{self.attribute_dir}/{attribute}')
 
     @time_decorator(print_args=True)
     def _region_specific_features_dict(self, bed: str) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
@@ -282,7 +282,7 @@ class LocalContextFeatures:
             Cpgislands add prefix to feature names
             Histones add an additional column
             """
-            rename_strings = ['cpgislands', 'histones', 'enhancers']
+            rename_strings = ['cpgislands', 'histones', 'enhancers', 'tfbindingclusters', 'rbpbindingsites']
             if prefix in rename_strings:
                 feature = extend_fields(feature, 4)
                 feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'
@@ -484,57 +484,20 @@ class LocalContextFeatures:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
                 print(f'{attribute} for {node_type}')
                 if attribute == 'gc':
-                    sorted_with_size.nucleotide_content(fi=self.fasta)\
+                    pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
+                    .each(add_size)\
+                    .nucleotide_content(fi=self.fasta)\
                     .each(sum_gc)\
+                    .sort()\
                     .groupby(g=[1,2,3,4], c=[5,14], o=['sum'])\
                     .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
                 else:
-                    sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
+                    pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
+                    .each(add_size)\
+                    .intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
                     .groupby(g=[1,2,3,4], c=[5,10], o=['sum'])\
+                    .sort()\
                     .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
-
-        # ### total basepair number for phastcons // columns should be ordered as below
-        # ### chr str end feat    size    gene
-        # b = sorted.intersect(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed', \
-        #     wa=True, \
-        #     wb=True, \
-        #     sorted=True)\
-        #     .cut([0,1,2,3,8,4])\
-        #     .sort()
-
-        # for attribute in self.ATTRIBUTES:
-        #     if bool_check_attributes(attribute, self.parsed_features[attribute]):
-        #         print(f'{attribute} for {node_type}')
-        #         if attribute == 'gc':
-        #             sorted_with_size.nucleotide_content(fi=self.fasta)\
-        #             .each(sum_gc)\
-        #             .cut([0,1,2,3,4,13])\
-        #             .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
-        #         else:
-        #             sorted_with_size.intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
-        #             .cut([0,1,2,3,4,9])\
-        #             .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}')
-
-        #         with open(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage', "w") as outfile:
-        #             subprocess.run(
-        #                 f'datamash -s -g 1,2,3,4 sum 5,6 < {self.attribute_dir}/{attribute}/{node_type}_{attribute}',
-        #                 stdout=outfile,
-        #                 shell=True
-        #                 )
-        #         outfile.close()
-
-    # @time_decorator(print_args=True)
-    # def _genesort_attributes(self, attribute: str) -> None:
-    #     """Lorem"""
-    #     cat = f"cat {self.attribute_dir}/{attribute}/*_percentage* \
-    #         | sort -k5,5 --parallel=16 -S 50% \
-    #         > {self.attribute_dir}/{attribute}/all_{attribute}.txt"
-
-    #     awk = f"awk -F'\t' '{{print>\"{self.attribute_dir}/{attribute}/genes/\"$5}}' \
-    #         {self.attribute_dir}/{attribute}/all_{attribute}.txt"
-
-    #     for cmd in [cat, awk]:
-    #         subprocess.run(cmd, stdout=None, shell=True)
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
