@@ -617,12 +617,12 @@ class LocalContextFeatures:
                 if not os.path.exists(file):
                     bed_dictionary[key].saveas(file)
 
-        def _intersect_combinations(
-            bedinstance_slopped: Dict[str, pybedtools.bedtool.BedTool]
-            ) -> Dict[str, pybedtools.bedtool.BedTool]:
-            """Lorem Ipsum"""
-            nodes = [key for key in bedinstance_slopped]
-            return {key:nodes for key in self.NODES}
+        # def _intersect_combinations(
+        #     bedinstance_slopped: Dict[str, pybedtools.bedtool.BedTool]
+        #     ) -> Dict[str, pybedtools.bedtool.BedTool]:
+        #     """Lorem Ipsum"""
+        #     nodes = [key for key in bedinstance_slopped]
+        #     return {key:nodes for key in self.NODES}
 
         @time_decorator(print_args=True)
         def _pre_concatenate_all_files(all_files: str) -> None:
@@ -659,8 +659,8 @@ class LocalContextFeatures:
         _save_intermediate(bedinstance_sorted, folder='sorted')
         _save_intermediate(bedinstance_slopped, folder='slopped')
 
-        ### get keys for intersect features and attribute features
-        combinations = _intersect_combinations(bedinstance_slopped)
+        # ### get keys for intersect features and attribute features
+        # combinations = _intersect_combinations(bedinstance_slopped)
 
         ### pre-concatenate to save time
         all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
@@ -668,12 +668,12 @@ class LocalContextFeatures:
 
         ### perform intersects across all feature types - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
-        pool.starmap(self._bed_intersect, zip(combinations.keys(), repeat(all_files)))
+        pool.starmap(self._bed_intersect, zip(self.NODES, repeat(all_files)))
         pool.close()
 
         ### get size and all attributes - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
-        pool.map(self._aggregate_attributes, combinations)
+        pool.map(self._aggregate_attributes, self.NODES)
         pool.close()
 
         # ### parse attributes into individual files - one process per attribute type
