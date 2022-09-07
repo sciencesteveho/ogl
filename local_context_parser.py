@@ -166,11 +166,11 @@ class LocalContextFeatures:
     """
 
     # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']
-    DIRECT = ['chromatinloops', 'tads']
+    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # gc first!
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
+    DIRECT = ['chromatinloops', 'tads']
 
-    # var helpers
+    # var helpers - for CPU cores
     NODE_CORES=len(NODES)  # 12
     ATTRIBUTE_CORES=len(ATTRIBUTES)  # 28
 
@@ -198,10 +198,10 @@ class LocalContextFeatures:
         'enhancers': 2000,
         'gencode': 2500,
         'histones': 2000,
-        'mirnatargets': 500,
-        'polyasites': 500,
+        'mirnatargets': 1000,
+        'polyasites': 1000,
         'promoters': 1000,
-        'rbpbindingsites': 500,
+        'rbpbindingsites': 1000,
         'tfbindingclusters': 2000,
         'tss': 2000,
     }
