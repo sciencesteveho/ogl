@@ -277,7 +277,7 @@ class LocalContextFeatures:
             Cpgislands add prefix to feature names
             Histones add an additional column
             """
-            rename_strings = ['chromatinloops', 'cpgislands', 'enhancers', 'histones', 'rbpbindingsites', 'tads', 'tfbindingclusters',]
+            rename_strings = ['cpgislands', 'enhancers', 'histones', 'rbpbindingsites', 'tfbindingclusters',]
             if prefix in rename_strings:
                 feature = extend_fields(feature, 4)
                 feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'

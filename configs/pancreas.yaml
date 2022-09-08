@@ -26,7 +26,7 @@ tissue_specific:
   chromatinloops: 'Schmitt_2016.Pancreas.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'Pancreas_Schmitt2016-raw_TADs.txtt'
+  tads: 'Pancreas_Schmitt2016-raw_TADs.txt'
   tf_binding: 'pancreas_hint_20-footprint.bed'
   ctcf: 'ENCFF225IGV.bed'
   polr2a: 'ENCFF618BDP.bed'
