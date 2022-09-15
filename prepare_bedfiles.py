@@ -126,7 +126,7 @@ class GenomeDataPreprocessor:
         interact_files = {
             'giant': f"{self.root_tissue}/unprocessed/{self.interaction['giant']}",
             'circuits': f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
-            'ppi': f"{self.dirs['shared_dir']}/{self.interaction['ppis']}",
+            'ppis': f"{self.dirs['shared_dir']}/{self.interaction['ppis']}",
             'polyadenylation': f"{self.dirs['poly_dir']}/{self.interaction['polyadenylation']}",
         }
 
