@@ -7,6 +7,7 @@ resources:
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/lung.tpm.txt'
 
 dirs:
+  circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
   data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/lung'  # place where unprocessed files exists
   root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
   shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
