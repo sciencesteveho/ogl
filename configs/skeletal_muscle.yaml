@@ -49,13 +49,13 @@ shared:
 
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+  entrez_file: 'entrez_to_genesymbol.txt'
+  giant: 'skeletal_muscle.dat'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
   circuits: 'skeletal_muscle_adult.txt'
-  cops: 'all_cops_gtex.tsv'
-  shared_eqtls: 'shared_eqtls_gtex.tsv'
   polyadenylation: 'Muscle_Skeletal.txt'
-  ppis: 'skeletal_muscle_myocytes.tsv'
+  ppis: 'IID_annotated_PPI.txt'
 
 options:
   cpg_liftover: False

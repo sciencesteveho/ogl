@@ -4,6 +4,9 @@
 Scripts to filter shared bedfiles before generating graphs. 
 '''
 
+# convert gencode v26 GTF to bed 
+gtf2bed <  gencode.v26.GRCh38.genes.gtf | awk '$8 == "gene"' > gencode_v26_genes_only_with_GTEx_targets.bed
+
 # poly-(A) target sites for hg38 are downloaded from PolyASite, homo sapiens v2.0, release 21/04/2020
 # filter poly-(A) targets for clusters supported by at least 1% of samples
 awk -v FS='\t' -v OFS='\t' '$7 >= 0.01' atlas.clusters.2.0.GRCh38.96.bed \
@@ -53,8 +56,6 @@ awk -v FS='\t' -v OFS='\t' '{print $1,$2,$3,"promoter"}' GRCh38-PLS.bed \
      > promoters_parsed_hg38.bed
 
 
-
-
 ### For analysis 
 # SVs from HGSVC2, Ebert et al., Science, 2021. Split into ins and dels
 tail -n +2 variants_freeze4_sv_insdel.tsv \
@@ -85,11 +86,13 @@ grep -v "^#" GCF_000001405.39 \
     > snps_dbsnp_autosomes.bed
 
 
+# Convert miRNA coordinates from GFF to bed 
+ gff2bed < hsa.gff3 | awk '$8 == "miRNA"' | sed 's/;/\t/g' | cut -f1,2,3,12 | sed 's/Name=//g'
 
-for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle;
-do
-rm ${tissue}/local/svins_ebert_hg38.bed ${tissue}/local/svdel_ebert_hg38.bed
-done
+# for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle;
+# do
+# rm ${tissue}/local/svins_ebert_hg38.bed ${tissue}/local/svdel_ebert_hg38.bed
+# done
 
 # for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle;
 # do

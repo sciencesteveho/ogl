@@ -3,6 +3,12 @@
 #
 # // TO-DO //
 # - [ ] PRIORITY ** Fix memory leak! 
+# - [X] Marbach gene-TF
+# - [X] APAtlas
+# - [X] IID PPI 
+# - [X] E-G FENRIR
+# - [X] E-E FENRIR
+# - [ ] Gold-standard C1 humanbase
 # - [ ] Fix filepaths. They are super ugly! 
 # - [ ] one-hot encode node_feat type?
 # - [ ] scale feats... 
@@ -15,8 +21,8 @@ import os
 import pickle
 
 import numpy as np
-import pybedtools
 import pandas as pd
+import pybedtools
 import tensorflow as tf
 
 from itertools import repeat
@@ -27,7 +33,15 @@ from utils import dir_check_make, parse_yaml, time_decorator
 
 
 class GraphConstructor:
-    """Object to construct tensor based graphs from parsed befiles
+    """Object to construct tensor based graphs from parsed bedfiles
+    
+    The following types of interaction data are represented:
+        Enhancer-enhancer networks from FENRIR
+        Enhancer-gene networks from FENRIR
+        Gene(TF)-gene circuits from Marbach et al.,
+        Curated protein-protein interactions from the Integrated Interactions Database V 2021-05
+        Gold-standard (C1) gene-gene interactions from GIANT/HumanBase
+        Alternative polyadenylation targets from APAatlas
 
     Args:
         params // configuration vals from yaml 
@@ -35,10 +49,6 @@ class GraphConstructor:
     Methods
     ----------
     _gene_symbol_to_gencode_ref:
-        Lorem
-    _co_expressed_pairs:
-        Lorem
-    _shared_eqtls:
         Lorem
     _gene_enhancer_atlas_links:
         Lorem
@@ -66,16 +76,6 @@ class GraphConstructor:
     """
 
     ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats']  # no gc; hardcoded in as initial file
-
-    HISTONE_IDXS = {
-        'H3K27ac': 1,
-        'H3K27me3': 2,
-        'H3K36me3': 3,
-        'H3K4me1': 4,
-        'H3K4me3': 5,
-        'H3K9ac': 6,
-        'H3K9me3': 7,
-    }
 
     NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'histones', 'regulatorybuild', 'repeatmasker', 'tads']  # no gencode; hardcoded in as initial file 
 
@@ -110,73 +110,100 @@ class GraphConstructor:
         self.graph_dir = f"{self.parse_dir}/graphs"
 
         dir_check_make(self.graph_dir)
-        self.gencode_to_genesymbol, self.ensembl_to_gencode, self.gencode_no_transcript = self._gene_symbol_to_gencode_ref(
+        self.genesymbol_to_gencode, self.genesymbol_to_entrez = self._gene_symbol_to_gencode_ref(
             id_file=f"{self.interaction_dir}/{self.interaction_files['id_lookup']}",
             gencode_file=f"{self.interaction_dir}/{self.interaction_files['gencode']}",
+            entrez_file=f"{self.interaction_dir}/{self.interaction_files['entrez']}",
             )
 
-    @time_decorator(print_args=True)
     def _gene_symbol_to_gencode_ref(
         self,
         id_file: str,
-        gencode_file: str
+        gencode_file: str,
+        entrez_file: str,
         ) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]:
         """_lorem ipsum"""
-        gencode_to_genesymbol, ensembl_to_gencode = {}, {}
-        gencode_genes = [line[3] for line in pybedtools.BedTool(gencode_file)]
+        genesymbol_to_gencode, genesymbol_to_entrez = {}, {}
 
-        with open(id_file, newline='') as file:
-            for line in csv.reader(file, delimiter='\t'):
-                gencode_to_genesymbol[line[1]] = line[0]
-                ensembl_to_gencode[line[0].split(".")[0]] = line[0]
+        for tup in [(id_file, genesymbol_to_gencode), (entrez_file, genesymbol_to_entrez)]:
+            with open(tup[0], newline='') as file:
+                tup[1] = {
+                    line[1]: line[0]
+                    for line in csv.reader(file, delimiter='\t')
+                }
+        return genesymbol_to_gencode, genesymbol_to_entrez
+        #  {
+        #     node.split(".")[0]:node
+        #     for node in gencode_genes
+        #     if 'PAR_Y' not in node
+        #     }
 
-        return gencode_to_genesymbol, ensembl_to_gencode, {
-            node.split(".")[0]:node
-            for node in gencode_genes
-            if 'PAR_Y' not in node
-            }
+    def _format_enhancer(
+        self,
+        input: str,
+        index: int,
+        ) -> str:
+        return f"{input.replace(':', '-').split('-')[index]}"
 
     @time_decorator(print_args=True)
-    def _co_expressed_pairs(
+    def _fenrir_enhancer_enhancer(
         self,
-        interaction_file: str
+        interaction_file: str,
         ) -> List[Tuple[str, str, float, str]]:
-        """Co-expressed node pairs from Ribeiro et al., 2020"""
-        with open(interaction_file, newline = '') as file:
+        """lorem"""
+        with open(interaction_file, newline='') as file:
+            file_reader = csv.reader(file, delimiter='\t')
+            next(file_reader)
             return [
-                (self.gencode_no_transcript[line[0]], self.gencode_no_transcript[line[2]], float(line[5]), 'co-exp')
-                for line in csv.reader(file, delimiter='\t')
-                if line[4] == self.locop_tissue
-                ]
+                (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+                f"enhancers_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
+                -1,
+                'enhancer-enhancer',)
+                for line in file_reader
+            ]
 
     @time_decorator(print_args=True)
-    def _shared_eqtls(
+    def _fenrir_enhancer_gene(
         self,
-        interaction_file: str
+        interaction_file: str,
         ) -> List[Tuple[str, str, float, str]]:
-        """Shared eQTLs from Ribeiro et al., 2020"""
-        with open(interaction_file, newline = '') as file:
+        """lorem"""
+        with open(interaction_file, newline='') as file:
+            file_reader = csv.reader(file, delimiter='\t')
+            next(file_reader)
             return [
-                (self.gencode_no_transcript[line[2]], self.gencode_no_transcript[line[4]], float(line[5]), 'eqtl')
-                for line in csv.reader(file, delimiter='\t')
-                if line[6] == self.locop_tissue
-                ]
+                (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+                line[2],
+                -1,
+                'enhancer-gene')
+                for line in file_reader
+            ]
 
     @time_decorator(print_args=True)
-    def _tissuenet_ppis(
+    def _giant_network(
         self,
-        interaction_file: str
-        ) -> List[Tuple[str, str, int, str]]:
-        """
-        Protein-protein interactions from Tissuenet V.2
-        There are no scores, so weights are placeholder values of -1
-        """
-        with open(interaction_file, newline = '') as file:
-            return [
-                (self.ensembl_to_gencode[line[0]], self.ensembl_to_gencode[line[1]], -1, 'ppi')
-                for line in csv.reader(file, delimiter='\t')
-                if line[0] in self.ensembl_to_gencode.keys() and line[1] in self.ensembl_to_gencode.keys()
-                ]
+        interaction_file: str,
+        ) -> List[Tuple[str, str, float, str]]:
+        """Lorem"""
+
+
+    @time_decorator(print_args=True)
+    def _iid_ppi(
+        self,
+        interaction_file: str,
+        tissue: str,
+        ) -> List[Tuple[str, str, float, str]]:
+        """Protein-protein interactions from the Integrated Interactions Database v 2021-05.
+        Interactions"""
+        df = pd.read_csv(interaction_file, delimiter='\t')
+        df = df[['symbol1', 'symbol2', 'evidence_type', tissue]]
+        t_spec_filtered = df[(df[tissue] > 0) & (df['evidence_type'].str.contains('exp'))]
+        return list(
+            zip(t_spec_filtered['symbol1'],
+            t_spec_filtered['symbol2'], 
+            repeat(-1),
+            repeat('ppi'))
+            )
 
     @time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
@@ -186,37 +213,10 @@ class GraphConstructor:
         """Regulatory circuits from Marbach et al., Nature Methods, 2016"""
         with open(interaction_file, newline = '') as file:
             return [
-                (self.gencode_to_genesymbol[line[0]], self.gencode_to_genesymbol[line[1]], line[2], 'circuits')
+                (self.genesymbol_to_gencode[line[0]], self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
                 for line in csv.reader(file, delimiter='\t')
-                if line[0] in self.gencode_to_genesymbol.keys() and line[1] in self.gencode_to_genesymbol.keys()
+                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys()
                 ]
-
-    @time_decorator(print_args=True)
-    def _gene_enhancer_atlas_links(
-        self,
-        interaction_file: str
-        ) -> List[Tuple[str, str, float, str]]:
-        """Enhancer node links from enhancer atlas"""
-        enhancers = []
-        with open(interaction_file, newline = '') as file:
-            for line in csv.reader(file, delimiter='\t'):
-                if line[3] in self.gencode_to_genesymbol.keys():
-                    enhancers.append(
-                        (f"enhancer_ATLAS_{line[0]}_{line[1]}",
-                        self.gencode_to_genesymbol[line[3]],
-                        line[7],
-                        'enhancer_atlas'
-                        ))
-                elif line[2] in self.ensembl_to_gencode.keys():
-                    enhancers.append(
-                        (f"enhancer_ATLAS_{line[0]}_{line[1]}",
-                        self.ensembl_to_gencode[line[2]],
-                        line[7],
-                        'enhancer_atlas'
-                        ))
-                else:
-                    pass
-        return enhancers
 
     @time_decorator(print_args=True)
     def _polyadenylation_targets(
@@ -228,10 +228,38 @@ class GraphConstructor:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
             return [
-                self.gencode_to_genesymbol[line[6]]
+                self.genesymbol_to_gencode[line[6]]
                 for line in file_reader
-                if line[6] in self.gencode_to_genesymbol.keys()
+                if line[6] in self.genesymbol_to_gencode.keys()
                 ]
+
+    # @time_decorator(print_args=True)
+    # def _gene_enhancer_atlas_links(
+    #     self,
+    #     interaction_file: str
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Enhancer node links from enhancer atlas"""
+    #     enhancers = []
+    #     with open(interaction_file, newline = '') as file:
+    #         for line in csv.reader(file, delimiter='\t'):
+    #             if line[3] in self.genesymbol_to_gencode.keys():
+    #                 enhancers.append(
+    #                     (f"enhancer_ATLAS_{line[0]}_{line[1]}",
+    #                     self.genesymbol_to_gencode[line[3]],
+    #                     line[7],
+    #                     'enhancer_atlas'
+    #                     ))
+    #             elif line[2] in self.ensembl_to_gencode.keys():
+    #                 enhancers.append(
+    #                     (f"enhancer_ATLAS_{line[0]}_{line[1]}",
+    #                     self.ensembl_to_gencode[line[2]],
+    #                     line[7],
+    #                     'enhancer_atlas'
+    #                     ))
+    #             else:
+    #                 pass
+    #     return enhancers
+
 
     @time_decorator(print_args=True)
     def _interaction_preprocess(self) -> Tuple[List[Any], List[str]]:

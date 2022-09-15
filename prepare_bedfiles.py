@@ -65,12 +65,13 @@ class GenomeDataPreprocessor:
 
     def __init__(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize the class"""
-        self.resources = params['resources']
         self.dirs = params['dirs']
-        self.tissue_specific = params['tissue_specific']
-        self.shared = params['shared']
+        self.interaction = params['interaction']
         self.options = params['options']
-
+        self.resources = params['resources']
+        self.shared = params['shared']
+        self.tissue_specific = params['tissue_specific']
+        
         self.tissue = self.resources['tissue']
         self.data_dir = self.dirs['data_dir']
         self.root_dir = self.dirs['root_dir']
@@ -97,14 +98,44 @@ class GenomeDataPreprocessor:
 
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
-        for file in self.tissue_specific.values():
+        def check_and_symlink(dst, src, boolean=False):
             try:
-                if (bool(file) and os.path.exists(f'{self.data_dir}/{file}')) and (not os.path.exists(f'{self.root_tissue}/unprocessed/{file}')):
-                    src = f'{self.data_dir}/{file}'
-                    dst = f'{self.root_tissue}/unprocessed/{file}'
-                    os.symlink(src, dst)
+                if boolean == True:
+                    if (bool(file) and os.path.exists(src)) and (not os.path.exists(dst)):
+                        os.symlink(src, dst)
+                else:
+                    if not os.path.exists(dst):
+                        os.symlink(src, dst)
             except FileExistsError:
                 pass
+
+        for file in self.tissue_specific.values():
+            check_and_symlink(
+                dst=f'{self.root_tissue}/unprocessed/{file}',
+                src=f'{self.data_dir}/{file}',
+                boolean=True
+                )
+
+        for file in ['enhancers_e_e', 'enhancers_e_g']:
+            check_and_symlink(
+                dst=f'{self.root_tissue}/interaction/{self.tissue_specific[file]}',
+                src=f'{self.data_dir}/{self.tissue_specific[file]}',
+                boolean=False,
+                )
+
+        interact_files = {
+            'giant': f"{self.root_tissue}/unprocessed/{self.interaction['giant']}",
+            'circuits': f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
+            'ppi': f"{self.dirs['shared_dir']}/{self.interaction['ppis']}",
+            'polyadenylation': f"{self.dirs['poly_dir']}/{self.interaction['polyadenylation']}",
+        }
+
+        for file in interact_files:
+            check_and_symlink(
+                dst=f'{self.root_tissue}/interaction/' + self.interaction[file],
+                src=interact_files[file],
+                boolean=False,
+                )
 
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
@@ -209,6 +240,7 @@ class GenomeDataPreprocessor:
             > {self.root_tissue}/local/tfbindingclusters_{self.tissue}.bed"
         
         self._run_cmd(cmd)
+
 
     @time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:

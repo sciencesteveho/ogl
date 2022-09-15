@@ -7,10 +7,10 @@ resources:
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt'
 
 dirs:
+  circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
   data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus'  # place where unprocessed files exists
   root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
   shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
   poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
 
 tissue_specific:
@@ -49,13 +49,13 @@ shared:
 
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+  entrez_file: 'entrez_to_genesymbol.txt'
+  giant: 'hippocampus.dat'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
   circuits: 'hippocampus_adult.txt'
-  cops: 'all_cops_gtex.tsv'
-  shared_eqtls: 'shared_eqtls_gtex.tsv'
   polyadenylation: 'Brain_Hippocampus.txt'
-  ppis: 'brain_hippocampus.tsv'
+  ppis: 'IID_annotated_PPI.txt'
 
 options:
   cpg_liftover: True
