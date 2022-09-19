@@ -1,7 +1,7 @@
 resources:
   tissue: 'pancreas'
   tissue_name: 'Pancreas'
-  locop_tissue: 'Pancreas'
+  ppi_tissue: 'pancreas'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/pancreas.tpm.txt'

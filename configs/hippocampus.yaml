@@ -1,7 +1,7 @@
 resources:
   tissue: 'hippocampus'
   tissue_name: 'Brain - Hippocampus'
-  locop_tissue: 'Brain_Hippocampus'
+  ppi_tissue: 'hippocampal formation'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt'

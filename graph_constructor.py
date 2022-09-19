@@ -3,12 +3,6 @@
 #
 # // TO-DO //
 # - [ ] PRIORITY ** Fix memory leak! 
-# - [X] Marbach gene-TF
-# - [X] APAtlas
-# - [X] IID PPI 
-# - [X] E-G FENRIR
-# - [X] E-E FENRIR
-# - [ ] Gold-standard C1 humanbase
 # - [ ] Fix filepaths. They are super ugly! 
 # - [ ] one-hot encode node_feat type?
 # - [ ] scale feats... 
@@ -26,6 +20,7 @@ import pybedtools
 import tensorflow as tf
 
 from itertools import repeat
+from mygene import MyGeneInfo
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
@@ -75,19 +70,17 @@ class GraphConstructor:
         ONEHOT_EDGETYPE --
     """
 
-    ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats']  # no gc; hardcoded in as initial file
-
-    NODES = ['chromatinloops', 'chromhmm', 'cpgislands', 'histones', 'regulatorybuild', 'repeatmasker', 'tads']  # no gencode; hardcoded in as initial file 
-
-    NODE_FEATS = ['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3']
+    ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # no gc; hardcoded in as initial file
+    NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']  # no gencode; hardcoded in as initial file 
+    NODE_FEATS = ['start', 'end', 'size', 'gc'] + ATTRIBUTES
 
     ONEHOT_EDGETYPE = {
         'local': [1,0,0,0,0,0],
-        'co-exp': [0,1,0,0,0,0],
-        'eqtl': [0,0,1,0,0,0],
-        'ppi': [0,0,0,1,0,0],
-        'circuits': [0,0,0,0,1,0],
-        'enhancer_atlas': [0,0,0,0,0,1],
+        'enhancer-enhancer': [0,1,0,0,0,0],
+        'enhancer-gene': [0,0,1,0,0,0],
+        'circuit': [0,0,0,1,0,0],
+        'giant': [0,0,0,0,1,0],
+        'ppi': [0,0,0,0,0,1],
     }
 
     def __init__(
@@ -105,38 +98,24 @@ class GraphConstructor:
 
         self.root_dir = params['dirs']['root_dir']
         self.shared_dir = params['dirs']['shared_dir']
-        self.interaction_dir = f'{self.shared_dir}/interaction'
+
         self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
         self.graph_dir = f"{self.parse_dir}/graphs"
+        self.interaction_dir = f"{self.root_dir}/{self.tissue}/interaction"
+        self.shared_interaction_dir = f'{self.shared_dir}/interaction'
 
         dir_check_make(self.graph_dir)
-        self.genesymbol_to_gencode, self.genesymbol_to_entrez = self._gene_symbol_to_gencode_ref(
-            id_file=f"{self.interaction_dir}/{self.interaction_files['id_lookup']}",
-            gencode_file=f"{self.interaction_dir}/{self.interaction_files['gencode']}",
-            entrez_file=f"{self.interaction_dir}/{self.interaction_files['entrez']}",
+        self.genesymbol_to_gencode = self._genes_from_gencode(
+            gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
             )
 
-    def _gene_symbol_to_gencode_ref(
-        self,
-        id_file: str,
-        gencode_file: str,
-        entrez_file: str,
-        ) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]:
-        """_lorem ipsum"""
-        genesymbol_to_gencode, genesymbol_to_entrez = {}, {}
-
-        for tup in [(id_file, genesymbol_to_gencode), (entrez_file, genesymbol_to_entrez)]:
-            with open(tup[0], newline='') as file:
-                tup[1] = {
-                    line[1]: line[0]
-                    for line in csv.reader(file, delimiter='\t')
-                }
-        return genesymbol_to_gencode, genesymbol_to_entrez
-        #  {
-        #     node.split(".")[0]:node
-        #     for node in gencode_genes
-        #     if 'PAR_Y' not in node
-        #     }
+    def _genes_from_gencode(self, gencode_file: str) -> Dict[str, str]:
+        """returns a dict of gencode v26 genes, their ids and associated gene symbols"""
+        a = pybedtools.BedTool(gencode_file)
+        return {
+            line[9].split(';')[3].split('\"')[1]:line[3]
+            for line in a
+            }
 
     def _format_enhancer(
         self,
@@ -173,10 +152,11 @@ class GraphConstructor:
             next(file_reader)
             return [
                 (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-                line[2],
+                self.genesymbol_to_gencode[line[2]],
                 -1,
                 'enhancer-gene')
                 for line in file_reader
+                if line[2] in self.genesymbol_to_gencode.keys()
             ]
 
     @time_decorator(print_args=True)
@@ -185,7 +165,62 @@ class GraphConstructor:
         interaction_file: str,
         ) -> List[Tuple[str, str, float, str]]:
         """Lorem"""
+        mg = MyGeneInfo()
 
+        def _read_giant(graph):
+            edges, edge1, edge2 = [], [], []
+            with open(graph, newline='') as file:
+                lines = csv.reader(file, delimiter='\t')
+                for line in lines:
+                    if line[2] == '1':
+                        edges.append(line)
+                        edge1.append(line[0])
+                        edge2.append(line[1])
+            return edges, set(edge1+edge2)
+
+        def _entrez_to_symbol_ref(edge_list):
+            edge_lookup = {}
+            for edge in edge_list:
+                meta = mg.query(edge, fields=['symbol'], species='human', verbose=False)
+                try:
+                    result = meta['hits'][0]
+                    if 'symbol' not in result:
+                        edge_lookup[edge] = 'NA'
+                    else:
+                        edge_lookup[edge] = result['symbol']
+                except IndexError:
+                    edge_lookup[edge] = 'NA'
+            return edge_lookup
+
+        def _convert_giant(edges, symbol_ref, ensembl_ref):
+            def _convert_genes(
+                edges: List[Tuple[any]],
+                ref: Dict[str, str],
+                edge_type: str,
+                ) -> List[Tuple[any]]:
+                return [
+                    (ref[edge[0]],
+                    ref[edge[1]],
+                    -1,
+                    edge_type,)
+                    for edge in edges
+                    if edge[0] in ref.keys()
+                    and edge[1] in ref.keys()
+                ]
+            giant_symbols = self._convert_genes(edges, symbol_ref)
+            giant_filtered = [edge for edge in giant_symbols if edge[0] != 'NA' and edge[1] != 'NA']
+            return self._convert_genes(
+                giant_filtered,
+                ensembl_ref,
+                'giant',)
+        
+        edges, edge_list = _read_giant(interaction_file)
+        symbol_ref = _entrez_to_symbol_ref(edge_list)
+        return _convert_giant(
+            edges,
+            symbol_ref,
+            self.genesymbol_to_gencode
+            )
 
     @time_decorator(print_args=True)
     def _iid_ppi(
@@ -199,8 +234,8 @@ class GraphConstructor:
         df = df[['symbol1', 'symbol2', 'evidence_type', tissue]]
         t_spec_filtered = df[(df[tissue] > 0) & (df['evidence_type'].str.contains('exp'))]
         return list(
-            zip(t_spec_filtered['symbol1'],
-            t_spec_filtered['symbol2'], 
+            zip(self.genesymbol_to_gencode[t_spec_filtered['symbol1']],
+            self.genesymbol_to_gencode[t_spec_filtered['symbol2']], 
             repeat(-1),
             repeat('ppi'))
             )
@@ -233,34 +268,6 @@ class GraphConstructor:
                 if line[6] in self.genesymbol_to_gencode.keys()
                 ]
 
-    # @time_decorator(print_args=True)
-    # def _gene_enhancer_atlas_links(
-    #     self,
-    #     interaction_file: str
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Enhancer node links from enhancer atlas"""
-    #     enhancers = []
-    #     with open(interaction_file, newline = '') as file:
-    #         for line in csv.reader(file, delimiter='\t'):
-    #             if line[3] in self.genesymbol_to_gencode.keys():
-    #                 enhancers.append(
-    #                     (f"enhancer_ATLAS_{line[0]}_{line[1]}",
-    #                     self.genesymbol_to_gencode[line[3]],
-    #                     line[7],
-    #                     'enhancer_atlas'
-    #                     ))
-    #             elif line[2] in self.ensembl_to_gencode.keys():
-    #                 enhancers.append(
-    #                     (f"enhancer_ATLAS_{line[0]}_{line[1]}",
-    #                     self.ensembl_to_gencode[line[2]],
-    #                     line[7],
-    #                     'enhancer_atlas'
-    #                     ))
-    #             else:
-    #                 pass
-    #     return enhancers
-
-
     @time_decorator(print_args=True)
     def _interaction_preprocess(self) -> Tuple[List[Any], List[str]]:
         """Retrieve all interaction edges
@@ -269,36 +276,31 @@ class GraphConstructor:
             A list of all edges
             A list of alternative polyadenylation targets
         """
-        cop_edges = self._co_expressed_pairs(
+        e_e_edges = self._fenrir_enhancer_enhancer(
             f"{self.interaction_dir}"
-            f"/{self.interaction_files['cops']}"
+            f"/{self.tissue_specific['enhancers_e_e']}"
             )
-        shared_qtl_edges = self._shared_eqtls(
+        e_g_edges = self._fenrir_enhancer_gene(
             f"{self.interaction_dir}"
-            f"/{self.interaction_files['shared_eqtls']}"
+            f"/{self.tissue_specific['enhancers_e_g']}"
             )
-        ppi_edges = self._tissuenet_ppis(
+        ppi_edges = self._iid_ppi(
             f"{self.interaction_dir}"
-            f"/Humanproteinatlas-Protein/{self.interaction_files['ppis']}"
+            f"/{self.interaction_files['ppis']}"
+            )
+        giant_edges = self._giant_network(
+            f"{self.interaction_dir}"
+            f"{self.interaction_files['giant']}"
             )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}"
-            "/FANTOM5_individual_networks"
-            "/394_individual_networks"
             f"/{self.interaction_files['circuits']}"
-            )
-        enhancer_edges = self._gene_enhancer_atlas_links(
-            f"{self.root_dir}"
-            f"/{self.tissue}"
-            "/interaction"
-            f"/{self.tissue_specific['enhancers']}.interaction"
             )
         polyadenylation = self._polyadenylation_targets(
             f"{self.interaction_dir}"
-            "/PDUI_polyA_sites"
             f"/{self.interaction_files['polyadenylation']}"
             )
-        return cop_edges + shared_qtl_edges + enhancer_edges + ppi_edges + circuit_edges, polyadenylation
+        return e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges, polyadenylation
 
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(

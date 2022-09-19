@@ -1,7 +1,7 @@
 resources:
   tissue: 'liver'
   tissue_name: 'Liver'
-  locop_tissue: 'Liver'
+  ppi_tissue: 'liver'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt'

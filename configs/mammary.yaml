@@ -1,7 +1,7 @@
 resources:
   tissue: 'mammary'
   tissue_name: 'Breast - Mammary Tissue'
-  locop_tissue: 'Breast_Mammary_Tissue'
+  ppi_tissue: 'mammary gland'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/breast_mammary_tissue.tpm.txt'

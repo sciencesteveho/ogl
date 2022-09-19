@@ -185,7 +185,7 @@ class LocalContextFeatures:
         'tss': [0,0,0,0,0,0,0,0,0,0,0,1],
     }
 
-    # cpgislands - 2kb, baced on precedence from CpGcluster
+    # cpgislands - 2kb, based on precedence from CpGcluster
     # enhancers - can vary widely, so dependent on 3d chromatin structure and from FENRIR networks
     # direct binding, such as mirna, polyasites, rbps are set to 500bp
     FEAT_WINDOWS = {

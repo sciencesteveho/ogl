@@ -1,7 +1,7 @@
 resources:
   tissue: 'left_ventricle'
   tissue_name: 'Heart - Left Ventricle'
-  locop_tissue: 'Heart_Left_Ventricle'
+  ppi_tissue: 'heart'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt'

@@ -1,7 +1,7 @@
 resources:
   tissue: 'skeletal_muscle'
   tissue_name: 'Muscle - Skeletal'
-  locop_tissue: 'Muscle_Skeletal'
+  ppi_tissue: 'skeletal muscle'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt'
