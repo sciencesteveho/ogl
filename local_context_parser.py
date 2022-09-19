@@ -298,6 +298,9 @@ class LocalContextFeatures:
                 .cut([0, 1, 2, 3])\
                 .saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
+            if prefix == 'enhancers':
+                result.filter(lambda x: 'alt' not in x[0])\
+                    .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
         else:
             bed_dict[prefix] = ab.cut([0, 1, 2 ,3])
 
@@ -461,10 +464,7 @@ class LocalContextFeatures:
             pybedtools.BedTool(ref_file).cut([0,1,2,3]).saveas(ref_file + '_cut')
             ref_file += '_cut'
         elif node_type == 'enhancers':  # ignore ALT chr
-            ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed"
-            a = pybedtools.BedTool(ref_file)
-            a.filter(lambda x: 'alt' not in x[0]).saveas(ref_file + '_noalt')
-            ref_file += '_noalt'
+            ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_notalt"
         else:
             ref_file = f'{self.parse_dir}/intermediate/sorted/{node_type}.bed'
 
