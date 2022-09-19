@@ -377,7 +377,7 @@ class GraphConstructor:
 
         def _node_attributes(reference_attrs, node_idxs):
             """_lorem ipsum"""
-            attribute_df = pd.DataFrame.from_dict({node:reference_attrs[node] for node in node_idxs}, orient='index', columns=['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'microsatellites', 'phastcons', 'polr2a', 'simplerepeats', 'polyadenylation', 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 'H3K4me3', 'H3K9ac', 'H3K9me3'])
+            attribute_df = pd.DataFrame.from_dict({node:reference_attrs[node] for node in node_idxs}, orient='index', columns=['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'polyadenylation', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf'])
 
             ### set index to be a column
             attribute_df.reset_index(inplace=True)
@@ -385,12 +385,6 @@ class GraphConstructor:
             
             ### add polyadenylation 
             attribute_df['polyadenylation'] = attribute_df['node'].apply(lambda x: 1 if x in polyadenylation else 0)
-
-            ### add histones
-            for histone in self.HISTONE_IDXS:
-                attribute_df[histone] = attribute_df['node'].apply(
-                    lambda x: x.split(',')[self.HISTONE_IDXS[histone]] if 'histone' in x else 0
-                ) 
 
             attribute_df = attribute_df.fillna(0)
             attribute_df['node'] = attribute_df['node'].apply(lambda node: node_idxs[node])
@@ -479,7 +473,7 @@ class GraphConstructor:
     def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
         ### base reference
-        gencode_ref = f'{self.root_dir}/{self.tissue}/parsing/attributes/gencode_reference.pkl'
+        gencode_ref = f'{self.parse_dir}/attributes/gencode_reference.pkl'
 
         ### retrieve interaction-based edges
         interaction_edges, polyadenylation = self._interaction_preprocess()

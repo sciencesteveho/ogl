@@ -460,6 +460,8 @@ class LocalContextFeatures:
             ref_file = f"{self.local_dir}/{self.shared_data['gencode']}"
             pybedtools.BedTool(ref_file).cut([0,1,2,3]).saveas(ref_file + '_cut')
             ref_file += '_cut'
+        elif node_type == 'enhancers':
+            ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed"
         else:
             ref_file = f'{self.parse_dir}/intermediate/sorted/{node_type}.bed'
 
