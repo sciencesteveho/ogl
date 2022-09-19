@@ -456,7 +456,13 @@ class LocalContextFeatures:
         Args:
             node_type // node datatype in self.NODES
         """
-        # start_time = time.monotonic()
+        if node_type == 'gencode':  # if gencode, create attr ref for all genes, as they might show up in interactions
+            ref_file = f"{self.local_dir}/{self.shared_data['gencode']}"
+            pybedtools.BedTool(ref_file).cut([0,1,2,3]).saveas(ref_file + '_cut')
+            ref_file += '_cut'
+        else:
+            ref_file = f'{self.parse_dir}/intermediate/sorted/{node_type}.bed'
+
         def add_size(feature: str) -> str:
             """
             """
@@ -470,29 +476,25 @@ class LocalContextFeatures:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        ### Add size as 5th column for each entry 
-        sorted_with_size = pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
-            .each(add_size)\
-            .sort()
-
         for attribute in self.ATTRIBUTES:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):
+                save_file = f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage'
                 print(f'{attribute} for {node_type}')
                 if attribute == 'gc':
-                    pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
+                    pybedtools.BedTool(ref_file)\
                     .each(add_size)\
                     .nucleotide_content(fi=self.fasta)\
                     .each(sum_gc)\
                     .sort()\
                     .groupby(g=[1,2,3,4], c=[5,14], o=['sum'])\
-                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
+                    .saveas(save_file)
                 else:
-                    pybedtools.BedTool(f'{self.parse_dir}/intermediate/sorted/{node_type}.bed')\
+                    pybedtools.BedTool(ref_file)\
                     .each(add_size)\
                     .intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
                     .groupby(g=[1,2,3,4], c=[5,10], o=['sum'])\
                     .sort()\
-                    .saveas(f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage')
+                    .saveas(save_file)
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
@@ -618,9 +620,6 @@ class LocalContextFeatures:
         ### save intermediate files
         _save_intermediate(bedinstance_sorted, folder='sorted')
         _save_intermediate(bedinstance_slopped, folder='slopped')
-
-        # ### get keys for intersect features and attribute features
-        # combinations = _intersect_combinations(bedinstance_slopped)
 
         ### pre-concatenate to save time
         all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
