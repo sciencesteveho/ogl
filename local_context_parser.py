@@ -462,7 +462,8 @@ class LocalContextFeatures:
             ref_file += '_cut'
         elif node_type == 'enhancers':  # ignore ALT chr
             ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed"
-            pybedtools.BedTool(ref_file).filter(lambda x: 'alt' not in x[0]).saveas(ref_file + '_noalt')
+            a = pybedtools.BedTool(ref_file)
+            a.filter(lambda x: 'alt' not in x[0]).saveas(ref_file + '_noalt')
             ref_file += '_noalt'
         else:
             ref_file = f'{self.parse_dir}/intermediate/sorted/{node_type}.bed'
