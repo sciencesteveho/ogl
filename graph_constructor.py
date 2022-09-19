@@ -89,11 +89,11 @@ class GraphConstructor:
         """Initialize the class"""
 
         self.gencode = params['shared']['gencode']
-        self.locop_tissue = params['resources']['locop_tissue']
         self.interaction_files = params['interaction']
         self.shared_data = params['shared']
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
+        self.ppi_tissue = params['resources']['ppi_tissue']
         self.tissue_specific = params['tissue_specific']
 
         self.root_dir = params['dirs']['root_dir']
@@ -114,7 +114,8 @@ class GraphConstructor:
         a = pybedtools.BedTool(gencode_file)
         return {
             line[9].split(';')[3].split('\"')[1]:line[3]
-            for line in a
+            for line in a 
+            if line[0] not in ['chrX', 'chrY', 'chrM']
             }
 
     def _format_enhancer(
@@ -207,9 +208,9 @@ class GraphConstructor:
                     if edge[0] in ref.keys()
                     and edge[1] in ref.keys()
                 ]
-            giant_symbols = self._convert_genes(edges, symbol_ref)
+            giant_symbols = _convert_genes(edges, symbol_ref, edge_type='giant')
             giant_filtered = [edge for edge in giant_symbols if edge[0] != 'NA' and edge[1] != 'NA']
-            return self._convert_genes(
+            return _convert_genes(
                 giant_filtered,
                 ensembl_ref,
                 'giant',)
@@ -233,12 +234,19 @@ class GraphConstructor:
         df = pd.read_csv(interaction_file, delimiter='\t')
         df = df[['symbol1', 'symbol2', 'evidence_type', tissue]]
         t_spec_filtered = df[(df[tissue] > 0) & (df['evidence_type'].str.contains('exp'))]
-        return list(
-            zip(self.genesymbol_to_gencode[t_spec_filtered['symbol1']],
-            self.genesymbol_to_gencode[t_spec_filtered['symbol2']], 
-            repeat(-1),
-            repeat('ppi'))
-            )
+        edges = list(
+                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']),
+                repeat(-1),
+                repeat('ppi')
+                ))
+        return [(
+            self.genesymbol_to_gencode[edge[0]],
+            self.genesymbol_to_gencode[edge[1]],
+            edge[2],
+            edge[3],)
+            for edge in edges
+            if edge[0] in self.genesymbol_to_gencode.keys() and edge[1] in self.genesymbol_to_gencode.keys()
+            ]
 
     @time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
@@ -285,12 +293,12 @@ class GraphConstructor:
             f"/{self.tissue_specific['enhancers_e_g']}"
             )
         ppi_edges = self._iid_ppi(
-            f"{self.interaction_dir}"
-            f"/{self.interaction_files['ppis']}"
+            interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+            tissue=self.ppi_tissue
             )
         giant_edges = self._giant_network(
             f"{self.interaction_dir}"
-            f"{self.interaction_files['giant']}"
+            f"/{self.interaction_files['giant']}"
             )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}"
