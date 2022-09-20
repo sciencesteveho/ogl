@@ -108,6 +108,10 @@ class GraphConstructor:
         self.genesymbol_to_gencode = self._genes_from_gencode(
             gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
             )
+        self.e_indexes = self._enhancer_index(
+            e_index=f"{self.interaction_dir}/enhancer_indexes.txt",
+            e_index_unlifted=f"{self.interaction_dir}/enhancer_indexes_unlifted.txt"
+        )
 
     def _genes_from_gencode(self, gencode_file: str) -> Dict[str, str]:
         """returns a dict of gencode v26 genes, their ids and associated gene symbols"""
@@ -116,6 +120,27 @@ class GraphConstructor:
             line[9].split(';')[3].split('\"')[1]:line[3]
             for line in a 
             if line[0] not in ['chrX', 'chrY', 'chrM']
+            }
+
+    def _enhancer_index(
+        self,
+        e_index: str, 
+        e_index_unlifted: str
+        ) -> Dict[str, str]:
+        """returns a dict to map enhancers from hg19 to hg38"""
+        def text_to_dict(txt, idx1, idx2):
+            with open(txt) as file:
+                file_reader = csv.reader(file, delimiter='\t')
+                return {
+                    line[idx1]:line[idx2]
+                    for line in file_reader
+                }
+        e_dict = text_to_dict(e_index, 1, 0)
+        e_dict_unlifted = text_to_dict(e_index_unlifted, 0, 1)
+        return {
+            enhancer:e_dict[e_dict_unlifted[enhancer]]
+            for enhancer in e_dict_unlifted
+            if e_dict_unlifted[enhancer] in e_dict.keys()
             }
 
     def _format_enhancer(
@@ -130,35 +155,46 @@ class GraphConstructor:
         self,
         interaction_file: str,
         ) -> List[Tuple[str, str, float, str]]:
-        """lorem"""
+        """Convert each enhancer-enhancer link to hg38 and return a formatted tuple"""
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
-            return [
-                (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-                f"enhancers_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
-                -1,
-                'enhancer-enhancer',)
+            e_e_liftover = [
+                (self.e_indexes[line[0]], self.e_index[line[1]])
                 for line in file_reader
+                if line[0] in self.e_indexes.keys()
+                and line[1] in self.e_indexes.keys()
             ]
+        return [
+            (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+            f"enhancers_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
+            -1,
+            'enhancer-enhancer',)
+            for line in e_e_liftover
+        ]
 
     @time_decorator(print_args=True)
     def _fenrir_enhancer_gene(
         self,
         interaction_file: str,
         ) -> List[Tuple[str, str, float, str]]:
-        """lorem"""
+        """Convert each enhancer-gene link to hg38 and ensemble ID, return a formatted tuple"""
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
-            return [
-                (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-                self.genesymbol_to_gencode[line[2]],
-                -1,
-                'enhancer-gene')
+            e_g_liftover = [
+                (self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]])
                 for line in file_reader
-                if line[2] in self.genesymbol_to_gencode.keys()
+                if line[0] in self.e_indexes.keys()
+                and line[2] in self.genesymbol_to_gencode.keys()
             ]
+        return [
+            (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+            line[1],
+            -1,
+            'enhancer-gene')
+            for line in file_reader
+        ]
 
     @time_decorator(print_args=True)
     def _giant_network(
