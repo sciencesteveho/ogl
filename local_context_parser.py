@@ -291,14 +291,14 @@ class LocalContextFeatures:
         a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
         ab = b.intersect(a, sorted=True, u=True)
+        if prefix == 'enhancers':  # save enhancers early for attr ref
+            b.filter(lambda x: 'alt' not in x[0])\
+                .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
 
         # take specific windows and format each file
         if prefix in self.NODES and prefix != 'gencode':
-            result = ab.each(rename_feat_chr_start)
-            if prefix == 'enhancers':
-                result.filter(lambda x: 'alt' not in x[0])\
-                    .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
-            result = result.cut([0, 1, 2, 3])\
+            result = ab.each(rename_feat_chr_start)\
+                .cut([0, 1, 2, 3])\
                 .saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
