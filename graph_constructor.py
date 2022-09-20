@@ -533,7 +533,7 @@ class GraphConstructor:
         ]
 
         ### parse graph into tensors and save
-        pool = Pool(processes=16)
+        pool = Pool(processes=24)
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
