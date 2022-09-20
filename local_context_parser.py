@@ -292,7 +292,8 @@ class LocalContextFeatures:
         b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
         ab = b.intersect(a, sorted=True, u=True)
         if prefix == 'enhancers':  # save enhancers early for attr ref
-            b.filter(lambda x: 'alt' not in x[0])\
+            b.each(rename_feat_chr_start)\
+                .filter(lambda x: 'alt' not in x[0])\
                 .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
 
         # take specific windows and format each file
