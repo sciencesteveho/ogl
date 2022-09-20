@@ -294,13 +294,13 @@ class LocalContextFeatures:
 
         # take specific windows and format each file
         if prefix in self.NODES and prefix != 'gencode':
-            result = ab.each(rename_feat_chr_start)\
-                .cut([0, 1, 2, 3])\
-                .saveas()
-            bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
+            result = ab.each(rename_feat_chr_start)
             if prefix == 'enhancers':
                 result.filter(lambda x: 'alt' not in x[0])\
                     .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
+            result = result.cut([0, 1, 2, 3])\
+                .saveas()
+            bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
             bed_dict[prefix] = ab.cut([0, 1, 2 ,3])
 

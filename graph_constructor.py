@@ -78,7 +78,7 @@ class GraphConstructor:
         'local': [1,0,0,0,0,0],
         'enhancer-enhancer': [0,1,0,0,0,0],
         'enhancer-gene': [0,0,1,0,0,0],
-        'circuit': [0,0,0,1,0,0],
+        'circuits': [0,0,0,1,0,0],
         'giant': [0,0,0,0,1,0],
         'ppi': [0,0,0,0,0,1],
     }
@@ -109,8 +109,8 @@ class GraphConstructor:
             gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
             )
         self.e_indexes = self._enhancer_index(
-            e_index=f"{self.interaction_dir}/enhancer_indexes.txt",
-            e_index_unlifted=f"{self.interaction_dir}/enhancer_indexes_unlifted.txt"
+            e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
+            e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt"
         )
 
     def _genes_from_gencode(self, gencode_file: str) -> Dict[str, str]:
@@ -160,7 +160,7 @@ class GraphConstructor:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
             e_e_liftover = [
-                (self.e_indexes[line[0]], self.e_index[line[1]])
+                (self.e_indexes[line[0]], self.e_indexes[line[1]])
                 for line in file_reader
                 if line[0] in self.e_indexes.keys()
                 and line[1] in self.e_indexes.keys()
@@ -193,7 +193,7 @@ class GraphConstructor:
             line[1],
             -1,
             'enhancer-gene')
-            for line in file_reader
+            for line in e_g_liftover
         ]
 
     @time_decorator(print_args=True)
