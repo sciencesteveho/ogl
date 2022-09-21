@@ -25,6 +25,7 @@ from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
 from utils import dir_check_make, parse_yaml, time_decorator
+from local_context_parser import _filtered_gene_windows
 
 
 class GraphConstructor:
@@ -85,8 +86,11 @@ class GraphConstructor:
 
     def __init__(
         self,
-        params: Dict[str, Dict[str, str]]):
+        params: Dict[str, Dict[str, str]],
+        genes: List[any]):
         """Initialize the class"""
+
+        self.genes = genes
 
         self.gencode = params['shared']['gencode']
         self.interaction_files = params['interaction']
@@ -520,14 +524,8 @@ class GraphConstructor:
             polyadenylation=polyadenylation,
         )
 
-        ### get list of all gencode V26 genes
-        genes = [
-            key for key
-            in pickle.load(open(f'{gencode_ref}', 'rb')).keys()
-        ]
-
         genes_to_construct = [
-            gene for gene in genes
+            gene for gene in self.genes
             if not (os.path.exists(f'{self.graph_dir}/{gene}_{self.tissue}')
             and os.stat(f'{self.graph_dir}/{gene}_{self.tissue}').st_size > 0)
         ]
@@ -559,8 +557,18 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
+    _, tpm_filtered_genes = _filtered_gene_windows(
+        f"shared_data/local/{params['shared']['gencode']}",
+        params['resources']['chromfile'],
+        params['resources']['tissue'],
+        params['resources']['tpm'],
+    )
+
     ### instantiate object
-    graphconstructingObject = GraphConstructor(params=params)
+    graphconstructingObject = GraphConstructor(
+        params=params,
+        genes=tpm_filtered_genes,
+        )
 
     ### run pipeline!
     graphconstructingObject.generate_graphs()
