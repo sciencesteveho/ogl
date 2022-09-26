@@ -25,7 +25,6 @@ from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
 from utils import dir_check_make, parse_yaml, time_decorator
-from local_context_parser import _filtered_gene_windows
 
 
 class GraphConstructor:
@@ -505,17 +504,14 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    _, tpm_filtered_genes = _filtered_gene_windows(
-        f"shared_data/local/{params['shared']['gencode']}",
-        params['resources']['chromfile'],
-        params['resources']['tissue'],
-        params['resources']['tpm'],
-    )
+    tpm_filtered_genes = f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed"
+    with open(tpm_filtered_genes, newline='') as file:
+        genes = [line[3] for line in csv.reader(file, delimiter='\t')]
 
     ### instantiate object
     graphconstructingObject = GraphConstructor(
         params=params,
-        genes=tpm_filtered_genes,
+        genes=genes,
         )
 
     ### run pipeline!

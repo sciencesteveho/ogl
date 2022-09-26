@@ -28,10 +28,6 @@ from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decora
 from target_labels_train_split import _filter_low_tpm
 
 
-# def _sort_uniq_bedobj(bed: pybedtools.BedTool) -> pybedtools.BedTool:
-#     return pybedtools.BedTool(str(set(bed)))
-
-
 @time_decorator(print_args=True)
 def _filtered_gene_windows(
     gencode: str,
