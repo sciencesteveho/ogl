@@ -13,11 +13,11 @@ import argparse
 import csv
 import os
 import pickle
+import subprocess
 
 import numpy as np
 import pandas as pd
 import pybedtools
-import tensorflow as tf
 
 from itertools import repeat
 from mygene import MyGeneInfo
@@ -317,39 +317,49 @@ class GraphConstructor:
                 ]
 
     @time_decorator(print_args=True)
-    def _interaction_preprocess(self) -> Tuple[List[Any], List[str]]:
+    def _interaction_preprocess(self) -> List[str]:
         """Retrieve all interaction edges
         
         Returns:
             A list of all edges
             A list of alternative polyadenylation targets
         """
-        e_e_edges = self._fenrir_enhancer_enhancer(
-            f"{self.interaction_dir}"
-            f"/{self.tissue_specific['enhancers_e_e']}"
-            )
-        e_g_edges = self._fenrir_enhancer_gene(
-            f"{self.interaction_dir}"
-            f"/{self.tissue_specific['enhancers_e_g']}"
-            )
-        ppi_edges = self._iid_ppi(
-            interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-            tissue=self.ppi_tissue
-            )
-        giant_edges = self._giant_network(
-            f"{self.interaction_dir}"
-            f"/{self.interaction_files['giant']}"
-            )
-        circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}"
-            f"/{self.interaction_files['circuits']}"
-            )
+        all_interaction_file = f'{self.interaction_dir}/interaction_edges.txt' 
+        if not (os.path.exists(all_interaction_file) and os.stat(all_interaction_file).st_size > 0):
+            e_e_edges = self._fenrir_enhancer_enhancer(
+                f"{self.interaction_dir}"
+                f"/{self.tissue_specific['enhancers_e_e']}"
+                )
+            e_g_edges = self._fenrir_enhancer_gene(
+                f"{self.interaction_dir}"
+                f"/{self.tissue_specific['enhancers_e_g']}"
+                )
+            ppi_edges = self._iid_ppi(
+                interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+                tissue=self.ppi_tissue
+                )
+            giant_edges = self._giant_network(
+                f"{self.interaction_dir}"
+                f"/{self.interaction_files['giant']}"
+                )
+            circuit_edges = self._marbach_regulatory_circuits(
+                f"{self.interaction_dir}"
+                f"/{self.interaction_files['circuits']}"
+                )
+            interaction_edges = e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges
+            with open(all_interaction_file, 'w+') as output:
+                writer = csv.writer(output, delimiter='\t')
+                writer.writerows(interaction_edges)
+        else:
+            pass
+
         polyadenylation = self._polyadenylation_targets(
             f"{self.interaction_dir}"
             f"/{self.interaction_files['polyadenylation']}"
             )
-        return e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges, polyadenylation
 
+        return polyadenylation
+        
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(
         self,
@@ -375,139 +385,63 @@ class GraphConstructor:
     def _prepare_graph_tensors(
         self,
         gene: str,
-        interaction_edges: List[Any],
         reference_attrs: Dict[str, Dict[str, Any]],
-        polyadenylation: Any,
+        interaction_edges: List[Any],
         ) -> Any:
         """_lorem ipsum"""
         print(f'starting _prepare_graph_tensors on {gene}')
-        def _uniq_nodes_from_df(df: pd.DataFrame) -> np.ndarray:
-            all_nodes = pd.Series(df[['node_1', 'node_2']].values.ravel())
-            return sorted(all_nodes.unique())
 
-        def _add_interactions(
-            df: pd.DataFrame,
-            node_list: List[str],
-            interaction_edges: List[Any],
-            ) -> pd.DataFrame:
-            """Add interactions edges to local edges dataframe"""
-            for tup in interaction_edges:
-                if tup[0] in node_list or tup[1] in node_list:
-                    df.loc[len(df.index)] = [
-                        np.nan,  # start_1
-                        np.nan,  # end_1
-                        tup[0],  # node_1
-                        np.nan,  # start_2
-                        np.nan,  # end_2
-                        tup[1],  # node_2
-                        tup[2],  # weight
-                        np.nan,  # gene
-                        tup[3],  # edge_type
-                    ]
-            return df
-
-        def _reindex_nodes(df):
+        def _reindex_nodes(edges):
             """_lorem"""
-            uniq_nodes = _uniq_nodes_from_df(df)
-            node_idxs = {node: id for id, node in enumerate(uniq_nodes)}
-            for nodes in ['node_1', 'node_2']:
-                df[nodes] = df[nodes].apply(lambda name: node_idxs[name])
-            df.sort_values('node_1', ignore_index=True)
-            return df, len(node_idxs), node_idxs
-
-        def _node_attributes(reference_attrs, node_idxs):
-            """_lorem ipsum"""
-            attribute_df = pd.DataFrame.from_dict({node:reference_attrs[node] for node in node_idxs}, orient='index', columns=['start', 'end', 'size', 'gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'polyadenylation', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf'])
-
-            ### set index to be a column
-            attribute_df.reset_index(inplace=True)
-            attribute_df = attribute_df.rename(columns={'index': 'node'})
-            
-            ### add polyadenylation 
-            attribute_df['polyadenylation'] = attribute_df['node'].apply(lambda x: 1 if x in polyadenylation else 0)
-
-            attribute_df = attribute_df.fillna(0)
-            attribute_df['node'] = attribute_df['node'].apply(lambda node: node_idxs[node])
-            attribute_df = attribute_df.sort_values('node', ignore_index=True)
-            return tf.convert_to_tensor(attribute_df[self.NODE_FEATS].astype('float32'))
-
-        def _get_edge_index(df):
-            """_lorem"""
-            edges_1 = tf.convert_to_tensor(df['node_1'])
-            edges_2 = tf.convert_to_tensor(df['node_2'])
-            return tf.convert_to_tensor([edges_1, edges_2])
-
-        def _get_edge_features(df, weight=False):
-            """
-            First 6 values are one-hot encoding for the edge_datatype
-            7th value is weight, which is optional
-            """
-            df['type'] = df['type'].apply(lambda edge_type: self.ONEHOT_EDGETYPE[edge_type])
-            if weight == True:
-                df['weight'] = df['weight'].apply(lambda x: [x])
-                df['type'] =  np.array(df['type'] + df['weight'])
-                return tf.convert_to_tensor([np.array(x).astype('float32') for x in df['type']])
-            else:
-                return tf.convert_to_tensor([np.array(x) for x in df['type']])
-
-        ### only prepare tensors if file does not exist
-        if (os.path.exists(f'{self.graph_dir}/{gene}') and os.stat(f'{self.graph_dir}/{gene}').st_size != 0):
-            print(f'{gene} already done. Moving to next gene')
-            pass
-        else:
-            ### open parsed edge file
-            edges = pd.read_csv(
-                f'{self.parse_dir}/edges/genes/{gene}',
-                sep='\t',
-                header=None,
-                usecols=[1,2,3,5,6,7,8,9],
-                names=[
-                    'start_1', 
-                    'end_1', 
-                    'node_1', 
-                    'start_2', 
-                    'end_2', 
-                    'node_2', 
-                    'weight', 
-                    'gene'
-                ],
-            )
-
-            edges['weight'] = 0  # temporary fix, remove if good way to normalize weights
-            edges['type'] = 'local'  # set local edgetype
-
-            ### get shared nodes between local and interaction edges
-            uniq_local_nodes = _uniq_nodes_from_df(edges)
-            uniq_interact_nodes = list(
-                set([tup[0] for tup in interaction_edges] + [tup[1] for tup in interaction_edges])
-            )
-
-            common_nodes = list(
-                set(uniq_local_nodes) & set(uniq_interact_nodes)
-            )
-
-            all_edges = _add_interactions(
-                df=edges,
-                node_list=common_nodes,
-                interaction_edges=interaction_edges,
-            )
-
-            _, num_nodes, node_idxs = _reindex_nodes(all_edges)
-
-            with open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb') as output:
-                pickle.dump({
-                'edge_index': _get_edge_index(all_edges),
-                'edge_feat': _get_edge_features(all_edges, weight=False),
-                'node_feat': _node_attributes(reference_attrs=reference_attrs, node_idxs=node_idxs),
-                'num_nodes': num_nodes,
-                },
-                output
+            uniq_nodes = sorted(
+                set([edge[0] for edge in edges]+[edge[1] for edge in edges])
                 )
-            print(f'Finished _prepare_graph_tensors on {gene}')
+            node_idxs = {node: id for id, node in enumerate(uniq_nodes)}
+            edges_reindexed = list(
+                map(lambda edge: [node_idxs[edge[0]], node_idxs[edge[1]], edge[2]], edges)
+                )
+            return sorted(edges_reindexed), node_idxs, len(uniq_nodes)
 
-            del edges
-            del all_edges
+        gene_edges = f'{self.parse_dir}/edges/genes/{gene}'
+        ### fast uniq_nodes 
+        uniq_local_sort = f"awk '{{print $4 \"\\n\" $8}}' {gene_edges} \
+            | sort -u"
+        proc = subprocess.Popen(uniq_local_sort, shell=True, stdout=subprocess.PIPE)
+        uniq_local = proc.communicate()[0]
 
+        with open(f'{self.interaction_dir}/uniq_interaction_nodes.txt') as f:
+            interaction_nodes = [line.rstrip('\n') for line in f.readlines()]
+
+        nodes_to_add = set(uniq_local).intersection(interaction_nodes)
+
+        edges_to_add = [
+            [line[0], line[1], line[3]] for line in
+            filter(
+                lambda interaction: interaction[0] in nodes_to_add or interaction[1] in nodes_to_add,
+                interaction_edges
+            )
+        ]
+
+        with open(gene_edges, newline='') as file:
+            local_edges = [
+                [line[3], line[7], 'local']
+                for line in csv.reader(file, delimiter='\t')]
+
+        edges_reindexed, node_idxs, num_nodes = _reindex_nodes(local_edges + edges_to_add)
+
+        graph_only_refs = {node_idxs[node]:reference_attrs[node] for node in node_idxs}
+
+        with open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb') as output:
+            pickle.dump({
+            'edge_index': np.array([[edge[0] for edge in edges_reindexed], [edge[1] for edge in edges_reindexed]]),
+            'edge_feat': np.array([self.ONEHOT_EDGETYPE[edge[2]] for edge in edges_reindexed]),
+            'node_feat': np.array([[float(x) for x in list(graph_only_refs[key].values())[2:]]
+            for key in graph_only_refs.keys()]),
+            'num_nodes': num_nodes,
+            },
+            output
+            )
+        print(f'Finished _prepare_graph_tensors on {gene}')
 
     @time_decorator(print_args=True)
     def generate_graphs(self) -> None:
@@ -516,7 +450,7 @@ class GraphConstructor:
         gencode_ref = f'{self.parse_dir}/attributes/gencode_reference.pkl'
 
         ### retrieve interaction-based edges
-        interaction_edges, polyadenylation = self._interaction_preprocess()
+        polyadenylation = self._interaction_preprocess()
 
         ### prepare nested dict for node features
         reference_attrs = self._prepare_reference_attributes(
@@ -530,6 +464,19 @@ class GraphConstructor:
             and os.stat(f'{self.graph_dir}/{gene}_{self.tissue}').st_size > 0)
         ]
 
+        interaction_file = f'{self.interaction_dir}/interaction_edges.txt'
+
+        ### prepare list of uniq interaction edges
+        cmd = f"awk '{{print $1 \"\\n\" $2}}' {interaction_file} \
+            | sort -u \
+            > {self.interaction_dir}/uniq_interaction_nodes.txt"
+
+        subprocess.run(cmd, stdout=None, shell=True)
+
+        ### read interaction file into a list
+        with open(interaction_file, newline='') as file:
+            interaction_edges = [line for line in csv.reader(file, delimiter='\t')]
+
         print(f'starting construction on {len(genes_to_construct)} genes')
 
         ### parse graph into tensors and save
@@ -537,10 +484,9 @@ class GraphConstructor:
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
-            repeat(interaction_edges),
             repeat(reference_attrs),
-            repeat(polyadenylation))
-        )
+            repeat(interaction_edges),
+        ))
         pool.close()
 
 
@@ -557,7 +503,8 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
+#    params = parse_yaml(args.config)
+    params = parse_yaml('genomic_graph_mutagenesis/configs/liver.yaml')
 
     _, tpm_filtered_genes = _filtered_gene_windows(
         f"shared_data/local/{params['shared']['gencode']}",
@@ -573,7 +520,7 @@ def main() -> None:
         )
 
     ### run pipeline!
-    graphconstructingObject.generate_graphs()
+    graphconstructingObject._prepare_graph_tensors()
 
 
 if __name__ == '__main__':
