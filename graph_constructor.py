@@ -520,7 +520,7 @@ def main() -> None:
         )
 
     ### run pipeline!
-    graphconstructingObject._prepare_graph_tensors()
+    graphconstructingObject.generate_graphs()
 
 
 if __name__ == '__main__':
