@@ -480,7 +480,7 @@ class GraphConstructor:
         print(f'starting construction on {len(genes_to_construct)} genes')
 
         ### parse graph into tensors and save
-        pool = Pool(processes=24)
+        pool = Pool(processes=20)
         pool.starmap(
             self._prepare_graph_tensors,
             zip(genes_to_construct,
