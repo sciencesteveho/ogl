@@ -476,6 +476,7 @@ class GraphConstructor:
         with open(interaction_file, newline='') as file:
             interaction_edges = [line for line in csv.reader(file, delimiter='\t')]
 
+        print(f'total graphs to construct - {len(self.genes)}')
         print(f'starting construction on {len(genes_to_construct)} genes')
 
         ### parse graph into tensors and save
