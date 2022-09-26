@@ -56,7 +56,7 @@ def _filtered_gene_windows(
 
     return genes_filtered.slop(g=chromfile, b=250000)\
         .cut([0, 1, 2, 3])\
-        .sort(), tpm_filtered_genes
+        .sort(), [x[3] for x in genes_filtered]
 
 
 @time_decorator(print_args=True)
@@ -670,7 +670,7 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    window, tpm_filtered_genes = _filtered_gene_windows(
+    window, _ = _filtered_gene_windows(
         f"shared_data/local/{params['shared']['gencode']}",
         params['resources']['chromfile'],
         params['resources']['tissue'],

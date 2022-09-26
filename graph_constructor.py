@@ -503,8 +503,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-#    params = parse_yaml(args.config)
-    params = parse_yaml('genomic_graph_mutagenesis/configs/liver.yaml')
+    params = parse_yaml(args.config)
 
     _, tpm_filtered_genes = _filtered_gene_windows(
         f"shared_data/local/{params['shared']['gencode']}",
