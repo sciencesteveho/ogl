@@ -116,6 +116,11 @@ def dir_check_make(dir: str) -> None:
         pass
 
 
+def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+    with open(tpm_filtered_genes, newline='') as file:
+        return [line[3] for line in csv.reader(file, delimiter='\t')]
+
+
 def genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file"""
     with open(gff, newline = '') as file:

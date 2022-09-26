@@ -175,10 +175,10 @@ class GGraphMutagenesisTFRecordProcessor:
             graph = self._open_graph(idx)
             label = self.targets[self.mode][idx]
             num_nodes = graph["num_nodes"]
-            node_feat = graph["node_feat"].numpy()
+            node_feat = graph["node_feat"]
 
             # form adj. matrix
-            row, col = graph["edge_index"].numpy()
+            row, col = graph["edge_index"]
             adj = sp.coo_matrix(
                 (np.ones_like(row), (row, col)), shape=(num_nodes, num_nodes)
             ).toarray()

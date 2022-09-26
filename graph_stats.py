@@ -15,7 +15,7 @@ import scipy.sparse as sp
 
 import pybedtools
 
-from utils import genes_from_gff, time_decorator
+from utils import genes_from_gff, filtered_genes, time_decorator
 
 
 @time_decorator(print_args=True)
@@ -45,11 +45,10 @@ def _cat_stat_dicts(tissue_params):
 
 
 def _edge_and_nodes_per_gene(
-    gff,
+    genes,
     directory,
     tissue,
     ):
-    genes = list(genes_from_gff(gff))
     return {
         gene:_nodes_edges_from_graph(f'{directory}/{gene}_{tissue}')
         for _, gene in enumerate(genes)
@@ -95,20 +94,23 @@ def _percentage_of_zeroes(tup_list):
 def main() -> None:
     """Save num_nodes as array for each individual tissue"""
     # ctcf = 'ENSG00000102974.14'
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-t', '--tissue', type=str, required=True)
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--tissue', type=str, required=True)
+    args = parser.parse_args()
 
-    # graph_stats = _edge_and_nodes_per_gene(
-    #     gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed',
-    #     directory = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
-    #     tissue=args.tissue
-    #     )
+    root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
 
-    # ### save
-    # node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/count_num_nodes'
-    # with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
-    #     pickle.dump(graph_stats, output)
+    graph_stats = _edge_and_nodes_per_gene(
+        genes=genes,
+        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
+        tissue=args.tissue
+        )
+
+    ### save
+    node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
+    with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
+        pickle.dump(graph_stats, output)
 
     # tissue_params = [
     #     ('num_nodes_hippocampus.pkl', 'hippocampus'),
@@ -148,8 +150,8 @@ def main() -> None:
     # with open(f'{savedir}/sparse_vals_{args.tissue}.pkl', 'wb') as output:
     #     pickle.dump(sparse, output)
 
-    sparse_files = ['sparse_vals_hippocampus.pkl', 'sparse_vals_left_ventricle.pkl', 'sparse_vals_mammary.pkl']
-    percent_zeros_in_graphs = _percentage_of_zeroes(sparse_files)
+    # sparse_files = ['sparse_vals_hippocampus.pkl', 'sparse_vals_left_ventricle.pkl', 'sparse_vals_mammary.pkl']
+    # percent_zeros_in_graphs = _percentage_of_zeroes(sparse_files)
     
     
 if __name__ == '__main__':
