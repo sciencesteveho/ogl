@@ -140,10 +140,14 @@ class GraphConstructor:
                 }
         e_dict = text_to_dict(e_index, 1, 0)
         e_dict_unlifted = text_to_dict(e_index_unlifted, 0, 1)
-        return {
+        e_dict_unfiltered = {
             enhancer:e_dict[e_dict_unlifted[enhancer]]
             for enhancer in e_dict_unlifted
             if e_dict_unlifted[enhancer] in e_dict.keys()
+            }
+        return {
+            k:v for k,v in e_dict_unfiltered.items()
+            if 'alt' not in v
             }
 
     def _format_enhancer(
