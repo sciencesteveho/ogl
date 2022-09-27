@@ -124,7 +124,10 @@ def filtered_genes(tpm_filtered_genes: str) -> List[str]:
 def genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file"""
     with open(gff, newline = '') as file:
-        return {line[3]: line[0] for line in csv.reader(file, delimiter='\t')}
+        return {
+            line[3]: line[0] for line in csv.reader(file, delimiter='\t')
+            if line[0] not in ['chrX', 'chrY', 'chrM']
+            }
 
 
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:

@@ -604,48 +604,43 @@ class LocalContextFeatures:
                         )
                 outfile.close()
 
-        ### process windows and renaming 
+        # process windows and renaming 
         pool = Pool(processes=32)
         bedinstance = pool.map(self._region_specific_features_dict,\
             [bed for bed in self.bedfiles])
         pool.close()  # re-open and close pool after every multi-process
 
-        ### convert back to dictionary
+        # convert back to dictionary
         bedinstance = {key.casefold():value for element in bedinstance for key, value in element.items()}
 
-        ### sort and extend windows according to FEAT_WINDOWS
+        # sort and extend windows according to FEAT_WINDOWS
         bedinstance_sorted, bedinstance_slopped = self._slop_sort(bedinstance=bedinstance, chromfile=self.chromfile)
 
-        ### save a list of the nodes and their indexes
+        # save a list of the nodes and their indexes
         self._save_feature_indexes(bedinstance_sorted)
 
-        ### save intermediate files
+        # save intermediate files
         _save_intermediate(bedinstance_sorted, folder='sorted')
         _save_intermediate(bedinstance_slopped, folder='slopped')
 
-        ### pre-concatenate to save time
+        # pre-concatenate to save time
         all_files = f'{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed'
         _pre_concatenate_all_files(all_files)
 
-        ### perform intersects across all feature types - one process per nodetype
+        # perform intersects across all feature types - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
         pool.starmap(self._bed_intersect, zip(self.NODES, repeat(all_files)))
         pool.close()
 
-        ### get size and all attributes - one process per nodetype
+        # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
         pool.map(self._aggregate_attributes, self.NODES)
         pool.close()
 
-        # ### parse attributes into individual files - one process per attribute type
-        # pool = Pool(processes=self.ATTRIBUTE_CORES)
-        # pool.map(self._genesort_attributes, self.ATTRIBUTES)
-        # pool.close()
-
-        ### parse edges into individual files
+        # parse edges into individual files
         self._generate_edges()
 
-        ### save node attributes as reference for later - one process per nodetype
+        # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
         pool.map(self._save_node_attributes, self.NODES)
         pool.close()
@@ -673,23 +668,24 @@ def main() -> None:
         params['resources']['tpm'],
     )
 
-    ### save window file
+    # save window file
     window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
-    ### get features within 500kb of protein coding regions
+    # get features within 500kb of protein coding regions
     bedfiles = _gene_window(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
     )
 
+    # instantiate object
     localparseObject = LocalContextFeatures(
         bedfiles=bedfiles,
         params=params,
     )
 
-    ### run parallelized pipeline! 
+    # run parallelized pipeline! 
     localparseObject.parse_context_data()
 
-    ### cleanup
+    # cleanup temporary files
     pybedtools.cleanup(remove_all=True)
 
 

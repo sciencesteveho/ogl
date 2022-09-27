@@ -127,7 +127,7 @@ def main() -> None:
     tissue_params = [[node_dir + '/' + x[0], x[1]] for x in tissue_params]
 
     ### unfiltered
-    all_stats_dict = _cat_stat_dicts(tissue_params)
+    all_stats_dict = _cat_stat_dicts(tissue_params, node_dir)
     # total_nodes, total_edges = _summed_counts(all_stats_dict)
 
     node_counts = [x[0] for x in all_stats_dict.values()]

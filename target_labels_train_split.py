@@ -7,6 +7,8 @@
 """Get dataset train/val/split split"""
 
 
+import csv
+from operator import concat
 import pickle
 import pandas as pd
 import numpy as np
@@ -17,6 +19,19 @@ from typing import List, Tuple
 from cmapPy.pandasGEXpress.parse_gct import parse
 
 from utils import genes_from_gff, time_decorator, TISSUE_TPM_KEYS
+
+
+DATA_SPLITS = ['train', 'test', 'validation']
+
+TISSUE_PARAMS = {
+    'mammary': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
+    'hippocampus': ('brain_hippocampus', 'brain_cortex', 'brain_hippocampus'),
+    'left_ventricle': ('heart_left_ventricle', 'heart_ventricle', 'heart_left_ventricle'),
+    'liver': ('liver', 'liver', 'liver'),  
+    'lung': ('lung', 'lung', 'lung'),  
+    'pancreas': ('pancreas', 'pancreas', 'pancreas'),  
+    'skeletal_muscle': ('muscle_skeletal', 'muscle_skeletal', 'muscle_skeletal'),  
+    }  # tissue: (tpm_key, protein_key, filtered_tpm_filename)
 
 
 @time_decorator(print_args=True)
@@ -42,7 +57,7 @@ def _filter_low_tpm(
 @time_decorator(print_args=True)
 def _chr_split_train_test_val(genes, test_chrs, val_chrs):
     """
-    create a list of training, split, and val IDs
+    Create a list of training, split, and val IDs
     """
     return {
         'train': [gene for gene in genes if genes[gene] not in test_chrs + val_chrs],
@@ -84,7 +99,7 @@ def _protein_std_dev_and_mean(protein_median_file: str) -> pd.DataFrame:
     """Get means and standard deviation for protein abundance for specific tissue
     Calulates fold change of median of tissue relative to all_tissue_median
     """
-    tissues = ['Heart Ventricle', 'Brain Cortex', 'Breast']
+    tissues = ['Heart Ventricle', 'Brain Cortex', 'Breast', 'Liver', 'Lung', 'Muscle Skeletal', 'Pancreas']
     df = pd.read_csv(
         protein_median_file,
         sep=',',
@@ -166,61 +181,50 @@ def tissue_targets(
     protein_file: str,
     protein_median_file: str,
     ):
-    '''_lorem'''
+    """_lorem"""
 
-    ### proteins 
+    # proteins 
     pro_median_df = _protein_std_dev_and_mean(protein_median_file)
     pro_all_median = _protein_abundance_all_tissue_median(protein_file)
     protein_targets_df = _fold_change_median(pro_median_df, pro_all_median, type='protein')
 
-    ### expression TPMs 
+    # expression TPMs 
     with open(tpm_pkl, 'rb') as file:
         tpm_all_median = pickle.load(file)
 
     tpm_median_df = parse(tpm_median_file).data_df
     tpm_targets_df = _fold_change_median(tpm_median_df, tpm_all_median, type='tpm')
 
-    train_dict = _combine_tissue_dicts(
-        tissue_params,
-        split['train'],
-        tpm_targets_df,
-        protein_targets_df
-    )
-
-    test_dict = _combine_tissue_dicts(
-        tissue_params,
-        split['test'],
-        tpm_targets_df,
-        protein_targets_df
-    )
-
-    validation_dict = _combine_tissue_dicts(
-        tissue_params,
-        split['validation'],
-        tpm_targets_df,
-        protein_targets_df
-    )
-
     return {
-        'train': train_dict,
-        'test': test_dict,
-        'validation': validation_dict,
+        data_split: _combine_tissue_dicts(
+            tissue_params,
+            split[data_split],
+            tpm_targets_df,
+            protein_targets_df,
+        ) for data_split in DATA_SPLITS
     }
 
 
-def tpm_filtered_targets(
+def filtered_targets(
     tissue_params,
     targets,
     ):
-    """_lorem"""
+    """Filters a dict of every possible target (all 56200 genes)
+    Takes the pre-tpm filtered list of genes in each directory and concats into a list
+    Keeps targets if they exist within this concatenated list"""
+    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+        with open(tpm_filtered_genes, newline='') as file:
+            return [f'{line[3]}_{tissue}' for line in csv.reader(file, delimiter='\t')]
+
     for idx, tissue in enumerate(tissue_params):
-        if idx == 0:
-            filtered_genes = _filter_low_tpm(tissue, 'tpm/' + tissue_params[tissue][2] + '.tpm.txt')
+        if idx ==0:
+            genes = filtered_genes(f'{tissue}/gene_regions_tpm_filtered.bed')
         else:
-            update_genes = _filter_low_tpm(tissue, 'tpm/' + tissue_params[tissue][2] + '.tpm.txt')
-            filtered_genes = filtered_genes + update_genes
+            update_genes = filtered_genes(f'{tissue}/gene_regions_tpm_filtered.bed')
+            genes += update_genes
+
     for key in targets.keys():
-        targets[key] = {gene: targets[key][gene] for gene in targets[key].keys() if gene in filtered_genes}
+        targets[key] = {gene: targets[key][gene] for gene in targets[key].keys() if gene in genes}
     return targets
 
 
@@ -246,60 +250,82 @@ def max_node_filter(max_nodes, filtered_stats, targets, randomizer=False):
             pickle.dump(filtered_dict, output)
 
 
+def concat_graph_stats(tissue_params):
+    """combines the graph stats files, each of which are dicts of the following format
+        gene: (num_nodes, num_edges)
+    contains a minor nested function to add tissue name to the dict key
+    """
+    def open_graph_stats(tissue):
+        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/num_nodes_{tissue}.pkl', 'rb') as file:
+            return {f'{key}_{tissue}':value for key,value in pickle.load(file).items()}
+    for idx, tissue in enumerate(tissue_params):
+        if idx == 0:
+            graph_stats = open_graph_stats(tissue)
+        else:
+            update_stats = open_graph_stats(tissue)
+            graph_stats.update(update_stats)
+    return graph_stats
+
+
 def main() -> None:
     """Pipeline to generate dataset split and target values"""
 
-    ### tissue: (tpm_key, protein_key, filtered_tpm_filename)
-    tissue_params = {
-        'mammary': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
-        'hippocampus': ('brain_hippocampus', 'brain_cortex', 'brain_hippocampus'),
-        'left_ventricle': ('heart_left_ventricle', 'heart_ventricle', 'heart_left_ventricle'),
-        'liver': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
-        'lung': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
-        'pancreas': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
-        'skeletal_muscle': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
-        }
-
-    ### split genes in train, test, validation
+    # split genes in train, test, validation
     genes = genes_from_gff('/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed')
-    test_chrs=['chr8', 'chr9']
-    val_chrs=['chr7', 'chr13']
+    test_chrs = ['chr8', 'chr9']
+    val_chrs = ['chr7', 'chr13']
 
+    # split genes by chr holdouts
     split = _chr_split_train_test_val(
         genes=genes,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
     )
 
+    # save split partition
     directory = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
     with open(f"{directory}/graph_partition_test_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl", 'wb') as output:
         pickle.dump(split, output)
 
-    ### get targets
+    # get targets
     targets = tissue_targets(
         split=split,
-        tissue_params=tissue_params,
-        tpm_pkl = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_tpm_median_across_all_tissues.pkl',
-        tpm_median_file = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct',
-        protein_file = 'protein_relative_abundance_all_gtex.csv',
-        protein_median_file = 'protein_relative_abundance_median_gtex.csv',
-        )
+        tissue_params=TISSUE_PARAMS,
+        tpm_pkl='/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_tpm_median_across_all_tissues.pkl',
+        tpm_median_file='GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct',
+        protein_file='protein_relative_abundance_all_gtex.csv',
+        protein_median_file='protein_relative_abundance_median_gtex.csv',
+        )  # 333886/31283/28231 train/test/validation, total = 393400
 
-    filtered_targets = tpm_filtered_targets(tissue_params, targets)  # 84070 total
+    # filter targets by tpm
+    filtered_targets = filtered_targets(
+        TISSUE_PARAMS,
+        targets
+        )  # 159424/14395/13161 train/test/validation, total = 186980
 
-    ### code to get max_node filtered targets for end-to-end debugging
+    # concatenate and save a file with all num_nodes and num_edges
+    with open('filtered_stats.pkl', 'wb') as output:
+        pickle.dump(concat_graph_stats(TISSUE_PARAMS), output)
+
+    # save targets
+    with open('filtered_targets_7_tissues_v3.pkl', 'wb') as output:
+        pickle.dump(filtered_targets, output)
+
+
+    # code to get max_node filtered targets for end-to-end debugging
+    # open files
     with open('filtered_stats.pkl', 'rb') as file:
         filtered_stats = pickle.load(file)
 
-    with open('targets.pkl', 'rb') as file:
+    with open('filtered_targets_7_tissues_v3.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [41200]:
+    for num in [500, 1000, 2500, 5000, 10000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
             targets=targets,
-            randomizer=False
+            randomizer=True
         )
 
 
@@ -307,25 +333,48 @@ if __name__ == '__main__':
     main()
 
 
-# def print_stats(num):
-#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
-#         targets = pickle.load(file)
-#     print(f'max_nodes = {num}')
-#     print(f"train = {len(targets['train'])}")
-#     print(f"test = {len(targets['test'])}")
-#     print(f"validation = {len(targets['validation'])}")
-#     print('\n')
+def print_stats(num):
+    with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+        targets = pickle.load(file)
+    print(f'max_nodes = {num}')
+    print(f"train = {len(targets['train'])}")
+    print(f"test = {len(targets['test'])}")
+    print(f"validation = {len(targets['validation'])}")
+    print('\n')
 
-# for num in [10000]:
-#     print_stats(num)
+for num in [500, 1000, 2500, 5000, 10000]:
+    print_stats(num)
 
-# for num in [300, 500, 750, 1000, 1250, 1500, 1750, 2000]:
-#     print_stats(num)
 
-# max_nodes = 300
-# train = 38
-# test = 38
-# validation = 38
+
+# max_nodes = 500
+# train = 3098
+# test = 883
+# validation = 257
+
+
+# max_nodes = 1000
+# train = 7839
+# test = 1664
+# validation = 780
+
+
+# max_nodes = 2500
+# train = 25519
+# test = 4350
+# validation = 2881
+
+
+# max_nodes = 5000
+# train = 55217
+# test = 7088
+# validation = 6716
+
+
+# max_nodes = 10000
+# train = 100490
+# test = 10221
+# validation = 10205
 
 
 # max_nodes = 500
@@ -333,59 +382,20 @@ if __name__ == '__main__':
 # test = 51
 # validation = 51
 
-
-# max_nodes = 750
-# train = 95
-# test = 95
-# validation = 94
-
-
 # max_nodes = 1000
 # train = 166
 # test = 165
 # validation = 165
-
-
-# max_nodes = 1250
-# train = 264
-# test = 264
-# validation = 264
-
-
-# max_nodes = 1500
-# train = 450
-# test = 450
-# validation = 450
-
-
-# max_nodes = 1750
-# train = 829
-# test = 829
-# validation = 828
-
 
 # max_nodes = 2000
 # train = 1492
 # test = 1492
 # validation = 1491
 
-# max_nodes = 9999 for max_nodes 10000
-
 # max_nodes = 5000
 # train = 36951
 # test = 3770
 # validation = 3325
-
-# max_nodes = 7000 / 7000
-# train = 51244
-# test = 5224
-# validation = 4405
-
-
-# max_nodes = 7500 / 7500
-# train = 53850
-# test = 5401
-# validation = 4577
 
 # max_nodes = 10000
 # train = 62721
@@ -397,13 +407,6 @@ if __name__ == '__main__':
 # test = 6326
 # validation = 5668
 
-
-# import pandas as pd
-# from cmapPy.pandasGEXpress.parse_gct import parse
-# gct_file = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
-# df = parse(gct_file).data_df
-# '''        .apply(lambda x: boxcox1p(x,0.25))'''
-
 # max_nodes = 297 for max_nodes 300
 # max_nodes = 493 for max_nodes 500
 # max_nodes = 749 for max_nodes 750
@@ -412,3 +415,9 @@ if __name__ == '__main__':
 # max_nodes = 1500 for max_nodes 1500
 # max_nodes = 1750 for max_nodes 1750
 # max_nodes = 2000 for max_nodes 2000
+
+# import pandas as pd
+# from cmapPy.pandasGEXpress.parse_gct import parse
+# gct_file = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
+# df = parse(gct_file).data_df
+# '''        .apply(lambda x: boxcox1p(x,0.25))'''

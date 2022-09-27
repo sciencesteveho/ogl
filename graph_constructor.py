@@ -464,15 +464,12 @@ class GraphConstructor:
     @time_decorator(print_args=True)
     def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
-        ### base reference
-        gencode_ref = f'{self.parse_dir}/attributes/gencode_reference.pkl'
-
-        ### retrieve interaction-based edges
+        # retrieve interaction-based edges
         polyadenylation = self._interaction_preprocess()
 
-        ### prepare nested dict for node features
+        # prepare nested dict for node features
         reference_attrs = self._prepare_reference_attributes(
-            gencode_ref=gencode_ref,
+            gencode_ref=f'{self.parse_dir}/attributes/gencode_reference.pkl',
             polyadenylation=polyadenylation,
         )
 
@@ -482,23 +479,22 @@ class GraphConstructor:
             and os.stat(f'{self.graph_dir}/{gene}_{self.tissue}').st_size > 0)
         ]
 
+        # prepare list of uniq interaction edges
         interaction_file = f'{self.interaction_dir}/interaction_edges.txt'
-
-        ### prepare list of uniq interaction edges
         cmd = f"awk '{{print $1 \"\\n\" $2}}' {interaction_file} \
             | sort -u \
             > {self.interaction_dir}/uniq_interaction_nodes.txt"
 
         subprocess.run(cmd, stdout=None, shell=True)
 
-        ### read interaction file into a list
+        # read interaction file into a list
         with open(interaction_file, newline='') as file:
             interaction_edges = [line for line in csv.reader(file, delimiter='\t')]
 
         print(f'total graphs to construct - {len(self.genes)}')
         print(f'starting construction on {len(genes_to_construct)} genes')
 
-        ### parse graph into tensors and save
+        # parse graph into tensors and save
         pool = Pool(processes=24)
         pool.starmap(
             self._prepare_graph_tensors,
@@ -526,14 +522,14 @@ def main() -> None:
 
     genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
-    ### instantiate object
+    # instantiate object
     graphconstructingObject = GraphConstructor(
         params=params,
         genes=genes,
         graph_type='local'
         )
 
-    ### run pipeline!
+    # run pipeline!
     graphconstructingObject.generate_graphs()
 
 
