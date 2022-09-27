@@ -459,7 +459,7 @@ class GraphConstructor:
         print(f'Finished _prepare_graph_tensors on {gene}')
 
     @time_decorator(print_args=True)
-    def generate_graphs(self, graph_type: str) -> None:
+    def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
         ### base reference
         gencode_ref = f'{self.parse_dir}/attributes/gencode_reference.pkl'

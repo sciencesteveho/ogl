@@ -115,6 +115,7 @@ def _fold_change_median(tissue_df, all_median_df, type=None) -> pd.DataFrame:
 
 @time_decorator(print_args=True)
 def _get_dict_with_target_array(split_dict, tissue, tpmkey, prokey, tpm_targets_df, protein_targets_df):
+    """_lorem"""
     new = {}
     for gene in split_dict:
         new[gene+'_'+tissue] = np.array([
@@ -133,6 +134,7 @@ def _combine_tissue_dicts(
     tpm_targets_df: pd.DataFrame,
     protein_targets_df: pd.DataFrame
     ):
+    """_lorem"""
     for idx, tissue in enumerate(tissue_params):
         if idx == 0:
             all_dict = _get_dict_with_target_array(
@@ -210,6 +212,7 @@ def tpm_filtered_targets(
     tissue_params,
     targets,
     ):
+    """_lorem"""
     for idx, tissue in enumerate(tissue_params):
         if idx == 0:
             filtered_genes = _filter_low_tpm(tissue, 'tpm/' + tissue_params[tissue][2] + '.tpm.txt')
@@ -222,6 +225,7 @@ def tpm_filtered_targets(
 
 
 def max_node_filter(max_nodes, filtered_stats, targets, randomizer=False):
+    """_lorem"""
     filtered_targets = {gene:value for gene, value in filtered_stats.items() if value[0] <= max_nodes}
     print(f'max_nodes = {max([value[0] for idx, value in filtered_targets.items()])} for max_nodes {max_nodes}')
     filtered_genes = list(filtered_targets.keys())
@@ -250,6 +254,10 @@ def main() -> None:
         'mammary': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
         'hippocampus': ('brain_hippocampus', 'brain_cortex', 'brain_hippocampus'),
         'left_ventricle': ('heart_left_ventricle', 'heart_ventricle', 'heart_left_ventricle'),
+        'liver': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
+        'lung': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
+        'pancreas': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
+        'skeletal_muscle': ('breast_mammary_tissue', 'breast', 'breast_mammary_tissue'),  
         }
 
     ### split genes in train, test, validation
