@@ -66,8 +66,11 @@ if __name__ == '__main__':
     _set_matplotlib_publication_parameters()
 
     ### get num_nodes across all graphs
-    files = ['num_nodes_hippocampus.pkl', 'num_nodes_left_ventricle.pkl', 'num_nodes_mammary.pkl']
-    all_nodes = _cat_numnodes(files)
+    # files = ['num_nodes_hippocampus.pkl', 'num_nodes_left_ventricle.pkl', 'num_nodes_mammary.pkl']
+    # all_nodes = _cat_numnodes(files)
+
+    with open('node_count.pkl', 'rb') as file:
+        all_nodes = pickle.load(file)
 
     ### plot with smoothed function
     smoothed_plt = plot_num_nodes_dist(all_nodes, 7, kde_option=True)

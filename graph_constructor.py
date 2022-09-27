@@ -24,7 +24,7 @@ from mygene import MyGeneInfo
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
-from utils import dir_check_make, parse_yaml, time_decorator
+from utils import dir_check_make, filtered_genes, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -411,7 +411,7 @@ class GraphConstructor:
         with open(f'{self.interaction_dir}/uniq_interaction_nodes.txt') as f:
             interaction_nodes = [line.rstrip('\n') for line in f.readlines()]
 
-        nodes_to_add = set(uniq_local).intersection(interaction_nodes)
+        nodes_to_add = set(str(uniq_local).split('\\n')).intersection(interaction_nodes)
 
         edges_to_add = [
             [line[0], line[1], line[3]] for line in
@@ -505,9 +505,7 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    tpm_filtered_genes = f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed"
-    with open(tpm_filtered_genes, newline='') as file:
-        genes = [line[3] for line in csv.reader(file, delimiter='\t')]
+    genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
     ### instantiate object
     graphconstructingObject = GraphConstructor(

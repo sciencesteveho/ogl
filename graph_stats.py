@@ -44,22 +44,22 @@ def _cat_stat_dicts(tissue_params):
     return shared
 
 
-def _edge_and_nodes_per_gene(
-    genes,
-    directory,
-    tissue,
-    ):
-    return {
-        gene:_nodes_edges_from_graph(f'{directory}/{gene}_{tissue}')
-        for _, gene in enumerate(genes)
-    }
-
-
 def _summed_counts(graph_stats):
     return (
         sum([graph_stats[gene][0] for gene in graph_stats.keys()]),
         sum([graph_stats[gene][1] for gene in graph_stats.keys()])
     )
+
+
+# def _edge_and_nodes_per_gene(
+#     genes,
+#     directory,
+#     tissue,
+#     ):
+#     return {
+#         gene:_nodes_edges_from_graph(f'{directory}/{gene}_{tissue}')
+#         for _, gene in enumerate(genes)
+#     }
 
 
 @time_decorator(print_args=True)
@@ -94,45 +94,47 @@ def _percentage_of_zeroes(tup_list):
 def main() -> None:
     """Save num_nodes as array for each individual tissue"""
     # ctcf = 'ENSG00000102974.14'
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--tissue', type=str, required=True)
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-t', '--tissue', type=str, required=True)
+    # args = parser.parse_args()
 
-    root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
-    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
+    # root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+    # genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
 
-    graph_stats = _edge_and_nodes_per_gene(
-        genes=genes,
-        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
-        tissue=args.tissue
-        )
+    # graph_stats = _edge_and_nodes_per_gene(
+    #     genes=genes,
+    #     directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
+    #     tissue=args.tissue
+    #     )
 
-    ### save
-    node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
-    with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
-        pickle.dump(graph_stats, output)
+    # ### save
+    # node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
+    # with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
+    #     pickle.dump(graph_stats, output)
 
-    # tissue_params = [
-    #     ('num_nodes_hippocampus.pkl', 'hippocampus'),
-    #     ('num_nodes_left_ventricle.pkl', 'left_ventricle'),
-    #     ('num_nodes_mammary.pkl', 'mammary'),   
-    #     ]
 
-    # ### unfiltered
-    # all_stats_dict = _cat_stat_dicts(tissue_params)
-    # total_nodes, total_edges = _summed_counts(all_stats_dict)
 
-    # with open('targets_filtered.pkl', 'rb') as f:
-    #     filtered_targets = pickle.load(f)
+    tissue_params = [
+        ('num_nodes_hippocampus.pkl', 'hippocampus'),
+        ('num_nodes_left_ventricle.pkl', 'left_ventricle'),
+        ('num_nodes_mammary.pkl', 'mammary'),
+        ('num_nodes_liver.pkl', 'liver'),
+        ('num_nodes_lung.pkl', 'lung'),
+        ('num_nodes_pancreas.pkl', 'pancreas'),
+        ('num_nodes_skeletal_muscle.pkl', 'skeletal_muscle'),
+        ]
 
-    # filtered_genes = list(filtered_targets['train'].keys()) + list(filtered_targets['test'].keys()) + list(filtered_targets['validation'].keys())
+    ### unfiltered
+    all_stats_dict = _cat_stat_dicts(tissue_params)
+    total_nodes, total_edges = _summed_counts(all_stats_dict)
 
-    # filtered_stats = {
-    #     gene: value for gene, value
-    #     in all_stats_dict.items()
-    #     if gene in filtered_genes
-    # }
-    # total_nodes, total_edges = _summed_counts(filtered_stats)
+    node_counts = [x[0] for x in all_stats_dict.values()]
+
+    ### save 
+    with open('node_count.pkl', 'wb') as output:
+        pickle.dump(node_counts, output)
+
+
     # parser = argparse.ArgumentParser()
     # parser.add_argument('-t', '--tissue', type=str, required=True)
     # # parser.add_argument('-p', '--partition', type=str, required=True)
