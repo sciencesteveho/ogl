@@ -91,48 +91,50 @@ def _percentage_of_zeroes(tup_list):
 
 
 def main() -> None:
-    """Save num_nodes as array for each individual tissue"""
-    ctcf = 'ENSG00000102974.14'
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--tissue', type=str, required=True)
-    args = parser.parse_args()
+    # """Save num_nodes as array for each individual tissue"""
+    # ctcf = 'ENSG00000102974.14'
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-t', '--tissue', type=str, required=True)
+    # args = parser.parse_args()
 
-    root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+    # root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+    # node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
+
+    # genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
+
+    # graph_stats = _edge_and_nodes_per_gene(
+    #     genes=genes,
+    #     directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
+    #     tissue=args.tissue
+    #     )
+
+    # ### save
+    # with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
+    #     pickle.dump(graph_stats, output)
+
+
     node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
+    tissue_params = [
+        ['num_nodes_hippocampus.pkl', 'hippocampus'],
+        ['num_nodes_left_ventricle.pkl', 'left_ventricle'],
+        ['num_nodes_mammary.pkl', 'mammary'],
+        ['num_nodes_liver.pkl', 'liver'],
+        ['num_nodes_lung.pkl', 'lung'],
+        ['num_nodes_pancreas.pkl', 'pancreas'],
+        ['num_nodes_skeletal_muscle.pkl', 'skeletal_muscle'],
+        ]
 
-    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
+    tissue_params = [[node_dir + '/' + x[0], x[1]] for x in tissue_params]
 
-    graph_stats = _edge_and_nodes_per_gene(
-        genes=genes,
-        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
-        tissue=args.tissue
-        )
+    ### unfiltered
+    all_stats_dict = _cat_stat_dicts(tissue_params)
+    # total_nodes, total_edges = _summed_counts(all_stats_dict)
 
-    ### save
-    with open(f'{node_dir}/num_nodes_{args.tissue}.pkl', 'wb') as output:
-        pickle.dump(graph_stats, output)
+    node_counts = [x[0] for x in all_stats_dict.values()]
 
-    # tissue_params = [
-    #     ['num_nodes_hippocampus.pkl', 'hippocampus'],
-    #     ['num_nodes_left_ventricle.pkl', 'left_ventricle'],
-    #     ['num_nodes_mammary.pkl', 'mammary'],
-    #     ['num_nodes_liver.pkl', 'liver'],
-    #     ['num_nodes_lung.pkl', 'lung'],
-    #     ['num_nodes_pancreas.pkl', 'pancreas'],
-    #     ['num_nodes_skeletal_muscle.pkl', 'skeletal_muscle'],
-    #     ]
-
-    # tissue_params = [[node_dir + '/' + x[0], x[1]] for x in tissue_params]
-
-    # ### unfiltered
-    # all_stats_dict = _cat_stat_dicts(tissue_params, node_dir)
-    # # total_nodes, total_edges = _summed_counts(all_stats_dict)
-
-    # node_counts = [x[0] for x in all_stats_dict.values()]
-
-    # ### save 
-    # with open(f'{node_dir}/node_count.pkl', 'wb') as output:
-    #     pickle.dump(node_counts, output)
+    ### save 
+    with open(f'{node_dir}/node_count.pkl', 'wb') as output:
+        pickle.dump(node_counts, output)
 
 
     # parser = argparse.ArgumentParser()

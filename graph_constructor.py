@@ -86,10 +86,12 @@ class GraphConstructor:
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
-        genes: List[any]):
+        genes: List[any],
+        graph_type: str):
         """Initialize the class"""
 
         self.genes = genes
+        self.graph_type = graph_type
 
         self.gencode = params['shared']['gencode']
         self.interaction_files = params['interaction']
@@ -108,9 +110,13 @@ class GraphConstructor:
         self.shared_interaction_dir = f'{self.shared_dir}/interaction'
 
         dir_check_make(self.graph_dir)
+        if self.graph_type == 'local':
+            dir_check_make(f"{self.parse_dir}/local_graphs")
+
         self.genesymbol_to_gencode = self._genes_from_gencode(
             gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
             )
+
         self.e_indexes = self._enhancer_index(
             e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
             e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt"
@@ -430,11 +436,17 @@ class GraphConstructor:
                 [line[3], line[7], 'local']
                 for line in csv.reader(file, delimiter='\t')]
 
-        edges_reindexed, node_idxs, num_nodes = _reindex_nodes(local_edges + edges_to_add)
+        if self.graph_type == 'local':
+            edges = local_edges
+            output_file = f'{self.parse_dir}/local_graphs/{gene}_{self.tissue}'
+        else:
+            edges = local_edges + edges_to_add
+            output_file = f'{self.graph_dir}/{gene}_{self.tissue}'
 
+        edges_reindexed, node_idxs, num_nodes = _reindex_nodes(edges)
         graph_only_refs = {node_idxs[node]:reference_attrs[node] for node in node_idxs}
 
-        with open(f'{self.graph_dir}/{gene}_{self.tissue}', 'wb') as output:
+        with open(f'{output_file}', 'wb') as output:
             pickle.dump({
             'edge_index': np.array([[edge[0] for edge in edges_reindexed], [edge[1] for edge in edges_reindexed]]),
             'edge_feat': np.array([self.ONEHOT_EDGETYPE[edge[2]] for edge in edges_reindexed]),
@@ -447,7 +459,7 @@ class GraphConstructor:
         print(f'Finished _prepare_graph_tensors on {gene}')
 
     @time_decorator(print_args=True)
-    def generate_graphs(self) -> None:
+    def generate_graphs(self, graph_type: str) -> None:
         """Constructs graphs in parallel"""
         ### base reference
         gencode_ref = f'{self.parse_dir}/attributes/gencode_reference.pkl'
@@ -515,6 +527,7 @@ def main() -> None:
     graphconstructingObject = GraphConstructor(
         params=params,
         genes=genes,
+        graph_type='local'
         )
 
     ### run pipeline!
