@@ -10,6 +10,7 @@
 """Create graphs from parsed genomic data"""
 
 import argparse
+from cgi import test
 import csv
 import os
 import pickle
@@ -105,14 +106,16 @@ class GraphConstructor:
         self.shared_dir = params['dirs']['shared_dir']
 
         self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
-        self.graph_dir = f"{self.parse_dir}/graphs"
         self.interaction_dir = f"{self.root_dir}/{self.tissue}/interaction"
         self.shared_interaction_dir = f'{self.shared_dir}/interaction'
 
-        dir_check_make(self.graph_dir)
         if self.graph_type == 'local':
-            dir_check_make(f"{self.parse_dir}/local_graphs")
+            self.graph_dir = f"{self.parse_dir}/local_graphs"
+        else:
+            self.graph_dir = f"{self.parse_dir}/graphs"
 
+        dir_check_make(self.graph_dir)
+        
         self.genesymbol_to_gencode = self._genes_from_gencode(
             gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
             )
