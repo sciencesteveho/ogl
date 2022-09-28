@@ -346,75 +346,30 @@ for num in [500, 1000, 2500, 5000, 10000]:
     print_stats(num)
 
 
-
 # max_nodes = 500
 # train = 3098
 # test = 883
 # validation = 257
-
 
 # max_nodes = 1000
 # train = 7839
 # test = 1664
 # validation = 780
 
-
 # max_nodes = 2500
 # train = 25519
 # test = 4350
 # validation = 2881
-
 
 # max_nodes = 5000
 # train = 55217
 # test = 7088
 # validation = 6716
 
-
 # max_nodes = 10000
 # train = 100490
 # test = 10221
 # validation = 10205
-
-
-# max_nodes = 500
-# train = 51
-# test = 51
-# validation = 51
-
-# max_nodes = 1000
-# train = 166
-# test = 165
-# validation = 165
-
-# max_nodes = 2000
-# train = 1492
-# test = 1492
-# validation = 1491
-
-# max_nodes = 5000
-# train = 36951
-# test = 3770
-# validation = 3325
-
-# max_nodes = 10000
-# train = 62721
-# test = 5999
-# validation = 5157
-
-# max_nodes = 41200
-# train = 72076
-# test = 6326
-# validation = 5668
-
-# max_nodes = 297 for max_nodes 300
-# max_nodes = 493 for max_nodes 500
-# max_nodes = 749 for max_nodes 750
-# max_nodes = 999 for max_nodes 1000
-# max_nodes = 1250 for max_nodes 1250
-# max_nodes = 1500 for max_nodes 1500
-# max_nodes = 1750 for max_nodes 1750
-# max_nodes = 2000 for max_nodes 2000
 
 # import pandas as pd
 # from cmapPy.pandasGEXpress.parse_gct import parse

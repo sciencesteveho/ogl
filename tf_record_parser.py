@@ -6,7 +6,7 @@
 
 """Convert tensors to TFrecords for running on CS-2
 
-Much of this code is adapted from:
+Adapted from:
     cerebras/modelzeoo/graphs/tf/input/preprocess.py
 """
 
@@ -90,7 +90,7 @@ def get_arguments():
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=1000,
+        default=2500,
     )
 
     args = parser.parse_args(sys.argv[1:])
