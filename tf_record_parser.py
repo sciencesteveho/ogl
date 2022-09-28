@@ -101,7 +101,7 @@ class GGraphMutagenesisTFRecordProcessor:
             graph = self._open_graph(idx)
             label = self.targets[self.mode][idx]
             num_nodes = graph["num_nodes"]
-            node_feat = graph["node_feat"]
+            node_feat = graph["node_feat"].astype(int)
 
             # form adj. matrix
             row, col = graph["edge_index"]
