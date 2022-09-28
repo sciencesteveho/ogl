@@ -93,7 +93,7 @@ def get_arguments():
         default=2500,
     )
 
-    args = parser.parse_args(sys.argv[1:])
+    args = parser.parse_args()
     params = get_params(args.params)
 
     # Only update params that are not None
