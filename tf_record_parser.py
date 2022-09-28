@@ -27,80 +27,9 @@ import yaml
 from tqdm import tqdm
 from multiprocessing import Pool
 
+from utils import parse_yaml
+
 # from utils import dir_check_make
-
-def get_params(params_file):
-    # Load yaml into params
-    with open(params_file, 'r') as stream:
-        params = yaml.safe_load(stream)
-    return params
-
-
-def get_arguments():
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        "--params",
-        type=str,
-        default="data.yaml",
-        help="Path to .yaml file with data parameters",
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="train",
-        help="Path to .yaml file with data parameters",
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="tfrecords_min",
-        help="directory name where TFRecords will be saved",
-    )
-    parser.add_argument(
-        "--num_files",
-        type=int,
-        default=16,
-        help="number of files on disk to separate records into",
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        default="genomic-graph-mutagenesis",
-        help="name of the dataset to call GGraphMutagenesisTFRecordProcessor with",
-    )
-    parser.add_argument(
-        "--output_name",
-        type=str,
-        default="genomic-graph-mutagenesis",
-        help="name of the dataset; i.e. prefix to use for TFRecord names",
-    )
-    parser.add_argument(
-        "--target_file",
-        type=str,
-        default="targets_filtered_2500.pkl",
-    )
-    parser.add_argument(
-        "--cores",
-        type=int,
-        default=12,
-    )
-    parser.add_argument(
-        "--max_nodes",
-        type=int,
-        default=2500,
-    )
-
-    args = parser.parse_args()
-    params = get_params(args.params)
-
-    # Only update params that are not None
-    cmd_params = list(vars(args).items())
-    params.update({k: v for (k, v) in cmd_params if v is not None})
-
-    return params
 
 
 class GGraphMutagenesisTFRecordProcessor:
@@ -303,7 +232,68 @@ class GGraphMutagenesisTFRecordProcessor:
 
 
 if __name__ == "__main__":
-    params = get_arguments()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument(
+        "--params",
+        type=str,
+        default="data.yaml",
+        help="Path to .yaml file with data parameters",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="train",
+        help="Path to .yaml file with data parameters",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="tfrecords_min",
+        help="directory name where TFRecords will be saved",
+    )
+    parser.add_argument(
+        "--num_files",
+        type=int,
+        default=16,
+        help="number of files on disk to separate records into",
+    )
+    parser.add_argument(
+        "--name",
+        type=str,
+        default="genomic-graph-mutagenesis",
+        help="name of the dataset to call GGraphMutagenesisTFRecordProcessor with",
+    )
+    parser.add_argument(
+        "--output_name",
+        type=str,
+        default="genomic-graph-mutagenesis",
+        help="name of the dataset; i.e. prefix to use for TFRecord names",
+    )
+    parser.add_argument(
+        "--target_file",
+        type=str,
+        default="targets_filtered_2500.pkl",
+    )
+    parser.add_argument(
+        "--cores",
+        type=int,
+        default=12,
+    )
+    parser.add_argument(
+        "--max_nodes",
+        type=int,
+        default=2500,
+    )
+
+    args = parser.parse_args()
+    params = parse_yaml(args.params)
+
+    # Only update params that are not None
+    cmd_params = list(vars(args).items())
+    params.update({k: v for (k, v) in cmd_params if v is not None})
 
     name = params["name"]
     output_name = params["output_name"]
