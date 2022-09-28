@@ -36,22 +36,19 @@ class GGraphMutagenesisTFRecordProcessor:
     """Data Processor for handling OGB's graph prediction data.
 
     :param dict params: Model configuration parameters.
-    :param int feature_dim: Size of feature dimension for convolution.
-        Defaults to 9.
     :param bool normalize: Specifies whether to normalize the labels for
         training. Defaults to False.
     """
 
     def __init__(
-        self, params, name, output_dir, output_name, num_files, target_file, feature_dim=9
+        self, params, name, output_dir, output_name, num_files, target_file, max_nodes, mode
     ):
         self.name = name
-        self.feature_dim = feature_dim
         self.shuffle_raw_train_data = params.get("shuffle_raw_train_data", True)
-        self.max_num_nodes = params["max_nodes"]
+        self.max_num_nodes = max_nodes
         # self.task_type = params.get("task_type", "binary_classification")
         self.normalize = params.get("normalize", True)
-        self.mode = params['mode']
+        self.mode = mode
 
         self.output_dir = output_dir 
         self.output_name = output_name
@@ -251,7 +248,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="tfrecords_min",
+        default="tfrecords",
         help="directory name where TFRecords will be saved",
     )
     parser.add_argument(
@@ -301,6 +298,7 @@ if __name__ == "__main__":
     num_files = params["num_files"]
     target_file = params['target_file']
     mode = params["mode"]
+    max_nodes = params["mad_nodes"]
     if mode == "train":
         init_params = params["train"]
     elif mode == "validation":
@@ -315,11 +313,10 @@ if __name__ == "__main__":
 
     ### initialize the object
     ogbObject = GGraphMutagenesisTFRecordProcessor(
-        init_params, name, output_dir+'/'+mode, output_name, num_files, target_file
+        init_params, name, output_dir+'/'+mode, output_name, num_files, target_file, max_nodes, mode
     )
     
     ### process data in parallel
-
     split_list = ogbObject._get_split_idx()[mode]
     split_idxs = list(range(1, cores+1))
     split_pool = np.array_split(split_list, cores)
