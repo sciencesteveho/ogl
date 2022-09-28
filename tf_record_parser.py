@@ -298,7 +298,7 @@ if __name__ == "__main__":
     num_files = params["num_files"]
     target_file = params['target_file']
     mode = params["mode"]
-    max_nodes = params["mad_nodes"]
+    max_nodes = params["max_nodes"]
     if mode == "train":
         init_params = params["train"]
     elif mode == "validation":
