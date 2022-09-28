@@ -248,7 +248,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="tfrecords",
+        default="tfrecords_5000",
         help="directory name where TFRecords will be saved",
     )
     parser.add_argument(
@@ -277,12 +277,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cores",
         type=int,
-        default=12,
+        default=24,
     )
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=2500,
+        default=5000,
     )
 
     args = parser.parse_args()
