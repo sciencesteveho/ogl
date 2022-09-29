@@ -127,15 +127,18 @@ def main() -> None:
     tissue_params = [[node_dir + '/' + x[0], x[1]] for x in tissue_params]
 
     ### unfiltered
-    all_stats_dict = _cat_stat_dicts(tissue_params, node_dir)
+    all_stats_dict = _cat_stat_dicts(tissue_params)
     # total_nodes, total_edges = _summed_counts(all_stats_dict)
 
     node_counts = [x[0] for x in all_stats_dict.values()]
+    edge_counts = [x[1] for x in all_stats_dict.values()]
 
     ### save 
     with open(f'{node_dir}/node_count.pkl', 'wb') as output:
         pickle.dump(node_counts, output)
 
+    with open(f'{node_dir}/edge_count.pkl', 'wb') as output:
+        pickle.dump(edge_counts, output)
 
     # parser = argparse.ArgumentParser()
     # parser.add_argument('-t', '--tissue', type=str, required=True)

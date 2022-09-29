@@ -5,13 +5,25 @@
 
 import csv
 import pickle
+import subprocess
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pybedtools
 import seaborn as sns
 
 from collections import Counter
 
+
+tissues = [
+    'hippocampus',
+    'left_ventricle',
+    'mammary',
+    'liver',
+    'lung',
+    'pancreas',
+    'skeletal_muscle'
+]
 
 def _set_matplotlib_publication_parameters():
     plt.rcParams.update({'font.size': 7})  # set font size
@@ -42,7 +54,7 @@ def uniq_feats(feat_list):
 
 def plot_num_nodes_dist(all_nodes, fontsize, kde_option=False):
     sns.distplot(all_nodes, kde=kde_option)
-    plt.title('Distribution of num_nodes', fontsize=fontsize)
+    plt.title('Distribution of num_edges', fontsize=fontsize)
     plt.xlabel('Number of graphs', fontsize=fontsize)
     plt.ylabel('Number of nodes', fontsize=fontsize)
     return plt    
@@ -61,6 +73,13 @@ def barplot_feats(uniq_feats):
     '''Allo'''
 
 
+def merge_bedfiles(tissue):
+    root_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/'
+    cat_cmd = f"cat {root_dir}/{tissue}/parsing/attributes/gc/*_* | sort -k1,1 -k2,2n > {root_dir}/paring/all_nodes.txt"
+    subprocess.run(cat_cmd, stdout=None, shell=True)
+    nodes = pybedtools.BedTool(f"{root_dir}/parsing/all_nodes.txt")
+    nodes = nodes.merge()
+
 if __name__ == '__main__':
     ### set matplotlib parameters
     _set_matplotlib_publication_parameters()
@@ -69,7 +88,7 @@ if __name__ == '__main__':
     # files = ['num_nodes_hippocampus.pkl', 'num_nodes_left_ventricle.pkl', 'num_nodes_mammary.pkl']
     # all_nodes = _cat_numnodes(files)
 
-    with open('node_count.pkl', 'rb') as file:
+    with open('edge_count.pkl', 'rb') as file:
         all_nodes = pickle.load(file)
 
     ### plot with smoothed function

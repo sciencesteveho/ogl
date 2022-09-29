@@ -23,7 +23,7 @@ for i in {1..12}; do
 done
 
 ### move for train
-for i in {1..48}; do
+for i in {1..12}; do
     cd train_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_train_${i}
@@ -42,7 +42,7 @@ newgrp bio220004p
 PROJECT='/ocean/projects/bio210019p/stevesho'
 
 ### copy modelzoo
-rsync -PLoptr $CEREBRAS_DIR/modelzoo $PROJECT/
+# rsync -PLoptr $CEREBRAS_DIR/modelzoo $PROJECT/
 
 ### start interactive session
 # interact --account bio220004p --partition RM -n 16
@@ -53,7 +53,8 @@ cd $PROJECT/modelzoo/graphs/tf
 ### make custom dirs
 # mkdir custom_configs custom_output_dir
 
-srun --pty --cpus-per-task=28 --account=bio220004p --partition=RM --kill-on-bad-exit singularity shell --cleanenv --bind $CEREBRAS_DIR/data,$PROJECT $CEREBRAS_DIR/cbcore_latest.sif
+srun --pty --cpus-per-task=28 --account=bio220004p --partition RM --kill-on-bad-exit singularity shell --cleanenv --bind $CEREBRAS_DIR/data,$PROJECT $CEREBRAS_DIR/cbcore_latest.sif
+
 
 ### NOTES
 '''
