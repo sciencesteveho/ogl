@@ -526,7 +526,7 @@ def main() -> None:
     graphconstructingObject = GraphConstructor(
         params=params,
         genes=genes,
-        graph_type='local'
+        graph_type='concatenated'
         )
 
     # run pipeline!
