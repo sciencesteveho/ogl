@@ -267,7 +267,7 @@ class ChEMBL20Classifier(GNN):
         self, labels, logits, num_valid
     ):
         """
-        Modified, actually returns mean RMSE 
+        Modified, actually returns mean RMSE
         """
 
         #loss = tf.sqrt(tf.reduce_mean((targets - outputs)**2))

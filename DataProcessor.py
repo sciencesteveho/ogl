@@ -28,7 +28,7 @@ class OGBGMOLCHEMBLDataProcessor:
         Defaults to 9 (for OGBG-MOL* data sets)
     """
 
-    def __init__(self, params, feature_dim=33):
+    def __init__(self, params, feature_dim=34):
         self.batch_size = params["batch_size"]
         self.shuffle = params.get("shuffle", True)
         self.shuffle_seed = params.get("shuffle_seed", None)
@@ -46,7 +46,7 @@ class OGBGMOLCHEMBLDataProcessor:
         self.mp_type = tf.float16 if self.mixed_precision else tf.float32
 
         self.feature_dim = feature_dim
-        self.max_num_nodes = params.get("max_num_nodes", 2500)
+        self.max_num_nodes = params.get("max_num_nodes", 500)
         self.num_targets = params.get("num_targets", 4)
         # for sharding on the Cerebras System, we need to explicitly retrieve TF_CONFIG
         self.label_mask_value = -1
@@ -124,7 +124,7 @@ class OGBGMOLCHEMBLDataProcessor:
         if mode == tf.estimator.ModeKeys.TRAIN:
             split_name = "train"
         elif mode == tf.estimator.ModeKeys.EVAL:
-            split_name = "validation"
+            split_name = "valid"
         elif mode == tf.estimator.ModeKeys.PREDICT:
             split_name = "test"
         else:
@@ -133,7 +133,7 @@ class OGBGMOLCHEMBLDataProcessor:
             )
         _drop_remainder = not (mode == tf.estimator.ModeKeys.PREDICT)
         file_pattern = osp.join(
-            self.root_dir, split_name, "*.tfrecords"
+            self.root_dir, split_name, "*.tfrecords*"
         )
         filelist = tf.data.Dataset.list_files(
             file_pattern, shuffle=self.shuffle, seed=self.shuffle_seed
