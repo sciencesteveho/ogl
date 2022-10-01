@@ -24,7 +24,7 @@ from utils import genes_from_gff, filtered_genes, time_decorator
 def _nodes_edges_from_graph(filename: str) -> int:
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
-    return graph['num_nodes'], graph['edge_index'].shape[1]
+    return graph['num_nodes'], graph['edge_index'].shape[1], graph['node_feat']
 
 
 def _cat_stat_dicts(tissue_params):
@@ -94,7 +94,7 @@ def _percentage_of_zeroes(tup_list):
 
 def main() -> None:
     # """Save num_nodes as array for each individual tissue"""
-    ctcf = 'ENSG00000102974.14'
+    # ctcf = 'ENSG00000102974.14'
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--tissue', type=str, required=True)
     args = parser.parse_args()
