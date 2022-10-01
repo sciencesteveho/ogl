@@ -95,7 +95,7 @@ class GGraphMutagenesisTFRecordProcessor:
         writer_index = 0
         total_written = 0
 
-        split_idx = self._get_split_idx(self.split)[mode]
+        split_idx = self._get_split_idx()[mode]
         if self.mode == "train" and self.shuffle_raw_train_data:
             random.shuffle(split_idx)
 
