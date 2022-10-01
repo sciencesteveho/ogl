@@ -99,9 +99,9 @@ class GGraphMutagenesisTFRecordProcessor:
         print("Processing to TFRecords ...")
         for idx in tqdm(split_idx, total=len(split_idx)):
             graph = self._open_graph(idx)
-            label = self.targets[self.mode][idx]
+            label = self.targets[self.mode][idx].astype(np.float32)
             num_nodes = graph["num_nodes"]
-            node_feat = graph["node_feat"]
+            node_feat = graph["node_feat"].astype(np.int64)
 
             # form adj. matrix
             row, col = graph["edge_index"]
@@ -138,9 +138,9 @@ class GGraphMutagenesisTFRecordProcessor:
 
             features = collections.OrderedDict()
             features["adj"] = self._create_float_feature(adj.astype(np.float32))
-            features["node_feat"] = self._create_int_feature(node_feat.astype(np.int64))
+            features["node_feat"] = self._create_int_feature(node_feat)
             features["node_mask"] = self._create_float_feature(node_mask)
-            features["label"] = self._create_float_feature(label.astype(np.float32))
+            features["label"] = self._create_float_feature(label)
 
             tf_example = tf.train.Example(
                 features=tf.train.Features(feature=features)
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_2500.pkl",
+        default="targets_filtered_500.pkl",
     )
     parser.add_argument(
         "--cores",
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=2500,
+        default=500,
     )
 
     args = parser.parse_args()

@@ -1,16 +1,63 @@
 # interact -p GPU-shared --gres=gpu:v100-16:1 -N 1
 # cd /ocean/projects/bio210019p/stevesho/data/preprocess/tfrecords/train
 
+import numpy as np
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 # set mp_type
 mp_type = tf.float16
+
+def map_fn(raw_record):
+    """Parses a serialized protobuf example into a dictionary
+    of input features and labels for Graph training.
+    """
+    feature_map = {
+        "adj": tf.io.FixedLenFeature(
+            [2500, 2500], tf.float32
+        ),
+        "node_feat": tf.io.FixedLenFeature(
+            [2500, 33], tf.int64
+        ),
+        "node_mask": tf.io.FixedLenFeature(
+            [2500, 1], tf.float32
+        ),
+        "label": tf.io.FixedLenFeature([4], tf.float32),
+    }
+
+    example = tf.io.parse_single_example(raw_record, feature_map)
+    for name in list(example.keys()):
+        feature = example[name]
+        if feature.dtype == tf.int64:
+            feature = tf.cast(feature, tf.int32)
+            example[name] = feature
+
+    feature = {
+        "adj": tf.cast(example["adj"], mp_type),
+        "node_mask": tf.cast(example["node_mask"], mp_type),
+    }
+
+    node_feat = example["node_feat"]
+    for i in range(33):
+        name = "node_feat" + str(i)
+        feature[name] = tf.cast(node_feat[..., i], tf.int32)
+    label = tf.cast(example["label"], mp_type)
+
+    return (feature, label)
+
+dataset = tf.data.TFRecordDataset('ggraphmutagenesis_1.tfrecords_train_1')
+dataset = dataset.map(map_fn)
+batched = dataset.batch(32)
+batched_numpy = tfds.as_numpy(batched)
 
 # random labels with -1 to mask
 labels = [[2.230741  , 0.68080056, 0.6166089 , -1], [2.230741  , 0.68080056, 0.6166089 , -1]]
 
 # random preds
 logits = [[1.22321, 2.33434, 1.23342, 4.43221], [1.22321, 2.33434, 1.23342, 4.43221]]
+
+
+np.random.rand(32, 4)
 
 # conver to tf and cast to mp.type
 labels = tf.convert_to_tensor(labels)

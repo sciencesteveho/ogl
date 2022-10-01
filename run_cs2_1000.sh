@@ -3,7 +3,7 @@
 cd /ocean/projects/bio210019p/stevesho/data/preprocess/tfrecords
 mkdir test train validation
 
-for i in {1..12}; do
+for i in {1..24}; do
     cd test_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_test_${i}
@@ -13,7 +13,7 @@ for i in {1..12}; do
 done
 
 ### move for validation
-for i in {1..12}; do
+for i in {1..24}; do
     cd validation_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_validation_${i}
@@ -23,7 +23,7 @@ for i in {1..12}; do
 done
 
 ### move for train
-for i in {1..12}; do
+for i in {1..24}; do
     cd train_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_train_${i}
