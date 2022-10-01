@@ -85,7 +85,7 @@ class OGBGMOLCHEMBLDataProcessor:
             "node_mask": tf.io.FixedLenFeature(
                 [self.max_num_nodes, 1], tf.float32
             ),
-            "label": tf.io.FixedLenFeature([self.num_targets,], tf.int64),
+            "label": tf.io.FixedLenFeature([self.num_targets,], tf.float32),
         }
 
         example = tf.io.parse_single_example(raw_record, feature_map)

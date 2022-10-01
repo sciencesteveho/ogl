@@ -49,6 +49,9 @@ def _concensus_tads(dir: str):
     sed -i -e '1431d' KBM7_Rao_2014-raw_TADs.txt
     sed -i -e '2270d' NHEK_Rao_2014-raw_TADs.txt
     sed -i -e '1291d' T470_raw-merged_TADs.txt
+
+    Naive: if a called TAD has 80% overlap in 50% of samples
+    All final TADs are merged
     """
 
 

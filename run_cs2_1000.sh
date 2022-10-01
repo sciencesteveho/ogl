@@ -53,7 +53,7 @@ cd $PROJECT/modelzoo/graphs/tf
 ### make custom dirs
 # mkdir custom_configs custom_output_dir
 
-srun --pty --cpus-per-task=28 --account=bio220004p --partition RM --kill-on-bad-exit singularity shell --cleanenv --bind $CEREBRAS_DIR/data,$PROJECT $CEREBRAS_DIR/cbcore_latest.sif
+srun --pty --cpus-per-task=28 --account=bio220004p --partition RM-shared --kill-on-bad-exit singularity shell --cleanenv --bind $CEREBRAS_DIR/data,$PROJECT $CEREBRAS_DIR/cbcore_latest.sif
 
 
 ### NOTES

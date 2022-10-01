@@ -52,17 +52,17 @@ def uniq_feats(feat_list):
     return Counter(feat_list)
 
 
-def plot_num_nodes_dist(all_nodes, fontsize, kde_option=False):
-    sns.distplot(all_nodes, kde=kde_option)
-    plt.title('Distribution of num_edges', fontsize=fontsize)
-    plt.xlabel('Number of graphs', fontsize=fontsize)
-    plt.ylabel('Number of nodes', fontsize=fontsize)
+def plot_num_nodes_dist(all_nodes, fontsize, g_type, kde_option=False):
+    sns.displot(all_nodes, kde=kde_option)
+    plt.title(f'Distribution, number of {g_type} per graph', fontsize=fontsize)
+    plt.xlabel(f'Number of {g_type}', fontsize=fontsize)
+    plt.ylabel('Number of graphs', fontsize=fontsize)
     return plt    
 
 
 def plot_sparsity(zeros, fontsize):
     _set_matplotlib_publication_parameters()
-    sns.distplot(zeros)
+    sns.displot(zeros)
     plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
     plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
     plt.ylabel('Number of graphs', fontsize=fontsize)
@@ -88,11 +88,18 @@ if __name__ == '__main__':
     # files = ['num_nodes_hippocampus.pkl', 'num_nodes_left_ventricle.pkl', 'num_nodes_mammary.pkl']
     # all_nodes = _cat_numnodes(files)
 
-    with open('edge_count.pkl', 'rb') as file:
+    with open('node_count.pkl', 'rb') as file:
         all_nodes = pickle.load(file)
 
+    with open('edge_count.pkl', 'rb') as file:
+        all_edges = pickle.load(file)
+
     ### plot with smoothed function
-    smoothed_plt = plot_num_nodes_dist(all_nodes, 7, kde_option=True)
+    smoothed_plt = plot_num_nodes_dist(all_nodes, 7, g_type='nodes', kde_option=True)  # nodes
+    plt.savefig('node_count_v3.png', dpi=300, format='png', bbox_inches = "tight",)
+
+    smoothed_plt = plot_num_nodes_dist(all_edges, 7, g_type='edges', kde_option=True)  # edges
+    plt.savefig('edge_count_v3.png', dpi=300, format='png', bbox_inches = "tight",)
 
     ### plot with absolute values
     absolute_plt = plot_num_nodes_dist(all_nodes, 7, kde_option=False)
@@ -110,11 +117,6 @@ if __name__ == '__main__':
 
 
 
-# idx=0
-# for i in all_nodes:
-#     if i <= 7500:
-#         idx+=1
-
 #!/usr/bin/python
 
 # import numpy as np
@@ -124,33 +126,34 @@ if __name__ == '__main__':
 # import seaborn as sns
 
 
-# def _set_matplotlib_publication_parameters():
-#     plt.rcParams.update({'font.size': 7})  # set font size
-#     plt.rcParams["font.family"] = 'Helvetica'  # set font
+def _set_matplotlib_publication_parameters():
+    plt.rcParams.update({'font.size': 7})  # set font size
+    plt.rcParams["font.family"] = 'Helvetica'  # set font
 
 
-# def plot_sparsity(distances, fontsize):
-#     _set_matplotlib_publication_parameters()
-#     sns.distplot(distances)
-#     plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
-#     plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
-#     plt.ylabel('Number of graphs', fontsize=fontsize)
-#     return plt    
+def plot_sparsity(distances, fontsize):
+    _set_matplotlib_publication_parameters()
+    sns.displot(distances, kind='kde')
+    plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
+    plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
+    plt.ylabel('Number of graphs', fontsize=fontsize)
+    plt.xlim(0, 1000000)
+    return plt    
 
 
-# def bed_distances(bed): 
-#     a = pybedtools.BedTool(bed)
-#     starts = np.array([int(line[1]) for line in a])
-#     ends = np.array([int(line[2]) for line in a])
-#     return np.subtract(
-#         starts[1:len(starts)],
-#         ends[:len(ends)-1],
-#     )
+def bed_distances(bed): 
+    a = pybedtools.BedTool(bed)
+    starts = np.array([int(line[1]) for line in a])
+    ends = np.array([int(line[2]) for line in a])
+    return np.subtract(
+        starts[1:len(starts)],
+        ends[:len(ends)-1],
+    )
 
 
-# testbed = 'chr1_50.bed'
-# _set_matplotlib_publication_parameters()
+testbed = 'chr1_nodes_merged.txt'
+_set_matplotlib_publication_parameters()
 
-# distances = bed_distances(testbed)
+distances = bed_distances(testbed)
 
-# plot = plot_sparsity(distances,7)
+plot = plot_sparsity(distances,7)
