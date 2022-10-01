@@ -101,7 +101,7 @@ class GGraphMutagenesisTFRecordProcessor:
             graph = self._open_graph(idx)
             label = self.targets[self.mode][idx]
             num_nodes = graph["num_nodes"]
-            node_feat = graph["node_feat"].astype(int)
+            node_feat = graph["node_feat"]
 
             # form adj. matrix
             row, col = graph["edge_index"]
@@ -138,10 +138,9 @@ class GGraphMutagenesisTFRecordProcessor:
 
             features = collections.OrderedDict()
             features["adj"] = self._create_float_feature(adj.astype(np.float32))
-            features["node_feat"] = self._create_int_feature(node_feat)
+            features["node_feat"] = self._create_int_feature(node_feat.astype(np.int64))
             features["node_mask"] = self._create_float_feature(node_mask)
-            # features["label"] = self._create_float_feature(label.astype(np.float32))
-            features["label"] = self._create_float_feature(label)
+            features["label"] = self._create_float_feature(label.astype(np.float32))
 
             tf_example = tf.train.Example(
                 features=tf.train.Features(feature=features)
