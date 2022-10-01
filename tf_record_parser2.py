@@ -81,7 +81,7 @@ class GGraphMutagenesisTFRecordProcessor:
         with open(f"{'_'.join(tissue)}/parsing/graphs/{gene}", 'rb') as f:
             return pickle.load(f)
 
-    def create_tfrecords(self, split_idx):
+    def create_tfrecords(self, mode):
         """
         Create TFRecrods from graphs, labels
 
