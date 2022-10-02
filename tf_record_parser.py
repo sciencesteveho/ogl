@@ -28,7 +28,6 @@ from tqdm import tqdm
 from multiprocessing import Pool
 
 from utils import parse_yaml
-
 # from utils import dir_check_make
 
 
@@ -248,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="tfrecords",
+        default="tfrecords_2500",
         help="directory name where TFRecords will be saved",
     )
     parser.add_argument(
@@ -272,7 +271,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_500.pkl",
+        default="targets_filtered_2500.pkl",
     )
     parser.add_argument(
         "--cores",
@@ -282,7 +281,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=500,
+        default=2500,
     )
 
     args = parser.parse_args()

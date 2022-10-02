@@ -23,7 +23,7 @@ for i in {1..24}; do
 done
 
 ### move for train
-for i in {1..24}; do
+for i in {2..24}; do
     cd train_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_train_${i}
