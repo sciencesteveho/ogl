@@ -545,6 +545,9 @@ class LocalContextFeatures:
                 empty_attr = attribute
 
         for attribute in sorted(list(set_dict.keys()) + [empty_attr]):
+            if attribute == empty_attr:
+                for line in set_dict['gc']:
+                    attr_dict[line[3]][attribute] = 0
             for line in set_dict[attribute]:
                 if attribute == 'gc':
                     attr_dict[line[3]] = {
@@ -556,8 +559,6 @@ class LocalContextFeatures:
                         'gc': line[5],
                         'polyadenylation': 0,
                     }
-                elif attribute == empty_attr:
-                    attr_dict[line[3]][attribute] = 0
                 else:
                     attr_dict[line[3]][attribute] = line[5]
         
