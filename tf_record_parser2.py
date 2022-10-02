@@ -104,7 +104,10 @@ class GGraphMutagenesisTFRecordProcessor:
             graph = self._open_graph(idx)
             label = self.targets[self.mode][idx].astype(np.float32)
             num_nodes = graph["num_nodes"]
-            node_feat = graph["node_feat"]
+            if graph["node_feat"] is None:
+                print(f'{graph} missing node feats!')
+            else:
+                node_feat = graph["node_feat"]
 
             # form adj. matrix
             row, col = graph["edge_index"]

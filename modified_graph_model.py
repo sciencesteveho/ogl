@@ -100,7 +100,7 @@ class GNN(TFBaseModel):
         output = tf.math.accumulate_n(
             [
                 tf.multiply(
-                    node_mask, emb_layer(features["node_feat" + str(i)])
+                    node_mask, emb_layer(features["node_feats" + str(i)])
                 )
                 for i, emb_layer in enumerate(emb_layers)
             ]

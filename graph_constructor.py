@@ -453,8 +453,8 @@ class GraphConstructor:
             pickle.dump({
             'edge_index': np.array([[edge[0] for edge in edges_reindexed], [edge[1] for edge in edges_reindexed]]),
             'edge_feat': np.array([self.ONEHOT_EDGETYPE[edge[2]] for edge in edges_reindexed]),
-            'node_feat': np.array([[float(x) for x in list(graph_only_refs[key].values())[2:]]
-            for key in graph_only_refs.keys()]).astype(np.int64),
+            'node_feat': np.array([[int(x) for x in list(graph_only_refs[key].values())[2:]]
+            for key in graph_only_refs.keys()]),
             'num_nodes': num_nodes,
             },
             output

@@ -79,7 +79,7 @@ class OGBGMOLCHEMBLDataProcessor:
             "adj": tf.io.FixedLenFeature(
                 [self.max_num_nodes, self.max_num_nodes], tf.float32
             ),
-            "node_feat": tf.io.FixedLenFeature(
+            "node_feats": tf.io.FixedLenFeature(
                 [self.max_num_nodes, self.feature_dim], tf.int64
             ),
             "node_mask": tf.io.FixedLenFeature(
@@ -100,9 +100,9 @@ class OGBGMOLCHEMBLDataProcessor:
             "node_mask": tf.cast(example["node_mask"], self.mp_type),
         }
 
-        node_feat = example["node_feat"]
+        node_feat = example["node_feats"]
         for i in range(self.num_inputs):
-            name = "node_feat" + str(i)
+            name = "node_feats" + str(i)
             feature[name] = tf.cast(node_feat[..., i], tf.int32)
         label = tf.cast(example["label"], self.mp_type)
 
