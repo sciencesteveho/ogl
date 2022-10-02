@@ -548,19 +548,20 @@ class LocalContextFeatures:
             if attribute == empty_attr:
                 for line in set_dict['gc']:
                     attr_dict[line[3]][attribute] = 0
-            for line in set_dict[attribute]:
-                if attribute == 'gc':
-                    attr_dict[line[3]] = {
-                        'type': self.ONEHOT_NODETYPE[node],
-                        'chr': line[0].replace('chr', ''),
-                        'start': line[1],
-                        'end': line[2],
-                        'size': line[4],
-                        'gc': line[5],
-                        'polyadenylation': 0,
-                    }
-                else:
-                    attr_dict[line[3]][attribute] = line[5]
+            else:
+                for line in set_dict[attribute]:
+                    if attribute == 'gc':
+                        attr_dict[line[3]] = {
+                            'type': self.ONEHOT_NODETYPE[node],
+                            'chr': line[0].replace('chr', ''),
+                            'start': line[1],
+                            'end': line[2],
+                            'size': line[4],
+                            'gc': line[5],
+                            'polyadenylation': 0,
+                        }
+                    else:
+                        attr_dict[line[3]][attribute] = line[5]
         
         output = open(f'{self.parse_dir}/attributes/{node}_reference.pkl', "wb")
         try:
