@@ -333,17 +333,17 @@ if __name__ == '__main__':
     main()
 
 
-def print_stats(num):
-    with open(f'targets_filtered_{num}.pkl', 'rb') as file:
-        targets = pickle.load(file)
-    print(f'max_nodes = {num}')
-    print(f"train = {len(targets['train'])}")
-    print(f"test = {len(targets['test'])}")
-    print(f"validation = {len(targets['validation'])}")
-    print('\n')
+# def print_stats(num):
+#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#         targets = pickle.load(file)
+#     print(f'max_nodes = {num}')
+#     print(f"train = {len(targets['train'])}")
+#     print(f"test = {len(targets['test'])}")
+#     print(f"validation = {len(targets['validation'])}")
+#     print('\n')
 
-for num in [500, 1000, 2500, 5000, 10000]:
-    print_stats(num)
+# for num in [500, 1000, 2500, 5000, 10000]:
+#     print_stats(num)
 
 
 # max_nodes = 500
