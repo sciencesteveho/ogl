@@ -325,7 +325,7 @@ def main() -> None:
             max_nodes=num,
             filtered_stats=filtered_stats,
             targets=targets,
-            randomizer=True
+            randomizer=False
         )
 
 
@@ -333,17 +333,17 @@ if __name__ == '__main__':
     main()
 
 
-def print_stats(num):
-    with open(f'targets_filtered_{num}.pkl', 'rb') as file:
-        targets = pickle.load(file)
-    print(f'max_nodes = {num}')
-    print(f"train = {len(targets['train'])}")
-    print(f"test = {len(targets['test'])}")
-    print(f"validation = {len(targets['validation'])}")
-    print('\n')
+# def print_stats(num):
+#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#         targets = pickle.load(file)
+#     print(f'max_nodes = {num}')
+#     print(f"train = {len(targets['train'])}")
+#     print(f"test = {len(targets['test'])}")
+#     print(f"validation = {len(targets['validation'])}")
+#     print('\n')
 
-for num in [3500, 4000, 4500]:
-    print_stats(num)
+# for num in [3500, 4000, 4500]:
+#     print_stats(num)
 
 
 # max_nodes = 500
@@ -361,6 +361,21 @@ for num in [3500, 4000, 4500]:
 # test = 4350
 # validation = 2881
 
+# max_nodes = 3500
+# train = 37267
+# test = 5416
+# validation = 4238
+
+# max_nodes = 4000
+# train = 43501
+# test = 5843
+# validation = 4985
+
+# max_nodes = 4500
+# train = 49247
+# test = 6486
+# validation = 5918
+
 # max_nodes = 5000
 # train = 55217
 # test = 7088
@@ -370,6 +385,7 @@ for num in [3500, 4000, 4500]:
 # train = 100490
 # test = 10221
 # validation = 10205
+
 
 # import pandas as pd
 # from cmapPy.pandasGEXpress.parse_gct import parse
