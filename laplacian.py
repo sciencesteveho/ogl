@@ -5,108 +5,112 @@
 """
 Code to generate baseline performance to compare against graph dataset.
 
-Baseline is adapted from https://doi.org/10.48550/arXiv.1810.09155
+Baseline is adapted from https://doi.org/10.48550/arXiv.1810.09155, which takes the k-highest eigenvalues from the normalized Laplacian matrix
 """
 
-import os
-import dgl
-import pickle
-import numpy as np
-from numpy import linalg as LA
-from scipy import sparse
 
 import argparse
+import numpy as np
+import pickle
 
-from dgl.data.utils import load_graphs
+import scipy.sparse as sp
+from scipy.sparse import csgraph
+from numpy import linalg as LA
 
-# ### Custom
-# from molecules import MoleculeDatasetDGL
-
-
-###############################################################################
-'''
-
-'''
-###############################################################################
+from utils import genes_from_gff, filtered_genes, time_decorator
 
 
-def eigenvals_from_laplacian(file, k=200):
+def _degree_power(A, k):
+    """
+    Computes \(\D^{k}\) from the given adjacency matrix.
+
+    :param A: rank 2 array or sparse matrix.
+    :param k: exponent to which elevate the degree matrix.
+    :return: D^k
+    """
+    degrees = np.power(np.array(A.sum(1)), k).flatten()
+    degrees[np.isinf(degrees)] = 0.0
+    return np.diag(degrees)
+
+
+def _degrees(A, symmetric):
+    """
+    Normalizes the given adjacency matrix using the degree matrix as either
+    \(\D^{-1}\A\) or \(\D^{-1/2}\A\D^{-1/2}\) (symmetric normalization).
+
+    :param A: rank 2 array
+    :param symmetric: boolean, compute symmetric normalization;
+    :return: the normalized adjacency matrix.
+    """
+    if symmetric:
+        normalized_D = _degree_power(A, -0.5)
+        output = normalized_D.dot(A).dot(normalized_D)
+    else:
+        normalized_D = _degree_power(A, -1.0)
+        output = normalized_D.dot(A)
+    return output
+
+
+def _normalize_adj(A, symmetric=False):
+    """
+    Computes the graph filter described in
+    [Kipf & Welling (2017)](https://arxiv.org/abs/1609.02907).
+
+    :param A: array with rank 2;
+    :param symmetric: boolean, whether to normalize the matrix as
+    \(\D^{-\frac{1}{2}}\A\D^{-\frac{1}{2}}\) or as \(\D^{-1}\A\);
+    :return: array with rank 2, same as A;
+    """
+    fltr = A.copy()
+    I = np.eye(A.shape[-1], dtype=A.dtype)
+    A_tilde = A + I
+    fltr = _degrees(A_tilde, symmetric=symmetric)
+    return fltr
+
+
+@time_decorator
+def eigenvals_from_laplacian(graph, k=200):
     '''
     K-smallest eigenvalues 
     Convert dgl to sparse adjacency matrix. Take laplacian of the graph and derive K eigenvalues. If size N is smaller than K, pad the eigenvalues array with zeros until it reaches K.
     '''
-    graph_path='/ocean/projects/bio210019p/stevesho/data/graphs'
-    savepath='/ocean/projects/bio210019p/stevesho/ogb_lsc/eigs'
-    if not os.path.isfile(f'{savepath}/{file}'):
-        print(f'starting graph with tensor {file}')
-        graph = load_graphs(f'{graph_path}/{file}')[0][0]
-        num_nodes = graph.number_of_nodes()
-        laplacian = sparse.eye(num_nodes) - dgl.DGLGraph.adjacency_matrix(graph, scipy_fmt="csr").astype(float)
-        if num_nodes > k:
-            np.savetxt(f'{savepath}/{file}', LA.eigvals(laplacian.toarray())[0:k].real)
-        else:
-            k_eigs = LA.eigvals(laplacian.toarray())[0:num_nodes-2]
-            np.savetxt(f'{savepath}/{file}', np.pad(k_eigs, [(0, k-num_nodes+2)]).real)
-        print(f'finished graph with tensor {file}')
+    with open(graph, 'rb') as f:
+        g = pickle.load(f)
+    num_nodes = g['num_nodes']
+
+    # make adjacency matrix
+    row, col = g['edge_index']
+    adj = sp.coo_matrix(
+        (np.ones_like(row), (row, col)), shape=(num_nodes, num_nodes)
+    ).toarray()
+
+    adj = _normalize_adj(adj)
+    lap = csgraph.laplacian(adj)
+
+    if num_nodes > k:
+        return LA.eigvals(lap)[0:k].real
     else:
-        print(f'graph with tensor {file} already done')
-
-
-def save_pkl(vals, name):
-    '''
-    '''
-    with open(f'{name}.pkl', 'wb') as f:
-        pickle.dump(vals, f)
+        k_eigs = LA.eigvals(lap).real
+        return np.pad(k_eigs, [(0, k-num_nodes)])
 
 
 if __name__ == "__main__":
     ###
-    parser = argparse.ArgumentParser(description='Get chunk number')
-    parser.add_argument('--chunk', type=str, default='0',
-                        help='chunk index')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tissue', type=str, help='tissue type')
     args = parser.parse_args()
 
-    with open('/ocean/projects/bio210019p/stevesho/ogb_lsc/all_files_50_chunk.pkl', 'rb') as f:
-        partition = pickle.load(f)
+    graph_path='/ocean/projects/bio210019p/stevesho/data/graphs_scaled/'
+    root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+    output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/laplacian_baseline'
 
-    working = partition[int(args.chunk)]
+    genes = genes_from_gff('/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed')
 
-    for file in working:
-        eigenvals_from_laplacian(file)
-
-### allg = os.listdir(graph_path)
-### allsplit = np.array_split(allg, 50)
-# with open('all_files_50_chunk.pkl', 'wb') as f:
-#     pickle.dump(allsplit, f)
-
-### for i in {0..49}; do sbatch lap2.sh $i; done
-
-    # save_pkl(eigsz, 'train_eigs.pkl')
-
-    # eigs_2 = [a.real for b in eigsz for a in b]
-    # save_pkl(eigs_2, 'train_eigs_real.pkl')
-
-    # del eigsz
-    # del eigs_2
-
-    # targets = [count[1] for count in testset]
-    # targets_2 = [tens.numpy()[0] for tens in targets]
-    # save_pkl(targets_2, 'train_targets.pkl')
-
-    # del targets
-    # del targets_2
-
-    # partition = valset
-
-    # pool=Pool(processes=6)
-    # eigsz = pool.map(eigenvals_from_laplacian, valset)
-    # pool.close()
-
-    # save_pkl(eigsz, 'val_eigs.pkl')
-
-    # eigs_2 = [a.real for b in eigsz for a in b]
-    # save_pkl(eigs_2, 'val_eigs_real.pkl')
-
-    # targets = [count[1] for count in testset]
-    # targets_2 = [tens.numpy()[0] for tens in targets]
-    # save_pkl(targets_2, 'val_targets.pkl')
+    directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
+    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
+    eig_arrays = {
+        gene: eigenvals_from_laplacian(graph_path + gene)
+        for gene in genes
+    }
+    with open(f'{output_dir}/{args.tissue}_eigs.pkl', 'rb') as output:
+        pickle.dump(eig_arrays, output)

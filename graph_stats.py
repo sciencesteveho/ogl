@@ -11,12 +11,10 @@
 import argparse
 import joblib
 import pickle
-import os
 
 import numpy as np
 import scipy.sparse as sp
 
-import pybedtools
 from sklearn.preprocessing import MinMaxScaler
 
 from target_labels_train_split import _chr_split_train_test_val
