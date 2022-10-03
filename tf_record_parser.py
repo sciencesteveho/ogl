@@ -137,7 +137,7 @@ class GGraphMutagenesisTFRecordProcessor:
 
             features = collections.OrderedDict()
             features["adj"] = self._create_float_feature(adj.astype(np.float32))
-            features["node_feat"] = self._create_int_feature(node_feat)
+            features["node_feat"] = self._create_float_feature(node_feat)
             features["node_mask"] = self._create_float_feature(node_mask)
             features["label"] = self._create_float_feature(label)
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="tfrecords_2500",
+        default="tfrecords",
         help="directory name where TFRecords will be saved",
     )
     parser.add_argument(
@@ -271,17 +271,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_2500.pkl",
+        default="targets_filtered_4000.pkl",
     )
     parser.add_argument(
         "--cores",
         type=int,
-        default=24,
+        default=36,
     )
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=2500,
+        default=4000,
     )
 
     args = parser.parse_args()
