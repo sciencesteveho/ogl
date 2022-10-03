@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
     eig_arrays = {
-        gene: eigenvals_from_laplacian(directory + gene)
+        gene: eigenvals_from_laplacian(directory + f'{gene}_{args.tissue}')
         for gene in genes
     }
 
