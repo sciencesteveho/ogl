@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import tensorflow as tf
+from tensorflow import keras #
+from tensorflow.keras import layers
 
 from modelzoo.common.tf.layers.DenseLayer import DenseLayer
-from modelzoo.common.tf.layers.EmbeddingLayer import EmbeddingLayer
+# from modelzoo.common.tf.layers.EmbeddingLayer import EmbeddingLayer
 from modelzoo.common.tf.layers.GraphAttentionLayer import GraphAttentionLayer
 from modelzoo.common.tf.layers.GraphConvolutionLayer import (
     GraphConvolutionLayer,
@@ -72,7 +74,8 @@ class GNN(TFBaseModel):
         self.tf_summary = params["model"]["tf_summary"]
         self.boundary_casting = params["model"]["boundary_casting"]
         self.mixed_precision = params["model"]["mixed_precision"]
-        self.mp_type = tf.float16 if self.mixed_precision else tf.float32
+        # self.mp_type = tf.float16 if self.mixed_precision else tf.float32
+        self.mp_type = tf.float32
 
         # Model trainer
         self.trainer = Trainer(
@@ -92,19 +95,30 @@ class GNN(TFBaseModel):
         ], f"A correct estimator ModeKey is not passed."
         is_training = mode == tf.estimator.ModeKeys.TRAIN
 
-        emb_layers, fc_layers = self._build_functional_layers()
+        # emb_layers, fc_layers = self._build_functional_layers()
+        fc_layers = self._build_functional_layers()
         graph_layers = self._build_graph_layers()
         adj = features["adj"]
         node_mask = features["node_mask"]
 
+        # replace embedding with relu projection
+        project_layer = layers.Dense(512, activation='relu')
         output = tf.math.accumulate_n(
             [
                 tf.multiply(
-                    node_mask, emb_layer(features["node_feat" + str(i)])
+                    node_mask, project_layer(tf.expand_dims(tf.cast(features["node_feat" + str(i)], tf.float16), axis=2))
                 )
-                for i, emb_layer in enumerate(emb_layers)
+                for i in range(len(self.node_feats))
             ]
         )
+        # output = tf.math.accumulate_n(
+        #     [
+        #         tf.multiply(
+        #             node_mask, emb_layer(features["node_feat" + str(i)])
+        #         )
+        #         for i, emb_layer in enumerate(emb_layers)
+        #     ]
+        # )
         output = self._call_graph_layers(graph_layers, output, adj, is_training)
 
         output = tf.multiply(node_mask, output)
@@ -129,16 +143,16 @@ class GNN(TFBaseModel):
         Build graph layers for the model
         """
         # build atom embedding
-        emb_layers = [
-            EmbeddingLayer(
-                input_dim=node_feat,
-                output_dim=self.hidden_dim,
-                boundary_casting=self.boundary_casting,
-                tf_summary=self.tf_summary,
-                dtype=self.policy,
-            )
-            for node_feat in self.node_feats
-        ]
+        # emb_layers = [
+        #     EmbeddingLayer(
+        #         input_dim=node_feat,
+        #         output_dim=self.hidden_dim,
+        #         boundary_casting=self.boundary_casting,
+        #         tf_summary=self.tf_summary,
+        #         dtype=self.policy,
+        #     )
+        #     for node_feat in self.node_feats
+        # ]
 
         # build fc layers for the model
         fc_layers = []
@@ -161,7 +175,8 @@ class GNN(TFBaseModel):
             )
         )
 
-        return emb_layers, fc_layers
+        # return emb_layers, fc_layers
+        return fc_layers
 
     def _build_graph_layers(self):
         return NotImplementedError("To be implemented child class!!")
@@ -279,12 +294,12 @@ class ChEMBL20Classifier(GNN):
         _labels = tf.cast(labels, tf.float32)
         _logits = tf.cast(logits, tf.float32)
 
-        # loss = tf.math.squared_difference(_logits, _labels)
-        # loss = tf.math.sqrt(loss)
+        loss = tf.math.squared_difference(_logits, _labels)
+        loss = tf.math.sqrt(loss)
 
-        loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=_labels, logits=_logits
-        )
+        # loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        #     labels=_labels, logits=_logits
+        # )
 
         loss = tf.multiply(loss, mask)
 

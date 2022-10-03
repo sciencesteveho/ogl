@@ -24,7 +24,9 @@ from utils import genes_from_gff, filtered_genes, time_decorator
 def _nodes_edges_from_graph(filename: str) -> int:
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
-    return graph['num_nodes'], graph['edge_index'].shape[1], graph['node_feat']
+    node_feat = graph['node_feat']
+    return {i:(max(node_feat[:,i]), min(node_feat[:,i])) for i in range(34)}
+    # return graph['num_nodes'], graph['edge_index'].shape[1], graph['node_feat']
 
 
 def _cat_stat_dicts(tissue_params):
@@ -111,7 +113,7 @@ def main() -> None:
         )
 
     ### save
-    with open(f'{node_dir}/graph_stats_{args.tissue}.pkl', 'wb') as output:
+    with open(f'{node_dir}/feat_stats_{args.tissue}.pkl', 'wb') as output:
         pickle.dump(graph_stats, output)
 
 
