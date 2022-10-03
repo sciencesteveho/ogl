@@ -68,7 +68,7 @@ def _normalize_adj(A, symmetric=False):
     return fltr
 
 
-@time_decorator
+@time_decorator(print_args=True)
 def eigenvals_from_laplacian(graph, k=200):
     '''
     K-smallest eigenvalues 
@@ -102,14 +102,13 @@ if __name__ == "__main__":
 
     root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
     output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/laplacian_baseline'
-
-    genes = genes_from_gff('/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed')
-
     directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs_scaled/'
+
     genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
     eig_arrays = {
         gene: eigenvals_from_laplacian(directory + gene)
         for gene in genes
     }
+
     with open(f'{output_dir}/{args.tissue}_eigs.pkl', 'wb') as output:
         pickle.dump(eig_arrays, output)
