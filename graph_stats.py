@@ -134,7 +134,7 @@ def main() -> None:
 
     scaler = MinMaxScaler()
     for tissue in TISSUES:
-        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
+        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs'
         genes = filtered_genes(f'{root_dir}/{tissue}/gene_regions_tpm_filtered.bed')
         genes = [gene for gene in genes if gene in train]
         for gene in genes:
