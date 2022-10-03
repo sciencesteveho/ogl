@@ -100,17 +100,16 @@ if __name__ == "__main__":
     parser.add_argument('--tissue', type=str, help='tissue type')
     args = parser.parse_args()
 
-    graph_path='/ocean/projects/bio210019p/stevesho/data/graphs_scaled/'
     root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
     output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/laplacian_baseline'
 
     genes = genes_from_gff('/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed')
 
-    directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs'
+    directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs_scaled/'
     genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
     eig_arrays = {
-        gene: eigenvals_from_laplacian(graph_path + gene)
+        gene: eigenvals_from_laplacian(directory + gene)
         for gene in genes
     }
-    with open(f'{output_dir}/{args.tissue}_eigs.pkl', 'rb') as output:
+    with open(f'{output_dir}/{args.tissue}_eigs.pkl', 'wb') as output:
         pickle.dump(eig_arrays, output)
