@@ -97,7 +97,7 @@ def eigenvals_from_laplacian(graph, k=200):
 if __name__ == "__main__":
     ###
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--interger', type=int, required=True)
+    parser.add_argument('-i', '--integer', type=int, required=True)
     args = parser.parse_args()
 
     chunk_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/chunks'
