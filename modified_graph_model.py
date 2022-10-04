@@ -74,8 +74,7 @@ class GNN(TFBaseModel):
         self.tf_summary = params["model"]["tf_summary"]
         self.boundary_casting = params["model"]["boundary_casting"]
         self.mixed_precision = params["model"]["mixed_precision"]
-        # self.mp_type = tf.float16 if self.mixed_precision else tf.float32
-        self.mp_type = tf.float32
+        self.mp_type = tf.float16 if self.mixed_precision else tf.float32
 
         # Model trainer
         self.trainer = Trainer(
@@ -106,7 +105,9 @@ class GNN(TFBaseModel):
         output = tf.math.accumulate_n(
             [
                 tf.multiply(
-                    node_mask, project_layer(tf.expand_dims(tf.cast(features["node_feat" + str(i)], tf.float16), axis=2))
+                    node_mask, project_layer(
+                        tf.expand_dims(features["node_feat" + str(i)], axis=2)
+                        )
                 )
                 for i in range(len(self.node_feats))
             ]
@@ -119,6 +120,10 @@ class GNN(TFBaseModel):
         #         for i, emb_layer in enumerate(emb_layers)
         #     ]
         # )
+        ### adjust types back 
+        node_mask = tf.cast(node_mask, self.mp_type)
+        output = tf.cast(output, self.mp_type)
+
         output = self._call_graph_layers(graph_layers, output, adj, is_training)
 
         output = tf.multiply(node_mask, output)

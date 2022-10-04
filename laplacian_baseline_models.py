@@ -4,7 +4,12 @@
 
 """
 Code to train machine-learning regressors on the k-eigenvalues of the graph laplacian as a baseline to compare GNN performance.
-Implements random forest, SVM, gaussian mixed model, and ordinary linear regression
+
+Models implemented:
+    Random forest
+    SVM
+    gaussian mixed model
+    ordinary linear regression.
 """
 
 import os
@@ -20,13 +25,6 @@ from sklearn.ensemble import RandomForestRegressor
 
 from sklearn.metrics import mean_squared_error
 
-
-###############################################################################
-'''
-- [X] save regressor models
-- [ ] plot pred vs expected
-'''
-###############################################################################
 
 def unpickle(file):
     '''
