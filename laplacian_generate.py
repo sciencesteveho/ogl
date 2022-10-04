@@ -100,16 +100,17 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--interger', type=int, required=True)
     args = parser.parse_args()
 
-    output_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/chunks'
-    root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
-    output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/laplacian_baseline'
-    directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs_scaled/'
+    chunk_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/chunks'
+    # output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/laplacian_baseline'
 
-    genes = filtered_genes(f'{root_dir}/{tissue}/gene_regions_tpm_filtered.bed')
-    eig_arrays = {
-        gene: eigenvals_from_laplacian(directory + f'{gene}_{tissue}')
-        for gene in genes
-    }
+    with open(f'{chunk_dir}/chunk_{args.integer}.pkl', 'rb') as file:
+        chunk = pickle.load(file)
 
-    with open(f'{output_dir}/{tissue}_eigs.pkl', 'wb') as output:
+    eig_arrays = {}
+    for gene in chunk:
+        tissue = gene.split('_')[1]
+        graph_dir = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs_scaled/'
+        eig_arrays[gene] = eigenvals_from_laplacian(graph_dir + gene)
+
+    with open(f'{chunk_dir}/eigs/chunk_{args.integer}_eigs.pkl', 'wb') as output:
         pickle.dump(eig_arrays, output)
