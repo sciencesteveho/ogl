@@ -9,6 +9,7 @@ Baseline is adapted from https://doi.org/10.48550/arXiv.1810.09155, which takes 
 """
 
 import argparse
+from wsgiref.headers import tspecials
 import numpy as np
 import pickle
 
@@ -76,7 +77,11 @@ if __name__ == "__main__":
 
     eig_arrays = {}
     for gene in genes:
-        tissue = gene.split('_')[1]
+        splits = gene.split('_')
+        if len(splits) == 3:
+            tissue = '_'.join(splits[1:])
+        else:
+            tissue = splits[1]
         graph_dir = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs_scaled/'
         eig_arrays[gene] = eigenvals_from_laplacian(
             dir=graph_dir,

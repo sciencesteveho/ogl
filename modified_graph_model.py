@@ -301,12 +301,13 @@ class ChEMBL20Classifier(GNN):
         _labels = tf.cast(labels, tf.float32)
         _logits = tf.cast(logits, tf.float32)
 
-        # loss = tf.math.squared_difference(_logits, _labels)
-        # loss = tf.math.sqrt(loss)
+        loss = tf.math.squared_difference(_logits, _labels)
+        loss = tf.math.sqrt(loss)
+        loss = tf.cast(loss, tf.float32)
 
-        loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=_labels, logits=_logits
-        )
+        # loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        #     labels=_labels, logits=_logits
+        # )
 
         loss = tf.multiply(loss, mask)
 
