@@ -80,7 +80,7 @@ if __name__ == "__main__":
         graph_dir = f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs_scaled/'
         eig_arrays[gene] = eigenvals_from_laplacian(
             dir=graph_dir,
-            gene=gene,
+            graph=gene,
         )
     with open(f'{chunk_dir}/eigs/eigs_2500.pkl', 'wb') as output:
         pickle.dump(eig_arrays, output)
