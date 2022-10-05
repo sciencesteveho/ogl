@@ -3,7 +3,7 @@
 cd /ocean/projects/bio210019p/stevesho/data/preprocess/tfrecords
 mkdir test train validation
 
-for i in {1..24}; do
+for i in {1..36}; do
     cd test_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_test_${i}
@@ -13,7 +13,7 @@ for i in {1..24}; do
 done
 
 ### move for validation
-for i in {1..24}; do
+for i in {1..36}; do
     cd validation_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_validation_${i}
@@ -23,7 +23,7 @@ for i in {1..24}; do
 done
 
 ### move for train
-for i in {2..24}; do
+for i in {1..36}; do
     cd train_${i}
     for file in *.tfrecords*; do 
         mv $file ${file}_train_${i}
@@ -64,14 +64,14 @@ I parsed the TFREcords in parallel into separate folders so that they wouldnt ha
 '''
 
 ### test validation
-python run.py --mode train --validate_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir
+python run.py --mode train --validate_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir_2
 
 '''
 
 '''
 
 ### test compilation
-python run.py --mode train --compile_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir
+python run.py --mode train --compile_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir_2
 
 '''
 

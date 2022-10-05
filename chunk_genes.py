@@ -22,7 +22,7 @@ def main() -> None:
         targ = pickle.load(f)
 
     all_targets = list(targ['train']) + list(targ['test']) + list(targ['validation'])
-    chunks = np.array_split(all_targets, 200)
+    chunks = np.array_split(all_targets, 300)
 
     for idx, arr in enumerate(chunks):
         with open(f'{output_dir}/chunk_{idx}.pkl', 'wb') as output:

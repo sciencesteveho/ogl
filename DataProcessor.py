@@ -89,21 +89,22 @@ class OGBGMOLCHEMBLDataProcessor:
         }
 
         example = tf.io.parse_single_example(raw_record, feature_map)
-        for name in list(example.keys()):
-            feature = example[name]
-            if feature.dtype == tf.float32:
-                feature = tf.cast(feature, tf.float32)
-                example[name] = feature
+        # for name in list(example.keys()):
+        #     feature = example[name]
+        #     if feature.dtype == tf.float32:
+        #         feature = tf.cast(feature, tf.float32)
+        #         example[name] = feature
 
         feature = {
             "adj": tf.cast(example["adj"], self.mp_type),
-            "node_mask": tf.cast(example["node_mask"], tf.float32),
+            "node_mask": tf.cast(example["node_mask"], self.mp_type),
+            "node_feat": tf.cast(example["node_feat"], self.mp_type),
         }
 
-        node_feat = example["node_feat"]
-        for i in range(self.num_inputs):
-            name = "node_feat" + str(i)
-            feature[name] = tf.cast(node_feat[..., i], tf.float32)
+        # node_feat = example["node_feat"]
+        # for i in range(self.num_inputs):
+        #     name = "node_feat" + str(i)
+        #     feature[name] = tf.cast(node_feat[..., i], tf.float32)
         label = tf.cast(example["label"], self.mp_type)
 
         return (feature, label)

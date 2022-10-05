@@ -14,10 +14,10 @@
 
 import tensorflow as tf
 from tensorflow import keras #
-from tensorflow.keras import layers
 
 from modelzoo.common.tf.layers.DenseLayer import DenseLayer
 # from modelzoo.common.tf.layers.EmbeddingLayer import EmbeddingLayer
+
 from modelzoo.common.tf.layers.GraphAttentionLayer import GraphAttentionLayer
 from modelzoo.common.tf.layers.GraphConvolutionLayer import (
     GraphConvolutionLayer,
@@ -94,24 +94,17 @@ class GNN(TFBaseModel):
         ], f"A correct estimator ModeKey is not passed."
         is_training = mode == tf.estimator.ModeKeys.TRAIN
 
-        # emb_layers, fc_layers = self._build_functional_layers()
-        fc_layers = self._build_functional_layers()
+        relu_layer, fc_layers = self._build_functional_layers()
         graph_layers = self._build_graph_layers()
         adj = features["adj"]
         node_mask = features["node_mask"]
 
         # replace embedding with relu projection
-        project_layer = layers.Dense(512, activation='relu')
-        output = tf.math.accumulate_n(
-            [
-                tf.multiply(
-                    node_mask, project_layer(
-                        tf.expand_dims(features["node_feat" + str(i)], axis=2)
-                        )
-                )
-                for i in range(len(self.node_feats))
-            ]
-        )
+        # node_mask = tf.cast(node_mask, self.mp_type)
+        output = tf.multiply(
+            node_mask, relu_layer(features["node_feat"])
+            )
+
         # output = tf.math.accumulate_n(
         #     [
         #         tf.multiply(
@@ -120,9 +113,9 @@ class GNN(TFBaseModel):
         #         for i, emb_layer in enumerate(emb_layers)
         #     ]
         # )
-        ### adjust types back 
-        node_mask = tf.cast(node_mask, self.mp_type)
-        output = tf.cast(output, self.mp_type)
+        ### adjust types back
+        # node_mask = tf.cast(node_mask, self.mp_type)
+        # output = tf.cast(output, self.mp_type)
 
         output = self._call_graph_layers(graph_layers, output, adj, is_training)
 
@@ -159,6 +152,15 @@ class GNN(TFBaseModel):
         #     for node_feat in self.node_feats
         # ]
 
+        # dense relu
+        relu_layer = DenseLayer(
+                units=self.hidden_dim,
+                activation=self.activation,
+                boundary_casting=self.boundary_casting,
+                tf_summary=self.tf_summary,
+                dtype=self.policy,
+            )
+
         # build fc layers for the model
         fc_layers = []
         for _ in range(self.fc_depth - 1):
@@ -181,7 +183,7 @@ class GNN(TFBaseModel):
         )
 
         # return emb_layers, fc_layers
-        return fc_layers
+        return relu_layer, fc_layers
 
     def _build_graph_layers(self):
         return NotImplementedError("To be implemented child class!!")
@@ -299,12 +301,12 @@ class ChEMBL20Classifier(GNN):
         _labels = tf.cast(labels, tf.float32)
         _logits = tf.cast(logits, tf.float32)
 
-        loss = tf.math.squared_difference(_logits, _labels)
-        loss = tf.math.sqrt(loss)
+        # loss = tf.math.squared_difference(_logits, _labels)
+        # loss = tf.math.sqrt(loss)
 
-        # loss = tf.nn.sigmoid_cross_entropy_with_logits(
-        #     labels=_labels, logits=_logits
-        # )
+        loss = tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=_labels, logits=_logits
+        )
 
         loss = tf.multiply(loss, mask)
 
