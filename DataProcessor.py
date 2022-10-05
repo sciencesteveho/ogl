@@ -46,7 +46,7 @@ class OGBGMOLCHEMBLDataProcessor:
         self.mp_type = tf.float16 if self.mixed_precision else tf.float32
 
         self.feature_dim = feature_dim
-        self.max_num_nodes = params.get("max_num_nodes", 4000)
+        self.max_num_nodes = params.get("max_num_nodes", 2500)
         self.num_targets = params.get("num_targets", 4)
         # for sharding on the Cerebras System, we need to explicitly retrieve TF_CONFIG
         self.label_mask_value = -1
