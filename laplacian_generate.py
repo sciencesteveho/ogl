@@ -34,7 +34,7 @@ def eigenvals_from_laplacian(dir, graph, k=200):
         (np.ones_like(row), (row, col)), shape=(num_nodes, num_nodes)
     ).toarray()
 
-    with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/adj/{gene}_adj', 'rb') as output:
+    with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/adj/{gene}_adj', 'wb') as output:
         pickle.dump(adj, output)
     
     # get laplacian
