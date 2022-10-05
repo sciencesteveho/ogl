@@ -80,8 +80,8 @@ class GraphConstructor:
         'enhancer-enhancer': [0,1,0,0,0,0],
         'enhancer-gene': [0,0,1,0,0,0],
         'circuits': [0,0,0,1,0,0],
-        'giant': [0,0,0,0,1,0],
-        'ppi': [0,0,0,0,0,1],
+        'ppi': [0,0,0,0,1,0],
+        'giant': [0,0,0,0,0,1],
     }
 
     def __init__(
@@ -212,68 +212,68 @@ class GraphConstructor:
             for line in e_g_liftover
         ]
 
-    @time_decorator(print_args=True)
-    def _giant_network(
-        self,
-        interaction_file: str,
-        ) -> List[Tuple[str, str, float, str]]:
-        """Lorem"""
-        mg = MyGeneInfo()
+    # @time_decorator(print_args=True)
+    # def _giant_network(
+    #     self,
+    #     interaction_file: str,
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Lorem"""
+    #     mg = MyGeneInfo()
 
-        def _read_giant(graph):
-            edges, edge1, edge2 = [], [], []
-            with open(graph, newline='') as file:
-                lines = csv.reader(file, delimiter='\t')
-                for line in lines:
-                    if line[2] == '1':
-                        edges.append(line)
-                        edge1.append(line[0])
-                        edge2.append(line[1])
-            return edges, set(edge1+edge2)
+    #     def _read_giant(graph):
+    #         edges, edge1, edge2 = [], [], []
+    #         with open(graph, newline='') as file:
+    #             lines = csv.reader(file, delimiter='\t')
+    #             for line in lines:
+    #                 if line[2] == '1':
+    #                     edges.append(line)
+    #                     edge1.append(line[0])
+    #                     edge2.append(line[1])
+    #         return edges, set(edge1+edge2)
 
-        def _entrez_to_symbol_ref(edge_list):
-            edge_lookup = {}
-            for edge in edge_list:
-                meta = mg.query(edge, fields=['symbol'], species='human', verbose=False)
-                try:
-                    result = meta['hits'][0]
-                    if 'symbol' not in result:
-                        edge_lookup[edge] = 'NA'
-                    else:
-                        edge_lookup[edge] = result['symbol']
-                except IndexError:
-                    edge_lookup[edge] = 'NA'
-            return edge_lookup
+    #     def _entrez_to_symbol_ref(edge_list):
+    #         edge_lookup = {}
+    #         for edge in edge_list:
+    #             meta = mg.query(edge, fields=['symbol'], species='human', verbose=False)
+    #             try:
+    #                 result = meta['hits'][0]
+    #                 if 'symbol' not in result:
+    #                     edge_lookup[edge] = 'NA'
+    #                 else:
+    #                     edge_lookup[edge] = result['symbol']
+    #             except IndexError:
+    #                 edge_lookup[edge] = 'NA'
+    #         return edge_lookup
 
-        def _convert_giant(edges, symbol_ref, ensembl_ref):
-            def _convert_genes(
-                edges: List[Tuple[any]],
-                ref: Dict[str, str],
-                edge_type: str,
-                ) -> List[Tuple[any]]:
-                return [
-                    (ref[edge[0]],
-                    ref[edge[1]],
-                    -1,
-                    edge_type,)
-                    for edge in edges
-                    if edge[0] in ref.keys()
-                    and edge[1] in ref.keys()
-                ]
-            giant_symbols = _convert_genes(edges, symbol_ref, edge_type='giant')
-            giant_filtered = [edge for edge in giant_symbols if edge[0] != 'NA' and edge[1] != 'NA']
-            return _convert_genes(
-                giant_filtered,
-                ensembl_ref,
-                'giant',)
+    #     def _convert_giant(edges, symbol_ref, ensembl_ref):
+    #         def _convert_genes(
+    #             edges: List[Tuple[any]],
+    #             ref: Dict[str, str],
+    #             edge_type: str,
+    #             ) -> List[Tuple[any]]:
+    #             return [
+    #                 (ref[edge[0]],
+    #                 ref[edge[1]],
+    #                 -1,
+    #                 edge_type,)
+    #                 for edge in edges
+    #                 if edge[0] in ref.keys()
+    #                 and edge[1] in ref.keys()
+    #             ]
+    #         giant_symbols = _convert_genes(edges, symbol_ref, edge_type='giant')
+    #         giant_filtered = [edge for edge in giant_symbols if edge[0] != 'NA' and edge[1] != 'NA']
+    #         return _convert_genes(
+    #             giant_filtered,
+    #             ensembl_ref,
+    #             'giant',)
         
-        edges, edge_list = _read_giant(interaction_file)
-        symbol_ref = _entrez_to_symbol_ref(edge_list)
-        return _convert_giant(
-            edges,
-            symbol_ref,
-            self.genesymbol_to_gencode
-            )
+    #     edges, edge_list = _read_giant(interaction_file)
+    #     symbol_ref = _entrez_to_symbol_ref(edge_list)
+    #     return _convert_giant(
+    #         edges,
+    #         symbol_ref,
+    #         self.genesymbol_to_gencode
+    #         )
 
     @time_decorator(print_args=True)
     def _iid_ppi(
@@ -350,15 +350,16 @@ class GraphConstructor:
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
                 tissue=self.ppi_tissue
                 )
-            giant_edges = self._giant_network(
-                f"{self.interaction_dir}"
-                f"/{self.interaction_files['giant']}"
-                )
+            # giant_edges = self._giant_network(
+            #     f"{self.interaction_dir}"
+            #     f"/{self.interaction_files['giant']}"
+            #     )
             circuit_edges = self._marbach_regulatory_circuits(
                 f"{self.interaction_dir}"
                 f"/{self.interaction_files['circuits']}"
                 )
-            interaction_edges = e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges
+            # interaction_edges = e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges
+            interaction_edges = e_e_edges + e_g_edges + ppi_edges + circuit_edges
             with open(all_interaction_file, 'w+') as output:
                 writer = csv.writer(output, delimiter='\t')
                 writer.writerows(interaction_edges)

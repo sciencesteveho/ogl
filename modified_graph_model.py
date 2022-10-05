@@ -275,6 +275,49 @@ class ChEMBL20Classifier(GNN):
 
         return metrics_dict
 
+    # def build_eval_metric_ops(self, model_outputs, labels):
+    #     """
+    #     Compute metrics and return
+    #     """
+    #     labels = tf.cast(labels, tf.float32)
+    #     masked_weights = self._labels_mask(labels)
+    #     predictions = tf.cast(tf.math.sigmoid(model_outputs), tf.float32)
+
+    #     rmse = dict()
+    #     rmse["rmse/overall"] = tf.compat.v1.metrics.root_mean_squared_error(
+    #         labels=labels,
+    #         predictions=predictions,
+    #         weights=masked_weights,
+    #     )
+
+    #     per_task_rmse = [
+    #         tf.compat.v1.metrics.root_mean_squared_error(
+    #             labels=tf.gather(labels, k, axis=1),
+    #             predictions=tf.gather(predictions, k, axis=1),
+    #             weights=tf.gather(masked_weights, k, axis=1),
+    #         )
+    #         for k in range(self.num_targets)
+    #     ]
+    #     valid_task_mask = tf.not_equal(
+    #         tf.reduce_sum(masked_weights, axis=0)
+    #         * tf.reduce_sum(labels * masked_weights, axis=0),
+    #         0.0,
+    #     )
+    #     rmse["rmse/batch_mean_per_task"] = tf.compat.v1.metrics.mean(
+    #         tf.stack(per_task_rmse), weights=valid_task_mask
+    #     )
+
+    #     metrics_dict = {
+    #         "accuracy": tf.compat.v1.metrics.accuracy(
+    #             labels=labels,
+    #             predictions=tf.greater(predictions, 0.5),
+    #             weights=masked_weights,
+    #         ),
+    #         **rmse,
+    #     }
+
+    #     return metrics_dict
+
     def _labels_mask(self, labels):
         """
         Creates mask out of labels and gets number of valid
@@ -301,9 +344,10 @@ class ChEMBL20Classifier(GNN):
         _labels = tf.cast(labels, tf.float32)
         _logits = tf.cast(logits, tf.float32)
 
-        loss = tf.math.squared_difference(_logits, _labels)
-        loss = tf.math.sqrt(loss)
-        loss = tf.cast(loss, tf.float32)
+        # loss = tf.math.squared_difference(_logits, _labels)
+        # loss = tf.math.sqrt(loss)
+
+        loss = tf.sqrt(tf.reduce_mean((_labels - _logits)**2))
 
         # loss = tf.nn.sigmoid_cross_entropy_with_logits(
         #     labels=_labels, logits=_logits

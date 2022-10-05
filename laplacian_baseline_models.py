@@ -48,20 +48,18 @@ def save_pickle(file, obj):
         pickle.dump(obj, f)
 
 
-def prepare_vector_dicts(partition_file, label_file, eigs_dir):
+def prepare_vector_dicts(eigen_file, label_file):
     '''
     Prepares dictionaries of the train/val/split validation
     Format
-        gene_dgl_tissue: (k-eigs vector, regression_target)  # (ndarray, float)
+        gene_tissue: (k-eigs vector, regression_target)  # (ndarray, float)
     '''
-    partition = unpickle(partition_file)
+    eigens = unpickle(eigen_file)
     labels = unpickle(label_file)
-
-    allfiles = os.listdir(eigs_dir)
 
     for part in ['train', 'validation', 'test']:
         print(f'starting {part}')
-        eigs = {k: (np.loadtxt(k), labels[k]) for k in allfiles if k in partition[part]}
+        eigs = {gene: (eigens[gene], labels[part][gene]) for gene in eigens.keys()}
         save_pickle(f'{part}_eigs_all.pkl', eigs)
         print(f'finishing {part}')
 
@@ -102,6 +100,7 @@ if __name__ == "__main__":
     # train_file = 'train_eigs.pkl'
     # validation_file = 'validation_eigs.pkl'
     # test_file = 'test_eigs.pkl'
+    target_file = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/targets_filtered_2500.pkl'
 
     train_file = 'train_eigs_all.pkl'
     validation_file = 'validation_eigs_all.pkl'
@@ -110,9 +109,8 @@ if __name__ == "__main__":
     ### prepare dicts if they do not exist
     if train_file not in os.listdir():
         prepare_vector_dicts(
-            partition_file = '/ocean/projects/bio210019p/stevesho/data/partition_valchr7_chr13_testchr8_chr9_filtered_ALL_mammary_lv_hippocampus.pkl',
-            label_file = '/ocean/projects/bio210019p/stevesho/data/labels_log2_mammary_hippocampus_lv.pkl',
-            eigs_dir = '/ocean/projects/bio210019p/stevesho/ogb_lsc/eigs',
+            eigen_file='/ocean/projects/bio210019p/stevesho/data/preprocess/chunks/eigs/eigs_2500.pkl',
+            label_file = target_file,
         )
 
     ### get training vectors
