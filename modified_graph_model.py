@@ -22,6 +22,8 @@ from modelzoo.common.tf.layers.GraphAttentionLayer import GraphAttentionLayer
 from modelzoo.common.tf.layers.GraphConvolutionLayer import (
     GraphConvolutionLayer,
 )
+
+from modelzoo.common.tf.layers.SquaredErrorLayer import SquaredErrorLayer
 from modelzoo.common.tf.optimizers.Trainer import Trainer
 from modelzoo.common.tf.TFBaseModel import TFBaseModel
 
@@ -82,6 +84,9 @@ class GNN(TFBaseModel):
             tf_summary=self.tf_summary,
             mixed_precision=self.mixed_precision,
         )
+
+        # adding alternative loss
+        self.squared_error = SquaredErrorLayer()  
 
     def build_model(self, features, mode):
         """
@@ -335,8 +340,6 @@ class ChEMBL20Classifier(GNN):
         Modified, actually returns mean RMSE
         """
 
-        #loss = tf.sqrt(tf.reduce_mean((targets - outputs)**2))
-
         # create binary mask
         mask = self._labels_mask(labels)
 
@@ -344,14 +347,20 @@ class ChEMBL20Classifier(GNN):
         _labels = tf.cast(labels, tf.float32)
         _logits = tf.cast(logits, tf.float32)
 
+        # RMSE attempt 1
         # loss = tf.math.squared_difference(_logits, _labels)
         # loss = tf.math.sqrt(loss)
 
-        loss = tf.sqrt(tf.reduce_mean((_labels - _logits)**2))
+        # RMSE attempt 2
+        # loss = tf.sqrt(tf.reduce_mean((_labels - _logits)**2))
 
+        # Original loss
         # loss = tf.nn.sigmoid_cross_entropy_with_logits(
         #     labels=_labels, logits=_logits
         # )
+
+        loss = self.squared_error(_labels, _logits)
+        loss = tf.sqrt(tf.reduce_mean(loss))
 
         loss = tf.multiply(loss, mask)
 

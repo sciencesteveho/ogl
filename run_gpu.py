@@ -19,8 +19,8 @@ import sys
 import tensorflow as tf
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../.."))
-from modelzoo.common.tf.estimator.cs_estimator import CerebrasEstimator
-from modelzoo.common.tf.estimator.run_config import CSRunConfig
+from cerebras_reference_implementations.common.tf.estimator.cs_estimator import CerebrasEstimator
+from cerebras_reference_implementations.common.tf.estimator.run_config import CSRunConfig
 from modelzoo.common.tf.run_utils import (
     check_env,
     get_csrunconfig_dict,

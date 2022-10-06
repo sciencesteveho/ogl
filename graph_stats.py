@@ -35,8 +35,8 @@ def _nodes_edges_from_graph(filename: str) -> int:
     with open(filename, 'rb') as file:
         graph = pickle.load(file)
     node_feat = graph['node_feat']
-    return {i:(max(node_feat[:,i]), min(node_feat[:,i])) for i in range(34)}
-    # return graph['num_nodes'], graph['edge_index'].shape[1], graph['node_feat']
+    # return {i:(max(node_feat[:,i]), min(node_feat[:,i])) for i in range(34)}
+    return graph['num_nodes'], graph['edge_index'].shape[1]
 
 
 def _cat_stat_dicts(tissue_params):
@@ -109,7 +109,8 @@ def main() -> None:
     # ctcf = 'ENSG00000102974.14'
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--feat', type=int, required=True)
+    # parser.add_argument('-f', '--feat', type=int, required=True)
+    parser.add_argument('-t', '--tissue', type=str, required=True)
     args = parser.parse_args()
 
     genes = genes_from_gff('/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed')
@@ -128,28 +129,28 @@ def main() -> None:
     node_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
     output_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler'
 
-    scaler = MinMaxScaler()
-    for tissue in TISSUES:
-        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs'
-        genes = filtered_genes(f'{root_dir}/{tissue}/gene_regions_tpm_filtered.bed')
-        genes = [gene for gene in genes if gene in train]
-        for gene in genes:
-            with open(f'{directory}/{gene}_{tissue}', 'rb') as f:
-                g = pickle.load(f)
-            node_feat = g['node_feat']
-            scaler.partial_fit(node_feat[:,args.feat].reshape(-1, 1))
+    # scaler = MinMaxScaler()
+    # for tissue in TISSUES:
+    #     directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs'
+    #     genes = filtered_genes(f'{root_dir}/{tissue}/gene_regions_tpm_filtered.bed')
+    #     genes = [gene for gene in genes if gene in train]
+    #     for gene in genes:
+    #         with open(f'{directory}/{gene}_{tissue}', 'rb') as f:
+    #             g = pickle.load(f)
+    #         node_feat = g['node_feat']
+    #         scaler.partial_fit(node_feat[:,args.feat].reshape(-1, 1))
 
-    ### save
-    joblib.dump(scaler, f'{output_dir}/feat_{args.feat}_scaler.pt')
+    # ### save
+    # joblib.dump(scaler, f'{output_dir}/feat_{args.feat}_scaler.pt')
 
-    # graph_stats = _edge_and_nodes_per_gene(
-    #     genes=genes,
-    #     directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
-    #     tissue=args.tissue
-    #     )
+    graph_stats = _edge_and_nodes_per_gene(
+        genes=genes,
+        directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
+        tissue=args.tissue
+        )
 
-    # with open(f'{node_dir}/feat_stats_{args.tissue}.pkl', 'wb') as output:
-    #     pickle.dump(graph_stats, output)
+    with open(f'{node_dir}/feat_stats_{args.tissue}.pkl', 'wb') as output:
+        pickle.dump(graph_stats, output)
 
 
     # node_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
