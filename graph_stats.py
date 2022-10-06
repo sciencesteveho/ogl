@@ -143,6 +143,7 @@ def main() -> None:
     # ### save
     # joblib.dump(scaler, f'{output_dir}/feat_{args.feat}_scaler.pt')
 
+    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
     graph_stats = _edge_and_nodes_per_gene(
         genes=genes,
         directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
