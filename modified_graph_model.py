@@ -359,6 +359,7 @@ class ChEMBL20Classifier(GNN):
         #     labels=_labels, logits=_logits
         # )
 
+        # Loss using square_error_layer
         loss = self.squared_error(_labels, _logits)
         loss = tf.sqrt(tf.reduce_mean(loss))
 

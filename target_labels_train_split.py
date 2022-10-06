@@ -256,7 +256,7 @@ def concat_graph_stats(tissue_params):
     contains a minor nested function to add tissue name to the dict key
     """
     def open_graph_stats(tissue):
-        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/num_nodes_{tissue}.pkl', 'rb') as file:
+        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/feat_stats_{tissue}.pkl', 'rb') as file:
             return {f'{key}_{tissue}':value for key,value in pickle.load(file).items()}
     for idx, tissue in enumerate(tissue_params):
         if idx == 0:
@@ -320,7 +320,7 @@ def main() -> None:
     with open('filtered_targets_7_tissues_v3.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [3500, 4000, 4500]:
+    for num in [2500, 3000, 3500, 4000, 4500, 5000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -342,49 +342,44 @@ if __name__ == '__main__':
 #     print(f"validation = {len(targets['validation'])}")
 #     print('\n')
 
-# for num in [3500, 4000, 4500]:
+# for num in [2500, 3000, 3500, 4000, 4500, 5000]:
 #     print_stats(num)
 
 
-# max_nodes = 500
-# train = 3098
-# test = 883
-# validation = 257
-
-# max_nodes = 1000
-# train = 7839
-# test = 1664
-# validation = 780
-
 # max_nodes = 2500
-# train = 25519
-# test = 4350
-# validation = 2881
+# train = 26130
+# test = 4447
+# validation = 2953
+
+
+# max_nodes = 3000
+# train = 32017
+# test = 5070
+# validation = 3706
+
 
 # max_nodes = 3500
-# train = 37267
-# test = 5416
-# validation = 4238
+# train = 38121
+# test = 5465
+# validation = 4306
+
 
 # max_nodes = 4000
-# train = 43501
-# test = 5843
-# validation = 4985
+# train = 44093
+# test = 5955
+# validation = 5103
+
 
 # max_nodes = 4500
-# train = 49247
-# test = 6486
-# validation = 5918
+# train = 49801
+# test = 6595
+# validation = 6048
+
 
 # max_nodes = 5000
-# train = 55217
-# test = 7088
-# validation = 6716
-
-# max_nodes = 10000
-# train = 100490
-# test = 10221
-# validation = 10205
+# train = 55866
+# test = 7159
+# validation = 6792
 
 
 # import pandas as pd

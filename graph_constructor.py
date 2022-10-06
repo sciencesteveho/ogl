@@ -10,7 +10,6 @@
 """Create graphs from parsed genomic data"""
 
 import argparse
-from cgi import test
 import csv
 import os
 import pickle
@@ -284,8 +283,8 @@ class GraphConstructor:
         """Protein-protein interactions from the Integrated Interactions Database v 2021-05.
         Interactions"""
         df = pd.read_csv(interaction_file, delimiter='\t')
-        df = df[['symbol1', 'symbol2', 'evidence_type', tissue]]
-        t_spec_filtered = df[(df[tissue] > 0) & (df['evidence_type'].str.contains('exp'))]
+        df = df[['symbol1', 'symbol2', 'evidence_type', 'n_methods', tissue]]
+        t_spec_filtered = df[(df[tissue] > 0) & (df['n_methods'] >= 2) & (df['evidence_type'].str.contains('exp'))]
         edges = list(
                 zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']),
                 repeat(-1),
