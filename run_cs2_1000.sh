@@ -64,6 +64,10 @@ I parsed the TFREcords in parallel into separate folders so that they wouldnt ha
 '''
 
 ### test validation
+python run.py --mode train --validate_only --params custom_configs/16_layer.yaml --model_dir deeper_gnn
+
+python run.py --mode train --validate_only --params custom_configs/params_GAT.yaml --model_dir gat
+
 python run.py --mode train --validate_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir_2
 
 '''
@@ -71,6 +75,10 @@ python run.py --mode train --validate_only --params custom_configs/params_GCN.ya
 '''
 
 ### test compilation
+python run.py --mode train --compile_only --params custom_configs/16_layer.yaml --model_dir deeper_gnn
+
+python run.py --mode train --compile_only --params custom_configs/params_GAT.yaml --model_dir gat
+
 python run.py --mode train --compile_only --params custom_configs/params_GCN.yaml --model_dir custom_output_dir_2
 
 '''

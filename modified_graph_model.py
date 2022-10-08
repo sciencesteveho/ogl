@@ -86,7 +86,7 @@ class GNN(TFBaseModel):
         )
 
         # adding alternative loss
-        self.squared_error = SquaredErrorLayer()  
+        self.squared_error = SquaredErrorLayer()
 
     def build_model(self, features, mode):
         """
@@ -348,11 +348,7 @@ class ChEMBL20Classifier(GNN):
         _logits = tf.cast(logits, tf.float32)
 
         # RMSE attempt 1
-        # loss = tf.math.squared_difference(_logits, _labels)
-        # loss = tf.math.sqrt(loss)
-
-        # RMSE attempt 2
-        # loss = tf.sqrt(tf.reduce_mean((_labels - _logits)**2))
+        loss = tf.sqrt(tf.reduce_mean((_labels-_logits)**2))
 
         # Original loss
         # loss = tf.nn.sigmoid_cross_entropy_with_logits(
@@ -360,8 +356,8 @@ class ChEMBL20Classifier(GNN):
         # )
 
         # Loss using square_error_layer
-        loss = self.squared_error(_labels, _logits)
-        loss = tf.sqrt(tf.reduce_mean(loss))
+        # loss = self.squared_error(_labels, _logits)
+        # loss = tf.sqrt(tf.reduce_mean(loss))
 
         loss = tf.multiply(loss, mask)
 

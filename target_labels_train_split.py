@@ -250,21 +250,21 @@ def max_node_filter(max_nodes, filtered_stats, targets, randomizer=False):
             pickle.dump(filtered_dict, output)
 
 
-# def concat_graph_stats(tissue_params):
-#     """combines the graph stats files, each of which are dicts of the following format
-#         gene: (num_nodes, num_edges)
-#     contains a minor nested function to add tissue name to the dict key
-#     """
-#     def open_graph_stats(tissue):
-#         with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/feat_stats_{tissue}.pkl', 'rb') as file:
-#             return {f'{key}_{tissue}':value for key,value in pickle.load(file).items()}
-#     for idx, tissue in enumerate(tissue_params):
-#         if idx == 0:
-#             graph_stats = open_graph_stats(tissue)
-#         else:
-#             update_stats = open_graph_stats(tissue)
-#             graph_stats.update(update_stats)
-#     return graph_stats
+def concat_graph_stats(tissue_params):
+    """combines the graph stats files, each of which are dicts of the following format
+        gene: (num_nodes, num_edges)
+    contains a minor nested function to add tissue name to the dict key
+    """
+    def open_graph_stats(tissue):
+        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/feat_stats_{tissue}.pkl', 'rb') as file:
+            return {f'{key}_{tissue}':value for key,value in pickle.load(file).items()}
+    for idx, tissue in enumerate(tissue_params):
+        if idx == 0:
+            graph_stats = open_graph_stats(tissue)
+        else:
+            update_stats = open_graph_stats(tissue)
+            graph_stats.update(update_stats)
+    return graph_stats
 
 
 def main() -> None:
@@ -305,8 +305,8 @@ def main() -> None:
 
     # concatenate and save a file with all num_nodes and num_edges
     shared_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-    # with open(f'{shared_dir}/filtered_stats.pkl', 'wb') as output:
-    #     pickle.dump(concat_graph_stats(TISSUE_PARAMS), output)
+    with open(f'{shared_dir}/filtered_stats.pkl', 'wb') as output:
+        pickle.dump(concat_graph_stats(TISSUE_PARAMS), output)
 
     # # save targets
     # with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'wb') as output:
@@ -321,7 +321,7 @@ def main() -> None:
     with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [2500, 3000, 3500, 4000, 4500, 5000]:
+    for num in [2500]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -343,14 +343,15 @@ if __name__ == '__main__':
 #     print(f"validation = {len(targets['validation'])}")
 #     print('\n')
 
-# for num in [2500, 3000, 3500, 4000, 4500, 5000]:
+# # for num in [2500, 3000, 3500, 4000, 4500, 5000]:
+# for num in [2500]:
 #     print_stats(num)
 
 
 # max_nodes = 2500
-# train = 26130
-# test = 4447
-# validation = 2953
+# train = 28515
+# test = 4661
+# validation = 3254
 
 
 # max_nodes = 3000
