@@ -1,6 +1,7 @@
 resources:
   tissue: 'skeletal_muscle'
   tissue_name: 'Muscle - Skeletal'
+  window: 125000
   ppi_tissue: 'skeletal muscle'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'

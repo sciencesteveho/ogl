@@ -1,6 +1,7 @@
 resources:
   tissue: 'lung'
   tissue_name: 'Lung'
+  window: 125000
   ppi_tissue: 'lung'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'

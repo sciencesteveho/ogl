@@ -34,11 +34,12 @@ def _filtered_gene_windows(
     chromfile: str,
     tissue: str,
     tpm_file: str,
+    window: int,
     ) -> Tuple[pybedtools.BedTool, List[str]]:
     """
     Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of samples in that tissue.
     Additionally, we exclude analysis of sex chromosomes
-    Returns pybedtools object with +/- 250kb windows around that gene
+    Returns pybedtools object with +/- <window> windows around that gene
     """
     tpm_filtered_genes = _filter_low_tpm(
         tissue,
@@ -50,7 +51,7 @@ def _filtered_gene_windows(
         lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY', 'chrM']
         )
 
-    return genes_filtered.slop(g=chromfile, b=250000)\
+    return genes_filtered.slop(g=chromfile, b=window)\
         .cut([0, 1, 2, 3])\
         .sort(), [x[3] for x in genes_filtered]
 
@@ -668,10 +669,11 @@ def main() -> None:
     params = parse_yaml(args.config)
 
     window, _ = _filtered_gene_windows(
-        f"shared_data/local/{params['shared']['gencode']}",
-        params['resources']['chromfile'],
-        params['resources']['tissue'],
-        params['resources']['tpm'],
+        gencode=f"shared_data/local/{params['shared']['gencode']}",
+        chromfile=params['resources']['chromfile'],
+        tissue=params['resources']['tissue'],
+        tpm_file=params['resources']['tpm'],
+        window=params['resources']['window'],
     )
 
     # save window file
@@ -697,3 +699,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+

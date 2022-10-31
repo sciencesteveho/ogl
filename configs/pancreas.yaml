@@ -1,6 +1,7 @@
 resources:
   tissue: 'pancreas'
   tissue_name: 'Pancreas'
+  window: 125000
   ppi_tissue: 'pancreas'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'

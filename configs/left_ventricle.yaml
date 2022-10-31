@@ -1,6 +1,7 @@
 resources:
   tissue: 'left_ventricle'
   tissue_name: 'Heart - Left Ventricle'
+  window: 125000
   ppi_tissue: 'heart'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
