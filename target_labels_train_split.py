@@ -34,24 +34,24 @@ TISSUE_PARAMS = {
     }  # tissue: (tpm_key, protein_key, filtered_tpm_filename)
 
 
-# @time_decorator(print_args=True)
-# def _filter_low_tpm(
-#     tissue: str,
-#     file: str,
-#     return_list: False,
-#     ) -> List[str]:
-#     """Remove genes expressing less than 0.10 TPM across 20% of samples"""
-#     df = pd.read_table(file, index_col=0, header=[2])
-#     sample_n = len(df.columns)
-#     df['total'] = df.select_dtypes(np.number).gt(0.10).sum(axis=1)
-#     df['result'] = df['total'] >= (.2 * sample_n)
-#     if return_list == False:
-#         return [
-#             f'{gene}_{tissue}' for gene
-#             in list(df.loc[df['result'] == True].index)
-#         ]
-#     else:
-#         return list(df.loc[df['result'] == True].index)
+@time_decorator(print_args=True)
+def _filter_low_tpm(
+    tissue: str,
+    file: str,
+    return_list: False,
+    ) -> List[str]:
+    """Remove genes expressing less than 0.10 TPM across 20% of samples"""
+    df = pd.read_table(file, index_col=0, header=[2])
+    sample_n = len(df.columns)
+    df['total'] = df.select_dtypes(np.number).gt(0.10).sum(axis=1)
+    df['result'] = df['total'] >= (.2 * sample_n)
+    if return_list == False:
+        return [
+            f'{gene}_{tissue}' for gene
+            in list(df.loc[df['result'] == True].index)
+        ]
+    else:
+        return list(df.loc[df['result'] == True].index)
 
 
 # @time_decorator(print_args=True)
