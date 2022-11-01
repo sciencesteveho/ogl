@@ -192,7 +192,7 @@ class LocalContextFeatures:
         'histones': 2000,
         'mirnatargets': 1000,
         'polyasites': 1000,
-        'promoters': 1000,
+        'promoters': 2000,
         'rbpbindingsites': 1000,
         'tfbindingclusters': 2000,
         'tss': 2000,
