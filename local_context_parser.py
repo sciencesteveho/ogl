@@ -542,6 +542,7 @@ class LocalContextFeatures:
                 with open(filename, 'r') as file:
                     lines = [tuple(line.rstrip().split('\t')) for line in file]
                     set_dict[attribute] = set(lines)
+                empty_attr = 'placeholder'
             else:
                 empty_attr = attribute
 
