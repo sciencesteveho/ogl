@@ -546,7 +546,6 @@ class LocalContextFeatures:
             else:
                 empty_attr = attribute
 
-        for attribute in self.ATTRIBUTES:
             if attribute == empty_attr:
                 for line in set_dict['gc']:
                     attr_dict[line[3]][attribute] = 0
