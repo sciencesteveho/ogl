@@ -520,7 +520,8 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
+    # genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
+    genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")
 
     # instantiate object
     graphconstructingObject = GraphConstructor(
