@@ -54,16 +54,16 @@ def _filter_low_tpm(
         return list(df.loc[df['result'] == True].index)
 
 
-# @time_decorator(print_args=True)
-# def _chr_split_train_test_val(genes, test_chrs, val_chrs):
-#     """
-#     Create a list of training, split, and val IDs
-#     """
-#     return {
-#         'train': [gene for gene in genes if genes[gene] not in test_chrs + val_chrs],
-#         'test': [gene for gene in genes if  genes[gene] in test_chrs],
-#         'validation': [gene for gene in genes if genes[gene] in val_chrs],
-#     }
+@time_decorator(print_args=True)
+def _chr_split_train_test_val(genes, test_chrs, val_chrs):
+    """
+    Create a list of training, split, and val IDs
+    """
+    return {
+        'train': [gene for gene in genes if genes[gene] not in test_chrs + val_chrs],
+        'test': [gene for gene in genes if  genes[gene] in test_chrs],
+        'validation': [gene for gene in genes if genes[gene] in val_chrs],
+    }
 
 
 # def _tpm_all_tissue_median(gct_file):
