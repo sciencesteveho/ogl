@@ -53,7 +53,7 @@ def main() -> None:
         directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{tissue}/parsing/graphs'
         # genes = filtered_genes(f'{root_dir}/{tissue}/gene_regions_tpm_filtered.bed')
         genes = os.listdir(f'{directory}')
-        genes = [gene.split('_')[0] for gene in genes if gene in train]
+        genes = [gene.split('_')[0] for gene in genes if gene.split('_')[0] in train]
         for gene in genes:
             with open(f'{directory}/{gene}_{tissue}', 'rb') as f:
                 g = pickle.load(f)
