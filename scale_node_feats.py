@@ -26,7 +26,7 @@ if __name__ == "__main__":
     out_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs_scaled'
     scale_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler'
 
-    genes = os.listdir(f'{graph_dir}')
+    genes = [gene.split("_")[0] for gene in os.listdir(f'{graph_dir}')]
     scalers = {i: joblib.load(f'{scale_dir}/feat_{i}_scaler.pt') for i in range(0, 34)}
 
     for gene in genes:
