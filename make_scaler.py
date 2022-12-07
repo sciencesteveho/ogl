@@ -16,6 +16,8 @@ from sklearn.preprocessing import MinMaxScaler
 from target_labels_train_split import _chr_split_train_test_val
 from utils import genes_from_gff, filtered_genes
 
+# root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
+# genes = gene_list_from_graphs(root_dir=root_dir, tissue=args.tissue)
 
 TISSUES = [
     'hippocampus',

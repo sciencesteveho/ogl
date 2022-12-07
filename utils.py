@@ -121,6 +121,16 @@ def filtered_genes(tpm_filtered_genes: str) -> List[str]:
         return [line[3] for line in csv.reader(file, delimiter='\t')]
 
 
+def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
+    """Returns a list of genes with constructed graphs,
+    avoiding genes that may not have edges in smaller window"""
+    directory = f'{root_dir}/{tissue}/parsing/graphs'
+    return [
+        gene.split("_")[0] for gene
+        in os.listdir(directory)
+    ]
+
+
 def genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file"""
     with open(gff, newline = '') as file:

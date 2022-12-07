@@ -25,6 +25,6 @@ mkdir ${tis}/parsing/graphs_scaled
 done
 
 for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
-sbatch scale_node_feats.sh genomic_graph_mutagenesis/configs/${tis}.yaml
+sbatch scale_node_feats.sh ${tis}
 done
 

@@ -8,11 +8,12 @@
 
 import argparse
 import pickle
+import os
 
 import numpy as np
 import scipy.sparse as sp
 
-from utils import filtered_genes, time_decorator
+from utils import gene_list_from_graphs, time_decorator
 
 
 TISSUES = [
@@ -121,7 +122,7 @@ def main() -> None:
     root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
     node_dir='/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes'
 
-    genes = filtered_genes(f'{root_dir}/{args.tissue}/gene_regions_tpm_filtered.bed')
+    genes = gene_list_from_graphs(root_dir=root_dir, tissue=args.tissue)
     graph_stats = _edge_and_nodes_per_gene(
         genes=genes,
         directory=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs',
