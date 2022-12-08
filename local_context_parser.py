@@ -677,7 +677,7 @@ def main() -> None:
     )
 
     # save window file
-    window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered_2.bed")
+    window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
     # # get features within 500kb of protein coding regions
     # bedfiles = _gene_window(
