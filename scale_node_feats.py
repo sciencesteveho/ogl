@@ -13,6 +13,8 @@ import os
 
 import numpy as np
 
+from utils import gene_list_from_graphs
+
 
 if __name__ == "__main__":
     ###
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     out_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/{args.tissue}/parsing/graphs_scaled'
     scale_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler'
 
-    genes = [gene.split("_")[0] for gene in os.listdir(f'{graph_dir}')]
+    genes = gene_list_from_graphs(root_dir=root_dir, tissue=args.tissue)
     scalers = {i: joblib.load(f'{scale_dir}/feat_{i}_scaler.pt') for i in range(0, 34)}
 
     for gene in genes:
