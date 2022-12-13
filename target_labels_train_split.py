@@ -45,7 +45,7 @@ def _filter_low_tpm(
     df = pd.read_table(file, index_col=0, header=[2])
     sample_n = len(df.columns)
     df['total'] = df.select_dtypes(np.number).gt(0.10).sum(axis=1)
-    df['result'] = df['total'] >= (.25 * sample_n)
+    df['result'] = df['total'] >= (.30 * sample_n)
     if return_list == False:
         return [
             f'{gene}_{tissue}' for gene
@@ -329,21 +329,20 @@ def main() -> None:
         protein_median_file=protein_median_file,
     )  
 
-    # filter targets by tpm
+    # filter targets by tpm - 153448/13847/12601 train/test/validation, total = 186980
     filtered_targets = filtered_targets(
         TISSUE_PARAMS,
         targets
-        )  # 159424/14395/13161 train/test/validation, total = 186980
+    )  
 
     # concatenate and save a file with all num_nodes and num_edges
     shared_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
     with open(f'{shared_dir}/filtered_stats.pkl', 'wb') as output:
         pickle.dump(concat_graph_stats(TISSUE_PARAMS), output)
 
-    # # save targets
-    # with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'wb') as output:
-    #     pickle.dump(filtered_targets, output)
-
+    # save targets
+    with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'wb') as output:
+        pickle.dump(filtered_targets, output)
 
     # code to get max_node filtered targets for end-to-end debugging
     # open files
@@ -353,7 +352,7 @@ def main() -> None:
     with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [2500]:
+    for num in [1000, 2500, 4000, 5000, 10000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -375,45 +374,39 @@ if __name__ == '__main__':
 #     print(f"validation = {len(targets['validation'])}")
 #     print('\n')
 
-# # for num in [2500, 3000, 3500, 4000, 4500, 5000]:
-# for num in [2500]:
+# for num in [1000, 2500, 4000, 5000, 10000]:
 #     print_stats(num)
 
 
+
+# max_nodes = 1000
+# train = 12999
+# test = 2396
+# validation = 1389
+
+
 # max_nodes = 2500
-# train = 28515
-# test = 4661
-# validation = 3254
-
-
-# max_nodes = 3000
-# train = 32017
-# test = 5070
-# validation = 3706
-
-
-# max_nodes = 3500
-# train = 38121
-# test = 5465
-# validation = 4306
+# train = 35734
+# test = 5140
+# validation = 3876
 
 
 # max_nodes = 4000
-# train = 44093
-# test = 5955
-# validation = 5103
-
-
-# max_nodes = 4500
-# train = 49801
-# test = 6595
-# validation = 6048
+# train = 54770
+# test = 6817
+# validation = 6296
 
 
 # max_nodes = 5000
-# train = 55866
-# test = 7159
-# validation = 6792
+# train = 66732
+# test = 7645
+# validation = 7651
+
+
+# max_nodes = 10000
+# train = 107161
+# test = 10829
+# validation = 10390    
 
 
 # import pandas as pd

@@ -8,8 +8,7 @@
 #   - [ ] fix URLs as they point to incorrect locations
 #
 
-"""Code to preprocess bedfiles before parsing into graph structures. 
-URL for tissue-specific regulatory builds: http://ftp.ensembl.org/pub/current_regulation/homo_sapiens/RegulatoryFeatureActivity/"""
+"""Code to preprocess bedfiles before parsing into graph structures"""
 
 import os
 import argparse
@@ -19,7 +18,6 @@ import subprocess
 import pybedtools
 
 from typing import Dict
-
 from pybedtools.featurefuncs import extend_fields
 
 from utils import dir_check_make, parse_yaml, time_decorator
@@ -161,18 +159,11 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _split_chromatinloops(self, bed: str) -> None:
         """Split chromatinloop file in separate entries"""
-        split_1 = f"sort -k 1,1 -k2,2n {self.root_tissue}/unprocessed/{bed} \
-            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"loop_\"NR}}' \
-            > {self.root_tissue}/unprocessed/{bed}_1"
-        split_2 = f"sort -k 1,1 -k2,2n {self.root_tissue}/unprocessed/{bed} \
-            | awk -v FS='\t' -v OFS='\t' '{{print $4, $5, $6, \"loop_\"NR}}' \
-            > {self.root_tissue}/unprocessed/{bed}_2"
-        loop_cat = f'cat {self.root_tissue}/unprocessed/{bed}_1 {self.root_tissue}/unprocessed/{bed}_2 \
-            | sort -k 1,1 -k2,2n \
-            > {self.root_tissue}/local/chromatinloops_{self.tissue}.txt'
+        full_loop = f"sort -k 1,1 -k2,2n {self.root_tissue}/unprocessed/{bed} \
+            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
+            > {self.root_tissue}/local/chromatinloops_{self.tissue}.txt"
 
-        for cmd in [split_1, split_2, loop_cat]:
-            self._run_cmd(cmd)
+        self._run_cmd(full_loop)
 
     @time_decorator(print_args=True)
     def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
