@@ -679,22 +679,22 @@ def main() -> None:
     # save window file
     window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
 
-    # # get features within 500kb of protein coding regions
-    # bedfiles = _gene_window(
-    #     dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
-    # )
+    # get features within 500kb of protein coding regions
+    bedfiles = _gene_window(
+        dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
+    )
 
-    # # instantiate object
-    # localparseObject = LocalContextFeatures(
-    #     bedfiles=bedfiles,
-    #     params=params,
-    # )
+    # instantiate object
+    localparseObject = LocalContextFeatures(
+        bedfiles=bedfiles,
+        params=params,
+    )
 
-    # # run parallelized pipeline! 
-    # localparseObject.parse_context_data()
+    # run parallelized pipeline! 
+    localparseObject.parse_context_data()
 
-    # # cleanup temporary files
-    # pybedtools.cleanup(remove_all=True)
+    # cleanup temporary files
+    pybedtools.cleanup(remove_all=True)
 
 
 if __name__ == '__main__':
