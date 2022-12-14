@@ -11,26 +11,23 @@ sbatch prepare_bedfiles.sh genomic_graph_mutagenesis/configs/${tis}.yaml
 done
 
 for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
-sbatch --dependency=afterok:13634809:13634810:13634811:13634812:13634813:13634814:13634815 local_context_parser.sh genomic_graph_mutagenesis/configs/${tis}.yaml
+sbatch local_context_parser.sh genomic_graph_mutagenesis/configs/${tis}.yaml
 done
 
 for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
-sbatch --dependency=afterok:13634864:13634865:13634866:13634867:13634868:13634869:13634870 graph_constructor.sh genomic_graph_mutagenesis/configs/${tis}.yaml
+sbatch --dependency=afterok:13635368:13635367:13635366:13635365:13635364:13635363:13635362 graph_constructor.sh genomic_graph_mutagenesis/configs/${tis}.yaml
 done
 
 for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
-sbatch --dependency=afterok:13634871:13634872:13634873:13634874:13634875:13634876:13634877 graph_stats.sh ${tis}
+sbatch --dependency=afterok:13635369:13635370:13635371:13635372:13635373:13635374:13635375 graph_stats.sh ${tis}
 done
 
 for i in {0..33..1}; do
-sbatch --dependency=afterok:13635256:13635257:13635258:13635259:13635260:13635261:13635262 make_scaler.sh $i
+sbatch --dependency=afterok:13635378:13635379:13635380:13635381:13635382:13635383:13635384 make_scaler.sh $i
 done
 
 for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
 mkdir ${tis}/parsing/graphs_scaled
-sbatch --dependency=afterok:13635268:13635269:13635270:13635271:13635272:13635273:13635274:13635275:13635276:13635277:13635278:13635279:13635280:13635281:13635282:13635283:13635284:13635285:13635286:13635287:13635288:13635289:13635290:13635291:13635292:13635293:13635294:13635295:13635296:13635297:13635298:13635299:13635300:13635301 scale_node_feats.sh ${tis}
+sbatch --dependency=afterok:13635385:13635386:13635387:13635388:13635389:13635390:13635391:13635392:13635393:13635394:13635395:13635396:13635397:13635398:13635399:13635400:13635401:13635402:13635403:13635404:13635405:13635406:13635407:13635408:13635409:13635410:13635411:13635412:13635413:13635414:13635415:13635416:13635417:13635418 scale_node_feats.sh ${tis}
 done
 
-for tis in hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung; do
-mv ${tis}/gene_regions_tpm_filtered.bed gene_regions_tpm_filtered.bed_2
-done

@@ -19,7 +19,8 @@ from typing import List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 
-from utils import genes_from_gff, time_decorator
+# from utils import genes_from_gff, time_decorator  # uncomment if running as a job
+from genomic_graph_mutagenesis.utils import genes_from_gff, time_decorator
 
 
 DATA_SPLITS = ['train', 'test', 'validation']
@@ -76,7 +77,7 @@ def datasplit_chromosomes(
     """Create train, test, and validation sets for genes based on 
     whole chromosomes and pkl as dictionary"""
 
-    chr_split_dictionary = f"graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
+    chr_split_dictionary = f"shared_data/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
 
     if os.path.isfile(chr_split_dictionary):
         with open(chr_split_dictionary, 'rb') as f:
@@ -231,7 +232,7 @@ def tissue_targets(
         ) for data_split in DATA_SPLITS
     }
 
-    with open('targets.pkl', 'wb') as output:
+    with open('shared_data/targets.pkl', 'wb') as output:
         pickle.dump(targets, output)
 
     return targets
@@ -273,12 +274,12 @@ def max_node_filter(max_nodes, filtered_stats, targets, randomizer=False):
         alltargets = {**targets['train'], **targets['test'], **targets['validation']}
         for key in randomkeys:
             filtered_dict[key] = {gene: value for gene, value in alltargets.items() if gene in randomized[randomkeys[key]]}
-        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/targets_filtered_random_{max_nodes}.pkl', 'wb') as output:
+        with open(f'shared_data/targets_filtered_random_{max_nodes}.pkl', 'wb') as output:
             pickle.dump(filtered_dict, output)
     else:
         for key in ['train', 'test', 'validation']:
             filtered_dict[key] = {gene: value for gene, value in targets[key].items() if gene in filtered_genes}
-        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/targets_filtered_{max_nodes}.pkl', 'wb') as output:
+        with open(f'shared_data/targets_filtered_{max_nodes}.pkl', 'wb') as output:
             pickle.dump(filtered_dict, output)
 
 
@@ -288,7 +289,7 @@ def concat_graph_stats(tissue_params):
     contains a minor nested function to add tissue name to the dict key
     """
     def open_graph_stats(tissue):
-        with open(f'/ocean/projects/bio210019p/stevesho/data/preprocess/check_num_nodes/feat_stats_{tissue}.pkl', 'rb') as file:
+        with open(f'check_num_nodes/feat_stats_{tissue}.pkl', 'rb') as file:
             return {f'{key}_{tissue}':value for key,value in pickle.load(file).items()}
     for idx, tissue in enumerate(tissue_params):
         if idx == 0:
@@ -302,7 +303,7 @@ def concat_graph_stats(tissue_params):
 def main() -> None:
     """Pipeline to generate dataset split and target values"""
 
-    gene_gtf = 'interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
+    gene_gtf = 'shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
     test_chrs = ['chr8', 'chr9']
     val_chrs = ['chr7', 'chr13']
 
@@ -323,10 +324,10 @@ def main() -> None:
     targets = tissue_targets(
         split=split,
         tissue_params=TISSUE_PARAMS,
-        tpm_pkl=tpm_pkl,
-        tpm_median_file=tpm_median_file,
-        protein_file=protein_file,
-        protein_median_file=protein_median_file,
+        tpm_pkl=f'shared_data/{tpm_pkl}',
+        tpm_median_file=f'shared_data/{tpm_median_file}',
+        protein_file=f'shared_data/{protein_file}',
+        protein_median_file=f'shared_data/{protein_median_file}',
     )  
 
     # filter targets by tpm - 153448/13847/12601 train/test/validation, total = 186980
@@ -336,23 +337,23 @@ def main() -> None:
     )  
 
     # concatenate and save a file with all num_nodes and num_edges
-    shared_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-    with open(f'{shared_dir}/filtered_stats.pkl', 'wb') as output:
+    with open(f'shared_data/filtered_stats.pkl', 'wb') as output:
         pickle.dump(concat_graph_stats(TISSUE_PARAMS), output)
 
     # save targets
-    with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'wb') as output:
+    with open(f'shared_data/filtered_targets_7_tissues_v3.pkl', 'wb') as output:
         pickle.dump(filtered_targets, output)
 
     # code to get max_node filtered targets for end-to-end debugging
     # open files
-    with open(f'{shared_dir}/filtered_stats.pkl', 'rb') as file:
+    with open(f'shared_data/filtered_stats.pkl', 'rb') as file:
         filtered_stats = pickle.load(file)
 
-    with open(f'{shared_dir}/filtered_targets_7_tissues_v3.pkl', 'rb') as file:
+    with open(f'shared_data/filtered_targets_7_tissues_v3.pkl', 'rb') as file:
         targets = pickle.load(file)
 
-    for num in [1000, 2500, 4000, 5000, 10000]:
+    # for num in [1000, 2500, 4000, 5000, 10000]:
+    for num in [10000]:
         max_node_filter(
             max_nodes=num,
             filtered_stats=filtered_stats,
@@ -366,7 +367,7 @@ if __name__ == '__main__':
 
 
 # def print_stats(num):
-#     with open(f'targets_filtered_{num}.pkl', 'rb') as file:
+#     with open(f'shared_data/targets_filtered_{num}.pkl', 'rb') as file:
 #         targets = pickle.load(file)
 #     print(f'max_nodes = {num}')
 #     print(f"train = {len(targets['train'])}")
@@ -378,35 +379,34 @@ if __name__ == '__main__':
 #     print_stats(num)
 
 
-
 # max_nodes = 1000
-# train = 12999
-# test = 2396
-# validation = 1389
+# train = 11977
+# test = 2231
+# validation = 1305
 
 
 # max_nodes = 2500
-# train = 35734
-# test = 5140
-# validation = 3876
+# train = 33641
+# test = 4823
+# validation = 3653
 
 
 # max_nodes = 4000
-# train = 54770
-# test = 6817
-# validation = 6296
+# train = 51875
+# test = 6483
+# validation = 5984
 
 
 # max_nodes = 5000
-# train = 66732
-# test = 7645
-# validation = 7651
+# train = 63570
+# test = 7292
+# validation = 7277
 
 
 # max_nodes = 10000
-# train = 107161
-# test = 10829
-# validation = 10390    
+# train = 102962
+# test = 10404
+# validation = 9963
 
 
 # import pandas as pd
