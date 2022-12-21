@@ -271,7 +271,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--target_file",
         type=str,
-        default="targets_filtered_2500.pkl",
+        default="targets_filtered_3000.pkl",
     )
     parser.add_argument(
         "--cores",
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_nodes",
         type=int,
-        default=5000,
+        default=3000,
     )
 
     args = parser.parse_args()
