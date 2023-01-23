@@ -12,20 +12,19 @@
 """Parse local genomic data to nodes and attributes"""
 
 import argparse
+from itertools import repeat
+from multiprocessing import Pool
 import os
 import pickle
 import subprocess
+from subprocess import Popen, PIPE
+from typing import Dict, List, Optional, Tuple
 
 import pybedtools
-
-from itertools import repeat
-from multiprocessing import Pool
 from pybedtools.featurefuncs import extend_fields
-from typing import Dict, List, Optional, Tuple
-from subprocess import Popen, PIPE
 
-from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
 from target_labels_train_split import _filter_low_tpm
+from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
 
 
 @time_decorator(print_args=True)
@@ -201,7 +200,8 @@ class LocalContextFeatures:
     def __init__(
         self,
         bedfiles: List[str],
-        params: Dict[str, Dict[str, str]]):
+        params: Dict[str, Dict[str, str]]
+        ):
         """Initialize the class"""
         self.bedfiles = bedfiles
 

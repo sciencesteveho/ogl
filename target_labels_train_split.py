@@ -19,8 +19,8 @@ from typing import List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 
-# from utils import genes_from_gff, time_decorator  # uncomment if running as a job
-from genomic_graph_mutagenesis.utils import genes_from_gff, time_decorator
+from utils import genes_from_gff, time_decorator  # uncomment if running as a job
+# from genomic_graph_mutagenesis.utils import genes_from_gff, time_decorator
 
 
 DATA_SPLITS = ['train', 'test', 'validation']
