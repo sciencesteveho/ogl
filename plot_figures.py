@@ -131,13 +131,12 @@ def _set_matplotlib_publication_parameters():
     plt.rcParams["font.family"] = 'Helvetica'  # set font
 
 
-def plot_sparsity(distances, fontsize):
+def distance_plot(distances, num, fontsize=7):
     _set_matplotlib_publication_parameters()
-    sns.displot(distances, kind='kde')
-    plt.title('Sparsity of adjacency matrices', fontsize=fontsize)
-    plt.xlabel('Percentage of zeros in adj', fontsize=fontsize)
-    plt.ylabel('Number of graphs', fontsize=fontsize)
-    plt.xlim(0, 1000000)
+    sns.displot(distances, kind='kde', color='maroon')
+    plt.title(f'Distance between features, {num} kb', fontsize=fontsize)
+    plt.xlabel('Distance', fontsize=fontsize)
+    plt.ylabel('Counts', fontsize=fontsize)
     return plt    
 
 
@@ -145,15 +144,63 @@ def bed_distances(bed):
     a = pybedtools.BedTool(bed)
     starts = np.array([int(line[1]) for line in a])
     ends = np.array([int(line[2]) for line in a])
-    return np.subtract(
+    return [
+        x for x in np.subtract(
         starts[1:len(starts)],
-        ends[:len(ends)-1],
-    )
+        ends[:len(ends)-1])
+        if x > 0
+    ]
 
 
-testbed = 'chr1_nodes_merged.txt'
 _set_matplotlib_publication_parameters()
+def plot_distances(arg):
+    distances = bed_distances(arg[0])
+    distance_plot(distances, arg[1])
+    plt.savefig((f'{arg[1]}_kb_distance.png'), format='png', dpi=300, bbox_inches='tight')
 
-distances = bed_distances(testbed)
 
-plot = plot_sparsity(distances,7)
+kbs = [
+    ('50000_liver.bed', '50'),
+    ('75000_liver.bed', '75'),
+    ('125000_liver.bed', '125'),
+    ('250000_liver.bed', '250'),
+     ]
+
+for tup in kbs:
+    print(tup)
+    plot_distances(tup)
+
+
+
+import csv
+import pybedtools
+
+def hg38_total(chrom):
+    with open(chrom, newline='') as file:
+        total = 0
+        file_reader = csv.reader(file, delimiter = '\t')
+        for idx, line in enumerate(file_reader):
+            if idx <= 23:
+                total += int(line[1])
+    return total
+
+def bed_total(bed):
+    a = pybedtools.BedTool(bed)
+    total = 0
+    for line in a:
+        total += len(line)
+    return total
+
+total_bp = hg38_total('hg38.chrom.sizes.txt')
+for x in kbs:
+    total = bed_total(x[0])
+    print(f'{x}, {total/total_bp}')
+
+
+'''
+('50000_liver.bed', '50'), 0.5190694321428063
+('75000_liver.bed', '75'), 0.5579010487189838
+('125000_liver.bed', '125'), 0.6123175259512104
+('250000_liver.bed', '250'), 0.6931871563870524
+'''
+

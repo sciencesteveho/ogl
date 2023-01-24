@@ -1,7 +1,7 @@
 resources:
   tissue: 'hippocampus'
   tissue_name: 'Brain - Hippocampus'
-  window: 125000
+  window: 50000
   ppi_tissue: 'hippocampal formation'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
