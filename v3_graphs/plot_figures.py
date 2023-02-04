@@ -162,9 +162,10 @@ def plot_distances(arg):
 kbs = [
     ('50000_liver.bed', '50'),
     ('75000_liver.bed', '75'),
+    ('100000_liver.bed', '75'),
     ('125000_liver.bed', '125'),
     ('250000_liver.bed', '250'),
-     ]
+    ]
 
 for tup in kbs:
     print(tup)
@@ -200,7 +201,28 @@ for x in kbs:
 '''
 ('50000_liver.bed', '50'), 0.5190694321428063
 ('75000_liver.bed', '75'), 0.5579010487189838
+('100000_liver.bed', '75'), 0.5876976691588521
 ('125000_liver.bed', '125'), 0.6123175259512104
 ('250000_liver.bed', '250'), 0.6931871563870524
+
+スティーブホ    ~/hecateus/development/karyo    master !7 ?16                                                       ✘ PIPE|PIPE|127   21:42:04
+❯ sort-bed 250000_liver_raw.bed | bedmap --echo --count --bases --delim '\t' - | awk '{s+=$6} END {print s}'
+145833871041
+
+スティーブホ    ~/hecateus/development/karyo    master !7 ?16                                                                         21:42:40
+❯ sort-bed 125000_liver_raw.bed | bedmap --echo --count --bases --delim '\t' - | awk '{s+=$6} END {print s}'
+46303524914
+
+スティーブホ    ~/hecateus/development/karyo    master !7 ?16                                                                         21:42:49
+❯ sort-bed 75000_liver_raw.bed | bedmap --echo --count --bases --delim '\t' - | awk '{s+=$6} END {print s}'
+21145257845
+
+スティーブホ    ~/hecateus/development/karyo    master !7 ?16                                                                         21:42:57
+❯ sort-bed 50000_liver_raw.bed | bedmap --echo --count --bases --delim '\t' - | awk '{s+=$6} END {print s}'
+11931390420
+
+❯ sort-bed 100000_liver_raw.bed | bedmap --echo --count --bases --delim '\t' - | awk '{s+=$6} END {print s}'
+32621820807
+
 '''
 
