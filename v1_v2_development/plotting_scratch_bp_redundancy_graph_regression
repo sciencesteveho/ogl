@@ -1,6 +1,0 @@
-pyGenomeTracks --tracks tracks.ini --region 1:0-3300000 --dpi 130 -o test.png
-
-for num in 250000 125000 100000 75000 50000; do
-bedtools slop -i liver_tpm_filtered.bed -g hg38.chrom.sizes.txt -b $num > ${num}_liver_raw.bed
-bedtools slop -i liver_tpm_filtered.bed -g hg38.chrom.sizes.txt -b $num | bedtools merge -i - > ${num}_liver.bed
-done
