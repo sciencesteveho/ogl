@@ -7,9 +7,8 @@
 # - [ ] PRIORITY ** Fix memory leak! 
 # - [ ] Fix filepaths. They are super ugly! 
 # - [ ] one-hot encode node_feat type?
-# - [ ] scale feats... 
 #
-"""Create graphs from parsed genomic data"""
+"""Create base graph structure from interaction-type omics data"""
 
 import argparse
 import csv
@@ -23,9 +22,8 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 import pybedtools
-from mygene import MyGeneInfo
 
-from utils import dir_check_make, filtered_genes, parse_yaml, time_decorator
+from utils import _filter_low_tpm, _filtered_gene_windows, dir_check_make, filtered_genes_from_bed, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -38,9 +36,6 @@ class GraphConstructor:
         Curated protein-protein interactions from the integrated interactions
         database V 2021-05
         Alternative polyadenylation targets from APAatlas
-
-        REMOVED
-            Gold-standard (C1) gene-gene interactions from GIANT/HumanBase
 
     Args:
         params // configuration vals from yaml 
@@ -137,6 +132,49 @@ class GraphConstructor:
             for line in a 
             if line[0] not in ['chrX', 'chrY', 'chrM']
             }
+    
+    @time_decorator(print_args=True)
+    def _iid_ppi(
+        self,
+        interaction_file: str,
+        tissue: str,
+        ) -> List[Tuple[str, str, float, str]]:
+        """Protein-protein interactions from the Integrated Interactions
+        Database v 2021-05"""
+        df = pd.read_csv(interaction_file, delimiter='\t')
+        df = df[['symbol1', 'symbol2', 'evidence_type', 'n_methods', tissue]]
+        t_spec_filtered = df[(df[tissue] > 0) & (df['n_methods'] >= 2) & (df['evidence_type'].str.contains('exp'))]
+        edges = list(
+                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']),
+                repeat(-1),
+                repeat('ppi')
+                ))
+        return [(
+            self.genesymbol_to_gencode[edge[0]],
+            self.genesymbol_to_gencode[edge[1]],
+            edge[2],
+            edge[3],)
+            for edge in edges
+            if edge[0] in self.genesymbol_to_gencode.keys() and edge[1] in self.genesymbol_to_gencode.keys()
+            ]
+
+    @time_decorator(print_args=True)
+    def _marbach_regulatory_circuits(
+        self,
+        interaction_file: str
+        ) -> List[Tuple[str, str, float, str]]:
+        """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
+        network is in the following format:
+            col_1   TF
+            col_2   Target gene
+            col_3   Edge weight 
+        """
+        with open(interaction_file, newline = '') as file:
+            return [
+                (self.genesymbol_to_gencode[line[0]], self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
+                for line in csv.reader(file, delimiter='\t')
+                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys()
+                ]
 
     def _enhancer_index(
         self,
@@ -215,107 +253,6 @@ class GraphConstructor:
             'enhancer-gene')
             for line in e_g_liftover
         ]
-
-    # @time_decorator(print_args=True)
-    # def _giant_network(
-    #     self,
-    #     interaction_file: str,
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Lorem"""
-    #     mg = MyGeneInfo()
-
-    #     def _read_giant(graph):
-    #         edges, edge1, edge2 = [], [], []
-    #         with open(graph, newline='') as file:
-    #             lines = csv.reader(file, delimiter='\t')
-    #             for line in lines:
-    #                 if line[2] == '1':
-    #                     edges.append(line)
-    #                     edge1.append(line[0])
-    #                     edge2.append(line[1])
-    #         return edges, set(edge1+edge2)
-
-    #     def _entrez_to_symbol_ref(edge_list):
-    #         edge_lookup = {}
-    #         for edge in edge_list:
-    #             meta = mg.query(edge, fields=['symbol'], species='human', verbose=False)
-    #             try:
-    #                 result = meta['hits'][0]
-    #                 if 'symbol' not in result:
-    #                     edge_lookup[edge] = 'NA'
-    #                 else:
-    #                     edge_lookup[edge] = result['symbol']
-    #             except IndexError:
-    #                 edge_lookup[edge] = 'NA'
-    #         return edge_lookup
-
-    #     def _convert_giant(edges, symbol_ref, ensembl_ref):
-    #         def _convert_genes(
-    #             edges: List[Tuple[any]],
-    #             ref: Dict[str, str],
-    #             edge_type: str,
-    #             ) -> List[Tuple[any]]:
-    #             return [
-    #                 (ref[edge[0]],
-    #                 ref[edge[1]],
-    #                 -1,
-    #                 edge_type,)
-    #                 for edge in edges
-    #                 if edge[0] in ref.keys()
-    #                 and edge[1] in ref.keys()
-    #             ]
-    #         giant_symbols = _convert_genes(edges, symbol_ref, edge_type='giant')
-    #         giant_filtered = [edge for edge in giant_symbols if edge[0] != 'NA' and edge[1] != 'NA']
-    #         return _convert_genes(
-    #             giant_filtered,
-    #             ensembl_ref,
-    #             'giant',)
-        
-    #     edges, edge_list = _read_giant(interaction_file)
-    #     symbol_ref = _entrez_to_symbol_ref(edge_list)
-    #     return _convert_giant(
-    #         edges,
-    #         symbol_ref,
-    #         self.genesymbol_to_gencode
-    #         )
-
-    @time_decorator(print_args=True)
-    def _iid_ppi(
-        self,
-        interaction_file: str,
-        tissue: str,
-        ) -> List[Tuple[str, str, float, str]]:
-        """Protein-protein interactions from the Integrated Interactions
-        Database v 2021-05"""
-        df = pd.read_csv(interaction_file, delimiter='\t')
-        df = df[['symbol1', 'symbol2', 'evidence_type', 'n_methods', tissue]]
-        t_spec_filtered = df[(df[tissue] > 0) & (df['n_methods'] >= 2) & (df['evidence_type'].str.contains('exp'))]
-        edges = list(
-                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']),
-                repeat(-1),
-                repeat('ppi')
-                ))
-        return [(
-            self.genesymbol_to_gencode[edge[0]],
-            self.genesymbol_to_gencode[edge[1]],
-            edge[2],
-            edge[3],)
-            for edge in edges
-            if edge[0] in self.genesymbol_to_gencode.keys() and edge[1] in self.genesymbol_to_gencode.keys()
-            ]
-
-    @time_decorator(print_args=True)
-    def _marbach_regulatory_circuits(
-        self,
-        interaction_file: str
-        ) -> List[Tuple[str, str, float, str]]:
-        """Regulatory circuits from Marbach et al., Nature Methods, 2016"""
-        with open(interaction_file, newline = '') as file:
-            return [
-                (self.genesymbol_to_gencode[line[0]], self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
-                for line in csv.reader(file, delimiter='\t')
-                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys()
-                ]
 
     @time_decorator(print_args=True)
     def _polyadenylation_targets(
@@ -524,6 +461,14 @@ def main() -> None:
 
     args = parser.parse_args()
     params = parse_yaml(args.config)
+
+    window, _ = _filtered_gene_windows(
+    gencode=f"shared_data/local/{params['shared']['gencode']}",
+    chromfile=params['resources']['chromfile'],
+    tissue=params['resources']['tissue'],
+    tpm_file=params['resources']['tpm'],
+    window=params['resources']['window'],
+    )
 
     # genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
     genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")

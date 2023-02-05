@@ -4,15 +4,16 @@
 """Utilities for graph processing"""
 
 import csv
+from datetime import timedelta
 import functools
 import inspect
 import os
 import random
 import time
+from typing import Any, Callable, Dict, List, Tuple, Union
 import yaml
 
-from datetime import timedelta
-from typing import Any, Callable, Dict, List, Union
+import pybedtools
 
 
 TISSUE_TPM_KEYS = {
@@ -114,16 +115,26 @@ def dir_check_make(dir: str) -> None:
         os.makedirs(dir)
     except FileExistsError:
         pass
+    
+
+def _ls(dir: str) -> List[str]:
+    """
+    Returns a list of files within the directory
+    """
+    return [
+        file for file in os.listdir(dir)
+        if os.path.isfile(f'{dir}/{file}')
+        ]
 
 
-def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
     with open(tpm_filtered_genes, newline='') as file:
         return [line[3] for line in csv.reader(file, delimiter='\t')]
 
 
 def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
-    """Returns a list of genes with constructed graphs,
-    avoiding genes that may not have edges in smaller window"""
+    """Returns a list of genes with constructed graphs, avoiding genes that may
+    not have edges in smaller window"""
     directory = f'{root_dir}/{tissue}/parsing/graphs'
     return [
         gene.split("_")[0] for gene
@@ -167,24 +178,58 @@ def time_decorator(print_args: bool = False, display_arg: str ="") -> Callable:
                     print(f'Finished {function.__name__} {display_arg} - Time: {timedelta(seconds=end_time - start_time)}')
         return _execute
     return _time_decorator_func
-    
 
-"""
-### Code for saving chunked genes
-import pickle 
 
-dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-gff = '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/gencode_v26_genes_only_with_GTEx_targets.bed'
-# chunks = 1124
-genes = list(genes_from_gff(gff))
-chunks = 14050
+@time_decorator(print_args=True)
+def _filter_low_tpm(
+    tissue: str,
+    file: str,
+    return_list: False,
+    ) -> List[str]:
+    """Remove genes expressing less than 0.10 TPM across 20% of samples"""
+    df = pd.read_table(file, index_col=0, header=[2])
+    sample_n = len(df.columns)
+    df['total'] = df.select_dtypes(np.number).gt(0.10).sum(axis=1)
+    df['result'] = df['total'] >= (.30 * sample_n)
+    if return_list == False:
+        return [
+            f'{gene}_{tissue}' for gene
+            in list(df.loc[df['result'] == True].index)
+        ]
+    else:
+        return list(df.loc[df['result'] == True].index)
 
-output = open(f'{dir}/gencode_chunks_{chunks}.pkl', 'wb')
-try:
-    pickle.dump(
-        chunk_genes(genes, chunks),
-        output
+
+@time_decorator(print_args=True)
+def _filtered_gene_windows(
+    gencode: str,
+    chromfile: str,
+    slop: bool,
+    tissue: str,
+    tpm_file: str,
+    window: int,
+    ) -> Tuple[pybedtools.BedTool, List[str]]:
+    """
+    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
+    samples in that tissue. Additionally, we exclude analysis of sex
+    chromosomes. 
+
+    Returns:
+        pybedtools object with +/- <window> windows around that gene
+    """
+    tpm_filtered_genes = _filter_low_tpm(
+        tissue,
+        tpm_file,
+        return_list=True,
     )
-finally:
-    output.close()
-"""
+    genes = pybedtools.BedTool(gencode)
+    genes_filtered = genes.filter(
+        lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY', 'chrM']
+        )
+    
+    if slop:
+        return genes_filtered.slop(g=chromfile, b=window)\
+            .cut([0, 1, 2, 3])\
+            .sort(), [x[3] for x in genes_filtered]
+    else:
+        return genes_filtered.sort(), [x[3] for x in genes_filtered]

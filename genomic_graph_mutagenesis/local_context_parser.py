@@ -27,48 +27,6 @@ from target_labels_train_split import _filter_low_tpm
 from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
 
 
-@time_decorator(print_args=True)
-def _filtered_gene_windows(
-    gencode: str,
-    chromfile: str,
-    tissue: str,
-    tpm_file: str,
-    window: int,
-    ) -> Tuple[pybedtools.BedTool, List[str]]:
-    """
-    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
-    samples in that tissue. Additionally, we exclude analysis of sex
-    chromosomes. 
-
-    Returns:
-        pybedtools object with +/- <window> windows around that gene
-    """
-    tpm_filtered_genes = _filter_low_tpm(
-        tissue,
-        tpm_file,
-        return_list=True,
-    )
-    genes = pybedtools.BedTool(gencode)
-    genes_filtered = genes.filter(
-        lambda x: x[3] in tpm_filtered_genes and x[0] not in ['chrX', 'chrY', 'chrM']
-        )
-
-    return genes_filtered.slop(g=chromfile, b=window)\
-        .cut([0, 1, 2, 3])\
-        .sort(), [x[3] for x in genes_filtered]
-
-
-@time_decorator(print_args=True)
-def _gene_window(dir: str) -> List[str]:
-    """
-    Returns a list of bedfiles within the directory.
-    """
-    return [
-        file for file in os.listdir(dir)
-        if os.path.isfile(f'{dir}/{file}')
-        ]
-
-
 class LocalContextFeatures:
     """Object that parses local genomic data into graph edges
 
