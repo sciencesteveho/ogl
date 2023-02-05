@@ -10,7 +10,7 @@ import inspect
 import os
 import random
 import time
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import yaml
 
 import pybedtools
@@ -201,13 +201,13 @@ def _filter_low_tpm(
 
 
 @time_decorator(print_args=True)
-def _filtered_gene_windows(
+def _tpm_filter_gene_windows(
     gencode: str,
-    chromfile: str,
-    slop: bool,
     tissue: str,
     tpm_file: str,
-    window: int,
+    slop: bool,
+    chromfile: Optional[str] = None,
+    window: Optional[int] = 0,
     ) -> Tuple[pybedtools.BedTool, List[str]]:
     """
     Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of

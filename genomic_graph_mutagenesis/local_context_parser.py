@@ -632,21 +632,8 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    window, _ = _filtered_gene_windows(
-        gencode=f"shared_data/local/{params['shared']['gencode']}",
-        chromfile=params['resources']['chromfile'],
-        tissue=params['resources']['tissue'],
-        tpm_file=params['resources']['tpm'],
-        window=params['resources']['window'],
-    )
-
-    # save window file
-    window.saveas(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
-
-    # get features within 500kb of protein coding regions
-    bedfiles = _gene_window(
-        dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
-    )
+    # genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
+    genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")
 
     # instantiate object
     localparseObject = LocalContextFeatures(

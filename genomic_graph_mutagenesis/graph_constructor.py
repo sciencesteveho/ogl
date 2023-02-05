@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import _filter_low_tpm, _filtered_gene_windows, dir_check_make, filtered_genes_from_bed, parse_yaml, time_decorator
+from utils import _tpm_filter_gene_windows, dir_check_make, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -462,21 +462,20 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    window, _ = _filtered_gene_windows(
-    gencode=f"shared_data/local/{params['shared']['gencode']}",
-    chromfile=params['resources']['chromfile'],
-    tissue=params['resources']['tissue'],
-    tpm_file=params['resources']['tpm'],
-    window=params['resources']['window'],
-    )
-
-    # genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
-    genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")
-
+    # get filtered genes
+    _, tpm_filtered_genes = _tpm_filter_gene_windows(
+        gencode=f"shared_data/local/{params['shared']['gencode']}",
+        tissue=params['resources']['tissue'],
+        tpm_file=params['resources']['tpm'],
+        slop=False,
+        chromfile=params['resources']['chromfile'],
+        window=params['resources']['window'],
+        )
+    
     # instantiate object
     graphconstructingObject = GraphConstructor(
         params=params,
-        genes=genes,
+        genes=tpm_filtered_genes,
         graph_type='concatenated'
         )
 
