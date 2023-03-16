@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] Implement FENRIR filters? any genes and links involving genes within top 20% score
-#   - [ ] or try implementing 250 filters
 # - [ ] PRIORITY ** Fix memory leak! 
 # - [ ] Fix filepaths. They are super ugly! 
 # - [ ] one-hot encode node_feat type?
 #
+
 """Create base graph structure from interaction-type omics data"""
 
 import argparse
@@ -19,6 +18,7 @@ import pickle
 import subprocess
 from typing import Any, Dict, List, Tuple
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 import pybedtools
@@ -29,16 +29,20 @@ from utils import _tpm_filter_gene_windows, dir_check_make, parse_yaml, time_dec
 class GraphConstructor:
     """Object to construct tensor based graphs from parsed bedfiles
     
-    The following types of interaction data are represented:
-        Enhancer-enhancer networks from FENRIR
-        Enhancer-gene networks from FENRIR
-        Gene(TF)-gene circuits from Marbach et al.,
+    The baseline graph structure is build from the following in order:
         Curated protein-protein interactions from the integrated interactions
         database V 2021-05
+        TF-gene circuits from Marbach et al.
+        TF-gene interactions from TFMarker. We keep "TF" and "I Marker" type relationships
+        Enhancer-gene networks from FENRIR
+        Enhancer-enhancer networks from FENRIR
+
         Alternative polyadenylation targets from APAatlas
 
     Args:
-        params // configuration vals from yaml 
+        params: configuration vals from yaml 
+        genes:
+        graph_type: {'local', 'concatenated'}
 
     Methods
     ----------
@@ -70,24 +74,25 @@ class GraphConstructor:
         ONEHOT_EDGETYPE --
     """
 
-    ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # no gc; hardcoded in as initial file
+    # ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # no gc; hardcoded in as initial file
+    ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'sine']  # no gc; hardcoded in as initial file
     NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']  # no gencode; hardcoded in as initial file 
     NODE_FEATS = ['start', 'end', 'size', 'gc'] + ATTRIBUTES
 
     ONEHOT_EDGETYPE = {
-        'local': [1,0,0,0,0,0],
-        'enhancer-enhancer': [0,1,0,0,0,0],
-        'enhancer-gene': [0,0,1,0,0,0],
-        'circuits': [0,0,0,1,0,0],
-        'ppi': [0,0,0,0,1,0],
-        'giant': [0,0,0,0,0,1],
+        'local': [1,0,0,0,0],
+        'enhancer-enhancer': [0,1,0,0,0],
+        'enhancer-gene': [0,0,1,0,0],
+        'circuits': [0,0,0,1,0],
+        'ppi': [0,0,0,0,1],
     }
 
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
         genes: List[any],
-        graph_type: str):
+        graph_type: str,
+        ):
         """Initialize the class"""
 
         self.genes = genes
@@ -133,6 +138,15 @@ class GraphConstructor:
             if line[0] not in ['chrX', 'chrY', 'chrM']
             }
     
+    def _base_graph(
+        self,
+        edges: List[str]
+        ):
+        """Create a graph from list of edges"""
+        G = nx.Graph()
+        G.add_edges_from((tup[0], tup[1]) for tup in edges)
+        return G 
+
     @time_decorator(print_args=True)
     def _iid_ppi(
         self,
@@ -143,20 +157,25 @@ class GraphConstructor:
         Database v 2021-05"""
         df = pd.read_csv(interaction_file, delimiter='\t')
         df = df[['symbol1', 'symbol2', 'evidence_type', 'n_methods', tissue]]
-        t_spec_filtered = df[(df[tissue] > 0) & (df['n_methods'] >= 2) & (df['evidence_type'].str.contains('exp'))]
-        edges = list(
-                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']),
-                repeat(-1),
-                repeat('ppi')
-                ))
-        return [(
-            self.genesymbol_to_gencode[edge[0]],
-            self.genesymbol_to_gencode[edge[1]],
-            edge[2],
-            edge[3],)
-            for edge in edges
-            if edge[0] in self.genesymbol_to_gencode.keys() and edge[1] in self.genesymbol_to_gencode.keys()
+        t_spec_filtered = df[
+            (df[tissue] > 0)
+            & (df['n_methods'] >= 3)
+            & (df['evidence_type'].str.contains('exp'))
             ]
+        edges = list(
+                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']), repeat(-1), repeat('ppi'))
+                )
+        return [
+            (
+                self.genesymbol_to_gencode[edge[0]],
+                self.genesymbol_to_gencode[edge[1]],
+                edge[2],
+                edge[3],
+            )
+            for edge in edges
+            if edge[0] in self.genesymbol_to_gencode.keys()
+            and edge[1] in self.genesymbol_to_gencode.keys()
+        ]
 
     @time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
@@ -171,7 +190,7 @@ class GraphConstructor:
         """
         with open(interaction_file, newline = '') as file:
             return [
-                (self.genesymbol_to_gencode[line[0]], self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
+                (f'{self.genesymbol_to_gencode[line[0]]}_tf', self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
                 for line in csv.reader(file, delimiter='\t')
                 if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys()
                 ]
@@ -212,46 +231,52 @@ class GraphConstructor:
     def _fenrir_enhancer_enhancer(
         self,
         interaction_file: str,
+        score_filter: int,
         ) -> List[Tuple[str, str, float, str]]:
         """Convert each enhancer-enhancer link to hg38 and return a formatted tuple"""
+        e_e_liftover, scores = [], []
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
-            e_e_liftover = [
-                (self.e_indexes[line[0]], self.e_indexes[line[1]])
-                for line in file_reader
-                if line[0] in self.e_indexes.keys()
-                and line[1] in self.e_indexes.keys()
-            ]
+            for line in file_reader:
+                scores.append(int(line[2]))
+                if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
+                    e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]]))
+
+        cutoff = np.percentile(scores, score_filter)
         return [
             (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
             f"enhancers_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
             -1,
             'enhancer-enhancer',)
             for line in e_e_liftover
+            if int(line[2]) >= cutoff 
         ]
 
     @time_decorator(print_args=True)
     def _fenrir_enhancer_gene(
         self,
         interaction_file: str,
+        score_filter: int,
         ) -> List[Tuple[str, str, float, str]]:
         """Convert each enhancer-gene link to hg38 and ensemble ID, return a formatted tuple"""
+        e_g_liftover, scores = [], []
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
             next(file_reader)
-            e_g_liftover = [
-                (self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]])
-                for line in file_reader
-                if line[0] in self.e_indexes.keys()
-                and line[2] in self.genesymbol_to_gencode.keys()
-            ]
+            for line in file_reader:
+                scores.append(int(line[3]))
+                if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
+                    e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]]))
+
+        cutoff = np.percentile(scores, score_filter)
         return [
             (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
             line[1],
             -1,
             'enhancer-gene')
             for line in e_g_liftover
+            if int(line[3]) >= cutoff
         ]
 
     @time_decorator(print_args=True)
@@ -279,22 +304,20 @@ class GraphConstructor:
         """
         all_interaction_file = f'{self.interaction_dir}/interaction_edges.txt' 
         if not (os.path.exists(all_interaction_file) and os.stat(all_interaction_file).st_size > 0):
-            e_e_edges = self._fenrir_enhancer_enhancer(
-                f"{self.interaction_dir}"
-                f"/{self.tissue_specific['enhancers_e_e']}"
-                )
-            e_g_edges = self._fenrir_enhancer_gene(
-                f"{self.interaction_dir}"
-                f"/{self.tissue_specific['enhancers_e_g']}"
-                )
             ppi_edges = self._iid_ppi(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
                 tissue=self.ppi_tissue
                 )
-            # giant_edges = self._giant_network(
-            #     f"{self.interaction_dir}"
-            #     f"/{self.interaction_files['giant']}"
-            #     )
+            e_e_edges = self._fenrir_enhancer_enhancer(
+                f"{self.interaction_dir}"
+                f"/{self.tissue_specific['enhancers_e_e']}",
+                score_filter=250
+                )
+            e_g_edges = self._fenrir_enhancer_gene(
+                f"{self.interaction_dir}"
+                f"/{self.tissue_specific['enhancers_e_g']}",
+                score_filter=250
+                )
             circuit_edges = self._marbach_regulatory_circuits(
                 f"{self.interaction_dir}"
                 f"/{self.interaction_files['circuits']}"
@@ -311,8 +334,9 @@ class GraphConstructor:
             f"{self.interaction_dir}"
             f"/{self.interaction_files['polyadenylation']}"
             )
-
-        return polyadenylation
+        
+        base_graph = self._base_graph(edges=interaction_edges)
+        return base_graph, polyadenylation
         
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(
@@ -407,7 +431,7 @@ class GraphConstructor:
     def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
         # retrieve interaction-based edges
-        polyadenylation = self._interaction_preprocess()
+        base_graph, polyadenylation = self._interaction_preprocess()
 
         # prepare nested dict for node features
         reference_attrs = self._prepare_reference_attributes(

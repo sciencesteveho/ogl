@@ -31,7 +31,7 @@ class LocalContextFeatures:
     """Object that parses local genomic data into graph edges
 
     Args:
-        bedfiles // dictionary containing each local genomic datatype as bedtool
+        bedfiles // dictionary containing each local genomic data    type as bedtool
             obj
         windows // bedtool object of windows +/- 250k of protein coding genes
         params // configuration vals from yaml 
@@ -95,18 +95,6 @@ class LocalContextFeatures:
                 H3K4me3 ChIP-seq peaks
                 H3K9me3 ChIP-seq peaks
                 polr2a ChIP-seq peaks
-
-            ChromHMM segmentations
-                enhancers
-                bivalent enhancers
-                genic enhancers
-                active TSS
-                flanking active TSS
-                bivalent TSS
-                flanking transcription
-                active transcription
-                weak transcription
-                zinc-finger proteins
 
         Genome-static
             gc content

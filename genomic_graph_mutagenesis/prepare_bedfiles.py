@@ -195,24 +195,33 @@ class GenomeDataPreprocessor:
         for cmd in [split_1, split_2, enhancer_cat, liftover_sort]:
             self._run_cmd(cmd)
 
-    @time_decorator(print_args=True)
-    def _chromhmm_to_attribute(self, bed: str) -> None:
-        """
-        Split chromhmm to individual files of the following for node attributes:
-        ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF']
-        """
-        segmentations = [
-            '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '9_Het', '10_TssBiv', '12_EnhBiv', 'ReprPC'
-            ]
+    # @time_decorator(print_args=True)
+    # def _chromhmm_to_attribute(self, bed: str) -> None:
+    #     """
+    #     Split chromhmm to individual files of the following for node attributes:
+    #     ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF']
+    #     """
+    #     segmentations = [
+    #         '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '9_Het', '10_TssBiv', '12_EnhBiv', 'ReprPC'
+    #         ]
 
-        for segmentation in segmentations:
-            if segmentation == 'ReprPC':
-                seg = segmentation
-            else:
-                seg = segmentation.split('_')[1]
-            cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
-                > {self.root_tissue}/local/{seg.casefold()}_hg38.bed"
-            self._run_cmd(cmd)
+    #     for segmentation in segmentations:
+    #         if segmentation == 'ReprPC':
+    #             seg = segmentation
+    #         else:
+    #             seg = segmentation.split('_')[1]
+    #         cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
+    #             > {self.root_tissue}/local/{seg.casefold()}_hg38.bed"
+    #         self._run_cmd(cmd)
+    
+    def _hotspots(self):
+        """
+        Splits hotspots from 'Long & Xue, Human Genomics, 2021' into two files:
+            (1) hotspots, combining GV and cluster type hotspots
+            (2) replication phase segments
+        Fourth column concatenates genomic location w/ data type
+        """
+        cmd = f""
 
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
@@ -231,7 +240,6 @@ class GenomeDataPreprocessor:
             > {self.root_tissue}/local/tfbindingclusters_{self.tissue}.bed"
         
         self._run_cmd(cmd)
-
 
     @time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:
@@ -279,7 +287,7 @@ class GenomeDataPreprocessor:
             'H3K4me1': 7,
             'H3K4me3': 8,
             'H3K9me3': 9,
-        }
+        }  
 
         def _add_histone_feat(feature: str, histone: str) -> str:
             feature[3] = histone + '_' + feature[3]

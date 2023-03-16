@@ -6,6 +6,58 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
     <img src='docs/_static/placeholder.png'>
 </div>
 
+## Description
+    The following features have node representations:
+        Tissue-specific
+            ENCODE cCRE Enhancers (fenrir)
+            Genes (GENCODE, GTEx)
+            TFs (Marbach, TFMarker)
+            Proteins (IID)?
+
+            Chromatinloops
+            Histone binding clusters (collapsed)
+            Transcription factor binding sites (Clustered, and from Funk et al., 2020)
+            tads
+
+        Genome-static
+            cpgislands
+            gencode (genes)
+            promoters
+            transcription start sites
+
+
+    The following are represented as attributes:
+        Tissue-specific
+            CpG methylation
+
+            ChIP-seq peaks
+                CTCF ChIP-seq peaks
+                DNase ChIP-seq peaks
+                H3K27ac ChIP-seq peaks
+                H3K27me3 ChIP-seq peaks
+                H3K36me3 ChIP-seq peaks
+                H3K4me1 ChIP-seq peaks
+                H3K4me3 ChIP-seq peaks
+                H3K9me3 ChIP-seq peaks
+                POLR2a ChIP-seq peaks
+
+        Genome-static
+            gc content
+            microsatellites
+            conservation (phastcons)
+            poly(a) binding sites (overlap)
+            LINEs (overlap)
+            long terminal repeats (overlap)
+            simple repeats (overlap)
+            SINEs (overlap)
+            Hotspots
+                snps
+                indels
+                cnvs 
+            miRNA target sites
+            rna binding protein binding sites
+
+
 &nbsp;
 
 ## Installation
