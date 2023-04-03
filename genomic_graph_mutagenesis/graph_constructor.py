@@ -74,10 +74,55 @@ class GraphConstructor:
         ONEHOT_EDGETYPE --
     """
 
-    # ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # no gc; hardcoded in as initial file
-    ATTRIBUTES = ['cpg', 'ctcf', 'dnase', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'rnarepeat', 'simplerepeats', 'sine']  # no gc; hardcoded in as initial file
-    NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']  # no gencode; hardcoded in as initial file 
-    NODE_FEATS = ['start', 'end', 'size', 'gc'] + ATTRIBUTES
+    ATTRIBUTES = [
+        "cnv",
+        "cpg",
+        "ctcf",
+        "dnase",
+        "h3k27ac",
+        "h3k27me3",
+        "h3k36me3",
+        "h3k4me1",
+        "h3k4me3",
+        "h3k9me3",
+        "indels",
+        "line",
+        "ltr",
+        "microsatellites",
+        "mirnatargets",
+        "phastcons",
+        "polr2a",
+        "polya",
+        "rbpbindingsites",
+        "recombination",
+        "repg1b",
+        "repg2",
+        "reps1",
+        "reps2",
+        "reps3",
+        "reps4",
+        "rnarepeat",
+        "simplerepeats",
+        "sine",
+        "snp",
+    ]  # no gc; hardcoded in as initial file
+
+    NODES = [
+        "chromatinloops",
+        "cpgislands",
+        "ctcfccre",
+        "enhancers",
+        "histones",
+        "polyasites",
+        "promoters",
+        "superenhancers",
+        "tads",
+        "tfbindingclusters",
+        "tfs",
+        "tss",
+    ]  # no gencode; hardcoded in as initial file
+
+    NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
 
     ONEHOT_EDGETYPE = {
         'local': [1,0,0,0,0],
@@ -103,6 +148,7 @@ class GraphConstructor:
         self.shared_data = params['shared']
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
+        self.marker_name = params['resources']['marker_name']
         self.ppi_tissue = params['resources']['ppi_tissue']
         self.tissue_specific = params['tissue_specific']
 
@@ -130,7 +176,7 @@ class GraphConstructor:
         )
 
     def _genes_from_gencode(self, gencode_file: str) -> Dict[str, str]:
-        """returns a dict of gencode v26 genes, their ids and associated gene symbols"""
+        """Returns a dict of gencode v26 genes, their ids and associated gene symbols"""
         a = pybedtools.BedTool(gencode_file)
         return {
             line[9].split(';')[3].split('\"')[1]:line[3]
@@ -138,15 +184,12 @@ class GraphConstructor:
             if line[0] not in ['chrX', 'chrY', 'chrM']
             }
     
-    def _base_graph(
-        self,
-        edges: List[str]
-        ):
+    def _base_graph(self, edges: List[str]):
         """Create a graph from list of edges"""
         G = nx.Graph()
         G.add_edges_from((tup[0], tup[1]) for tup in edges)
         return G 
-
+    
     @time_decorator(print_args=True)
     def _iid_ppi(
         self,
@@ -178,6 +221,62 @@ class GraphConstructor:
         ]
 
     @time_decorator(print_args=True)
+    def _mirna_targets(
+        self,
+        target_list: str,
+        tissue_active_mirnas: str
+        ) -> List[Tuple[str, str]]:
+        """Filters all miRNA -> target interactions from miRTarBase and only
+        keeps the miRNAs that are active in the given tissue from mirDIP.
+        """
+        active_mirna = [
+            line[3]
+            for line in csv.reader(open(tissue_active_mirnas, newline=""), delimiter="\t")
+        ]
+
+        return [
+            (
+                self.genesymbol_to_gencode[line[0]],
+                self.genesymbol_to_gencode[line[1]],
+                -1,
+                "mirna",
+            )
+            for line in csv.reader(open(target_list, newline=""), delimiter="\t")
+            if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode.keys()
+        ]
+    
+    @time_decorator(print_args=True)
+    def _tf_markers(self, interaction_file: str) -> List[Tuple[str, str]]:
+        tf_keep = ["TF", "I Marker", "TFMarker"]
+        tf_markers = []
+        with open(interaction_file, newline="") as file:
+            file_reader = csv.reader(file, delimiter="\t")
+            next(file_reader)
+            for line in file_reader:
+                if line[2] in tf_keep and line[5] == self.marker_name:
+                    try:
+                        if ";" in line[10]:
+                            genes = line[10].split(";")
+                            for gene in genes:
+                                tf_markers.append((line[1], gene))
+                        else:
+                            tf_markers.append((line[1], line[10]))
+                    except IndexError: 
+                        pass 
+
+        return [
+            (
+                f'{self.genesymbol_to_gencode[tup[0]]}_tf',
+                self.genesymbol_to_gencode[tup[1]],
+                -1,
+                "tf_marker",
+            )
+            for tup in tf_markers
+            if tup[0] in self.genesymbol_to_gencode.keys()
+            and tup[1] in self.genesymbol_to_gencode.keys()
+        ]
+
+    @time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
         self,
         interaction_file: str
@@ -200,7 +299,7 @@ class GraphConstructor:
         e_index: str, 
         e_index_unlifted: str
         ) -> Dict[str, str]:
-        """returns a dict to map enhancers from hg19 to hg38"""
+        """Returns a dict to map enhancers from hg19 to hg38"""
         def text_to_dict(txt, idx1, idx2):
             with open(txt) as file:
                 file_reader = csv.reader(file, delimiter='\t')
@@ -233,7 +332,8 @@ class GraphConstructor:
         interaction_file: str,
         score_filter: int,
         ) -> List[Tuple[str, str, float, str]]:
-        """Convert each enhancer-enhancer link to hg38 and return a formatted tuple"""
+        """Convert each enhancer-enhancer link to hg38 and return a formatted
+        tuple."""
         e_e_liftover, scores = [], []
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
@@ -259,7 +359,9 @@ class GraphConstructor:
         interaction_file: str,
         score_filter: int,
         ) -> List[Tuple[str, str, float, str]]:
-        """Convert each enhancer-gene link to hg38 and ensemble ID, return a formatted tuple"""
+        """Convert each enhancer-gene link to hg38 and ensemble ID, return a
+        formatted tuple.
+        """
         e_g_liftover, scores = [], []
         with open(interaction_file, newline='') as file:
             file_reader = csv.reader(file, delimiter='\t')
@@ -295,7 +397,7 @@ class GraphConstructor:
                 ]
 
     @time_decorator(print_args=True)
-    def _interaction_preprocess(self) -> List[str]:
+    def _process_graph_edges(self) -> List[str]:
         """Retrieve all interaction edges
         
         Returns:
@@ -304,6 +406,10 @@ class GraphConstructor:
         """
         all_interaction_file = f'{self.interaction_dir}/interaction_edges.txt' 
         if not (os.path.exists(all_interaction_file) and os.stat(all_interaction_file).st_size > 0):
+            mirna_targets = self._mirna_targets(
+                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}"
+                )
             ppi_edges = self._iid_ppi(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
                 tissue=self.ppi_tissue
@@ -431,7 +537,7 @@ class GraphConstructor:
     def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
         # retrieve interaction-based edges
-        base_graph, polyadenylation = self._interaction_preprocess()
+        base_graph, polyadenylation = self._process_graph_edges()
 
         # prepare nested dict for node features
         reference_attrs = self._prepare_reference_attributes(

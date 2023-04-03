@@ -6,6 +6,7 @@ resources:
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/breast_mammary_tissue.tpm.txt'
+  marker_name: 'Breast'
 
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
@@ -18,20 +19,20 @@ dirs:
 tissue_specific:
   cpg: 'ENCFF478RLX.bed'
   dnase: 'ENCFF628QME.bed'
-  H3K27ac: 'H3K27ac_breast_ENCFF547WSF.bed'
-  H3K27me3: 'H3K27me3_breast_ENCFF776EQU.bed'
-  H3K36me3: 'H3K36me3_breast_ENCFF907LDT.bed'
-  H3K4me1: 'H3K4me1_breast_ENCFF810PYC.bed'
-  H3K4me3: 'H3K4me3_breast_ENCFF486ACA.bed'
-  H3K9me3: 'H3K9me3_breast_ENCFF037JZB.bed'
-  chromhmm: 'E119_15_coreMarks_hg38lift_mnemonics.bed'
+  H3K27ac: 'H3K27ac_breast_ENCFF929WUQ.bed'
+  H3K27me3: 'H3K27me3_breast_ENCFF518UWB.bed'
+  H3K36me3: 'H3K36me3_breast_ENCFF745BUS.bed'
+  H3K4me1: 'H3K4me1_breast_ENCFF401CLZ.bed'
+  H3K4me3: 'H3K4me3_breast_ENCFF497MQY.bed'
+  H3K9me3: 'H3K9me3_breast_ENCFF444VMM.bed'
   chromatinloops: 'Rao_2014.HMEC.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
   tads: 'HMEC_Rao_2014-raw_TADs.txt'
   tf_binding: 'mammary_gland_hint_20-footprint.bed'
-  ctcf: 'ENCSR661NXJ.bed'
-  polr2a: 'ENCFF294TAI.bed'
+  ctcf: 'ENCFF530ARF.bed'
+  polr2a: 'ENCFF555UBC.bed'
+  super_enhancer: 'SE_01_0045_SE_hg38.bed'
 
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'
@@ -52,7 +53,6 @@ shared:
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
   entrez_file: 'entrez_to_genesymbol.txt'
-  giant: 'mammary_gland.dat'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
   circuits: 'breast_adult.txt'

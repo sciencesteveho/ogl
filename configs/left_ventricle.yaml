@@ -6,6 +6,7 @@ resources:
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt'
+  marker_name: 'Heart'
 
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
@@ -24,7 +25,6 @@ tissue_specific:
   H3K4me1: 'H3K4me1_lv_ENCFF194KSV.bed'
   H3K4me3: 'H3K4me3_lv_ENCFF175CMC.bed'
   H3K9me3: 'H3K9me3_lv_ENCFF242JDO.bed'
-  chromhmm: 'E095_15_coreMarks_hg38lift_mnemonics.bed'
   chromatinloops: 'Leung_2015.VentricleLeft.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
@@ -32,6 +32,7 @@ tissue_specific:
   tf_binding: 'heart_hint_20-footprint.bed'
   ctcf: 'ENCFF165RCX.bed'
   polr2a: 'ENCFF371CYY.bed'
+  super_enhancer: 'SE_00_0014_SE_hg38.bed'
 
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'

@@ -10,20 +10,22 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
     The following features have node representations:
         Tissue-specific
             ENCODE cCRE Enhancers (fenrir)
-            Genes (GENCODE, GTEx)
+            Genes (GENCODE, GTEx - interactions from IID)
             TFs (Marbach, TFMarker)
-            Proteins (IID)?
+            MicroRNAs (mirDIP for tissue-specific, miRTarBase for interactions)
 
             Chromatinloops
             Histone binding clusters (collapsed)
             Transcription factor binding sites (Clustered, and from Funk et al., 2020)
-            tads
+            TADs
+            Super-enhancers (sedb)
 
         Genome-static
-            cpgislands
-            gencode (genes)
-            promoters
-            transcription start sites
+            Cpgislands
+            Gencode (genes)
+            Promoters (encode cCRE)
+            CTCF-cCRE (encode cCRE)
+            Transcription start sites
 
 
     The following are represented as attributes:
@@ -42,21 +44,38 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
                 POLR2a ChIP-seq peaks
 
         Genome-static
-            gc content
-            microsatellites
-            conservation (phastcons)
-            poly(a) binding sites (overlap)
+            GC content
+            Microsatellites
+            Conservation (phastcons)
+            Poly(a) binding sites (overlap)
             LINEs (overlap)
-            long terminal repeats (overlap)
-            simple repeats (overlap)
+            Long terminal repeats (overlap)
+            Simple repeats (overlap)
             SINEs (overlap)
             Hotspots
                 snps
                 indels
                 cnvs 
             miRNA target sites
-            rna binding protein binding sites
+            RNA binding protein binding sites
+            Replication phase
+                g1b
+                g2
+                s1
+                s3
+                s4
+                s4
+            Recombination rate (averaged)
 
+
+Working tissues:
+    hippocampus
+    left ventricle
+    mammary
+    liver
+    lung
+    pancreas
+    skeletal muscle
 
 &nbsp;
 

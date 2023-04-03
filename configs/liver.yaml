@@ -6,6 +6,7 @@ resources:
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt'
+  marker_name: 'Liver'
   
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
@@ -24,7 +25,6 @@ tissue_specific:
   H3K4me1: 'H3K4me1_liver_ENCFF003KVZ.bed'
   H3K4me3: 'H3K4me3_liver_ENCFF522CRH.bed'
   H3K9me3: 'H3K9me3_liver_ENCFF789WSF.bed'
-  chromhmm: 'E066_15_coreMarks_mnemonics.bed'
   chromatinloops: 'Leung_2015.Liver.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
@@ -32,6 +32,7 @@ tissue_specific:
   tf_binding: 'liver_hint_20-footprint.bed'
   ctcf: 'ENCFF046XEZ.bed'
   polr2a: 'ENCFF064ASM.bed'
+  super_enhancer: 'SE_02_1299_SE_hg38.bed'
   
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'
@@ -52,7 +53,6 @@ shared:
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
   entrez_file: 'entrez_to_genesymbol.txt'
-  giant: 'liver.dat'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
   circuits: 'liver_adult.txt'

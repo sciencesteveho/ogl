@@ -6,6 +6,7 @@ resources:
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt'
+  marker_name: 'Brain'
 
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
@@ -23,14 +24,14 @@ tissue_specific:
   H3K4me1: 'H3K4me1_hippocampus_ENCFF328YWW.bed'
   H3K4me3: 'H3K4me3_hippocampus_ENCFF451IGE.bed'
   H3K9me3: 'H3K9me3_hippocampus_ENCFF265CFH.bed'
-  chromhmm: 'E071_15_coreMarks_hg38lift_mnemonics.bed'
   chromatinloops: 'Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
   tf_binding: 'brain_hint_20-footprint.bed'
   tads: 'Hippocampus_Schmitt2016-raw_TADs.txt'
   ctcf: 'ENCFF450EVR.bed'
-  polr2a: ''
+  polr2a: 'ENCFF692UQE.bed'
+  super_enhancer: 'SE_02_0351_SE_hg38.bed'
 
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'

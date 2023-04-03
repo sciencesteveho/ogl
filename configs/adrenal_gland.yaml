@@ -1,40 +1,39 @@
 resources:
-  tissue: 'pancreas'
-  tissue_name: 'Pancreas'
+  tissue: 'skeletal_muscle'
+  tissue_name: 'Muscle - Skeletal'
   window: 125000
-  ppi_tissue: 'pancreas'
+  ppi_tissue: 'skeletal muscle'
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
-  tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/pancreas.tpm.txt'
-  marker_name: 'Pancreas'
+  tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt'
+  marker_name: ''
 
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
-  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/pancreas'  # place where unprocessed files exists
+  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle'  # place where unprocessed files exists
   root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
   shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
   ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
   poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
 
 tissue_specific:
-  cpg: 'cpg_methyl_ENCFF556VBV.bed'
-  dnase: 'ENCFF517PFR.bed'
-  H3K27ac: 'H3K27ac_pancreas_ENCFF731GWD.bed'
-  H3K27me3: 'H3K27me3_pancreas_ENCFF578BBF.bed'
-  H3K36me3: 'H3K36me3_pancreas_ENCFF283YWD.bed'
-  H3K4me1: 'H3K4me1_pancreas_ENCFF098CNJ.bed'
-  H3K4me3: 'H3K4me3_pancreas_ENCFF067NZN.bed'
-  H3K9me3: 'H3K9me3_pancreas_ENCFF334VVE.bed'
-  chromhmm: 'E098_15_coreMarks_mnemonics.bed'
-  chromatinloops: 'Schmitt_2016.Pancreas.hg38.peakachu-merged.loops'
+  cpg: 'ENCFF942KJO.bed'
+  dnase: 'ENCFF071WCJ.bed'
+  H3K27ac: 'H3K27ac_adrenal_ENCFF317ENJ.bed'
+  H3K27me3: 'H3K27me3_adrenal_ENCFF822TFO.bed'
+  H3K36me3: 'H3K36me3_adrenal_ENCFF946XSY.bed'
+  H3K4me1: 'H3K4me1_adrenal_ENCFF876NSG.bed'
+  H3K4me3: 'H3K4me3_adrenal_ENCFF545SIG.bed'
+  H3K9me3: 'H3K9me3_adrenal_ENCFF816NIJ.bed'
+  chromatinloops: 'Schmitt_2016.Adrenal.hg38.peakachu-merged.loops'
   enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
   enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'Pancreas_Schmitt2016-raw_TADs.txt'
-  tf_binding: 'pancreas_hint_20-footprint.bed'
-  ctcf: 'ENCFF225IGV.bed'
-  polr2a: 'ENCFF618BDP.bed'
-  super_enhancer: 'SE_00_0030_SE_hg38.bed'
-  
+  tads: 'Adrenal_Schmitt2016-raw_TADs.txt'
+  tf_binding: 'adrenal_gland_hint_20-footprint.bed.gz'
+  ctcf: 'ENCFF418GYV.bed'
+  polr2a: 'ENCFF569MJS.bed'
+  super_enhancer: SE_01_0069_SE_hg38.bed
+
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
@@ -50,17 +49,16 @@ shared:
   simplerepeats: 'simplerepeats_hg38.bed'
   sine: 'sine_hg38.bed'
   tss: 'tss_parsed_hg38.bed'
-  
+
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
   entrez_file: 'entrez_to_genesymbol.txt'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  circuits: 'pancreas_adult.txt'
-  polyadenylation: 'Pancreas.txt'
+  circuits: 'skeletal_muscle_adult.txt'
+  polyadenylation: 'Muscle_Skeletal.txt'
   ppis: 'IID_annotated_PPI.txt'
-  
+
 options:
   cpg_liftover: False
   cpg_filetype: 'ENCODE' #ENCODE or GEO
-

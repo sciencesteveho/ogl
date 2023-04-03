@@ -213,15 +213,13 @@ class GenomeDataPreprocessor:
     #         cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
     #             > {self.root_tissue}/local/{seg.casefold()}_hg38.bed"
     #         self._run_cmd(cmd)
-    
-    def _hotspots(self):
-        """
-        Splits hotspots from 'Long & Xue, Human Genomics, 2021' into two files:
-            (1) hotspots, combining GV and cluster type hotspots
-            (2) replication phase segments
-        Fourth column concatenates genomic location w/ data type
-        """
-        cmd = f""
+
+    @time_decorator(print_args=True)
+    def _superenhancers(self, bed: str) -> None:
+        """Simple parser remove superenhancer bed unneeded info"""
+        cmd = f" tail -n +2 {self.root_tissue}/unprocessed/{bed} \
+            | awk -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}} \
+            > {self.root_tissue}/local/superenhancers_{self.tissue}.bed"
 
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
@@ -360,6 +358,8 @@ class GenomeDataPreprocessor:
         self._add_TAD_id(self.tissue_specific['tads'])
 
         self._split_chromatinloops(self.tissue_specific['chromatinloops'])
+
+        self._superenhancers(self.tissue_specific['superenhancers'])
 
         self._fenrir_enhancers(
             self.tissue_specific['enhancers_e_e'],

@@ -6,6 +6,7 @@ resources:
   chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
   fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
   tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt'
+  marker_name: 'Skeletal muscle'
 
 dirs:
   circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
@@ -32,6 +33,7 @@ tissue_specific:
   tf_binding: 'muscle_organ_hint_20-footprint.bed'
   ctcf: 'ENCFF143NGY.bed'
   polr2a: 'ENCFF039TJY.bed'
+  super_enhancer: 'SE_01_0063_SE_hg38.bed'
 
 shared:
   cpgislands: 'cpgislands_hg38_parsed.bed'
@@ -52,12 +54,13 @@ shared:
 interaction:
   id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
   entrez_file: 'entrez_to_genesymbol.txt'
-  giant: 'skeletal_muscle.dat'
   gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
   gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
   circuits: 'skeletal_muscle_adult.txt'
   polyadenylation: 'Muscle_Skeletal.txt'
   ppis: 'IID_annotated_PPI.txt'
+  mirdip: ''
+  mirnatargets: 'mirtargets_filtered.txt'
 
 options:
   cpg_liftover: False
