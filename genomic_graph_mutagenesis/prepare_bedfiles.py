@@ -188,7 +188,7 @@ class GenomeDataPreprocessor:
 
         liftover_sort = f"{self.resources['liftover']} \
             {self.root_tissue}/unprocessed/enhancers.bed \
-            {self.root_dir}/shared_data/hg19ToHg38.over.chain.gz \
+            {self.resources['liftover_chain']} \
             {self.root_tissue}/local/enhancers_lifted_{self.tissue}.bed \
             {self.root_tissue}/unprocessed/enhancers_unlifted "
 
@@ -226,7 +226,7 @@ class GenomeDataPreprocessor:
         if self.options['cpg_liftover'] == True:
             liftover_sort = f"{self.resources['liftover']} \
                 {self.root_tissue}/unprocessed/{bed} \
-                {self.root_dir}/shared_data/hg19ToHg38.over.chain.gz \
+                {self.resources['liftover_chain']} \
                 {self.root_tissue}/unprocessed/{bed}_lifted \
                 {self.root_tissue}/unprocessed/{bed}_unlifted \
                 && bedtools sort -i {self.root_tissue}/unprocessed/{bed}_lifted \

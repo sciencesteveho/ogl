@@ -21,6 +21,7 @@ resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name: Heart
   ppi_tissue: heart
   tissue: left_ventricle
@@ -60,4 +61,3 @@ tissue_specific:
   super_enhancer: SE_00_0014_SE_hg38.bed
   tads: VentricleLeft_STL003_Leung_2015-raw_TADs.txt
   tf_binding: heart_hint_20-footprint.bed
-### Note: if we have to remove something.. remove H3K9ac
