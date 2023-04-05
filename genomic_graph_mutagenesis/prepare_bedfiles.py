@@ -186,7 +186,7 @@ class GenomeDataPreprocessor:
             | uniq \
             > {self.root_tissue}/unprocessed/enhancers.bed"
 
-        liftover_sort = f"./shared_data/liftOver \
+        liftover_sort = f"{self.resources['liftover']} \
             {self.root_tissue}/unprocessed/enhancers.bed \
             {self.root_dir}/shared_data/hg19ToHg38.over.chain.gz \
             {self.root_tissue}/local/enhancers_lifted_{self.tissue}.bed \
@@ -197,7 +197,7 @@ class GenomeDataPreprocessor:
 
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
-        """Simple parser remove superenhancer bed unneeded info"""
+        """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.root_tissue}/unprocessed/{bed} \
             | awk -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}} \
             > {self.root_tissue}/local/superenhancers_{self.tissue}.bed"
@@ -224,7 +224,7 @@ class GenomeDataPreprocessor:
     def _merge_cpg(self, bed: str) -> None:
         """Merge individual CPGs with optional liftover"""
         if self.options['cpg_liftover'] == True:
-            liftover_sort = f"./shared_data/liftOver \
+            liftover_sort = f"{self.resources['liftover']} \
                 {self.root_tissue}/unprocessed/{bed} \
                 {self.root_dir}/shared_data/hg19ToHg38.over.chain.gz \
                 {self.root_tissue}/unprocessed/{bed}_lifted \
