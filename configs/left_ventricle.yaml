@@ -20,6 +20,7 @@ options:
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   marker_name: Heart
   ppi_tissue: heart
   tissue: left_ventricle
