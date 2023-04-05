@@ -15,6 +15,7 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   polyadenylation: Breast_Mammary_Tissue.txt
   ppis: IID_annotated_PPI.txt
+  tf_marker: tf_marker.txt
 options:
   cpg_filetype: ENCODE
   cpg_liftover: false

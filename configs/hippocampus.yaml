@@ -16,6 +16,7 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   polyadenylation: Brain_Hippocampus.txt
   ppis: IID_annotated_PPI.txt
+  tf_marker: tf_marker.txt
 options:
   cpg_filetype: GEO
   cpg_liftover: true

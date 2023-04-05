@@ -16,6 +16,7 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   polyadenylation: Heart_Left_Ventricle.txt
   ppis: IID_annotated_PPI.txt
+  tf_marker: tf_marker.txt
 options:
   cpg_filetype: ENCODE
   cpg_liftover: false

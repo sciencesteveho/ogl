@@ -14,6 +14,7 @@ interaction:
   mirdip: liver
   polyadenylation: Liver.txt
   ppis: IID_annotated_PPI.txt
+  tf_marker: tf_marker.txt
 options:
   cpg_filetype: ENCODE
   cpg_liftover: false
