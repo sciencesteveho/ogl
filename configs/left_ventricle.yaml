@@ -2,7 +2,6 @@
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/left_ventricle
-  poly_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
   shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:

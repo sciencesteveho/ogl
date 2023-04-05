@@ -94,6 +94,7 @@ class GenomeDataPreprocessor:
 
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
+
         def check_and_symlink(dst, src, boolean=False):
             try:
                 if boolean == True:
@@ -107,33 +108,33 @@ class GenomeDataPreprocessor:
 
         for file in self.tissue_specific.values():
             check_and_symlink(
-                dst=f'{self.root_tissue}/unprocessed/{file}',
-                src=f'{self.data_dir}/{file}',
-                boolean=True
-                )
+                dst=f"{self.root_tissue}/unprocessed/{file}",
+                src=f"{self.data_dir}/{file}",
+                boolean=True,
+            )
 
-        for file in ['enhancers_e_e', 'enhancers_e_g']:
+        for file in ["enhancers_e_e", "enhancers_e_g"]:
             check_and_symlink(
-                dst=f'{self.root_tissue}/interaction/{self.tissue_specific[file]}',
-                src=f'{self.data_dir}/{self.tissue_specific[file]}',
+                dst=f"{self.root_tissue}/interaction/{self.tissue_specific[file]}",
+                src=f"{self.data_dir}/{self.tissue_specific[file]}",
                 boolean=False,
-                )
+            )
 
         interact_files = {
-            'circuits': f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
-            'mirdip': f"{self.dirs['shared_dir']}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
-            'mirnatargets': f"{self.dirs['shared_dir']}/interaction/{self.interaction['mirnatargets']}",
-            'ppis': f"{self.dirs['shared_dir']}/interaction/{self.interaction['ppis']}",
-            'polyadenylation': f"{self.dirs['poly_dir']}/{self.interaction['polyadenylation']}",
-            'tf_marker': f"{self.dirs['shared_dir']}/interaction/{self.interaction['tf_marker']}",
+            "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
+            "mirdip": f"{self.dirs['shared_dir']}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+            "mirnatargets": f"{self.dirs['shared_dir']}/interaction/{self.interaction['mirnatargets']}",
+            "ppis": f"{self.dirs['shared_dir']}/interaction/{self.interaction['ppis']}",
+            "polyadenylation": f"{self.dirs['shared_dir']}/interaction/PDUI_polyA_sites/{self.tissue_specific['polyadenylation']}",
+            "tf_marker": f"{self.dirs['shared_dir']}/interaction/{self.interaction['tf_marker']}",
         }
 
         for file in interact_files:
             check_and_symlink(
-                dst=f'{self.root_tissue}/interaction/' + self.interaction[file],
+                dst=f"{self.root_tissue}/interaction/" + self.interaction[file],
                 src=interact_files[file],
                 boolean=False,
-                )
+            )
 
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
