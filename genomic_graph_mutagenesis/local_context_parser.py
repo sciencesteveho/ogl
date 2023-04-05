@@ -430,6 +430,25 @@ class LocalContextFeatures:
             """
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
+        
+        polyadenylation = self._polyadenylation_targets(
+            f"{self.interaction_dir}" f"/{self.interaction_files['polyadenylation']}"
+        )
+
+    # @time_decorator(print_args=True)
+    # def _polyadenylation_targets(
+    #     self,
+    #     interaction_file: str
+    #     ) -> List[str]:
+    #     """Genes which are listed as alternative polyadenylation targets"""
+    #     with open(interaction_file, newline = '') as file:
+    #         file_reader = csv.reader(file, delimiter='\t')
+    #         next(file_reader)
+    #         return [
+    #             self.genesymbol_to_gencode[line[6]]
+    #             for line in file_reader
+    #             if line[6] in self.genesymbol_to_gencode.keys()
+    #             ]
 
         for attribute in self.ATTRIBUTES:
             if bool_check_attributes(attribute, self.parsed_features[attribute]):

@@ -10,7 +10,6 @@ interaction:
   entrez_file: entrez_to_genesymbol.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
-  giant: hippocampus.dat
   id_lookup: gencode_to_genesymbol_lookup_table.txt
   mirdip: brain
   mirnatargets: mirtargets_filtered.txt

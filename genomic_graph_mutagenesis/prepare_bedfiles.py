@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-  
 #
 # // TO-DO //
-# - [ ] fix enhancer_atlas parsing name to something with .bed 
 # - [ ] fix _download_shared_files, which is currently broken
 #   - [ ] resolve hosting due to bandwidth limits
 #   - [ ] fix URLs as they point to incorrect locations
-#
 
 """Code to preprocess bedfiles before parsing into graph structures"""
 
@@ -195,25 +193,6 @@ class GenomeDataPreprocessor:
         for cmd in [split_1, split_2, enhancer_cat, liftover_sort]:
             self._run_cmd(cmd)
 
-    # @time_decorator(print_args=True)
-    # def _chromhmm_to_attribute(self, bed: str) -> None:
-    #     """
-    #     Split chromhmm to individual files of the following for node attributes:
-    #     ['Enh', 'EnhBiv', 'EnhG', 'TssA', 'TssAFlnk', 'TssBiv', 'TxFlnk', 'Tx', 'TxWk', 'ZNF']
-    #     """
-    #     segmentations = [
-    #         '1_TssA', '2_TssAFlnk', '3_TxFlnk', '4_Tx', '5_TxWk', '6_EnhG', '7_Enh', '8_ZNF', '9_Het', '10_TssBiv', '12_EnhBiv', 'ReprPC'
-    #         ]
-
-    #     for segmentation in segmentations:
-    #         if segmentation == 'ReprPC':
-    #             seg = segmentation
-    #         else:
-    #             seg = segmentation.split('_')[1]
-    #         cmd = f"grep {segmentation} {self.root_tissue}/unprocessed/{bed} \
-    #             > {self.root_tissue}/local/{seg.casefold()}_hg38.bed"
-    #         self._run_cmd(cmd)
-
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser remove superenhancer bed unneeded info"""
@@ -359,7 +338,7 @@ class GenomeDataPreprocessor:
 
         self._split_chromatinloops(self.tissue_specific['chromatinloops'])
 
-        self._superenhancers(self.tissue_specific['superenhancers'])
+        self._superenhancers(self.tissue_specific['super_enhancer'])
 
         self._fenrir_enhancers(
             self.tissue_specific['enhancers_e_e'],

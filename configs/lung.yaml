@@ -11,7 +11,7 @@ interaction:
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  lung: lung
+  mirdip: lung
   mirnatargets: mirtargets_filtered.txt
   polyadenylation: Lung.txt
   ppis: IID_annotated_PPI.txt

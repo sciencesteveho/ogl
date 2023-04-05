@@ -12,6 +12,7 @@ interaction:
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
   mirdip: liver
+  mirnatargets: mirtargets_filtered.txt
   polyadenylation: Liver.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
