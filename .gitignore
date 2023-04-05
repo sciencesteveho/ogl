@@ -1,4 +1,5 @@
 .DS_Store
 development/
 debug/
-genomic_graph_muatagenesis/purgatory.py
+genomic_graph_mutagenesis/purgatory.py
+
