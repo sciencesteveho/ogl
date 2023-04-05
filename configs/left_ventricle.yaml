@@ -1,67 +1,63 @@
-resources:
-  tissue: 'left_ventricle'
-  tissue_name: 'Heart - Left Ventricle'
-  window: 125000
-  ppi_tissue: 'heart'
-  chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
-  fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
-  tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt'
-  marker_name: 'Heart'
-
+---
 dirs:
-  circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
-  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/left_ventricle'  # place where unprocessed files exists
-  root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
-  shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
-  poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
-
-tissue_specific:
-  cpg: 'cpg_methyl_ENCFF318IKY.bed' ### downloaded from GEO GSE46644
-  dnase: 'ENCFF591LZL.bed'
-  H3K27ac: 'H3K27ac_lv_ENCFF635VBV.bed'
-  H3K27me3: 'H3K27me3_lv_ENCFF242JDO.bed'
-  H3K36me3: 'H3K36me3_lv_ENCFF767VOC.bed'
-  H3K4me1: 'H3K4me1_lv_ENCFF194KSV.bed'
-  H3K4me3: 'H3K4me3_lv_ENCFF175CMC.bed'
-  H3K9me3: 'H3K9me3_lv_ENCFF242JDO.bed'
-  chromatinloops: 'Leung_2015.VentricleLeft.hg38.peakachu-merged.loops'
-  enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
-  enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'VentricleLeft_STL003_Leung_2015-raw_TADs.txt'
-  tf_binding: 'heart_hint_20-footprint.bed'
-  ctcf: 'ENCFF165RCX.bed'
-  polr2a: 'ENCFF371CYY.bed'
-  super_enhancer: 'SE_00_0014_SE_hg38.bed'
-
-shared:
-  cpgislands: 'cpgislands_hg38_parsed.bed'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  line: 'line_hg38.bed'
-  ltr: 'ltr_hg38.bed'
-  microsatellites: 'microsatellites_hg38_parsed.bed'
-  mirnatargets: 'mirnatargets_parsed_hg38.bed'
-  phastcons: 'phastcons_gt_0.9_h38.bed'
-  polyasites: 'polyasites_filtered_hg38.bed'
-  promoters: 'promoters_parsed_hg38.bed'
-  rbpbindingistes: 'rbpbindingsites_parsed_hg38.bed'
-  rnarepeat: 'rnarepeat_hg38.bed'
-  simplerepeats: 'simplerepeats_hg38.bed'
-  sine: 'sine_hg38.bed'
-  tss: 'tss_parsed_hg38.bed'
-
+  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
+  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/left_ventricle
+  poly_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites
+  root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+  shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:
-  id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
-  entrez_file: 'entrez_to_genesymbol.txt'
-  giant: 'heart.dat'
-  gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  circuits: 'left_ventricle_adult.txt'
-  polyadenylation: 'Heart_Left_Ventricle.txt'
-  ppis: 'IID_annotated_PPI.txt'
-
+  circuits: left_ventricle_adult.txt
+  entrez_file: entrez_to_genesymbol.txt
+  gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  giant: heart.dat
+  id_lookup: gencode_to_genesymbol_lookup_table.txt
+  mirdip: left.ventricle
+  mirnatargets: mirtargets_filtered.txt
+  polyadenylation: Heart_Left_Ventricle.txt
+  ppis: IID_annotated_PPI.txt
 options:
-  cpg_liftover: False
-  cpg_filetype: 'ENCODE' #ENCODE or GEO
-
+  cpg_filetype: ENCODE
+  cpg_liftover: false
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  marker_name: Heart
+  ppi_tissue: heart
+  tissue: left_ventricle
+  tissue_name: Heart - Left Ventricle
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt
+  window: 125000
+shared:
+  cpgislands: cpgislands_hg38_parsed.bed
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  line: line_hg38.bed
+  ltr: ltr_hg38.bed
+  microsatellites: microsatellites_hg38_parsed.bed
+  mirnatargets: mirnatargets_parsed_hg38.bed
+  phastcons: phastcons_gt_0.9_h38.bed
+  polyasites: polyasites_filtered_hg38.bed
+  promoters: promoters_parsed_hg38.bed
+  rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  rnarepeat: rnarepeat_hg38.bed
+  simplerepeats: simplerepeats_hg38.bed
+  sine: sine_hg38.bed
+  tss: tss_parsed_hg38.bed
+tissue_specific:
+  H3K27ac: H3K27ac_lv_ENCFF635VBV.bed
+  H3K27me3: H3K27me3_lv_ENCFF242JDO.bed
+  H3K36me3: H3K36me3_lv_ENCFF767VOC.bed
+  H3K4me1: H3K4me1_lv_ENCFF194KSV.bed
+  H3K4me3: H3K4me3_lv_ENCFF175CMC.bed
+  H3K9me3: H3K9me3_lv_ENCFF242JDO.bed
+  chromatinloops: Leung_2015.VentricleLeft.hg38.peakachu-merged.loops
+  cpg: cpg_methyl_ENCFF318IKY.bed
+  ctcf: ENCFF165RCX.bed
+  dnase: ENCFF591LZL.bed
+  enhancers_e_e: Enhancer_Enhancer_network_082619.txt
+  enhancers_e_g: Enhancer_gene_network_082619.txt
+  polr2a: ENCFF371CYY.bed
+  super_enhancer: SE_00_0014_SE_hg38.bed
+  tads: VentricleLeft_STL003_Leung_2015-raw_TADs.txt
+  tf_binding: heart_hint_20-footprint.bed
 ### Note: if we have to remove something.. remove H3K9ac

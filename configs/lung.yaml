@@ -1,66 +1,62 @@
-resources:
-  tissue: 'lung'
-  tissue_name: 'Lung'
-  window: 125000
-  ppi_tissue: 'lung'
-  chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
-  fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
-  tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/lung.tpm.txt'
-  marker_name: 'Lung'
-
+---
 dirs:
-  circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
-  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/lung'  # place where unprocessed files exists
-  root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
-  shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
-  poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
-
-tissue_specific:
-  cpg: 'cpg_methyl_ENCFF532PDE.bed'
-  dnase: 'ENCFF041XPT.bed'
-  H3K27ac: 'H3K27ac_lung_ENCFF496RDA.bed'
-  H3K27me3: 'H3K27me3_lung_ENCFF248IPH.bed'
-  H3K36me3: 'H3K36me3_lung_ENCFF459IYH.bed'
-  H3K4me1: 'H3K4me1_lung_ENCFF926YKP.bed'
-  H3K4me3: 'H3K4me3_lung_ENCFF843JPR.bed'
-  H3K9me3: 'H3K9me3_lung_ENCFF080ZRB.bed'
-  chromhmm: 'E096_15_coreMarks_mnemonics.bed'
-  chromatinloops: 'Schmitt_2016.Lung.hg38.peakachu-merged.loops'
-  enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
-  enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'Lung_Schmitt2016-raw_TADs.txt'
-  tf_binding: 'lung_hint_20-footprint.bed'
-  ctcf: 'ENCFF629UDP.bed'
-  polr2a: 'ENCFF389ZBU.bed'
-  super_enhancer: 'SE_02_1297_SE_hg38.bed'
-  
-shared:
-  cpgislands: 'cpgislands_hg38_parsed.bed'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  line: 'line_hg38.bed'
-  ltr: 'ltr_hg38.bed'
-  microsatellites: 'microsatellites_hg38_parsed.bed'
-  mirnatargets: 'mirnatargets_parsed_hg38.bed'
-  phastcons: 'phastcons_gt_0.9_h38.bed'
-  polyasites: 'polyasites_filtered_hg38.bed'
-  promoters: 'promoters_parsed_hg38.bed'
-  rbpbindingistes: 'rbpbindingsites_parsed_hg38.bed'
-  rnarepeat: 'rnarepeat_hg38.bed'
-  simplerepeats: 'simplerepeats_hg38.bed'
-  sine: 'sine_hg38.bed'
-  tss: 'tss_parsed_hg38.bed'
-  
+  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
+  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/lung
+  poly_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites
+  root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+  shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:
-  id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
-  entrez_file: 'entrez_to_genesymbol.txt'
-  gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  circuits: 'lung_adult.txt'
-  polyadenylation: 'Lung.txt'
-  ppis: 'IID_annotated_PPI.txt'
-
+  circuits: lung_adult.txt
+  entrez_file: entrez_to_genesymbol.txt
+  gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  id_lookup: gencode_to_genesymbol_lookup_table.txt
+  lung: lung
+  mirnatargets: mirtargets_filtered.txt
+  polyadenylation: Lung.txt
+  ppis: IID_annotated_PPI.txt
 options:
-  cpg_liftover: False
-  cpg_filetype: 'ENCODE' #ENCODE or GEO
-  
+  cpg_filetype: ENCODE
+  cpg_liftover: false
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  marker_name: Lung
+  ppi_tissue: lung
+  tissue: lung
+  tissue_name: Lung
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/lung.tpm.txt
+  window: 125000
+shared:
+  cpgislands: cpgislands_hg38_parsed.bed
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  line: line_hg38.bed
+  ltr: ltr_hg38.bed
+  microsatellites: microsatellites_hg38_parsed.bed
+  mirnatargets: mirnatargets_parsed_hg38.bed
+  phastcons: phastcons_gt_0.9_h38.bed
+  polyasites: polyasites_filtered_hg38.bed
+  promoters: promoters_parsed_hg38.bed
+  rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  rnarepeat: rnarepeat_hg38.bed
+  simplerepeats: simplerepeats_hg38.bed
+  sine: sine_hg38.bed
+  tss: tss_parsed_hg38.bed
+tissue_specific:
+  H3K27ac: H3K27ac_lung_ENCFF496RDA.bed
+  H3K27me3: H3K27me3_lung_ENCFF248IPH.bed
+  H3K36me3: H3K36me3_lung_ENCFF459IYH.bed
+  H3K4me1: H3K4me1_lung_ENCFF926YKP.bed
+  H3K4me3: H3K4me3_lung_ENCFF843JPR.bed
+  H3K9me3: H3K9me3_lung_ENCFF080ZRB.bed
+  chromatinloops: Schmitt_2016.Lung.hg38.peakachu-merged.loops
+  chromhmm: E096_15_coreMarks_mnemonics.bed
+  cpg: cpg_methyl_ENCFF532PDE.bed
+  ctcf: ENCFF629UDP.bed
+  dnase: ENCFF041XPT.bed
+  enhancers_e_e: Enhancer_Enhancer_network_082619.txt
+  enhancers_e_g: Enhancer_gene_network_082619.txt
+  polr2a: ENCFF389ZBU.bed
+  super_enhancer: SE_02_1297_SE_hg38.bed
+  tads: Lung_Schmitt2016-raw_TADs.txt
+  tf_binding: lung_hint_20-footprint.bed
