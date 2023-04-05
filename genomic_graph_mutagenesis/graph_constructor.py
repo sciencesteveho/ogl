@@ -46,29 +46,35 @@ class GraphConstructor:
 
     Methods
     ----------
-    _gene_symbol_to_gencode_ref:
+    _genes_from_gencode:
         Lorem
-    _gene_enhancer_atlas_links:
+    _base_graph:
         Lorem
-    _tissuenet_ppis:
+    _iid_ppi:
         Lorem
-    _marbach_regulatory_circuits:
+    _mirna_targets:
         Lorem
-    _polyadenylation_targets:
+    _tf_markers:
         Lorem
-    _interaction_data_preprocess:
+    _marchbach_regulatory_circuits:
         Lorem
-    _prepare_reference_attributes:
+    _enhancer_index:
         Lorem
-    _prepare_graph_tensors:
-        Parses graph data into tensors representing edge and note feats and
-        indexes
-    generate graphs:
+    _format_enhancer:
+        Lorem
+    _fenrir_enhancer_enhancer:
+        Lorem
+    _fenrir_enhancer_gene:
+        Lorem
+    _process_graph_edges:
+        Lorem
+    _base_graph:
+        Lorem
+    _base_graph:
         Lorem
 
     # Helpers
         ATTRIBUTES --
-        HISTONE_IDXS --
         NODES --
         NODE_FEATS --
         ONEHOT_EDGETYPE --
@@ -382,67 +388,58 @@ class GraphConstructor:
         ]
 
     @time_decorator(print_args=True)
-    def _polyadenylation_targets(
-        self,
-        interaction_file: str
-        ) -> List[str]:
-        """Genes which are listed as alternative polyadenylation targets"""
-        with open(interaction_file, newline = '') as file:
-            file_reader = csv.reader(file, delimiter='\t')
-            next(file_reader)
-            return [
-                self.genesymbol_to_gencode[line[6]]
-                for line in file_reader
-                if line[6] in self.genesymbol_to_gencode.keys()
-                ]
-
-    @time_decorator(print_args=True)
     def _process_graph_edges(self) -> List[str]:
-        """Retrieve all interaction edges
+        """Retrieve all interaction edges and saves them to a text file.
+        Edges will be loaded from the text file for subsequent runs to save
+        processing time.
         
         Returns:
             A list of all edges
-            A list of alternative polyadenylation targets
         """
-        all_interaction_file = f'{self.interaction_dir}/interaction_edges.txt' 
-        if not (os.path.exists(all_interaction_file) and os.stat(all_interaction_file).st_size > 0):
-            mirna_targets = self._mirna_targets(
-                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
-                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}"
-                )
+        all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
+        if not (
+            os.path.exists(all_interaction_file)
+            and os.stat(all_interaction_file).st_size > 0
+        ):
             ppi_edges = self._iid_ppi(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                tissue=self.ppi_tissue
-                )
+                tissue=self.ppi_tissue,
+            )
+            mirna_targets = self._mirna_targets(
+                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+                tissue_active_mirnas=f"{self.interaction_dir}/mirdip_tissue/{self.interaction_files['mirdip']}",
+            )
+            tf_markers = self._tf_markers(
+                interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
+            )
             e_e_edges = self._fenrir_enhancer_enhancer(
-                f"{self.interaction_dir}"
-                f"/{self.tissue_specific['enhancers_e_e']}",
-                score_filter=250
-                )
+                f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
+                score_filter=250,
+            )
             e_g_edges = self._fenrir_enhancer_gene(
-                f"{self.interaction_dir}"
-                f"/{self.tissue_specific['enhancers_e_g']}",
-                score_filter=250
-                )
+                f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
+                score_filter=250,
+            )
             circuit_edges = self._marbach_regulatory_circuits(
-                f"{self.interaction_dir}"
-                f"/{self.interaction_files['circuits']}"
-                )
-            # interaction_edges = e_e_edges + e_g_edges + ppi_edges + giant_edges + circuit_edges
-            interaction_edges = e_e_edges + e_g_edges + ppi_edges + circuit_edges
-            with open(all_interaction_file, 'w+') as output:
-                writer = csv.writer(output, delimiter='\t')
+                f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
+            )
+
+            interaction_edges = (
+                ppi_edges
+                + mirna_targets
+                + tf_markers
+                + e_e_edges
+                + e_g_edges
+                + circuit_edges
+            )
+            with open(all_interaction_file, "w+") as output:
+                writer = csv.writer(output, delimiter="\t")
                 writer.writerows(interaction_edges)
         else:
             pass
 
-        polyadenylation = self._polyadenylation_targets(
-            f"{self.interaction_dir}"
-            f"/{self.interaction_files['polyadenylation']}"
-            )
-        
         base_graph = self._base_graph(edges=interaction_edges)
-        return base_graph, polyadenylation
+        return base_graph
         
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(
@@ -537,12 +534,11 @@ class GraphConstructor:
     def generate_graphs(self) -> None:
         """Constructs graphs in parallel"""
         # retrieve interaction-based edges
-        base_graph, polyadenylation = self._process_graph_edges()
+        base_graph = self._process_graph_edges()
 
         # prepare nested dict for node features
         reference_attrs = self._prepare_reference_attributes(
             gencode_ref=f'{self.parse_dir}/attributes/gencode_reference.pkl',
-            polyadenylation=polyadenylation,
         )
 
         genes_to_construct = [
