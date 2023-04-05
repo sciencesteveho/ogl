@@ -1,4 +1,4 @@
-# Omics Graph Mutagenesis
+# Genomic Graph Mutagenesis
 Tools to construct graphs heterogenous multi-omics data and train a GNN to regress values of gene expression and protein abundance. Graphs are mutagenized to query the impact of individual features on biological function.
 &nbsp;
 

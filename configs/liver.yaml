@@ -11,9 +11,8 @@ interaction:
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirdip: liver
+  mirdip: liver_mirdip
   mirnatargets: mirtargets_filtered.txt
-  polyadenylation: Liver.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
 options:
@@ -57,6 +56,7 @@ tissue_specific:
   enhancers_e_e: Enhancer_Enhancer_network_082619.txt
   enhancers_e_g: Enhancer_gene_network_082619.txt
   polr2a: ENCFF064ASM.bed
+  polyadenylation: Liver.txt
   super_enhancer: SE_02_1299_SE_hg38.bed
   tads: Liver_STL011_Leung_2015-raw_TADs.txt
   tf_binding: liver_hint_20-footprint.bed  # mirnatargets: 'mirtargets_filtered.txt'

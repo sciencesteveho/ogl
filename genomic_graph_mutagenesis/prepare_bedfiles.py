@@ -120,10 +120,12 @@ class GenomeDataPreprocessor:
                 )
 
         interact_files = {
-            'giant': f"{self.data_dir}/{self.interaction['giant']}",
             'circuits': f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
+            'mirdip': f"{self.dirs['shared_dir']}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+            'mirnatargets': f"{self.dirs['shared_dir']}/interaction/{self.interaction['mirnatargets']}",
             'ppis': f"{self.dirs['shared_dir']}/interaction/{self.interaction['ppis']}",
             'polyadenylation': f"{self.dirs['poly_dir']}/{self.interaction['polyadenylation']}",
+            'tf_marker': f"{self.dirs['shared_dir']}/interaction/{self.interaction['tf_marker']}",
         }
 
         for file in interact_files:
