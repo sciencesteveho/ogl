@@ -333,8 +333,6 @@ class GenomeDataPreprocessor:
                     os.symlink(src, dst)
                 except FileExistsError:
                     pass
-
-        self._chromhmm_to_attribute(self.tissue_specific['chromhmm'])
         
         self._add_TAD_id(self.tissue_specific['tads'])
 
