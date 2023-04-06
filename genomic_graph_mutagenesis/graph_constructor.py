@@ -394,7 +394,7 @@ class GraphConstructor:
             )
             mirna_targets = self._mirna_targets(
                 target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
-                tissue_active_mirnas=f"{self.interaction_dir}/mirdip_tissue/{self.interaction_files['mirdip']}",
+                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
             )
             tf_markers = self._tf_markers(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
