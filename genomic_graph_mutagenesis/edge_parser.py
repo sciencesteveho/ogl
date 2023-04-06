@@ -7,15 +7,13 @@
 # - [ ] one-hot encode node_feat type?
 #
 
-"""Create base graph structure from interaction-type omics data"""
+"""Parse edges from interaction-type omics data"""
 
 import argparse
 import csv
 from itertools import repeat
-from multiprocessing import Pool
 import os
 import pickle
-import subprocess
 from typing import Any, Dict, List, Tuple
 
 import networkx as nx
@@ -23,10 +21,10 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import _tpm_filter_gene_windows, dir_check_make, parse_yaml, time_decorator
+from utils import dir_check_make, parse_yaml, time_decorator
 
 
-class GraphConstructor:
+class EdgeParser:
     """Object to construct tensor based graphs from parsed bedfiles
     
     The baseline graph structure is build from the following in order:
@@ -70,71 +68,7 @@ class GraphConstructor:
         Lorem
     _base_graph:
         Lorem
-
-    # Helpers
-        ATTRIBUTES --
-        NODES --
-        NODE_FEATS --
-        ONEHOT_EDGETYPE --
     """
-
-    ATTRIBUTES = [
-        "cnv",
-        "cpg",
-        "ctcf",
-        "dnase",
-        "h3k27ac",
-        "h3k27me3",
-        "h3k36me3",
-        "h3k4me1",
-        "h3k4me3",
-        "h3k9me3",
-        "indels",
-        "line",
-        "ltr",
-        "microsatellites",
-        "mirnatargets",
-        "phastcons",
-        "polr2a",
-        "polya",
-        "rbpbindingsites",
-        "recombination",
-        "repg1b",
-        "repg2",
-        "reps1",
-        "reps2",
-        "reps3",
-        "reps4",
-        "rnarepeat",
-        "simplerepeats",
-        "sine",
-        "snp",
-    ]  # no gc; hardcoded in as initial file
-
-    NODES = [
-        "chromatinloops",
-        "cpgislands",
-        "ctcfccre",
-        "enhancers",
-        "histones",
-        "polyasites",
-        "promoters",
-        "superenhancers",
-        "tads",
-        "tfbindingclusters",
-        "tfs",
-        "tss",
-    ]  # no gencode; hardcoded in as initial file
-
-    NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
-
-    ONEHOT_EDGETYPE = {
-        'local': [1,0,0,0,0],
-        'enhancer-enhancer': [0,1,0,0,0],
-        'enhancer-gene': [0,0,1,0,0],
-        'circuits': [0,0,0,1,0],
-        'ppi': [0,0,0,0,1],
-    }
 
     def __init__(
         self,
@@ -177,12 +111,6 @@ class GraphConstructor:
             if line[0] not in ['chrX', 'chrY', 'chrM']
             }
     
-    def _base_graph(self, edges: List[str]):
-        """Create a graph from list of edges"""
-        G = nx.Graph()
-        G.add_edges_from((tup[0], tup[1]) for tup in edges)
-        return G 
-    
     @time_decorator(print_args=True)
     def _iid_ppi(
         self,
@@ -203,8 +131,8 @@ class GraphConstructor:
                 )
         return [
             (
-                self.genesymbol_to_gencode[edge[0]],
-                self.genesymbol_to_gencode[edge[1]],
+                f'{self.genesymbol_to_gencode[edge[0]]}_protein',
+                f'{self.genesymbol_to_gencode[edge[1]]}_protein',
                 edge[2],
                 edge[3],
             )
@@ -373,9 +301,12 @@ class GraphConstructor:
             for line in e_g_liftover
             if int(line[2]) >= cutoff
         ]
+    
+    def _add_gencode_coordinates(self):
+        print('hello')
 
     @time_decorator(print_args=True)
-    def _process_graph_edges(self) -> List[str]:
+    def _process_graph_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file.
         Edges will be loaded from the text file for subsequent runs to save
         processing time.
@@ -424,12 +355,23 @@ class GraphConstructor:
                 writer.writerows(interaction_edges)
         else:
             pass
-
-        base_graph = self._base_graph(edges=interaction_edges)
-        return base_graph
+        
+        gencode_attr = (
+            [tup[0] for tup in ppi_edges]
+            + [tup[1] for tup in ppi_edges]
+            + [tup[1] for tup in mirna_targets]
+            + [tup[0] for tup in tf_markers]
+            + [tup[1] for tup in tf_markers]
+            + [tup[1] for tup in e_g_edges]
+            + [tup[0] for tup in circuit_edges]
+            + [tup[1] for tup in circuit_edges]
+        )
+    
+    def _all_edges_to_text(self) -> None:
+        print('hello')
 
     @time_decorator(print_args=True)
-    def generate_graphs(self) -> None:
+    def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
         # retrieve interaction-based edges
@@ -453,12 +395,12 @@ def main() -> None:
     params = parse_yaml(args.config)
     
     # instantiate object
-    graphconstructingObject = GraphConstructor(
+    edgeparserObject = EdgeParser(
         params=params,
         )
 
     # run pipeline!
-    graphconstructingObject.generate_graphs()
+    edgeparserObject.parse_edges()
 
 
 if __name__ == '__main__':
