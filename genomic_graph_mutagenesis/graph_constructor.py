@@ -371,7 +371,7 @@ class GraphConstructor:
             -1,
             'enhancer-gene')
             for line in e_g_liftover
-            if int(line[3]) >= cutoff
+            if int(line[2]) >= cutoff
         ]
 
     @time_decorator(print_args=True)
