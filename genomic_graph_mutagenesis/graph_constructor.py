@@ -229,7 +229,7 @@ class GraphConstructor:
 
         return [
             (
-                self.genesymbol_to_gencode[line[0]],
+                line[0],
                 self.genesymbol_to_gencode[line[1]],
                 -1,
                 "mirna",
