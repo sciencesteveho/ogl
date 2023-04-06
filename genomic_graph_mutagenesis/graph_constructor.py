@@ -156,11 +156,7 @@ class GraphConstructor:
         self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
         self.interaction_dir = f"{self.root_dir}/{self.tissue}/interaction"
         self.shared_interaction_dir = f'{self.shared_dir}/interaction'
-
-        if self.graph_type == 'local':
-            self.graph_dir = f"{self.parse_dir}/local_graphs"
-        else:
-            self.graph_dir = f"{self.parse_dir}/graphs"
+        self.graph_dir = f"{self.parse_dir}/graphs"
 
         dir_check_make(self.graph_dir)
         
