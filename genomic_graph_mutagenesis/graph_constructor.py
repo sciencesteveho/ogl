@@ -160,7 +160,7 @@ class GraphConstructor:
         dir_check_make(self.graph_dir)
         
         self.genesymbol_to_gencode = self._genes_from_gencode(
-            gencode_file=f"{self.data_dir}/local/{self.gencode}"
+            gencode_file=f"{self.tissue_dir}/local/{self.gencode}"
             )
 
         self.e_indexes = self._enhancer_index(
