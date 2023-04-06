@@ -214,7 +214,7 @@ class GenomeDataPreprocessor:
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
-            | awk -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}} \
+            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}}' \
             > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
         
         self._run_cmd(cmd)

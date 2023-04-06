@@ -401,11 +401,11 @@ class GraphConstructor:
             )
             e_e_edges = self._fenrir_enhancer_enhancer(
                 f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-                score_filter=20,
+                score_filter=30,
             )
             e_g_edges = self._fenrir_enhancer_gene(
                 f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-                score_filter=20,
+                score_filter=70,
             )
             circuit_edges = self._marbach_regulatory_circuits(
                 f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
