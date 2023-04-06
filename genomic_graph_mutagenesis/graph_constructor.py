@@ -334,7 +334,7 @@ class GraphConstructor:
             for line in file_reader:
                 scores.append(int(line[2]))
                 if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
-                    e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]]))
+                    e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
 
         cutoff = np.percentile(scores, score_filter)
         return [
@@ -362,7 +362,7 @@ class GraphConstructor:
             for line in file_reader:
                 scores.append(int(line[3]))
                 if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
-                    e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]]))
+                    e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
 
         cutoff = np.percentile(scores, score_filter)
         return [
