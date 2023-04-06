@@ -274,7 +274,8 @@ class GenomeDataPreprocessor:
         """Overlap and merge histone chip-seq bedfiles. Histone marks are
         combined if they overlap and their measurement is score / base pairs
 
-        1 - Histone marks are collapsed, base pairs are kept constant
+        1 - Histone marks are collapsed, base pairs are kept constant. Clusters
+        are made if greater than .5 reciprocal overlap
         2 - Clusters are kept only if more than 1 type of histone mark is
         represented
         3 - Adacent marks are combined, and number of base pairs are
@@ -316,7 +317,13 @@ class GenomeDataPreprocessor:
             > {self.tissue_dir}/histones/histones_union.bed"
         bedops_partition = f"bedops --partition {' '.join(all_histones)} \
             > {self.tissue_dir}/histones/histones_partition.bed"
-        bedmap = f"bedmap --echo --echo-map-id --delim '\t' {self.tissue_dir}/histones/histones_partition.bed {self.tissue_dir}/histones/histones_union.bed \
+        bedmap = f"bedmap \
+            --echo \
+            --echo-map-id \
+            --delim '\t' \
+            --fraction-both 0.5 \
+            {self.tissue_dir}/histones/histones_partition.bed \
+            {self.tissue_dir}/histones/histones_union.bed \
             | grep ';' - \
             > {self.tissue_dir}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
         for command in [bedops_everything, bedops_partition, bedmap]:
