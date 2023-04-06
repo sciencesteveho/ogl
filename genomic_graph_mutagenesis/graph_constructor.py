@@ -435,6 +435,7 @@ class GraphConstructor:
 
         # retrieve interaction-based edges
         base_graph = self._process_graph_edges()
+        nx.write_gml(base_graph, "test.gml")
 
 
 def main() -> None:
