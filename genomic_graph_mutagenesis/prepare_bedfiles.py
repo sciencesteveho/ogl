@@ -275,7 +275,7 @@ class GenomeDataPreprocessor:
         combined if they overlap and their measurement is score / base pairs
 
         1 - Histone marks are collapsed, base pairs are kept constant. Clusters
-        are made if greater than .5 reciprocal overlap
+        are made if greater than .25 reciprocal overlap
         2 - Clusters are kept only if more than 1 type of histone mark is
         represented
         3 - Adacent marks are combined, and number of base pairs are
@@ -321,7 +321,7 @@ class GenomeDataPreprocessor:
             --echo \
             --echo-map-id \
             --delim '\t' \
-            --fraction-both 0.5 \
+            --fraction-both 0.25 \
             {self.tissue_dir}/histones/histones_partition.bed \
             {self.tissue_dir}/histones/histones_union.bed \
             | grep ';' - \
