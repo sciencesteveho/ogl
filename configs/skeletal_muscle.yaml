@@ -2,7 +2,6 @@
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
-  shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:
   circuits: skeletal_muscle_adult.txt
   entrez_file: entrez_to_genesymbol.txt

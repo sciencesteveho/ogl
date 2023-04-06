@@ -216,6 +216,8 @@ class GenomeDataPreprocessor:
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
             | awk -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}} \
             > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
+        
+        self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
