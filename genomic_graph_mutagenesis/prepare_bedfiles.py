@@ -77,10 +77,10 @@ class GenomeDataPreprocessor:
         self.tissue_specific = params['tissue_specific']
         
         self.tissue = self.resources['tissue']
-        self.data_dir = self.dirs['data_dir']
         self.root_dir = self.dirs['root_dir']
-        self.root_tissue = f"{self.root_dir}/{self.tissue}"
-
+        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.data_dir = f'{self.root_dir}/raw_files/{self.tissue}'
+        
         # make directories, link files, and download shared files if necessary
         self._make_directories()
         self._symlink_rawdata()
@@ -91,7 +91,7 @@ class GenomeDataPreprocessor:
         dir_check_make(f'{self.root_dir}/shared_data')
 
         for directory in ['local', 'interaction', 'unprocessed', 'histones']:
-            dir_check_make(f'{self.root_tissue}/{directory}')
+            dir_check_make(f'{self.tissue_dir}/{directory}')
 
         for directory in ['local', 'interaction']:
             dir_check_make(f'{self.root_dir}/shared_data/{directory}')
@@ -117,14 +117,14 @@ class GenomeDataPreprocessor:
 
         for file in self.tissue_specific.values():
             check_and_symlink(
-                dst=f"{self.root_tissue}/unprocessed/{file}",
+                dst=f"{self.tissue_dir}/unprocessed/{file}",
                 src=f"{self.data_dir}/{file}",
                 boolean=True,
             )
 
         for file in ["enhancers_e_e", "enhancers_e_g"]:
             check_and_symlink(
-                dst=f"{self.root_tissue}/interaction/{self.tissue_specific[file]}",
+                dst=f"{self.tissue_dir}/interaction/{self.tissue_specific[file]}",
                 src=f"{self.data_dir}/{self.tissue_specific[file]}",
                 boolean=False,
             )
@@ -139,7 +139,7 @@ class GenomeDataPreprocessor:
 
         for file in interact_files:
             check_and_symlink(
-                dst=f"{self.root_tissue}/interaction/" + self.interaction[file],
+                dst=f"{self.tissue_dir}/interaction/" + self.interaction[file],
                 src=interact_files[file],
                 boolean=False,
             )
@@ -164,17 +164,17 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
-        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.root_tissue}/unprocessed/{bed} \
-            > {self.root_tissue}/local/tads_{self.tissue}.txt"
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.tissue_dir}/unprocessed/{bed} \
+            > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
     def _split_chromatinloops(self, bed: str) -> None:
         """Split chromatinloop file in separate entries"""
-        full_loop = f"sort -k 1,1 -k2,2n {self.root_tissue}/unprocessed/{bed} \
+        full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
             | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
-            > {self.root_tissue}/local/chromatinloops_{self.tissue}.txt"
+            > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
 
         self._run_cmd(full_loop)
 
@@ -185,27 +185,27 @@ class GenomeDataPreprocessor:
         Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
         networks and sorting
         """
-        split_1 = f"tail -n +2 {self.root_tissue}/unprocessed/{e_e_bed} \
+        split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
             | cut -f1 \
             | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            > {self.root_tissue}/unprocessed/{e_e_bed}_1"
-        split_2 = f"tail -n +2 {self.root_tissue}/unprocessed/{e_e_bed} \
+            > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
+        split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
             | cut -f2 \
             | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            > {self.root_tissue}/unprocessed/{e_e_bed}_2"
-        enhancer_cat = f"tail -n +2 {self.root_tissue}/unprocessed/{e_g_bed} \
+            > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
+        enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
             | cut -f1 \
             | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            | cat - {self.root_tissue}/unprocessed/{e_e_bed}_1 {self.root_tissue}/unprocessed/{e_e_bed}_2 \
+            | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
             | sort -k1,1 -k2,2n \
             | uniq \
-            > {self.root_tissue}/unprocessed/enhancers.bed"
+            > {self.tissue_dir}/unprocessed/enhancers.bed"
 
         liftover_sort = f"{self.resources['liftover']} \
-            {self.root_tissue}/unprocessed/enhancers.bed \
+            {self.tissue_dir}/unprocessed/enhancers.bed \
             {self.resources['liftover_chain']} \
-            {self.root_tissue}/local/enhancers_lifted_{self.tissue}.bed \
-            {self.root_tissue}/unprocessed/enhancers_unlifted "
+            {self.tissue_dir}/local/enhancers_lifted_{self.tissue}.bed \
+            {self.tissue_dir}/unprocessed/enhancers_unlifted "
 
         for cmd in [split_1, split_2, enhancer_cat, liftover_sort]:
             self._run_cmd(cmd)
@@ -213,9 +213,9 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
-        cmd = f" tail -n +2 {self.root_tissue}/unprocessed/{bed} \
+        cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
             | awk -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}} \
-            > {self.root_tissue}/local/superenhancers_{self.tissue}.bed"
+            > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
 
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
@@ -226,14 +226,14 @@ class GenomeDataPreprocessor:
         are motif agnostic. Motifs are merged to form tf-binding clusters
         (within 46bp, from Chen et al., Scientific Reports, 2015)
         """
-        cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.root_tissue}/unprocessed/{bed} \
+        cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
             | cut -f1,2,3,4 \
             | sed 's/-/\t/g' \
             | cut -f1,2,3,6 \
             | sed 's/\..*$//g' \
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - -d 46 -c 4 -o distinct \
-            > {self.root_tissue}/local/tfbindingclusters_{self.tissue}.bed"
+            > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
         
         self._run_cmd(cmd)
 
@@ -242,28 +242,28 @@ class GenomeDataPreprocessor:
         """Merge individual CPGs with optional liftover"""
         if self.options['cpg_liftover'] == True:
             liftover_sort = f"{self.resources['liftover']} \
-                {self.root_tissue}/unprocessed/{bed} \
+                {self.tissue_dir}/unprocessed/{bed} \
                 {self.resources['liftover_chain']} \
-                {self.root_tissue}/unprocessed/{bed}_lifted \
-                {self.root_tissue}/unprocessed/{bed}_unlifted \
-                && bedtools sort -i {self.root_tissue}/unprocessed/{bed}_lifted \
-                > {self.root_tissue}/unprocessed/{bed}_lifted_sorted \
-                && mv {self.root_tissue}/unprocessed/{bed}_lifted_sorted {self.root_tissue}/unprocessed/{bed}_lifted"
+                {self.tissue_dir}/unprocessed/{bed}_lifted \
+                {self.tissue_dir}/unprocessed/{bed}_unlifted \
+                && bedtools sort -i {self.tissue_dir}/unprocessed/{bed}_lifted \
+                > {self.tissue_dir}/unprocessed/{bed}_lifted_sorted \
+                && mv {self.tissue_dir}/unprocessed/{bed}_lifted_sorted {self.tissue_dir}/unprocessed/{bed}_lifted"
             self._run_cmd(liftover_sort)
 
         if self.options['cpg_filetype'] == 'ENCODE':
-            file = f"{self.root_tissue}/unprocessed/{bed}_gt75"
-            gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 75' {self.root_tissue}/unprocessed/{bed} \
+            file = f"{self.tissue_dir}/unprocessed/{bed}_gt75"
+            gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 75' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
             self._run_cmd(gt_gc)
         else:
-            file = f"{self.root_tissue}/unprocessed/{bed}_lifted"
+            file = f"{self.tissue_dir}/unprocessed/{bed}_lifted"
             
         bedtools_cmd = f"bedtools merge \
             -i {file} \
             -d 1 \
             | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"cpg_methyl\"}}' \
-            > {self.root_tissue}/local/cpg_{self.tissue}_parsed.bed"
+            > {self.tissue_dir}/local/cpg_{self.tissue}_parsed.bed"
 
         self._run_cmd(bedtools_cmd)
 
@@ -305,33 +305,33 @@ class GenomeDataPreprocessor:
         for histone in self.HISTONES:
             file = self.tissue_specific[histone]
             if file:
-                a = pybedtools.BedTool(f'{self.root_tissue}/unprocessed/{file}')
+                a = pybedtools.BedTool(f'{self.tissue_dir}/unprocessed/{file}')
                 b = a.each(_add_histone_feat, histone)
-                b.cut([0,1,2,3]).sort().saveas(f'{self.root_tissue}/histones/{file}')
-                all_histones.append(f'{self.root_tissue}/histones/{file}')
+                b.cut([0,1,2,3]).sort().saveas(f'{self.tissue_dir}/histones/{file}')
+                all_histones.append(f'{self.tissue_dir}/histones/{file}')
 
         bedops_everything = f"bedops --everything {' '.join(all_histones)} \
-            > {self.root_tissue}/histones/histones_union.bed"
+            > {self.tissue_dir}/histones/histones_union.bed"
         bedops_partition = f"bedops --partition {' '.join(all_histones)} \
-            > {self.root_tissue}/histones/histones_partition.bed"
-        bedmap = f"bedmap --echo --echo-map-id --delim '\t' {self.root_tissue}/histones/histones_partition.bed {self.root_tissue}/histones/histones_union.bed \
+            > {self.tissue_dir}/histones/histones_partition.bed"
+        bedmap = f"bedmap --echo --echo-map-id --delim '\t' {self.tissue_dir}/histones/histones_partition.bed {self.tissue_dir}/histones/histones_union.bed \
             | grep ';' - \
-            > {self.root_tissue}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
+            > {self.tissue_dir}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
         for command in [bedops_everything, bedops_partition, bedmap]:
             self._run_cmd(command)
 
         ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
-        a = pybedtools.BedTool(f"{self.root_tissue}/histones/histones_collapsed.bed")
+        a = pybedtools.BedTool(f"{self.tissue_dir}/histones/histones_collapsed.bed")
         b = (
             a.each(count_histone_bp)
             .sort()
-            .saveas(f"{self.root_tissue}/histones/histones_collapsed_bp.bed")
+            .saveas(f"{self.tissue_dir}/histones/histones_collapsed_bp.bed")
         )
 
         #bedtools merge -i histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum
         bedtools_merge = f"bedtools merge \
-            -i {self.root_tissue}/histones/histones_collapsed_bp.bed \
-            > {self.root_tissue}/local/histones_merged_{self.tissue}.bed"
+            -i {self.tissue_dir}/histones/histones_collapsed_bp.bed \
+            > {self.tissue_dir}/local/histones_merged_{self.tissue}.bed"
         self._run_cmd(bedtools_merge)
 
     @time_decorator(print_args=True)
@@ -341,7 +341,7 @@ class GenomeDataPreprocessor:
         ### Make symlinks for shared data files
         for file in self.shared.values():
                 src = f'{self.root_dir}/shared_data/local/{file}'
-                dst = f'{self.root_tissue}/local/{file}'
+                dst = f'{self.tissue_dir}/local/{file}'
                 try:
                     os.symlink(src, dst)
                 except FileExistsError:
@@ -362,7 +362,7 @@ class GenomeDataPreprocessor:
         for datatype in nochange:
             if self.tissue_specific[datatype]:
                 src = f'{self.data_dir}/{self.tissue_specific[datatype]}'
-                dst = f'{self.root_tissue}/local/{datatype}_{self.tissue}.bed'
+                dst = f'{self.tissue_dir}/local/{datatype}_{self.tissue}.bed'
                 try:
                     os.symlink(src, dst)
                 except FileExistsError:

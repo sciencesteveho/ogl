@@ -143,7 +143,6 @@ class GraphConstructor:
         """Initialize the class"""
         self.gencode = params['shared']['gencode']
         self.interaction_files = params['interaction']
-        self.shared_data = params['shared']
         self.tissue = params['resources']['tissue']
         self.tissue_name = params['resources']['tissue_name']
         self.marker_name = params['resources']['marker_name']
@@ -151,17 +150,17 @@ class GraphConstructor:
         self.tissue_specific = params['tissue_specific']
 
         self.root_dir = params['dirs']['root_dir']
-        self.shared_dir = params['dirs']['shared_dir']
-
-        self.parse_dir = f"{self.root_dir}/{self.tissue}/parsing"
-        self.interaction_dir = f"{self.root_dir}/{self.tissue}/interaction"
+        self.shared_dir =  f"{self.root_dir}/shared_data"
+        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.parse_dir = f"{self.tissue_dir}/parsing"
+        self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.shared_interaction_dir = f'{self.shared_dir}/interaction'
         self.graph_dir = f"{self.parse_dir}/graphs"
 
         dir_check_make(self.graph_dir)
         
         self.genesymbol_to_gencode = self._genes_from_gencode(
-            gencode_file=f"{self.shared_interaction_dir}/{self.interaction_files['gencode']}"
+            gencode_file=f"{self.data_dir}/local/{self.gencode}"
             )
 
         self.e_indexes = self._enhancer_index(
