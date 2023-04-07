@@ -411,15 +411,21 @@ class EdgeParser:
         # retrieve interaction-based edges
         gencode_nodes, enhancers, mirnas = self._process_graph_edges()
 
-        # add coordinates to edges for local contexts and adding features
+        # #add coordinates to edges for local contexts and adding features
         # pool = Pool(processes=3)
-        # pool.map([gencode_nodes, enhancers, mirnas], [self.gencode_ref, self.enhancer_ref, self.mirna_ref])
+        # pool.map(
+        #     [gencode_nodes, enhancers, mirnas],
+        #     [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
+        # )
         # pool.close()
 
-        nodes_for_attr = self._add_coordinates(
-            gencode_nodes=gencode_nodes,
-            enhancers=enhancers,
-            mirnas=mirnas)
+        nodes_for_attr = map(
+            self._add_coordinates,
+            zip(
+                [gencode_nodes, enhancers, mirnas],
+                [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
+            ),
+        )
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
