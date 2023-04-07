@@ -64,10 +64,6 @@ class EdgeParser:
         Lorem
     _process_graph_edges:
         Lorem
-    _base_graph:
-        Lorem
-    _base_graph:
-        Lorem
     """
 
     def __init__(
@@ -421,9 +417,11 @@ class EdgeParser:
 
         nodes_for_attr = map(
             self._add_coordinates,
-            zip(
-                [gencode_nodes, enhancers, mirnas],
-                [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
+            list(
+                zip(
+                    [gencode_nodes, enhancers, mirnas],
+                    [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
+                )
             ),
         )
 
