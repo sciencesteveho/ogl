@@ -13,7 +13,7 @@ import argparse
 import csv
 import os
 import pickle
-from itertools import repeat
+from itertools import repeat, starmap
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
@@ -415,7 +415,7 @@ class EdgeParser:
         # )
         # pool.close()
 
-        nodes_for_attr = map(
+        nodes_for_attr = starmap(
             self._add_coordinates,
             list(
                 zip(
