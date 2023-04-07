@@ -10,7 +10,7 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
     The following features have node representations:
         Tissue-specific
             ENCODE cCRE Enhancers (fenrir)
-            Genes (GENCODE, GTEx - interactions from IID)
+            Genes (GENCODE, PPI interactions from IID)
             TFs (Marbach, TFMarker)
             MicroRNAs (mirDIP for tissue-specific, miRTarBase for interactions)
 

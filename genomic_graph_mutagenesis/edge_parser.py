@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] PRIORITY ** Fix memory leak! 
-# - [ ] Fix filepaths. They are super ugly! 
+# - [ ] PRIORITY ** Fix memory leak!
+# - [ ] Fix filepaths. They are super ugly!
 # - [ ] one-hot encode node_feat type?
 #
 
@@ -11,12 +11,11 @@
 
 import argparse
 import csv
-from itertools import repeat
 import os
 import pickle
+from itertools import repeat
 from typing import Any, Dict, List, Tuple
 
-import networkx as nx
 import numpy as np
 import pandas as pd
 import pybedtools
@@ -26,7 +25,7 @@ from utils import dir_check_make, parse_yaml, time_decorator
 
 class EdgeParser:
     """Object to construct tensor based graphs from parsed bedfiles
-    
+
     The baseline graph structure is build from the following in order:
         Curated protein-protein interactions from the integrated interactions
         database V 2021-05
@@ -38,7 +37,7 @@ class EdgeParser:
         Alternative polyadenylation targets from APAatlas
 
     Args:
-        params: configuration vals from yaml 
+        params: configuration vals from yaml
 
     Methods
     ----------
@@ -73,43 +72,53 @@ class EdgeParser:
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
-        ):
+    ):
         """Initialize the class"""
-        self.gencode = params['shared']['gencode']
-        self.interaction_files = params['interaction']
-        self.tissue = params['resources']['tissue']
-        self.tissue_name = params['resources']['tissue_name']
-        self.marker_name = params['resources']['marker_name']
-        self.ppi_tissue = params['resources']['ppi_tissue']
-        self.tissue_specific = params['tissue_specific']
+        self.gencode = params["shared"]["gencode"]
+        self.interaction_files = params["interaction"]
+        self.tissue = params["resources"]["tissue"]
+        self.tissue_name = params["resources"]["tissue_name"]
+        self.marker_name = params["resources"]["marker_name"]
+        self.ppi_tissue = params["resources"]["ppi_tissue"]
+        self.tissue_specific = params["tissue_specific"]
 
-        self.root_dir = params['dirs']['root_dir']
-        self.shared_dir =  f"{self.root_dir}/shared_data"
+        self.root_dir = params["dirs"]["root_dir"]
+        self.shared_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
-        self.shared_interaction_dir = f'{self.shared_dir}/interaction'
+        self.shared_interaction_dir = f"{self.shared_dir}/interaction"
         self.graph_dir = f"{self.parse_dir}/graphs"
-
         dir_check_make(self.graph_dir)
-        
-        self.genesymbol_to_gencode = self._genes_from_gencode(
-            gencode_file=f"{self.tissue_dir}/local/{self.gencode}"
-            )
 
+        self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
+        self.genesymbol_to_gencode = self._genes_from_gencode()
+        self.mirna_ref = self._blind_read_file(
+            f"{self.interaction_dir}/{self.tissue}_mirdip"
+        )
+        self.enhancer_ref = self._blind_read_file(
+            f"{self.tissue_dir}/local/enhancers_lifted_{self.tissue}.bed"
+        )
         self.e_indexes = self._enhancer_index(
             e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
-            e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt"
+            e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt",
         )
 
-    def _genes_from_gencode(self, gencode_file: str) -> Dict[str, str]:
-        """Returns a dict of gencode v26 genes, their ids and associated gene symbols"""
-        a = pybedtools.BedTool(gencode_file)
+    def _genes_from_gencode(self) -> Dict[str, str]:
+        """Returns a dict of gencode v26 genes, their ids and associated gene
+        symbols
+        """
         return {
-            line[9].split(';')[3].split('\"')[1]:line[3]
-            for line in a 
-            if line[0] not in ['chrX', 'chrY', 'chrM']
-            }
+            line[9].split(";")[3].split('"')[1]: line[3]
+            for line in self.gencode_ref
+            if line[0] not in ["chrX", "chrY", "chrM"]
+        }
+
+    def _blind_read_file(self, file: str) -> List[str]:
+        """Blindly reads a file into csv reader and stores file as a list of
+        lists
+        """
+        return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
     
     @time_decorator(print_args=True)
     def _iid_ppi(
@@ -179,9 +188,15 @@ class EdgeParser:
                         if ";" in line[10]:
                             genes = line[10].split(";")
                             for gene in genes:
-                                tf_markers.append((line[1], gene))
+                                if line[2] == 'I Marker':
+                                    tf_markers.append((gene, line[1]))
+                                else:
+                                    tf_markers.append((line[1], gene))
                         else:
-                            tf_markers.append((line[1], line[10]))
+                            if line[2] == 'I Marker':
+                                tf_markers.append((line[10], line[1]))
+                            else:
+                                tf_markers.append((line[1], line[10]))
                     except IndexError: 
                         pass 
 
@@ -301,9 +316,6 @@ class EdgeParser:
             for line in e_g_liftover
             if int(line[2]) >= cutoff
         ]
-    
-    def _add_gencode_coordinates(self):
-        print('hello')
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
@@ -314,49 +326,34 @@ class EdgeParser:
         Returns:
             A list of all edges
         """
-        all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
-        if not (
-            os.path.exists(all_interaction_file)
-            and os.stat(all_interaction_file).st_size > 0
-        ):
-            ppi_edges = self._iid_ppi(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                tissue=self.ppi_tissue,
-            )
-            mirna_targets = self._mirna_targets(
-                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
-                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
-            )
-            tf_markers = self._tf_markers(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
-            )
-            e_e_edges = self._fenrir_enhancer_enhancer(
-                f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-                score_filter=30,
-            )
-            e_g_edges = self._fenrir_enhancer_gene(
-                f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-                score_filter=70,
-            )
-            circuit_edges = self._marbach_regulatory_circuits(
-                f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
-            )
+        ppi_edges = self._iid_ppi(
+            interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+            tissue=self.ppi_tissue,
+        )
+        mirna_targets = self._mirna_targets(
+            target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+            tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
+        )
+        tf_markers = self._tf_markers(
+            interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
+        )
+        e_e_edges = self._fenrir_enhancer_enhancer(
+            f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
+            score_filter=30,
+        )
+        e_g_edges = self._fenrir_enhancer_gene(
+            f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
+            score_filter=70,
+        )
+        circuit_edges = self._marbach_regulatory_circuits(
+            f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
+        )
 
-            interaction_edges = (
-                ppi_edges
-                + mirna_targets
-                + tf_markers
-                + e_e_edges
-                + e_g_edges
-                + circuit_edges
-            )
-            with open(all_interaction_file, "w+") as output:
-                writer = csv.writer(output, delimiter="\t")
-                writer.writerows(interaction_edges)
-        else:
-            pass
+        self.edges = (
+            ppi_edges + mirna_targets + tf_markers + e_e_edges + e_g_edges + circuit_edges
+        )
         
-        gencode_attr = (
+        gencode_nodes = (
             [tup[0] for tup in ppi_edges]
             + [tup[1] for tup in ppi_edges]
             + [tup[1] for tup in mirna_targets]
@@ -366,6 +363,49 @@ class EdgeParser:
             + [tup[0] for tup in circuit_edges]
             + [tup[1] for tup in circuit_edges]
         )
+
+        enhancers = (
+            [tup[0] for tup in e_e_edges]
+            + [tup[1] for tup in e_e_edges]
+            + [tup[0] for tup in e_g_edges]
+        )
+
+        mirnas = [tup[0] for tup in mirna_targets]
+
+        return gencode_nodes, enhancers, mirnas
+
+    @time_decorator(print_args=True)
+    def _add_coordinates(
+        self,
+        gencode_nodes,
+        enhancers,
+        mirnas,
+    ) -> None:
+        """_summary_
+
+        Args:
+            gencode_nodes (_type_): _description_
+            enhancers (_type_): _description_
+            mirnas (_type_): _description_
+        """
+
+        def _return_gene_entry(feature, name):
+            return feature[3] == name
+
+        gencode_for_attr = []
+        for gene in set(gencode_nodes):
+            ref = gene.split("_")[0]
+            entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
+            gencode_for_attr.append((entry[0], entry[1], entry[2], gene))
+
+        mirna_for_attr = [line[0:3] for line in self.mirna_ref if line[3] in set(mirnas)]
+
+        enhancers_for_attr = [
+            line[0:3] for line in self.enhancer_ref if line[3] in set(enhancers)
+        ]
+
+        return gencode_for_attr + mirna_for_attr + enhancers_for_attr
+
     
     def _all_edges_to_text(self) -> None:
         print('hello')
@@ -374,9 +414,27 @@ class EdgeParser:
     def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
+
         # retrieve interaction-based edges
-        base_graph = self._process_graph_edges()
-        nx.write_gml(base_graph, "test.gml")
+        gencode_nodes, enhancers, mirnas = self._process_graph_edges()
+
+        # add coordinates to edges for local contexts and adding features
+        nodes_for_attr = self._add_coordinates(
+            gencode_nodes=gencode_nodes,
+            enhancers=enhancers,
+            mirnas=mirnas)
+
+        # write edges to file
+        all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
+        if not (
+            os.path.exists(all_interaction_file)
+            and os.stat(all_interaction_file).st_size > 0
+        ):
+            with open(all_interaction_file, "w+") as output:
+                writer = csv.writer(output, delimiter="\t")
+                writer.writerows(self.edges)
+        else:
+            pass
 
 
 def main() -> None:
