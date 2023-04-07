@@ -14,6 +14,7 @@ import csv
 import os
 import pickle
 from itertools import repeat
+from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -373,13 +374,12 @@ class EdgeParser:
         mirnas = [tup[0] for tup in mirna_targets]
 
         return gencode_nodes, enhancers, mirnas
-
+    
     @time_decorator(print_args=False)
     def _add_coordinates(
         self,
-        gencode_nodes,
-        enhancers,
-        mirnas,
+        nodes,
+        node_ref,
     ) -> None:
         """_summary_
 
@@ -388,37 +388,34 @@ class EdgeParser:
             enhancers (_type_): _description_
             mirnas (_type_): _description_
         """
-
         def _return_gene_entry(feature, gene):
             return feature[3] == gene
-
-        gencode_for_attr = []
-        for gene in set(gencode_nodes):
-            ref = gene.split("_")[0]
-            entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
-            gencode_for_attr.append((entry[0], entry[1], entry[2], gene))
-
-        mirna_for_attr = [line[0:3] for line in self.mirna_ref if line[3] in set(mirnas)]
-
-        enhancers_for_attr = [
-            line[0:3] for line in self.enhancer_ref if line[3] in set(enhancers)
-        ]
-
-        return gencode_for_attr + mirna_for_attr + enhancers_for_attr
-
-    
-    def _all_edges_to_text(self) -> None:
-        print('hello')
+        
+        if node_ref == self.gencode_ref:
+            gencode_for_attr = []
+            for node in set(nodes):
+                print(node)
+                ref = node.split("_")[0]
+                entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
+                gencode_for_attr.append((entry[0], entry[1], entry[2], node))
+            return gencode_for_attr
+        else:
+            return [
+                line[0:4] for line in node_ref if line[3] in set(nodes)
+            ]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
-
         # retrieve interaction-based edges
         gencode_nodes, enhancers, mirnas = self._process_graph_edges()
 
         # add coordinates to edges for local contexts and adding features
+        # pool = Pool(processes=3)
+        # pool.map([gencode_nodes, enhancers, mirnas], [self.gencode_ref, self.enhancer_ref, self.mirna_ref])
+        # pool.close()
+
         nodes_for_attr = self._add_coordinates(
             gencode_nodes=gencode_nodes,
             enhancers=enhancers,
