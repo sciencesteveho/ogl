@@ -97,7 +97,7 @@ class EdgeParser:
             f"{self.interaction_dir}/{self.tissue}_mirdip"
         )
         self.enhancer_ref = self._blind_read_file(
-            f"{self.tissue_dir}/local/enhancers_lifted_{self.tissue}.bed"
+            f"{self.tissue_dir}/local/enhancers_lifted.bed"
         )
         self.e_indexes = self._enhancer_index(
             e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
@@ -374,7 +374,7 @@ class EdgeParser:
 
         return gencode_nodes, enhancers, mirnas
 
-    @time_decorator(print_args=True)
+    @time_decorator(print_args=False)
     def _add_coordinates(
         self,
         gencode_nodes,
@@ -389,8 +389,8 @@ class EdgeParser:
             mirnas (_type_): _description_
         """
 
-        def _return_gene_entry(feature, name):
-            return feature[3] == name
+        def _return_gene_entry(feature, gene):
+            return feature[3] == gene
 
         gencode_for_attr = []
         for gene in set(gencode_nodes):
@@ -435,6 +435,10 @@ class EdgeParser:
                 writer.writerows(self.edges)
         else:
             pass
+        
+        # save nodes for parsing
+        with open('test.pkl', 'wb') as output:
+            pickle.dump(nodes_for_attr, output)
 
 
 def main() -> None:
