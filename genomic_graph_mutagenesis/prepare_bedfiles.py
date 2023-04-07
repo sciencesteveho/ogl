@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-  
+# -*- coding: utf-8 -*-
 #
 # // TO-DO //
 # - [ ] fix _download_shared_files, which is currently broken
@@ -69,18 +69,18 @@ class GenomeDataPreprocessor:
 
     def __init__(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize the class"""
-        self.dirs = params['dirs']
-        self.interaction = params['interaction']
-        self.options = params['options']
-        self.resources = params['resources']
-        self.shared = params['shared']
-        self.tissue_specific = params['tissue_specific']
-        
-        self.tissue = self.resources['tissue']
-        self.root_dir = self.dirs['root_dir']
+        self.dirs = params["dirs"]
+        self.interaction = params["interaction"]
+        self.options = params["options"]
+        self.resources = params["resources"]
+        self.shared = params["shared"]
+        self.tissue_specific = params["tissue_specific"]
+
+        self.tissue = self.resources["tissue"]
+        self.root_dir = self.dirs["root_dir"]
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
-        self.data_dir = f'{self.root_dir}/raw_files/{self.tissue}'
-        
+        self.data_dir = f"{self.root_dir}/raw_files/{self.tissue}"
+
         # make directories, link files, and download shared files if necessary
         self._make_directories()
         self._symlink_rawdata()
@@ -88,13 +88,13 @@ class GenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        dir_check_make(f'{self.root_dir}/shared_data')
+        dir_check_make(f"{self.root_dir}/shared_data")
 
-        for directory in ['local', 'interaction', 'unprocessed', 'histones']:
-            dir_check_make(f'{self.tissue_dir}/{directory}')
+        for directory in ["local", "interaction", "unprocessed", "histones"]:
+            dir_check_make(f"{self.tissue_dir}/{directory}")
 
-        for directory in ['local', 'interaction']:
-            dir_check_make(f'{self.root_dir}/shared_data/{directory}')
+        for directory in ["local", "interaction"]:
+            dir_check_make(f"{self.root_dir}/shared_data/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -107,7 +107,9 @@ class GenomeDataPreprocessor:
         def check_and_symlink(dst, src, boolean=False):
             try:
                 if boolean == True:
-                    if (bool(file) and os.path.exists(src)) and (not os.path.exists(dst)):
+                    if (bool(file) and os.path.exists(src)) and (
+                        not os.path.exists(dst)
+                    ):
                         os.symlink(src, dst)
                 else:
                     if not os.path.exists(dst):
@@ -164,7 +166,8 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
-        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.tissue_dir}/unprocessed/{bed} \
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
+            {self.tissue_dir}/unprocessed/{bed} \
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
@@ -204,10 +207,14 @@ class GenomeDataPreprocessor:
         liftover_sort = f"{self.resources['liftover']} \
             {self.tissue_dir}/unprocessed/enhancers.bed \
             {self.resources['liftover_chain']} \
-            {self.tissue_dir}/local/enhancers_lifted_{self.tissue}.bed \
+            {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
             {self.tissue_dir}/unprocessed/enhancers_unlifted "
 
-        for cmd in [split_1, split_2, enhancer_cat, liftover_sort]:
+        enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
+           {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
+           > {self.tissue_dir}/local/enhancers_lifted.bed"
+
+        for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
             self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
@@ -216,7 +223,7 @@ class GenomeDataPreprocessor:
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
             | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"superenhancer\"}}' \
             > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
-        
+
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
@@ -236,13 +243,13 @@ class GenomeDataPreprocessor:
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - -d 46 -c 4 -o distinct \
             > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-        
+
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:
         """Merge individual CPGs with optional liftover"""
-        if self.options['cpg_liftover'] == True:
+        if self.options["cpg_liftover"] == True:
             liftover_sort = f"{self.resources['liftover']} \
                 {self.tissue_dir}/unprocessed/{bed} \
                 {self.resources['liftover_chain']} \
@@ -253,14 +260,14 @@ class GenomeDataPreprocessor:
                 && mv {self.tissue_dir}/unprocessed/{bed}_lifted_sorted {self.tissue_dir}/unprocessed/{bed}_lifted"
             self._run_cmd(liftover_sort)
 
-        if self.options['cpg_filetype'] == 'ENCODE':
+        if self.options["cpg_filetype"] == "ENCODE":
             file = f"{self.tissue_dir}/unprocessed/{bed}_gt75"
             gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 75' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
             self._run_cmd(gt_gc)
         else:
             file = f"{self.tissue_dir}/unprocessed/{bed}_lifted"
-            
+
         bedtools_cmd = f"bedtools merge \
             -i {file} \
             -d 1 \
@@ -283,16 +290,16 @@ class GenomeDataPreprocessor:
         """
 
         histone_idx = {
-            'H3K27ac': 4,
-            'H3K27me3': 5,
-            'H3K36me3': 6,
-            'H3K4me1': 7,
-            'H3K4me3': 8,
-            'H3K9me3': 9,
-        }  
+            "H3K27ac": 4,
+            "H3K27me3": 5,
+            "H3K36me3": 6,
+            "H3K4me1": 7,
+            "H3K4me3": 8,
+            "H3K9me3": 9,
+        }
 
         def _add_histone_feat(feature: str, histone: str) -> str:
-            feature[3] = histone + '_' + feature[3]
+            feature[3] = histone + "_" + feature[3]
             return feature
 
         def count_histone_bp(feature: str) -> str:
@@ -308,10 +315,10 @@ class GenomeDataPreprocessor:
         for histone in self.HISTONES:
             file = self.tissue_specific[histone]
             if file:
-                a = pybedtools.BedTool(f'{self.tissue_dir}/unprocessed/{file}')
+                a = pybedtools.BedTool(f"{self.tissue_dir}/unprocessed/{file}")
                 b = a.each(_add_histone_feat, histone)
-                b.cut([0,1,2,3]).sort().saveas(f'{self.tissue_dir}/histones/{file}')
-                all_histones.append(f'{self.tissue_dir}/histones/{file}')
+                b.cut([0, 1, 2, 3]).sort().saveas(f"{self.tissue_dir}/histones/{file}")
+                all_histones.append(f"{self.tissue_dir}/histones/{file}")
 
         bedops_everything = f"bedops --everything {' '.join(all_histones)} \
             > {self.tissue_dir}/histones/histones_union.bed"
@@ -337,7 +344,6 @@ class GenomeDataPreprocessor:
             .saveas(f"{self.tissue_dir}/histones/histones_collapsed_bp.bed")
         )
 
-        #bedtools merge -i histones_collapsed_bp.bed -c 5,6,7,8,9,10 -o sum
         bedtools_merge = f"bedtools merge \
             -i {self.tissue_dir}/histones/histones_collapsed_bp.bed \
             > {self.tissue_dir}/local/histones_merged_{self.tissue}.bed"
@@ -349,12 +355,12 @@ class GenomeDataPreprocessor:
 
         ### Make symlinks for shared data files
         for file in self.shared.values():
-                src = f'{self.root_dir}/shared_data/local/{file}'
-                dst = f'{self.tissue_dir}/local/{file}'
-                try:
-                    os.symlink(src, dst)
-                except FileExistsError:
-                    pass
+            src = f"{self.root_dir}/shared_data/local/{file}"
+            dst = f"{self.tissue_dir}/local/{file}"
+            try:
+                os.symlink(src, dst)
+            except FileExistsError:
+                pass
 
         ### Make symlinks and rename files that do not need preprocessing
         nochange = [
@@ -370,27 +376,27 @@ class GenomeDataPreprocessor:
         ]
         for datatype in nochange:
             if self.tissue_specific[datatype]:
-                src = f'{self.data_dir}/{self.tissue_specific[datatype]}'
-                dst = f'{self.tissue_dir}/local/{datatype}_{self.tissue}.bed'
+                src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
+                dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
                 try:
                     os.symlink(src, dst)
                 except FileExistsError:
                     pass
-        
-        self._add_TAD_id(self.tissue_specific['tads'])
 
-        self._split_chromatinloops(self.tissue_specific['chromatinloops'])
+        self._add_TAD_id(self.tissue_specific["tads"])
 
-        self._superenhancers(self.tissue_specific['super_enhancer'])
+        self._split_chromatinloops(self.tissue_specific["chromatinloops"])
+
+        self._superenhancers(self.tissue_specific["super_enhancer"])
 
         self._fenrir_enhancers(
-            self.tissue_specific['enhancers_e_e'],
-            self.tissue_specific['enhancers_e_g'],
+            self.tissue_specific["enhancers_e_e"],
+            self.tissue_specific["enhancers_e_g"],
         )
 
-        self._tf_binding_clusters(self.tissue_specific['tf_binding'])
+        self._tf_binding_clusters(self.tissue_specific["tf_binding"])
 
-        self._merge_cpg(self.tissue_specific['cpg'])
+        self._merge_cpg(self.tissue_specific["cpg"])
 
         self._combine_and_split_histones()
 

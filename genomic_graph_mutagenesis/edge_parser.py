@@ -281,8 +281,8 @@ class EdgeParser:
 
         cutoff = np.percentile(scores, score_filter)
         return [
-            (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-            f"enhancers_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
+            (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+            f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
             -1,
             'enhancer-enhancer',)
             for line in e_e_liftover
@@ -309,7 +309,7 @@ class EdgeParser:
 
         cutoff = np.percentile(scores, score_filter)
         return [
-            (f"enhancers_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+            (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
             line[1],
             -1,
             'enhancer-gene')
