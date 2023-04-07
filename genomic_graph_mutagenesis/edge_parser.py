@@ -439,7 +439,7 @@ class EdgeParser:
         
         # save nodes for parsing
         with open('test.pkl', 'wb') as output:
-            pickle.dump(nodes_for_attr, output)
+            pickle.dump(list(nodes_for_attr), output)
 
 
 def main() -> None:
