@@ -421,9 +421,9 @@ class EdgeParser:
             pass
         
         # write nodes to file
-        with open(f"{self.interaction_dir}/base_nodes.txt", 'w') as output:
-            for row in nodes_for_attr:
-                output.write(str(row))
+        with open(f"{self.interaction_dir}/base_nodes.txt", 'w+') as output:
+            writer = csv.writer(output, delimiter="\t")
+            writer.writerows(nodes_for_attr)
                 
 
 def main() -> None:
