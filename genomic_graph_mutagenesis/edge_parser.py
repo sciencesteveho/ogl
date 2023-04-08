@@ -369,7 +369,7 @@ class EdgeParser:
 
         mirnas = [tup[0] for tup in mirna_targets]
 
-        return gencode_nodes, enhancers, mirnas
+        return set(gencode_nodes), set(enhancers), set(mirnas)
     
     @time_decorator(print_args=False)
     def _add_coordinates(
@@ -389,7 +389,7 @@ class EdgeParser:
         
         if node_ref == self.gencode_ref:
             gencode_for_attr = []
-            for node in set(nodes):
+            for node in nodes:
                 print(node)
                 ref = node.split("_")[0]
                 entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
