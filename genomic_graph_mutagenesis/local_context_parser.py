@@ -63,53 +63,58 @@ class LocalContextFeatures:
         FEAT_WINDOWS -- dictionary of each nodetype: overlap windows
         NODES -- list of nodetypes
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors 
-
-    The following features have node representations:
-        Tissue-specific
-            chromatinloops
-            enhancers (tissue-specific)
-            histone binding clusters (collapsed)
-            transcription factor binding clusters
-            tads
-
-        Genome-static
-            cpgislands
-            gencode (genes)
-            miRNA targets
-            poly(a) binding sites
-            promoters
-            rna binding protein binding sites
-            transcription start sites
-
-    The following are represented as attributes:
-        Tissue-specific
-            CpG methylation
-
-            ChIP-seq peaks
-                ctcf ChIP-seq peaks
-                DNase ChIP-seq peaks
-                H3K27ac ChIP-seq peaks
-                H3K27me3 ChIP-seq peaks
-                H3K36me3 ChIP-seq peaks
-                H3K4me1 ChIP-seq peaks
-                H3K4me3 ChIP-seq peaks
-                H3K9me3 ChIP-seq peaks
-                polr2a ChIP-seq peaks
-
-        Genome-static
-            gc content
-            microsatellites
-            conservation (phastcons)
-            LINEs
-            long terminal repeats
-            simple repeats
-            SINEs
     """
 
-    # list helpers
-    ATTRIBUTES = ['gc', 'cpg', 'ctcf', 'dnase', 'enh', 'enhbiv', 'enhg', 'h3k27ac', 'h3k27me3', 'h3k36me3', 'h3k4me1', 'h3k4me3', 'h3k9me3', 'het', 'line', 'ltr', 'microsatellites', 'phastcons', 'polr2a', 'reprpc', 'rnarepeat', 'simplerepeats', 'sine', 'tssa', 'tssaflnk', 'tssbiv', 'txflnk', 'tx', 'txwk', 'znf']  # gc first!
-    NODES = ['chromatinloops', 'cpgislands', 'enhancers', 'gencode', 'histones', 'mirnatargets', 'polyasites', 'promoters', 'rbpbindingsites', 'tads', 'tfbindingclusters', 'tss']
+    ATTRIBUTES = [
+        "cnv",
+        "cpg",
+        "ctcf",
+        "dnase",
+        "h3k27ac",
+        "h3k27me3",
+        "h3k36me3",
+        "h3k4me1",
+        "h3k4me3",
+        "h3k9me3",
+        "indels",
+        "line",
+        "ltr",
+        "microsatellites",
+        "mirnatargets",
+        "phastcons",
+        "polr2a",
+        "polya",
+        "rbpbindingsites",
+        "recombination",
+        "repg1b",
+        "repg2",
+        "reps1",
+        "reps2",
+        "reps3",
+        "reps4",
+        "rnarepeat",
+        "simplerepeats",
+        "sine",
+        "snp",
+    ]  # no gc; hardcoded in as initial
+
+    NODES = [
+        "chromatinloops",
+        "cpgislands",
+        "ctcfccre",
+        "enhancers",
+        "histones",
+        "polyasites",
+        "promoters",
+        "superenhancers",
+        "tads",
+        "tfbindingclusters",
+        "tss",
+    ]  # no gencode; hardcoded in as initial file
+
     DIRECT = ['chromatinloops', 'tads']
+
+    NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
 
     # var helpers - for CPU cores
     NODE_CORES=len(NODES)  # 12
@@ -117,32 +122,30 @@ class LocalContextFeatures:
 
     # dict helpers
     ONEHOT_NODETYPE = {
-        'chromatinloops': [1,0,0,0,0,0,0,0,0,0,0,0],
-        'cpgislands': [0,1,0,0,0,0,0,0,0,0,0,0],
-        'enhancers': [0,0,1,0,0,0,0,0,0,0,0,0],
-        'gencode': [0,0,0,1,0,0,0,0,0,0,0,0],
-        'histones': [0,0,0,0,1,0,0,0,0,0,0,0],
-        'mirnatargets': [0,0,0,0,0,1,0,0,0,0,0,0],
-        'polyasites': [0,0,0,0,0,0,1,0,0,0,0,0],
-        'promoters': [0,0,0,0,0,0,0,1,0,0,0,0],
-        'rbpbindingsites': [0,0,0,0,0,0,0,0,1,0,0,0],
-        'tads': [0,0,0,0,0,0,0,0,0,1,0,0],
-        'tfbindingclusters': [0,0,0,0,0,0,0,0,0,0,1,0],
-        'tss': [0,0,0,0,0,0,0,0,0,0,0,1],
+    }
+
+    ONEHOT_EDGETYPE = {
+        'local': [1,0,0,0,0],
+        'enhancer-enhancer': [0,1,0,0,0],
+        'enhancer-gene': [0,0,1,0,0],
+        'circuits': [0,0,0,1,0],
+        'ppi': [0,0,0,0,1],
     }
 
     # cpgislands - 2kb, based on precedence from CpGcluster
     # enhancers - can vary widely, so dependent on 3d chromatin structure and from FENRIR networks
+    # polyasite - 16kb, check PolyA-miner 
     # direct binding, such as mirna, polyasites, rbps are set to 500bp
     FEAT_WINDOWS = {
         'cpgislands': 2000,
+        'ctcfccre': 2000,
         'enhancers': 2000,
-        'gencode': 2500,
+        'gencode': 5000,
         'histones': 2000,
         'mirnatargets': 1000,
         'polyasites': 1000,
         'promoters': 2000,
-        'rbpbindingsites': 1000,
+        'superenhancers': 2000,
         'tfbindingclusters': 2000,
         'tss': 2000,
     }

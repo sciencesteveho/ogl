@@ -383,29 +383,12 @@ class EdgeParser:
         """_summary_
 
         Args:
-            gencode_nodes (_type_): _description_
-            enhancers (_type_): _description_
-            mirnas (_type_): _description_
+            nodes:
+            node_ref:
         """
-        # def _return_gene_entry(feature, gene):
-        #     return feature[3] == gene
-        
         return [
             line[0:4] for line in node_ref if line[3] in set(nodes)
         ]
-        
-        # if node_ref == self.gencode_ref:
-        #     gencode_for_attr = []
-        #     for node in nodes:
-        #         # print(node)
-        #         ref = node.split("_")[0]
-        #         entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
-        #         gencode_for_attr.append((entry[0], entry[1], entry[2], node))
-        #     return gencode_for_attr
-        # else:
-        #     return [
-        #         line[0:4] for line in node_ref if line[3] in set(nodes)
-        #     ]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
@@ -413,14 +396,6 @@ class EdgeParser:
 
         # retrieve interaction-based edges
         gencode_nodes, enhancers, mirnas = self._process_graph_edges()
-
-        # #add coordinates to edges for local contexts and adding features
-        # pool = Pool(processes=3)
-        # pool.map(
-        #     [gencode_nodes, enhancers, mirnas],
-        #     [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
-        # )
-        # pool.close()
 
         nodes_for_attr = starmap(
             self._add_coordinates,
@@ -431,6 +406,7 @@ class EdgeParser:
                 )
             ),
         )
+        nodes_for_attr = sum(nodes_for_attr, [])
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
@@ -444,7 +420,8 @@ class EdgeParser:
         else:
             pass
         
-        with open(f"{self.interaction_dir}/'base_nodes.txt", 'w') as output:
+        # write nodes to file
+        with open(f"{self.interaction_dir}/base_nodes.txt", 'w') as output:
             for row in nodes_for_attr:
                 output.write(str(row))
                 
