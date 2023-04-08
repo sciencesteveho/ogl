@@ -12,6 +12,15 @@ function _gencode_bed () {
     cut -f4,10 $3/local/gencode_v26_genes_only_with_GTEx_targets.bed | sed 's/;/\t/g' | cut -f1,5 | sed -e 's/ gene_name //g' -e 's/\"//g' > $3/interaction/gencode_to_genesymbol_lookup_table.txt
 }
 
+# save alternative names for gencode entries. This is for parsing node features
+# downstream of graph construction
+function _gencode_nodetype_featsaver () {
+    cat <(awk -v OFS='\t' '{print $1, $2, $3, $4}' $1/$2) \
+        <(awk -v OFS='\t' '{print $1, $2, $3, $4"_protein"}' $1/$2) \
+        <(awk -v OFS='\t' '{print $1, $2, $3, $4"_tf"}' $1/$2) \
+        > $1/gencode_v26_node_attr.bed 
+}
+
 # Parse mirDIP database v5.2 in tissue-specific files of active miRNAs. Requires
 # "mirDIP_ZA_TISSUE_MIRS.txt" from "All data / TSV" and "final_data.gff" from
 # "All data / GFF". miRNA targets are downloaded from miRTarBase v9.0 and
@@ -244,6 +253,10 @@ function main() {
         gencode.v26.GRCh38.genes.gtf \
         /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 
+    _gencode_nodetype_featsaver \
+        /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local \
+        gencode_v26_genes_only_with_GTEx_targets.bed
+
     _active_mirna \
         /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/mirDIP \
         mirDIP_ZA_TISSUE_MIRS.txt \
@@ -289,11 +302,6 @@ function main() {
         '40246_2021_318_MOESM3_ESM.txt' \
         /ocean/projects/bio210019p/stevesho/resources \
         '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local'
-
-    _replication_hotspots \
-        '/ocean/projects/bio210019p/stevesho/data/bedfile_preparse' \
-        '40246_2021_318_MOESM3_ESM.txt' \
-        '/ocean/projects/bio210019p/stevesho/resources'
 
     _replication_hotspots \
         '/ocean/projects/bio210019p/stevesho/data/bedfile_preparse' \
