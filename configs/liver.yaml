@@ -29,8 +29,11 @@ resources:
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt
   window: 125000
 shared:
+  ctcfccre: ctcfccre_parsed_hg38.bed
+  cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed
   microsatellites: microsatellites_hg38_parsed.bed
@@ -39,9 +42,17 @@ shared:
   polyasites: polyasites_filtered_hg38.bed
   promoters: promoters_parsed_hg38.bed
   rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  recombination: recombination_hg38.bed
+  repg1b: repg1b_hg38.bed
+  repg2: repg2_hg38.bed
+  reps1: reps1_hg38.bed
+  reps2: reps2_hg38.bed
+  reps3: reps3_hg38.bed
+  reps4: reps4_hg38.bed
   rnarepeat: rnarepeat_hg38.bed
   simplerepeats: simplerepeats_hg38.bed
   sine: sine_hg38.bed
+  snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 tissue_specific:
   H3K27ac: H3K27ac_liver_ENCFF382EMP.bed
