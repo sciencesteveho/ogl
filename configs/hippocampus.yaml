@@ -38,7 +38,6 @@ shared:
   line: line_hg38.bed
   ltr: ltr_hg38.bed
   microsatellites: microsatellites_hg38_parsed.bed
-  mirnatargets: mirnatargets_parsed_hg38.bed
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
   promoters: promoters_parsed_hg38.bed

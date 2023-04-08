@@ -4,9 +4,9 @@
 # // TO-DO //
 # - [ ] fix, add number of cores as a number in params
 # - [ ] finish class docstring
-# - [ ] re-work the attribute index code to get node indexes from the initial bed dict and add the node type for each node
-# - [ ] add indexes as node attribute 'feat' and change current 'feat' to 'feat_type'
-# - [??] Add node type as an attribute. Type as each of the input bed files (is it a loop, type of chrom mark, etc)
+#
+# right now, we have mirna --> target gene 
+# make a link b/w mirna and target site, if that mirna is active in the tissue
 #
 
 """Parse local genomic data to nodes and attributes"""
@@ -27,7 +27,7 @@ from target_labels_train_split import _filter_low_tpm
 from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
 
 
-class LocalContextFeatures:
+class LocalContextParser:
     """Object that parses local genomic data into graph edges
 
     Args:
@@ -142,7 +142,6 @@ class LocalContextFeatures:
         'enhancers': 2000,
         'gencode': 5000,
         'histones': 2000,
-        'mirnatargets': 500,
         'polyasites': 500,
         'promoters': 2000,
         'superenhancers': 2000,
@@ -646,7 +645,7 @@ def main() -> None:
     genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")
 
     # instantiate object
-    localparseObject = LocalContextFeatures(
+    localparseObject = LocalContex(
         bedfiles=bedfiles,
         params=params,
     )
