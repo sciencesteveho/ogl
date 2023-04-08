@@ -387,21 +387,25 @@ class EdgeParser:
             enhancers (_type_): _description_
             mirnas (_type_): _description_
         """
-        def _return_gene_entry(feature, gene):
-            return feature[3] == gene
+        # def _return_gene_entry(feature, gene):
+        #     return feature[3] == gene
         
-        if node_ref == self.gencode_ref:
-            gencode_for_attr = []
-            for node in nodes:
-                print(node)
-                ref = node.split("_")[0]
-                entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
-                gencode_for_attr.append((entry[0], entry[1], entry[2], node))
-            return gencode_for_attr
-        else:
-            return [
-                line[0:4] for line in node_ref if line[3] in set(nodes)
-            ]
+        return [
+            line[0:4] for line in node_ref if line[3] in set(nodes)
+        ]
+        
+        # if node_ref == self.gencode_ref:
+        #     gencode_for_attr = []
+        #     for node in nodes:
+        #         # print(node)
+        #         ref = node.split("_")[0]
+        #         entry = self.gencode_ref.filter(_return_gene_entry, gene=ref)[0]
+        #         gencode_for_attr.append((entry[0], entry[1], entry[2], node))
+        #     return gencode_for_attr
+        # else:
+        #     return [
+        #         line[0:4] for line in node_ref if line[3] in set(nodes)
+        #     ]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
@@ -423,7 +427,7 @@ class EdgeParser:
             list(
                 zip(
                     [gencode_nodes, enhancers, mirnas],
-                    [self.gencode_ref, self.enhancer_ref, self.mirna_ref],
+                    [self.gencode_attr_ref, self.enhancer_ref, self.mirna_ref],
                 )
             ),
         )
