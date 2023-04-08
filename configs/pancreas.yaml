@@ -3,7 +3,6 @@ dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/pancreas
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
-  shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:
   circuits: pancreas_adult.txt
   entrez_file: entrez_to_genesymbol.txt
@@ -33,6 +32,7 @@ shared:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  gencode_attr: gencode_v26_node_attr.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed
