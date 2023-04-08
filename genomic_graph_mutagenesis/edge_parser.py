@@ -12,8 +12,7 @@
 import argparse
 import csv
 import os
-import pickle
-from itertools import repeat, starmap
+from itertools import repeat
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
@@ -397,7 +396,9 @@ class EdgeParser:
         # retrieve interaction-based edges
         gencode_nodes, enhancers, mirnas = self._process_graph_edges()
 
-        nodes_for_attr = starmap(
+        # add coordinates to nodes in parallel
+        pool = Pool(processes=3)
+        nodes_for_attr = pool.starmap(
             self._add_coordinates,
             list(
                 zip(
@@ -406,7 +407,8 @@ class EdgeParser:
                 )
             ),
         )
-        nodes_for_attr = sum(nodes_for_attr, [])
+        pool.close()
+        nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
