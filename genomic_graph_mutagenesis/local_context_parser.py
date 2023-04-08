@@ -5,9 +5,12 @@
 # - [ ] fix, add number of cores as a number in params
 # - [ ] finish class docstring
 #
-# right now, we have mirna --> target gene 
-# make a link b/w mirna and target site, if that mirna is active in the tissue
-#
+# // PLAN //
+# Take the gene window - within 500kb of a TPM filtered gene
+# Make slop + take edges b/w local contexts 
+# Get edges b/w local contexts and BASE NODES
+# Add all edges, but only keep edges that can be traversed back to a base node
+# Aggregate and save attributes
 
 """Parse local genomic data to nodes and attributes"""
 
@@ -23,8 +26,22 @@ from typing import Dict, List, Optional, Tuple
 import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
-from target_labels_train_split import _filter_low_tpm
-from utils import bool_check_attributes, dir_check_make, parse_yaml, time_decorator
+from utils import (
+    _tpm_filter_gene_windows,
+    dir_check_make,
+    parse_yaml,
+    time_decorator,
+)
+
+
+def _listdir_isfile_wrapper(dir: str) -> List[str]:
+    """
+    Returns a list of bedfiles within the directory.
+    """
+    return [
+        file for file in os.listdir(dir)
+        if os.path.isfile(f'{dir}/{file}')
+        ]
 
 
 class LocalContextParser:
@@ -40,22 +57,6 @@ class LocalContextParser:
     ----------
     _make_directories:
         prepare necessary directories
-    _window_specific_features_dict:
-        retrieve bed info for specific windows
-    _slop_sort:
-        apply slop to each bed and sort it
-    _save_feature_indexes:
-        save indexes for each node name
-    _bed_intersect:
-        intersect each bed with every datatype
-    _aggregate_attributes:
-        get attributes for each node
-    _genesort_attributes:
-        save attributes for empty genes
-    _generate_edges:
-        convert bed lines into edges for each gene
-    parse_context_data:
-        main pipeline function
 
     # Helpers
         ATTRIBUTES -- list of node attribute types
@@ -124,18 +125,9 @@ class LocalContextParser:
     ONEHOT_NODETYPE = {
     }
 
-    ONEHOT_EDGETYPE = {
-        'local': [1,0,0,0,0],
-        'enhancer-enhancer': [0,1,0,0,0],
-        'enhancer-gene': [0,0,1,0,0],
-        'circuits': [0,0,0,1,0],
-        'ppi': [0,0,0,0,1],
-    }
-
-    # cpgislands - 2kb, based on precedence from CpGcluster
-    # enhancers - can vary widely, so dependent on 3d chromatin structure and from FENRIR networks
-    # polyasite - 16kb, check PolyA-miner 
-    # direct binding, such as mirna, polyasites, rbps are set to 500bp
+    # Local context set at 2kb. Enhancers - can vary widely, so dependent on 3d
+    # chromatin structure and from FENRIR network. Direct binding, polyasites
+    # set to 500bp
     FEAT_WINDOWS = {
         'cpgislands': 2000,
         'ctcfccre': 2000,
@@ -149,11 +141,15 @@ class LocalContextParser:
         'tss': 2000,
     }
 
-    def __init__(
-        self,
-        bedfiles: List[str],
-        params: Dict[str, Dict[str, str]]
-        ):
+    # ONEHOT_EDGETYPE = {
+    #     'local': [1,0,0,0,0],
+    #     'enhancer-enhancer': [0,1,0,0,0],
+    #     'enhancer-gene': [0,0,1,0,0],
+    #     'circuits': [0,0,0,1,0],
+    #     'ppi': [0,0,0,0,1],
+    # }
+
+    def __init__(self, bedfiles: List[str], params: Dict[str, Dict[str, str]]):
         """Initialize the class"""
         self.bedfiles = bedfiles
 
@@ -169,39 +165,6 @@ class LocalContextParser:
         self.local_dir = f'{self.root_dir}/{self.tissue}/local'
         self.attribute_dir = f"{self.parse_dir}/attributes"
 
-        self.parsed_features = {
-            'gc': '_',
-            'cpg': self.tissue_specific['cpg'],
-            'ctcf': self.tissue_specific['ctcf'],
-            'dnase': self.tissue_specific['dnase'],
-            'enh': f'{self.local_dir}/enh.bed',
-            'enhbiv': f'{self.local_dir}/enhiv.bed',
-            'enhg': f'{self.local_dir}/enhg.bed',
-            'h3k27ac': self.tissue_specific['H3K27ac'],
-            'h3k27me3': self.tissue_specific['H3K27me3'],
-            'h3k36me3': self.tissue_specific['H3K36me3'],
-            'h3k4me1': self.tissue_specific['H3K4me1'],
-            'h3k4me3': self.tissue_specific['H3K4me3'],
-            'h3k9me3': self.tissue_specific['H3K9me3'],
-            'het': f'{self.local_dir}/het.bed',
-            'microsatellites': self.shared_data['microsatellites'],
-            'phastcons': self.shared_data['phastcons'],
-            'polr2a': self.tissue_specific['polr2a'],
-            'reprpc': f'{self.local_dir}/reprpc.bed',
-            'rnarepeat': self.shared_data['rnarepeat'],
-            'simplerepeats': self.shared_data['simplerepeats'],
-            'line': self.shared_data['line'],
-            'ltr': self.shared_data['ltr'],
-            'sine': self.shared_data['sine'],
-            'tssa': f'{self.local_dir}/tssa.bed',
-            'tssaflnk': f'{self.local_dir}/tssaflnk.bed',
-            'tssbiv': f'{self.local_dir}/tssbiv.bed',
-            'txflnk': f'{self.local_dir}/txflnk.bed',
-            'tx': f'{self.local_dir}/tx.bed',
-            'txwk': f'{self.local_dir}/txwk.bed',
-            'znf': f'{self.local_dir}/znf.bed',
-        }
-
         # make directories
         self._make_directories()
 
@@ -209,52 +172,67 @@ class LocalContextParser:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
         dir_check_make(self.parse_dir)
 
-        for directory in ['edges/genes', 'attributes', 'intermediate/slopped', 'intermediate/sorted']:
-            dir_check_make(f'{self.parse_dir}/{directory}')
+        for directory in [
+            "edges/genes",
+            "attributes",
+            "intermediate/slopped",
+            "intermediate/sorted",
+        ]:
+            dir_check_make(f"{self.parse_dir}/{directory}")
 
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                dir_check_make(f'{self.attribute_dir}/{attribute}')
+            dir_check_make(f"{self.attribute_dir}/{attribute}")
 
     @time_decorator(print_args=True)
-    def _region_specific_features_dict(self, bed: str) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
+    def _region_specific_features_dict(
+        self, bed: str
+    ) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
         """
-        _lorem
+        Creates a dict of local context datatypes and their bedtools objects.
+        Renames features if necessary.
         """
+
         def rename_feat_chr_start(feature: str) -> str:
             """Add chr, start to feature name
-            Cpgislands add prefix to feature names
+            Cpgislands add prefix to feature names  # enhancers,
             Histones add an additional column
             """
-            rename_strings = ['cpgislands', 'enhancers', 'histones', 'rbpbindingsites', 'tfbindingclusters',]
+            rename_strings = [
+                "cpgislands",
+                "enhancers",
+                "histones",
+                "polyasites",
+                "tfbindingclusters",
+            ]
             if prefix in rename_strings:
                 feature = extend_fields(feature, 4)
-                feature[3] = f'{prefix}_{feature[0]}_{feature[1]}'
+                feature[3] = f"{prefix}_{feature[0]}_{feature[1]}"
             else:
-                feature[3] = f'{feature[3]}_{feature[0]}_{feature[1]}'
+                feature[3] = f"{feature[3]}_{feature[0]}_{feature[1]}"
             return feature
 
         # prepare data as pybedtools objects
         bed_dict = {}
         prefix = bed.split("_")[0]
-        a = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed')
-        b = pybedtools.BedTool(f'{self.root_dir}/{self.tissue}/local/{bed}').sort()
+        a = pybedtools.BedTool(
+            f"{self.root_dir}/{self.tissue}/gene_regions_tpm_filtered.bed"
+        )
+        b = pybedtools.BedTool(f"{self.root_dir}/{self.tissue}/local/{bed}").sort()
         ab = b.intersect(a, sorted=True, u=True)
-        if prefix == 'enhancers':  # save enhancers early for attr ref
-            b.each(rename_feat_chr_start)\
-                .filter(lambda x: 'alt' not in x[0])\
-                .saveas(f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt")
+        if prefix == "enhancers":  # save enhancers early for attr ref
+            b.each(rename_feat_chr_start).filter(lambda x: "alt" not in x[0]).saveas(
+                f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
+            )
 
         # take specific windows and format each file
-        if prefix in self.NODES and prefix != 'gencode':
-            result = ab.each(rename_feat_chr_start)\
-                .cut([0, 1, 2, 3])\
-                .saveas()
+        if prefix in self.NODES and prefix != "gencode":
+            result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
-            bed_dict[prefix] = ab.cut([0, 1, 2 ,3])
+            bed_dict[prefix] = ab.cut([0, 1, 2, 3])
 
         return bed_dict
+
 
     @time_decorator(print_args=True)
     def _slop_sort(
@@ -453,24 +431,23 @@ class LocalContextParser:
     #             ]
 
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                save_file = f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage'
-                print(f'{attribute} for {node_type}')
-                if attribute == 'gc':
-                    pybedtools.BedTool(ref_file)\
-                    .each(add_size)\
-                    .nucleotide_content(fi=self.fasta)\
-                    .each(sum_gc)\
-                    .sort()\
-                    .groupby(g=[1,2,3,4], c=[5,14], o=['sum'])\
-                    .saveas(save_file)
-                else:
-                    pybedtools.BedTool(ref_file)\
-                    .each(add_size)\
-                    .intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
-                    .groupby(g=[1,2,3,4], c=[5,10], o=['sum'])\
-                    .sort()\
-                    .saveas(save_file)
+            save_file = f'{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage'
+            print(f'{attribute} for {node_type}')
+            if attribute == 'gc':
+                pybedtools.BedTool(ref_file)\
+                .each(add_size)\
+                .nucleotide_content(fi=self.fasta)\
+                .each(sum_gc)\
+                .sort()\
+                .groupby(g=[1,2,3,4], c=[5,14], o=['sum'])\
+                .saveas(save_file)
+            else:
+                pybedtools.BedTool(ref_file)\
+                .each(add_size)\
+                .intersect(f'{self.parse_dir}/intermediate/sorted/{attribute}.bed', wao=True, sorted=True)\
+                .groupby(g=[1,2,3,4], c=[5,10], o=['sum'])\
+                .sort()\
+                .saveas(save_file)
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
@@ -510,14 +487,13 @@ class LocalContextParser:
         """
         attr_dict, set_dict = {}, {}  # dict[gene] = [chr, start, end, size, gc]
         for attribute in self.ATTRIBUTES:
-            if bool_check_attributes(attribute, self.parsed_features[attribute]):
-                filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
-                with open(filename, 'r') as file:
-                    lines = [tuple(line.rstrip().split('\t')) for line in file]
-                    set_dict[attribute] = set(lines)
-                empty_attr = 'placeholder'
-            else:
-                empty_attr = attribute
+            filename = f'{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage'
+            with open(filename, 'r') as file:
+                lines = [tuple(line.rstrip().split('\t')) for line in file]
+                set_dict[attribute] = set(lines)
+            empty_attr = 'placeholder'
+        else:
+            empty_attr = attribute
 
             if attribute == empty_attr:
                 for line in set_dict['gc']:
@@ -632,25 +608,37 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to .yaml file with filenames"
-    )
+    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
     params = parse_yaml(args.config)
 
-    # genes = filtered_genes(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed")
-    genes = os.listdir(f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/parsing/edges/genes")
+    genes = f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/gene_regions_tpm_filtered.bed"
+    if not (
+        os.path.exists(genes) and os.stat(genes).st_size > 0
+    ):
+        window = _tpm_filter_gene_windows(
+            gencode=f"shared_data/local/{params['shared']['gencode']}",
+            tissue=params["resources"]["tissue"],
+            tpm_file=params["resources"]["tpm"],
+            chromfile=params["resources"]["chromfile"],
+            window=params["resources"]["window"],
+            slop=True,
+        )
+        window.saveas(genes)
+
+    bedfiles = _listdir_isfile_wrapper(
+         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
+    )
 
     # instantiate object
-    localparseObject = LocalContex(
+    localparseObject = LocalContextParser(
         bedfiles=bedfiles,
+        genes=genes,
         params=params,
     )
 
-    # run parallelized pipeline! 
+    # run parallelized pipeline!
     localparseObject.parse_context_data()
 
     # cleanup temporary files

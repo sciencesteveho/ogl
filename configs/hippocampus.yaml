@@ -27,7 +27,7 @@ resources:
   tissue: hippocampus
   tissue_name: Brain - Hippocampus
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
-  window: 50000
+  window: 500000
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed
