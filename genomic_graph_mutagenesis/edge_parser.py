@@ -90,6 +90,9 @@ class EdgeParser:
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = self._genes_from_gencode()
+        self.gencode_attr_ref =  self._blind_read_file(
+            f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
+        )
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{self.tissue}_mirdip"
         )
@@ -437,10 +440,10 @@ class EdgeParser:
         else:
             pass
         
-        # save nodes for parsing
-        with open('test.pkl', 'wb') as output:
-            pickle.dump(list(nodes_for_attr), output)
-
+        with open(f"{self.interaction_dir}/'base_nodes.txt", 'w') as output:
+            for row in nodes_for_attr:
+                output.write(str(row))
+                
 
 def main() -> None:
     """Pipeline to generate individual graphs"""
