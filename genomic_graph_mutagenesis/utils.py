@@ -215,12 +215,12 @@ def _tpm_filter_gene_windows(
     genes = pybedtools.BedTool(gencode)
     genes_filtered = genes.filter(
         lambda x: x[3] in tpm_filtered_genes and x[0] not in ["chrX", "chrY", "chrM"]
-    )
+    ).saveas()
 
     if slop:
         return (
-            genes_filtered.sort().saveas(),
-            genes_filtered.slop(g=chromfile, b=window).cut([0, 1, 2, 3]).sort().saveas(),
+            genes_filtered.sort(),
+            genes_filtered.slop(g=chromfile, b=window).cut([0, 1, 2, 3]).sort(),
         )
     else:
         return genes_filtered.sort()
