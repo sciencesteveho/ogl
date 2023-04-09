@@ -404,6 +404,10 @@ class LocalContextParser:
         else:
             ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
 
+        ref_file = ref_file.filter(
+            lambda x: 'alt' not in x[0]
+        ).saveas()
+
         def add_size(feature: str) -> str:
             """ """
             feature = extend_fields(feature, 5)
