@@ -152,8 +152,6 @@ class LocalContextParser:
     def __init__(
         self,
         bedfiles: List[str],
-        genes: str,
-        gene_windows: str,
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
