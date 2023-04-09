@@ -179,11 +179,14 @@ class GraphConstructor:
         attr_ref: Dict[str, Dict[str, Any]],
         ) -> nx.Graph:
         """Add attributes to graph nodes"""
-        # add attributes to graph
         nx.set_node_attributes(graph, attr_ref)
         return graph
     
-    def _n_ego_graph(self, base_graph: nx.Graph, n: int) -> nx.Graph:
+    def _n_ego_graph(
+        self,
+        base_graph: nx.Graph,
+        n: int,
+        ) -> nx.Graph:
         """Get n-ego graph"""
         # get base node edges
         base_node_edges = self._base_node_traversals(base_graph=base_graph)
@@ -221,8 +224,6 @@ class GraphConstructor:
             graph=graph,
             attr_ref=ref,
         )
-
-        # g
         # write graph
         nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue_name}_graph.gml")
 

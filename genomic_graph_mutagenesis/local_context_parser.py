@@ -499,7 +499,7 @@ class LocalContextParser:
             for line in set_dict[attribute]:
                 if attribute == "gc":
                     attr_dict[line[3]] = {
-                        "chr": line[0].replace("chr", ""),
+                        # "chr": line[0].replace("chr", ""),
                         "start": line[1],
                         "end": line[2],
                         "size": line[4],
