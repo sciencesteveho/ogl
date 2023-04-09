@@ -13,6 +13,7 @@ base node. Attributes are then added for each node.
 """
 
 import csv
+import pickle
 from typing import Any, Dict, List, Tuple
 
 import networkx as nx
@@ -37,14 +38,18 @@ class GraphConstructor:
     _genes_from_gencode:
         Lorem
 
+    # start end size gc cnv cpg ctcf dnase h3k27ac h3k27me3 h3k36me3 h3k4me1 h3k4me3 h3k9me3 indels line ltr microsatellites phastcons polr2a rbpbindingsites recombination repg1b repg2 reps1 reps2 reps3 reps4 rnarepeat simplerepeats sine snp polyadenylation
     """
 
     ATTRIBUTES = [
+        "start",
+        "end",
+        "size",
+        "gc",
         "cnv",
         "cpg",
         "ctcf",
         "dnase",
-        "gc",
         "h3k27ac",
         "h3k27me3",
         "h3k36me3",
@@ -69,6 +74,7 @@ class GraphConstructor:
         "simplerepeats",
         "sine",
         "snp",
+        'polyadenylation'
     ]
 
     NODES = [
@@ -151,15 +157,25 @@ class GraphConstructor:
         if edge_type not in ("base", "local"):
             raise ValueError("Edge type must be 'base' or 'local'")
         
-    def _base_node_traversals(self, base_graph: nx.Graph) -> List[str]:
-        """Get edges that can traverse back to a base node"""
-        edges = []
-        for edge in base_graph.edges:
-            if edge[0] in self.NODES:
-                edges.append(edge)
-            elif edge[1] in self.NODES:
-                edges.append(edge)
-        return edges
+    @time_decorator(print_args=False)
+    def _prepare_reference_attributes(self, gencode_ref: str,) -> Dict[str, Dict[str, Any]]:
+        """Add polyadenylation to gencode ref dict used to fill """
+        ref = pickle.load(open(f'{gencode_ref}', 'rb'))
+        for node in self.NODES:
+            ref_for_concat = pickle.load(
+                open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
+            )
+            ref.update(ref_for_concat)
+        return ref
+
+    def _add_attributes(
+            self, graph: nx.Graph, node_type: str) -> nx.Graph:
+        """Add attributes to graph nodes"""
+        # get node attributes
+        node_attr = self._node_attributes(node_type=node_type)
+        # add attributes to graph
+        nx.set_node_attributes(graph, node_attr)
+        return graph
     
     def _n_ego_graph(self, base_graph: nx.Graph, n: int) -> nx.Graph:
         """Get n-ego graph"""
@@ -171,14 +187,6 @@ class GraphConstructor:
         n_ego_graph.add_edges_from(base_node_edges)
         return n_ego_graph
     
-    def _gene_subgraphs(self, base_graph: nx.Graph) -> List[nx.Graph]:
-        """Get gene subgraphs"""
-        # get gene nodes
-        gene_nodes = [node for node in base_graph.nodes if node in self.genesymbol_to_gencode]
-        # get gene subgraphs
-        gene_subgraphs = [base_graph.subgraph(c).copy() for c in nx.connected_components(base_graph) if c & set(gene_nodes)]
-        return gene_subgraphs
-
     def process_graphs(self) -> None:
         """_summary_
         """
@@ -195,7 +203,12 @@ class GraphConstructor:
 
         # create graph
         base_graph = self._base_graph(edges=base_edges)
+
+        # add local context edges
         base_graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
+
+        # get attribute reference dictionary
+        ref = self._prepare_reference_attributes(gencode_ref=self.gencode_ref)
 
         # add attributes
         self._add_attributes(base_graph=base_graph)

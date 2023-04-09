@@ -405,7 +405,7 @@ class LocalContextParser:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        if node_type == "gencode":  # if gencode, create attr ref for all base nodes
+        if node_type == "base_nodes":  # if gencode, create attr ref for all base nodes
             ref_file = f"{self.tissue_dir}/interaction/base_nodes.txt"
         elif node_type == "enhancers":  # ignore ALT chr
             ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
@@ -599,7 +599,7 @@ class LocalContextParser:
 
         # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, self.NODES)
+        pool.map(['base_nodes'] + self._aggregate_attributes, self.NODES)
         pool.close()
 
         # parse edges into individual files
