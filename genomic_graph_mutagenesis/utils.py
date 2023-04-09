@@ -125,6 +125,16 @@ def genes_from_gff(gff: str) -> List[str]:
             for line in csv.reader(file, delimiter="\t")
             if line[0] not in ["chrX", "chrY", "chrM"]
         }
+    
+def genes_from_gencode(gencode_ref) -> Dict[str, str]:
+    """Returns a dict of gencode v26 genes, their ids and associated gene
+    symbols
+    """
+    return {
+        line[9].split(";")[3].split('"')[1]: line[3]
+        for line in gencode_ref
+        if line[0] not in ["chrX", "chrY", "chrM"]
+    }
 
 
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:

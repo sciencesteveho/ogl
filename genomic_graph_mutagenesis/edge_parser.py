@@ -20,7 +20,12 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import dir_check_make, parse_yaml, time_decorator
+from utils import (
+    dir_check_make,
+    genes_from_gencode,
+    parse_yaml,
+    time_decorator,
+)
 
 
 class EdgeParser:
@@ -88,7 +93,7 @@ class EdgeParser:
         dir_check_make(self.graph_dir)
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = self._genes_from_gencode()
+        self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_attr_ref =  self._blind_read_file(
             f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
         )
@@ -102,16 +107,6 @@ class EdgeParser:
             e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
             e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt",
         )
-
-    def _genes_from_gencode(self) -> Dict[str, str]:
-        """Returns a dict of gencode v26 genes, their ids and associated gene
-        symbols
-        """
-        return {
-            line[9].split(";")[3].split('"')[1]: line[3]
-            for line in self.gencode_ref
-            if line[0] not in ["chrX", "chrY", "chrM"]
-        }
 
     def _blind_read_file(self, file: str) -> List[str]:
         """Blindly reads a file into csv reader and stores file as a list of
@@ -139,8 +134,8 @@ class EdgeParser:
                 )
         return [
             (
-                f'{self.genesymbol_to_gencode[edge[0]]}_protein',
-                f'{self.genesymbol_to_gencode[edge[1]]}_protein',
+                f'{self.genesymbol_to_gencode[edge[0]]}',
+                f'{self.genesymbol_to_gencode[edge[1]]}',
                 edge[2],
                 edge[3],
             )
