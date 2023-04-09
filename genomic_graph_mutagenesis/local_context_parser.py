@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] fix, add number of cores as a number in params
-# - [ ] finish class docstring
+# - [ ] fix params for cores
+# - [ ] add better location for poly(a)
+# - [ ] try and refactor yamls and init
 #
 # // PLAN //
 # Take the gene window - within 500kb of a TPM filtered gene
@@ -112,7 +113,7 @@ class LocalContextParser:
         "tads",
         "tfbindingclusters",
         "tss",
-    ]  
+    ]
 
     DIRECT = ["chromatinloops", "tads"]
     NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
@@ -157,13 +158,13 @@ class LocalContextParser:
         self.bedfiles = bedfiles
         self.resources = params["resources"]
         self.tissue_specific = params["tissue_specific"]
-        self.gencode = params['shared']['gencode']
+        self.gencode = params["shared"]["gencode"]
 
         self.tissue = self.resources["tissue"]
         self.tissue_name = self.resources["tissue_name"]
         self.chromfile = self.resources["chromfile"]
         self.fasta = self.resources["fasta"]
-        
+
         self.root_dir = params["dirs"]["root_dir"]
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
         self.local_dir = f"{self.tissue_dir}/local"
@@ -175,29 +176,27 @@ class LocalContextParser:
 
         if not (os.path.exists(genes) and os.stat(genes).st_size > 0):
             self._prepare_tpm_filtered_genes(
-                genes=genes, 
+                genes=genes,
                 gene_windows=gene_windows,
-        )
+            )
 
         self.gencode_ref = pybedtools.BedTool(genes)
         self.gene_windows = pybedtools.BedTool(gene_windows)
-        self.genesymbol_to_gencode = genes_from_gencode(pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}"))
+        self.genesymbol_to_gencode = genes_from_gencode(
+            pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
+        )
 
         # make directories
         self._make_directories()
 
-    def _prepare_tpm_filtered_genes(
-            self,
-            genes: str,
-            gene_windows: str
-        ) -> None:
+    def _prepare_tpm_filtered_genes(self, genes: str, gene_windows: str) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes, filtered_gene_windows = _tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
-            tpm_file=self.resources['tpm'],
+            tpm_file=self.resources["tpm"],
             chromfile=self.chromfile,
-            window=self.resources['window'],
+            window=self.resources["window"],
             slop=True,
         )
 
@@ -394,6 +393,7 @@ class LocalContextParser:
         Args:
             node_type // node datatype in self.NODES
         """
+
         def add_size(feature: str) -> str:
             """ """
             feature = extend_fields(feature, 5)
@@ -405,9 +405,7 @@ class LocalContextParser:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        if (
-            node_type == "gencode"
-        ):  # if gencode, create attr ref for all base nodes
+        if node_type == "gencode":  # if gencode, create attr ref for all base nodes
             ref_file = f"{self.tissue_dir}/interaction/base_nodes.txt"
         elif node_type == "enhancers":  # ignore ALT chr
             ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
@@ -415,9 +413,9 @@ class LocalContextParser:
             ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
 
         ref_file = pybedtools.BedTool(ref_file)
-        ref_file = ref_file.filter(
-            lambda x: 'alt' not in x[0]
-        ).each(add_size).sort().saveas()
+        ref_file = (
+            ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
+        )
 
         for attribute in self.ATTRIBUTES:
             save_file = (
@@ -425,19 +423,17 @@ class LocalContextParser:
             )
             print(f"{attribute} for {node_type}")
             if attribute == "gc":
-                ref_file.nucleotide_content(
-                    fi=self.fasta
-                ).each(sum_gc).sort().groupby(
+                ref_file.nucleotide_content(fi=self.fasta).each(sum_gc).sort().groupby(
                     g=[1, 2, 3, 4], c=[5, 14], o=["sum"]
-                ).saveas(
-                    save_file
-                )
+                ).saveas(save_file)
             elif attribute == "recombination":
                 ref_file.intersect(
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
                     wao=True,
                     sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(save_file)
+                ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(
+                    save_file
+                )
             else:
                 ref_file.intersect(
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
@@ -480,19 +476,17 @@ class LocalContextParser:
         gene_nodes that fall outside of the gene window and for some gene_nodes
         from interaction data
         """
-        def _polyadenylation_targets(
-            self,
-            interaction_file: str
-            ) -> List[str]:
+
+        def _polyadenylation_targets(interaction_file: str) -> List[str]:
             """Genes which are listed as alternative polyadenylation targets"""
-            with open(interaction_file, newline = '') as file:
-                file_reader = csv.reader(file, delimiter='\t')
+            with open(interaction_file, newline="") as file:
+                file_reader = csv.reader(file, delimiter="\t")
                 next(file_reader)
                 return [
                     self.genesymbol_to_gencode[line[6]]
                     for line in file_reader
                     if line[6] in self.genesymbol_to_gencode.keys()
-                    ]
+                ]
 
         attr_dict, set_dict = {}, {}  # dict[gene] = [chr, start, end, size, gc]
         for attribute in self.ATTRIBUTES:
@@ -515,7 +509,9 @@ class LocalContextParser:
                     attr_dict[line[3]][attribute] = line[5]
 
         # add polyadenylation attribute
-        poly_a_targets = _polyadenylation_targets()
+        poly_a_targets = _polyadenylation_targets(
+            f"{self.root_dir}/shared_data/interaction/PDUI_polyA_sites/{self.tissue_specific['polyadenylation']}"
+        )
         for line in set_dict["gc"]:
             if line[3] in poly_a_targets:
                 attr_dict[line[3]]["polyadenylation"] = 1
