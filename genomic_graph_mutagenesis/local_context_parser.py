@@ -404,7 +404,7 @@ class LocalContextParser:
         else:
             ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
 
-        ref_file = pybedtools.BedTool[ref_file]
+        ref_file = pybedtools.BedTool(ref_file)
         ref_file = ref_file.filter(
             lambda x: 'alt' not in x[0]
         ).each(add_size).saveas()
