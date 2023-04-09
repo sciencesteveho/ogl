@@ -395,6 +395,17 @@ class LocalContextParser:
         Args:
             node_type // node datatype in self.NODES
         """
+        def add_size(feature: str) -> str:
+            """ """
+            feature = extend_fields(feature, 5)
+            feature[4] = feature.end - feature.start
+            return feature
+
+        def sum_gc(feature: str) -> str:
+            """ """
+            feature[13] = int(feature[8]) + int(feature[9])
+            return feature
+
         if (
             node_type == "gencode"
         ):  # if gencode, create attr ref for all base nodes
@@ -408,17 +419,6 @@ class LocalContextParser:
         ref_file = ref_file.filter(
             lambda x: 'alt' not in x[0]
         ).each(add_size).saveas()
-
-        def add_size(feature: str) -> str:
-            """ """
-            feature = extend_fields(feature, 5)
-            feature[4] = feature.end - feature.start
-            return feature
-
-        def sum_gc(feature: str) -> str:
-            """ """
-            feature[13] = int(feature[8]) + int(feature[9])
-            return feature
 
         for attribute in self.ATTRIBUTES:
             save_file = (
