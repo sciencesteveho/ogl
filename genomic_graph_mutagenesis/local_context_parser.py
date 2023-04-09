@@ -374,16 +374,16 @@ class LocalContextParser:
 
         print(f"finished intersect for {node_type}. proceeding with windows")
 
-        window_cmd = f"bedtools intersect \
-            -wa \
-            -wb \
-            -sorted \
-            -a {self.parse_dir}/edges/{node_type}_dupes_removed \
-            -b {self.root_dir}/{self.tissue}/tpm_filtered_genes.bed | "
+        # window_cmd = f"bedtools intersect \
+        #     -wa \
+        #     -wb \
+        #     -sorted \
+        #     -a {self.parse_dir}/edges/{node_type}_dupes_removed \
+        #     -b {self.root_dir}/{self.tissue}/tpm_filtered_genes.bed | "
 
-        with open(f"{self.parse_dir}/edges/{node_type}_genewindow.txt", "w") as outfile:
-            subprocess.run(window_cmd + cut_cmd, stdout=outfile, shell=True)
-        outfile.close()
+        # with open(f"{self.parse_dir}/edges/{node_type}_genewindow.txt", "w") as outfile:
+        #     subprocess.run(window_cmd + cut_cmd, stdout=outfile, shell=True)
+        # outfile.close()
 
     @time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
@@ -454,7 +454,7 @@ class LocalContextParser:
 
         cmds = {
             "cat_cmd": [
-                f"cat {self.parse_dir}/edges/*genewindow* >",
+                f"cat {self.parse_dir}/edges/*_dupes_removed* >",
                 f"{self.parse_dir}/edges/all_concat.bed",
             ],
             "sort_cmd": [

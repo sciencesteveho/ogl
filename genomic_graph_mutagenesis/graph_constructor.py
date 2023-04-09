@@ -5,17 +5,17 @@
 # - [ ] 
 #
 
-"""Parse edges from interaction-type omics data"""
+"""Create graphs from parsed edges
 
-import argparse
+This script will create one graph per tissue from the parsed edges. All edges
+are added before being filtered to only keep edges that can traverse back to a
+base node. Attributes are then added for each node.
+"""
+
 import csv
-import os
-from itertools import repeat
-from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
 
-import numpy as np
-import pandas as pd
+import networkx as nx
 import pybedtools
 
 from utils import (
@@ -39,18 +39,69 @@ class GraphConstructor:
 
     """
 
+    ATTRIBUTES = [
+        "cnv",
+        "cpg",
+        "ctcf",
+        "dnase",
+        "gc",
+        "h3k27ac",
+        "h3k27me3",
+        "h3k36me3",
+        "h3k4me1",
+        "h3k4me3",
+        "h3k9me3",
+        "indels",
+        "line",
+        "ltr",
+        "microsatellites",
+        "phastcons",
+        "polr2a",
+        "rbpbindingsites",
+        "recombination",
+        "repg1b",
+        "repg2",
+        "reps1",
+        "reps2",
+        "reps3",
+        "reps4",
+        "rnarepeat",
+        "simplerepeats",
+        "sine",
+        "snp",
+    ]
+
+    NODES = [
+        "chromatinloops",
+        "cpgislands",
+        "ctcfccre",
+        "enhancers",
+        "gencode",
+        "histones",
+        "polyasites",
+        "promoters",
+        "superenhancers",
+        "tads",
+        "tfbindingclusters",
+        "tss",
+    ]
+
+    NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
+
+    ONEHOT_EDGETYPE = {
+        'local': [1,0,0,0,0],
+        'enhancer-enhancer': [0,1,0,0,0],
+        'enhancer-gene': [0,0,1,0,0],
+        'circuits': [0,0,0,1,0],
+        'ppi': [0,0,0,0,1],
+    }
+
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
-    ):
+        ):
         """Initialize the class"""
-        self.gencode = params["shared"]["gencode"]
-        self.interaction_files = params["interaction"]
-        self.tissue = params["resources"]["tissue"]
         self.tissue_name = params["resources"]["tissue_name"]
-        self.marker_name = params["resources"]["marker_name"]
-        self.ppi_tissue = params["resources"]["ppi_tissue"]
-        self.tissue_specific = params["tissue_specific"]
 
         self.root_dir = params["dirs"]["root_dir"]
         self.shared_dir = f"{self.root_dir}/shared_data"
@@ -77,8 +128,80 @@ class GraphConstructor:
             e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt",
         )
 
+    def _base_graph(self, edges: List[str]):
+        """Create a graph from list of edges"""
+        G = nx.Graph()
+        G.add_edges_from((tup[0], tup[1]) for tup in edges)
+        return G 
+    
+    def _get_edges(
+        self,
+        edge_file: str,
+        edge_type: str,
+        ) -> List[str]:
+        """Get edges from file"""
+        if edge_type == "base":
+            return [
+                (tup[0], tup[1]) for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+            ]
+        if edge_type == "local":
+            return [
+                (tup[3], tup[7]) for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+            ]
+        if edge_type not in ("base", "local"):
+            raise ValueError("Edge type must be 'base' or 'local'")
+        
+    def _base_node_traversals(self, base_graph: nx.Graph) -> List[str]:
+        """Get edges that can traverse back to a base node"""
+        edges = []
+        for edge in base_graph.edges:
+            if edge[0] in self.NODES:
+                edges.append(edge)
+            elif edge[1] in self.NODES:
+                edges.append(edge)
+        return edges
+    
+    def _n_ego_graph(self, base_graph: nx.Graph, n: int) -> nx.Graph:
+        """Get n-ego graph"""
+        # get base node edges
+        base_node_edges = self._base_node_traversals(base_graph=base_graph)
+        # get n-ego graph
+        n_ego_graph = nx.ego_graph(base_graph, n=n, center=False)
+        # add base node edges
+        n_ego_graph.add_edges_from(base_node_edges)
+        return n_ego_graph
+    
+    def _gene_subgraphs(self, base_graph: nx.Graph) -> List[nx.Graph]:
+        """Get gene subgraphs"""
+        # get gene nodes
+        gene_nodes = [node for node in base_graph.nodes if node in self.genesymbol_to_gencode]
+        # get gene subgraphs
+        gene_subgraphs = [base_graph.subgraph(c).copy() for c in nx.connected_components(base_graph) if c & set(gene_nodes)]
+        return gene_subgraphs
 
-                
+    def process_graphs(self) -> None:
+        """_summary_
+        """
+        # get edges
+        base_edges = self._get_edges(
+            edge_file=f"{self.interaction_dir}/interaction_edges.txt",
+            edge_type="base",
+        )
+
+        local_context_edges = self._get_edges(
+            edge_file=f"{self.parse_dir}/edges/all_concat_sorted.bed",
+            edge_type="local",
+        )
+
+        # create graph
+        base_graph = self._base_graph(edges=base_edges)
+        base_graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
+
+        # add attributes
+        self._add_attributes(base_graph=base_graph)
+        # write graph
+        nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue_name}_graph.gml")
+
 
 def main() -> None:
     """Pipeline to generate individual graphs"""

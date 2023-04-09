@@ -97,10 +97,12 @@ $ lorem ipsum
 
 Note: not all arguments are compatible with one another, so see examples below for the program's capabilities.
 ```sh
-# First 3 steps process graphs
+# Preparse bedfiles
+$ preparse.sh
+
+# Run python scripts
 $ python -u genomic_graph_mutagenesis/prepare_bedfiles.py --config ${yaml}
-
-$ python -u genomic_graph_mutagenesis/graph_constructor.py --config ${yaml}
-
+$ python -u genomic_graph_mutagenesis/edge_parser.py --config ${yaml}
 $ python -u genomic_graph_mutagenesis/local_context_parser.py --config ${yaml}
+$ python -u genomic_graph_mutagenesis/graph_constructor.py --config ${yaml}
 ```
