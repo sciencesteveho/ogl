@@ -502,25 +502,17 @@ class LocalContextParser:
             with open(filename, "r") as file:
                 lines = [tuple(line.rstrip().split("\t")) for line in file]
                 set_dict[attribute] = set(lines)
-            empty_attr = "placeholder"
-        else:
-            empty_attr = attribute
-
-            if attribute == empty_attr:
-                for line in set_dict["gc"]:
-                    attr_dict[line[3]][attribute] = 0
-            else:
-                for line in set_dict[attribute]:
-                    if attribute == "gc":
-                        attr_dict[line[3]] = {
-                            "chr": line[0].replace("chr", ""),
-                            "start": line[1],
-                            "end": line[2],
-                            "size": line[4],
-                            "gc": line[5],
-                        }
-                    else:
-                        attr_dict[line[3]][attribute] = line[5]
+            for line in set_dict[attribute]:
+                if attribute == "gc":
+                    attr_dict[line[3]] = {
+                        "chr": line[0].replace("chr", ""),
+                        "start": line[1],
+                        "end": line[2],
+                        "size": line[4],
+                        "gc": line[5],
+                    }
+                else:
+                    attr_dict[line[3]][attribute] = line[5]
 
         # add polyadenylation attribute
         poly_a_targets = _polyadenylation_targets()
