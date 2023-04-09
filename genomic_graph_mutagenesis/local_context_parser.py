@@ -83,7 +83,6 @@ class LocalContextParser:
         "line",
         "ltr",
         "microsatellites",
-        "mirnatargets",
         "phastcons",
         "polr2a",
         "rbpbindingsites",
