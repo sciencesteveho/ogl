@@ -404,9 +404,10 @@ class LocalContextParser:
         else:
             ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
 
+        ref_file = pybedtools.BedTool[ref_file]
         ref_file = ref_file.filter(
             lambda x: 'alt' not in x[0]
-        ).saveas()
+        ).each(add_size).saveas()
 
         def add_size(feature: str) -> str:
             """ """
@@ -425,7 +426,7 @@ class LocalContextParser:
             )
             print(f"{attribute} for {node_type}")
             if attribute == "gc":
-                pybedtools.BedTool(ref_file).each(add_size).nucleotide_content(
+                ref_file.nucleotide_content(
                     fi=self.fasta
                 ).each(sum_gc).sort().groupby(
                     g=[1, 2, 3, 4], c=[5, 14], o=["sum"]
@@ -433,13 +434,13 @@ class LocalContextParser:
                     save_file
                 )
             elif attribute == "recombination":
-                pybedtools.BedTool(ref_file).each(add_size).intersect(
+                ref_file.intersect(
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
                     wao=True,
                     sorted=True,
                 ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["mean"]).sort().saveas(save_file)
             else:
-                pybedtools.BedTool(ref_file).each(add_size).intersect(
+                ref_file.intersect(
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
                     wao=True,
                     sorted=True,
