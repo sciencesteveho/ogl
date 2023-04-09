@@ -417,7 +417,7 @@ class LocalContextParser:
         ref_file = pybedtools.BedTool(ref_file)
         ref_file = ref_file.filter(
             lambda x: 'alt' not in x[0]
-        ).each(add_size).saveas()
+        ).each(add_size).sort().saveas()
 
         for attribute in self.ATTRIBUTES:
             save_file = (
@@ -437,7 +437,7 @@ class LocalContextParser:
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
                     wao=True,
                     sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["mean"]).sort().saveas(save_file)
+                ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(save_file)
             else:
                 ref_file.intersect(
                     f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",

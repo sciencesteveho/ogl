@@ -210,7 +210,8 @@ function _replication_hotspots () {
 #   $4 - 
 function _recombination () {
     $1/bigWigToWig ${2}/${3}.bw ${2}/${3}.wig
-    wig2bed < ${2}/${3}.wig > ${4}/recombination.bed
+    wig2bed < ${2}/${3}.wig > tmp
+    awk -v OFS="\t" '{print $1, $2, $3, $5, $4}' tmp > ${4}/recombination_hg38.bed
 }
 
 # TF-interactions from TFMarker. The file was not properly delimited so some
