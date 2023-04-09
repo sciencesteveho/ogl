@@ -140,6 +140,7 @@ class GraphConstructor:
         G.add_edges_from((tup[0], tup[1]) for tup in edges)
         return G 
     
+    @time_decorator(print_args=True)
     def _get_edges(
         self,
         edge_file: str,
@@ -159,22 +160,27 @@ class GraphConstructor:
         
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(self, gencode_ref: str,) -> Dict[str, Dict[str, Any]]:
-        """Add polyadenylation to gencode ref dict used to fill """
-        ref = pickle.load(open(f'{gencode_ref}', 'rb'))
+        """Add polyadenylation to gencode ref dict used to fill in attributes.
+        Base_node attr are hard coded in as the first type to load. There are
+        duplicate keys in preprocessing but they have the same attributes so
+        they'll overrwrite without issue."""
+        ref = pickle.load(open(f'{self.parse_dir}/attributes/base_nodes_reference.pkl', 'rb'))
         for node in self.NODES:
             ref_for_concat = pickle.load(
                 open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
             )
             ref.update(ref_for_concat)
         return ref
-
+    
+    @time_decorator(print_args=False)
     def _add_attributes(
-            self, graph: nx.Graph, node_type: str) -> nx.Graph:
+        self, 
+        graph: nx.Graph,
+        attr_ref: Dict[str, Dict[str, Any]],
+        ) -> nx.Graph:
         """Add attributes to graph nodes"""
-        # get node attributes
-        node_attr = self._node_attributes(node_type=node_type)
         # add attributes to graph
-        nx.set_node_attributes(graph, node_attr)
+        nx.set_node_attributes(graph, attr_ref)
         return graph
     
     def _n_ego_graph(self, base_graph: nx.Graph, n: int) -> nx.Graph:
@@ -202,16 +208,21 @@ class GraphConstructor:
         )
 
         # create graph
-        base_graph = self._base_graph(edges=base_edges)
+        graph = self._base_graph(edges=base_edges)
 
         # add local context edges
-        base_graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
+        graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
 
         # get attribute reference dictionary
         ref = self._prepare_reference_attributes(gencode_ref=self.gencode_ref)
 
         # add attributes
-        self._add_attributes(base_graph=base_graph)
+        graph = self._add_attributes(
+            graph=graph,
+            attr_ref=ref,
+        )
+
+        # g
         # write graph
         nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue_name}_graph.gml")
 
