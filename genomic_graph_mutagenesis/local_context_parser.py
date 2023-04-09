@@ -172,12 +172,12 @@ class LocalContextParser:
         self.attribute_dir = f"{self.parse_dir}/attributes"
 
         genes = f"{self.tissue_dir}/tpm_filtered_genes.bed"
-        gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions_.bed"
+        gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
 
         if not (os.path.exists(genes) and os.stat(genes).st_size > 0):
             self._prepare_tpm_filtered_genes(
                 genes=genes, 
-                gene_windows=gene_windows
+                gene_windows=gene_windows,
         )
 
         self.gencode_ref = pybedtools.BedTool(genes)
