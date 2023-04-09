@@ -219,8 +219,8 @@ def _tpm_filter_gene_windows(
 
     if slop:
         return (
-            genes_filtered.sort(),
-            genes_filtered.slop(g=chromfile, b=window).cut([0, 1, 2, 3]).sort(),
+            genes_filtered.sort().saveas(),
+            genes_filtered.slop(g=chromfile, b=window).cut([0, 1, 2, 3]).sort().saveas(),
         )
     else:
         return genes_filtered.sort()
