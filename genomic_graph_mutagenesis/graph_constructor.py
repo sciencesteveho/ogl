@@ -46,7 +46,6 @@ class GraphConstructor:
         "enhancers",
         "gencode",
         "histones",
-        "polyasites",
         "promoters",
         "superenhancers",
         "tads",
@@ -150,7 +149,6 @@ class GraphConstructor:
                 graph=graph,
                 n=node,
                 radius=radius,
-                undirected=True,
             )
 
         return n_ego_graph
