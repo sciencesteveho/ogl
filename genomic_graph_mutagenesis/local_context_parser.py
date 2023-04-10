@@ -506,7 +506,10 @@ class LocalContextParser:
                         "gc": float(line[5]),
                     }
                 else:
-                    attr_dict[line[3]][attribute] = float(line[5])
+                    try:
+                        attr_dict[line[3]][attribute] = float(line[5])
+                    except ValueError:
+                        attr_dict[line[3]][attribute] = 0
 
         # add polyadenylation attribute
         poly_a_targets = _polyadenylation_targets(
