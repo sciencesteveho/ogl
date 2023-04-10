@@ -233,7 +233,7 @@ class GenomeDataPreprocessor:
         al., Cell Reports, 2020. We use 20-seed HINT TFs with score > 200 and
         use the locations of the motifs, not the footprints, as HINT footprints
         are motif agnostic. Motifs are merged to form tf-binding clusters
-        (within 46bp, from Chen et al., Scientific Reports, 2015)
+        (within 600bp, from Chen et al., Scientific Reports, 2015)
         """
         cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
             | cut -f1,2,3,4 \
@@ -241,7 +241,7 @@ class GenomeDataPreprocessor:
             | cut -f1,2,3,6 \
             | sed 's/\..*$//g' \
             | sort -k1,1 -k2,2n \
-            | bedtools merge -i - -d 46 -c 4 -o distinct \
+            | bedtools merge -i - -d 600 -c 4 -o distinct \
             > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
 
         self._run_cmd(cmd)
