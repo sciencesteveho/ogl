@@ -500,13 +500,13 @@ class LocalContextParser:
                 if attribute == "gc":
                     attr_dict[line[3]] = {
                         # "chr": line[0].replace("chr", ""),
-                        "start": line[1],
-                        "end": line[2],
-                        "size": line[4],
-                        "gc": line[5],
+                        "start": float(line[1]),
+                        "end": float(line[2]),
+                        "size": float(line[4]),
+                        "gc": float(line[5]),
                     }
                 else:
-                    attr_dict[line[3]][attribute] = line[5]
+                    attr_dict[line[3]][attribute] = float(line[5])
 
         # add polyadenylation attribute
         poly_a_targets = _polyadenylation_targets(
