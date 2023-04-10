@@ -191,7 +191,7 @@ class LocalContextParser:
 
     def _prepare_tpm_filtered_genes(self, genes: str, gene_windows: str) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes, filtered_gene_windows = _tpm_filter_gene_windows(
+        filtered_genes, _ = _tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
             tpm_file=self.resources["tpm"],
@@ -200,8 +200,14 @@ class LocalContextParser:
             slop=True,
         )
 
+        windows = (
+            pybedtools.BedTool(f"{self.tissue_dir}/interaction/base_nodes.txt")
+            .slop(g=self.chromfile, b=25000)
+            .sort()
+        )
+
         filtered_genes.saveas(genes)
-        filtered_gene_windows.saveas(gene_windows)
+        windows.saveas(gene_windows)
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
@@ -541,7 +547,6 @@ class LocalContextParser:
         Returns:
             c -- _description_
         """
-
         @time_decorator(print_args=True)
         def _save_intermediate(
             bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str

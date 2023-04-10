@@ -27,7 +27,7 @@ resources:
   tissue: liver
   tissue_name: Liver
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt
-  window: 500000
+  window: 125000
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed

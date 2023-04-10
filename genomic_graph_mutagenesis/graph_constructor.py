@@ -29,7 +29,7 @@ class GraphConstructor:
     """Object to construct tensor based graphs from parsed edges
 
     Args:
-        params: configuration vals from yaml
+        params: configuration vals from xwxwyaml
 
     Methods
     ----------
@@ -199,6 +199,8 @@ class GraphConstructor:
             )
         )
         pool.close()
+
+        # save individual graph AND ego graph
 
 
 def main() -> None:
