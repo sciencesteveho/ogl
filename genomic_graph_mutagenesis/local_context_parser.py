@@ -86,6 +86,7 @@ class LocalContextParser:
         "microsatellites",
         "phastcons",
         "polr2a",
+        "polyasites",
         "rbpbindingsites",
         "recombination",
         "repg1b",
@@ -107,7 +108,6 @@ class LocalContextParser:
         "enhancers",
         "gencode",
         "histones",
-        "polyasites",
         "promoters",
         "superenhancers",
         "tads",
@@ -123,15 +123,13 @@ class LocalContextParser:
     ATTRIBUTE_CORES = len(ATTRIBUTES)  # 30
 
     # Local context set at 2kb. Enhancers - can vary widely, so dependent on 3d
-    # chromatin structure and from FENRIR network. Direct binding, polyasites
-    # set to 500bp
+    # chromatin structure and from FENRIR network
     FEAT_WINDOWS = {
         "cpgislands": 2000,
         "ctcfccre": 2000,
         "enhancers": 2000,
         "gencode": 5000,
         "histones": 2000,
-        "polyasites": 500,
         "promoters": 2000,
         "superenhancers": 2000,
         "tfbindingclusters": 2000,
