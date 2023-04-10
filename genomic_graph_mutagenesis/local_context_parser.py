@@ -607,7 +607,7 @@ class LocalContextParser:
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._save_node_attributes, self.NODES)
+        pool.map(self._save_node_attributes, ['base_nodes'] + self.NODES)
         pool.close()
 
 
