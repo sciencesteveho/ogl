@@ -207,7 +207,8 @@ class EdgeParser:
     @time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
         self,
-        interaction_file: str
+        interaction_file: str,
+        score_filter: int,
         ) -> List[Tuple[str, str, float, str]]:
         """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
         network is in the following format:
@@ -223,7 +224,7 @@ class EdgeParser:
                 if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys():
                     tf_g.append((line[0], line[1], float(line[2])))
         
-        cutoff = np.percentile(scores, 50)
+        cutoff = np.percentile(scores, score_filter)
 
         return [
             (f'{self.genesymbol_to_gencode[line[0]]}_tf',
@@ -350,7 +351,8 @@ class EdgeParser:
             score_filter=70,
         )
         circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
+            f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}",
+            score_filter=80
         )
 
         self.edges = (
