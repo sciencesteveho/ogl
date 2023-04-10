@@ -89,8 +89,6 @@ class EdgeParser:
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
-        self.graph_dir = f"{self.parse_dir}/graphs"
-        dir_check_make(self.graph_dir)
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)

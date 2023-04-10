@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Tuple
 import networkx as nx
 import pybedtools
 
-from utils import parse_yaml, time_decorator
+from utils import dir_check_make, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -66,7 +66,8 @@ class GraphConstructor:
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
-        self.graph_dir = f"{self.parse_dir}/graphs"
+        self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
+        dir_check_make(self.graph_dir)
 
         self.genes = self._filtered_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
 
