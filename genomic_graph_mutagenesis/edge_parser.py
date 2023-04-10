@@ -215,12 +215,24 @@ class EdgeParser:
             col_2   Target gene
             col_3   Edge weight 
         """
+        tf_g, scores = [], []
         with open(interaction_file, newline = '') as file:
-            return [
-                (f'{self.genesymbol_to_gencode[line[0]]}_tf', self.genesymbol_to_gencode[line[1]], line[2], 'circuits')
-                for line in csv.reader(file, delimiter='\t')
-                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys()
-                ]
+            file_reader = csv.reader(file, delimiter='\t')
+            for line in file_reader:
+                scores.append(float(line[2]))
+                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys():
+                    tf_g.append((line[0], line[1], float(line[2])))
+        
+        cutoff = np.percentile(scores, 50)
+
+        return [
+            (f'{self.genesymbol_to_gencode[line[0]]}_tf',
+            self.genesymbol_to_gencode[line[1]],
+            line[2],
+            'circuits',)
+            for line in tf_g
+            if line[2] >= cutoff
+            ]
 
     def _enhancer_index(
         self,
@@ -331,11 +343,11 @@ class EdgeParser:
         )
         e_e_edges = self._fenrir_enhancer_enhancer(
             f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-            score_filter=50,
+            score_filter=30,
         )
         e_g_edges = self._fenrir_enhancer_gene(
             f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-            score_filter=80,
+            score_filter=70,
         )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}"
