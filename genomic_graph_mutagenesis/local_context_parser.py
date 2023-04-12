@@ -492,7 +492,7 @@ class LocalContextParser:
                     if line[6] in self.genesymbol_to_gencode.keys()
                 ]
 
-        attr_dict, set_dict = {}, {}  # dict[gene] = [chr, start, end, size, gc]
+        attr_dict, attr_dict_nochr, set_dict = {}, {}, {}  # dict[gene] = [chr, start, end, size, gc]
         for attribute in self.ATTRIBUTES:
             filename = (
                 f"{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage"
@@ -503,17 +503,22 @@ class LocalContextParser:
             for line in set_dict[attribute]:
                 if attribute == "gc":
                     attr_dict[line[3]] = {
-                        # "chr": line[0].replace("chr", ""),
-                        "start": float(line[1]),
-                        "end": float(line[2]),
-                        "size": float(line[4]),
-                        "gc": float(line[5]),
+                        "chr": line[0].replace("chr", ""),
                     }
+                    for dictionary in [attr_dict, attr_dict_nochr]:
+                        dictionary[line[3]] = {
+                            "start": float(line[1]),
+                            "end": float(line[2]),
+                            "size": float(line[4]),
+                            "gc": float(line[5]),
+                        }
                 else:
                     try:
-                        attr_dict[line[3]][attribute] = float(line[5])
+                        for dictionary in [attr_dict, attr_dict_nochr]:
+                            dictionary[line[3]][attribute] = float(line[5])
                     except ValueError:
-                        attr_dict[line[3]][attribute] = 0
+                        for dictionary in [attr_dict, attr_dict_nochr]:
+                            dictionary[line[3]][attribute] = 0
 
         # add polyadenylation attribute
         poly_a_targets = _polyadenylation_targets(
@@ -521,15 +526,17 @@ class LocalContextParser:
         )
         for line in set_dict["gc"]:
             if line[3] in poly_a_targets:
-                attr_dict[line[3]]["polyadenylation"] = 1
+                for dictionary in [attr_dict, attr_dict_nochr]:
+                    dictionary[line[3]]["polyadenylation"] = 1
             else:
-                attr_dict[line[3]]["polyadenylation"] = 0
+                for dictionary in [attr_dict, attr_dict_nochr]:
+                    dictionary[line[3]]["polyadenylation"] = 0
 
-        output = open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb")
-        try:
+        with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
-        finally:
-            output.close()
+
+        with open(f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb") as output:
+            pickle.dump(attr_dict_nochr, output)
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
