@@ -225,3 +225,23 @@ def _tpm_filter_gene_windows(
     else:
         return genes_filtered.sort()
         # [x[3] for x in genes_filtered]
+
+
+def _max_node_calculation():
+    """Calculate the max number of nodes for a given internal. First, we take
+    all base nodes and all nodes connected to those nodes within the window.
+    We then apply a genome window and count the number of nodes per window,
+    reporting the max, mean, and median. Based off of these numbers a window
+    is decided for each tissue.
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
+def _calculate_max_distance_base_graph():
+    """Calculate the max distance between nodes in the base graph. Report the
+    max, mean, and median distances for all interaction type data.
+    """

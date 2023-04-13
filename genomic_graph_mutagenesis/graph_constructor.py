@@ -25,6 +25,7 @@ import pybedtools
 from utils import dir_check_make, parse_yaml, time_decorator
 
 
+
 class GraphConstructor:
     """Object to construct tensor based graphs from parsed edges
 
