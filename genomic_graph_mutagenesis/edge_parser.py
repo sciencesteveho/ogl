@@ -381,7 +381,7 @@ class EdgeParser:
         return set(gencode_nodes), set(enhancers), set(mirnas)
     
     @time_decorator(print_args=False)
-    def _add_coordinates(
+    def _add_node_coordinates(
         self,
         nodes,
         node_ref,
@@ -406,7 +406,7 @@ class EdgeParser:
         # add coordinates to nodes in parallel
         pool = Pool(processes=3)
         nodes_for_attr = pool.starmap(
-            self._add_coordinates,
+            self._add_node_coordinates,
             list(
                 zip(
                     [gencode_nodes, enhancers, mirnas],
@@ -417,23 +417,31 @@ class EdgeParser:
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
 
+        # add coordinates to edges
+        full_edges = []
+        nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
+        for edge in self.edges:
+            if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
+                full_edges.append(
+                    [edge[0]]
+                    + nodes_with_coords[edge[0]]
+                    + [edge[1]]
+                    + nodes_with_coords[edge[1]]
+                    + [edge[2], edge[3]]
+                )
+
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
-        if not (
-            os.path.exists(all_interaction_file)
-            and os.stat(all_interaction_file).st_size > 0
-        ):
-            with open(all_interaction_file, "w+") as output:
-                writer = csv.writer(output, delimiter="\t")
-                writer.writerows(self.edges)
-        else:
-            pass
+        with open(all_interaction_file, "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(self.edges)
         
         # write nodes to file
         with open(f"{self.interaction_dir}/base_nodes.txt", 'w+') as output:
-            writer = csv.writer(output, delimiter="\t")
-            writer.writerows(nodes_for_attr)
-                
+            csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
+        
+        # write edges with coordinates to file
+        with open(f"{self.interaction_dir}/full_edges.txt", 'w+') as output:
+            csv.writer(output, delimiter="\t").writerows(full_edges)
 
 def main() -> None:
     """Pipeline to generate individual graphs"""
