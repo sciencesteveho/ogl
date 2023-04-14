@@ -74,7 +74,7 @@ class LocalContextParser:
     NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
 
     # var helpers - for CPU cores
-    NODE_CORES = len(NODES)  # 11
+    NODE_CORES = len(NODES) + 1  # 12
     ATTRIBUTE_CORES = len(ATTRIBUTES)  # 30
 
     # Local context set at 2kb. While association can vary widely, assume prior
@@ -215,7 +215,7 @@ class LocalContextParser:
             b.each(rename_feat_chr_start).filter(lambda x: "alt" not in x[0]).saveas(
                 f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
             )
-
+        
         # take specific windows and format each file
         if prefix in NODES and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
@@ -312,37 +312,17 @@ class LocalContextParser:
 
         if node_type in self.DIRECT:
             _unix_intersect(node_type, type="direct")
-            a = pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
-            b = (
-                _filter_duplicate_bed_entries(a)
-                .sort()
-                .saveas(f"{self.parse_dir}/edges/{node_type}_dupes_removed")
-            )
-            cut_cmd = "cut -f1,2,3,4,5,6,7,8,9,12"
+            _filter_duplicate_bed_entries(
+                pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
+            ).sort().saveas(f"{self.parse_dir}/edges/{node_type}_dupes_removed")
         else:
             _unix_intersect(node_type)
-            a = pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
-            b = (
-                _filter_duplicate_bed_entries(a)
-                .each(_add_distance)
-                .saveas()
-                .sort()
-                .saveas(f"{self.parse_dir}/edges/{node_type}_dupes_removed")
+            _filter_duplicate_bed_entries(
+                pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
+            ).each(_add_distance).saveas().sort().saveas(
+                f"{self.parse_dir}/edges/{node_type}_dupes_removed"
             )
-            cut_cmd = "cut -f1,2,3,4,5,6,7,8,9,13"
 
-        print(f"finished intersect for {node_type}. proceeding with windows")
-
-        # window_cmd = f"bedtools intersect \
-        #     -wa \
-        #     -wb \
-        #     -sorted \
-        #     -a {self.parse_dir}/edges/{node_type}_dupes_removed \
-        #     -b {self.root_dir}/{self.tissue}/tpm_filtered_genes.bed | "
-
-        # with open(f"{self.parse_dir}/edges/{node_type}_genewindow.txt", "w") as outfile:
-        #     subprocess.run(window_cmd + cut_cmd, stdout=outfile, shell=True)
-        # outfile.close()
 
     @time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
@@ -364,9 +344,7 @@ class LocalContextParser:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        if node_type == "base_nodes":  # if gencode, create attr ref for all base nodes
-            ref_file = f"{self.tissue_dir}/interaction/base_nodes.txt"
-        elif node_type == "enhancers":  # ignore ALT chr
+        if node_type == "enhancers":  # ignore ALT chr
             ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
         else:
             ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"

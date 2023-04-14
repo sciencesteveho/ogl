@@ -436,7 +436,7 @@ class EdgeParser:
             csv.writer(output, delimiter="\t").writerows(self.edges)
         
         # write nodes to file
-        with open(f"{self.interaction_dir}/base_nodes.txt", 'w+') as output:
+        with open(f"{self.tissue_dir}/local/base_nodes.txt", 'w+') as output:
             csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
         
         # write edges with coordinates to file
