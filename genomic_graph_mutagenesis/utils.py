@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Utilities for graph processing"""
+"""Utilities for genome data processing"""
 
 import csv
 from datetime import timedelta
@@ -13,10 +13,58 @@ import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import yaml
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 import pybedtools
 
+
+ATTRIBUTES = [
+    "gc",
+    "cnv",
+    "cpg",
+    "ctcf",
+    "dnase",
+    "h3k27ac",
+    "h3k27me3",
+    "h3k36me3",
+    "h3k4me1",
+    "h3k4me3",
+    "h3k9me3",
+    "indels",
+    "line",
+    "ltr",
+    "microsatellites",
+    "phastcons",
+    "polr2a",
+    "polyasites",
+    "rbpbindingsites",
+    "recombination",
+    "repg1b",
+    "repg2",
+    "reps1",
+    "reps2",
+    "reps3",
+    "reps4",
+    "rnarepeat",
+    "simplerepeats",
+    "sine",
+    "snp",
+]
+
+NODES = [
+    "chromatinloops",
+    "cpgislands",
+    "ctcfccre",
+    "enhancers",
+    "gencode",
+    "histones",
+    "promoters",
+    "superenhancers",
+    "tads",
+    "tfbindingclusters",
+    "tss",
+]
 
 TISSUE_TPM_KEYS = {
     "Adipose - Subcutaneous": 3,
@@ -125,7 +173,8 @@ def genes_from_gff(gff: str) -> List[str]:
             for line in csv.reader(file, delimiter="\t")
             if line[0] not in ["chrX", "chrY", "chrM"]
         }
-    
+
+
 def genes_from_gencode(gencode_ref) -> Dict[str, str]:
     """Returns a dict of gencode v26 genes, their ids and associated gene
     symbols
@@ -170,7 +219,6 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
         return _execute
 
     return _time_decorator_func
-
 
 
 @time_decorator(print_args=True)
@@ -227,6 +275,27 @@ def _tpm_filter_gene_windows(
         # [x[3] for x in genes_filtered]
 
 
+def _get_sorted_node_degrees(
+    graph: nx.Graph
+    ) -> None:
+    """_summary_
+
+    Args:
+        graph (nx.Graph): _description_
+    """
+    return sorted(graph.degree, key=lambda x: x[1], reverse=True)
+
+
+def _calculate_max_distance_base_graph(bed: List[List[str]]) -> List[List[str]]:
+    """Calculate the max distance between nodes in the base graph. Report the
+    max, mean, and median distances for all interaction type data.
+    """
+    return {
+        max(int(line[2]), int(line[6]))-min(int(line[3]), int(line[7]))
+        for line in bed
+    }
+
+
 def _max_node_calculation():
     """Calculate the max number of nodes for a given internal. First, we take
     all base nodes and all nodes connected to those nodes within the window.
@@ -239,9 +308,4 @@ def _max_node_calculation():
 
     Returns:
         _type_: _description_
-    """
-    
-def _calculate_max_distance_base_graph():
-    """Calculate the max distance between nodes in the base graph. Report the
-    max, mean, and median distances for all interaction type data.
     """

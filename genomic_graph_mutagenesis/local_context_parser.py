@@ -32,8 +32,10 @@ from pybedtools.featurefuncs import extend_fields
 
 from utils import (
     _tpm_filter_gene_windows,
+    ATTRIBUTES,
     dir_check_make,
     genes_from_gencode,
+    NODES,
     parse_yaml,
     time_decorator,
 )
@@ -68,53 +70,6 @@ class LocalContextParser:
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
     """
 
-    ATTRIBUTES = [
-        "gc",
-        "cnv",
-        "cpg",
-        "ctcf",
-        "dnase",
-        "h3k27ac",
-        "h3k27me3",
-        "h3k36me3",
-        "h3k4me1",
-        "h3k4me3",
-        "h3k9me3",
-        "indels",
-        "line",
-        "ltr",
-        "microsatellites",
-        "phastcons",
-        "polr2a",
-        "polyasites",
-        "rbpbindingsites",
-        "recombination",
-        "repg1b",
-        "repg2",
-        "reps1",
-        "reps2",
-        "reps3",
-        "reps4",
-        "rnarepeat",
-        "simplerepeats",
-        "sine",
-        "snp",
-    ]
-
-    NODES = [
-        "chromatinloops",
-        "cpgislands",
-        "ctcfccre",
-        "enhancers",
-        "gencode",
-        "histones",
-        "promoters",
-        "superenhancers",
-        "tads",
-        "tfbindingclusters",
-        "tss",
-    ]
-
     DIRECT = ["chromatinloops", "tads"]
     NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
 
@@ -122,13 +77,13 @@ class LocalContextParser:
     NODE_CORES = len(NODES)  # 11
     ATTRIBUTE_CORES = len(ATTRIBUTES)  # 30
 
-    # Local context set at 2kb. Enhancers - can vary widely, so dependent on 3d
-    # chromatin structure and from FENRIR network
+    # Local context set at 2kb. While association can vary widely, assume prior
+    # information from 3d chromatin structure and the FENRIR network
     FEAT_WINDOWS = {
         "cpgislands": 2000,
         "ctcfccre": 2000,
         "enhancers": 2000,
-        "gencode": 5000,
+        "gencode": 2000,
         "histones": 2000,
         "promoters": 2000,
         "superenhancers": 2000,
@@ -219,7 +174,7 @@ class LocalContextParser:
         ]:
             dir_check_make(f"{self.parse_dir}/{directory}")
 
-        for attribute in self.ATTRIBUTES:
+        for attribute in ATTRIBUTES:
             dir_check_make(f"{self.attribute_dir}/{attribute}")
 
     @time_decorator(print_args=True)
@@ -262,7 +217,7 @@ class LocalContextParser:
             )
 
         # take specific windows and format each file
-        if prefix in self.NODES and prefix != "gencode":
+        if prefix in NODES and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
@@ -289,7 +244,7 @@ class LocalContextParser:
         bedinstance_slopped, bedinstance_sorted = {}, {}
         for key in bedinstance.keys():
             bedinstance_sorted[key] = bedinstance[key].sort()
-            if key in self.ATTRIBUTES + self.DIRECT:
+            if key in ATTRIBUTES + self.DIRECT:
                 pass
             else:
                 nodes = (
@@ -421,7 +376,7 @@ class LocalContextParser:
             ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
         )
 
-        for attribute in self.ATTRIBUTES:
+        for attribute in ATTRIBUTES:
             save_file = (
                 f"{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage"
             )
@@ -462,7 +417,7 @@ class LocalContextParser:
                 f"{self.parse_dir}/edges/all_concat.bed",
             ],
             "sort_cmd": [
-                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed >",
+                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 -u {self.parse_dir}/edges/all_concat.bed >",
                 f"{self.parse_dir}/edges/all_concat_sorted.bed",
             ],
         }
@@ -493,7 +448,7 @@ class LocalContextParser:
                 ]
 
         attr_dict, attr_dict_nochr, set_dict = {}, {}, {}  # dict[gene] = [chr, start, end, size, gc]
-        for attribute in self.ATTRIBUTES:
+        for attribute in ATTRIBUTES:
             filename = (
                 f"{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage"
             )
@@ -607,12 +562,12 @@ class LocalContextParser:
 
         # perform intersects across all feature types - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
-        pool.starmap(self._bed_intersect, zip(self.NODES, repeat(all_files)))
+        pool.starmap(self._bed_intersect, zip(NODES, repeat(all_files)))
         pool.close()
 
         # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, ['base_nodes'] + self.NODES)
+        pool.map(self._aggregate_attributes, ['base_nodes'] + NODES)
         pool.close()
 
         # parse edges into individual files
@@ -620,7 +575,7 @@ class LocalContextParser:
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._save_node_attributes, ['base_nodes'] + self.NODES)
+        pool.map(self._save_node_attributes, ['base_nodes'] + NODES)
         pool.close()
 
 

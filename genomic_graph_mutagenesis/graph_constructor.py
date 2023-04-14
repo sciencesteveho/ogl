@@ -20,10 +20,10 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 import networkx as nx
+import numpy as np
 import pybedtools
 
-from utils import dir_check_make, parse_yaml, time_decorator
-
+from utils import dir_check_make, NODES, parse_yaml, time_decorator
 
 
 class GraphConstructor:
@@ -39,20 +39,6 @@ class GraphConstructor:
 
     # start end size gc cnv cpg ctcf dnase h3k27ac h3k27me3 h3k36me3 h3k4me1 h3k4me3 h3k9me3 indels line ltr microsatellites phastcons polr2a rbpbindingsites recombination repg1b repg2 reps1 reps2 reps3 reps4 rnarepeat simplerepeats sine snp polyadenylation
     """
-
-    NODES = [
-        "chromatinloops",
-        "cpgislands",
-        "ctcfccre",
-        "enhancers",
-        "gencode",
-        "histones",
-        "promoters",
-        "superenhancers",
-        "tads",
-        "tfbindingclusters",
-        "tss",
-    ]
 
     def __init__(
         self,
@@ -109,22 +95,12 @@ class GraphConstructor:
         duplicate keys in preprocessing but they have the same attributes so
         they'll overrwrite without issue."""
         ref = pickle.load(open(f'{self.parse_dir}/attributes/base_nodes_reference.pkl', 'rb'))
-        for node in self.NODES:
+        for node in NODES:
             ref_for_concat = pickle.load(
                 open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
             )
             ref.update(ref_for_concat)
         return ref
-    
-    @time_decorator(print_args=False)
-    def _add_attributes(
-        self, 
-        graph: nx.Graph,
-        attr_ref: Dict[str, Dict[str, Any]],
-        ) -> nx.Graph:
-        """Add attributes to graph nodes"""
-        nx.set_node_attributes(graph, attr_ref)
-        return graph
     
     @time_decorator(print_args=True)
     def _n_ego_graph(
@@ -154,6 +130,32 @@ class GraphConstructor:
 
         return n_ego_graph
     
+    @time_decorator(print_args=True)
+    def _nx_to_tensors(self, graph: nx.Graph) -> None:
+        """_summary_
+
+        Args:
+            graph (nx.Graph): _description_
+        """
+        graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
+        edges = nx.to_edgelist(graph)
+        nodes = sorted(graph.nodes)
+
+        with open(f"self.graph_dir/{self.tissue}_full_graph.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "edge_index": np.array(
+                        [[edge[0] for edge in edges], [edge[1] for edge in edges]]
+                    ),
+                    "node_feat": np.array(
+                        [[val for val in graph.nodes[node].values()] for node in nodes]
+                    ),
+                    "num_nodes": graph.number_of_nodes(),
+                    "num_edges": graph.number_of_edges(),
+                    "avg_ages": graph.number_of_edges() / graph.number_of_nodes(),
+                }
+            )
+
     def process_graphs(self) -> None:
         """_summary_
         """
@@ -178,28 +180,10 @@ class GraphConstructor:
         ref = self._prepare_reference_attributes()
 
         # add attributes
-        graph = self._add_attributes(
-            graph=graph,
-            attr_ref=ref,
-        )
+        nx.set_node_attributes(graph, ref)
 
-        # get n-ego graphs in parallel
-        # set params
-        max_nodes = 1000
-        radius = 2
-
-        pool = Pool(processes=32)
-        pool.starmap(
-            self._n_ego_graph,
-            zip(repeat(graph),
-                repeat(max_nodes),
-                self.genes,
-                repeat(radius),
-            )
-        )
-        pool.close()
-
-        # save individual graph AND ego graph
+        # save individual graph
+        self._nx_to_tensors(graph=graph)
 
 
 def main() -> None:
