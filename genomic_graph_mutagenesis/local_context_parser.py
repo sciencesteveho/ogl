@@ -154,7 +154,7 @@ class LocalContextParser:
         )
 
         windows = (
-            pybedtools.BedTool(f"{self.tissue_dir}/interaction/base_nodes.txt")
+            pybedtools.BedTool(f"{self.tissue_dir}/local/base_nodes.txt")
             .slop(g=self.chromfile, b=25000)
             .sort()
         )
