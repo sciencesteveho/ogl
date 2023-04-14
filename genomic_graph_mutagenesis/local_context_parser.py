@@ -131,6 +131,7 @@ class LocalContextParser:
             self._prepare_tpm_filtered_genes(
                 genes=genes,
                 gene_windows=gene_windows,
+                base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
             )
 
         self.gencode_ref = pybedtools.BedTool(genes)
@@ -142,7 +143,12 @@ class LocalContextParser:
         # make directories
         self._make_directories()
 
-    def _prepare_tpm_filtered_genes(self, genes: str, gene_windows: str) -> None:
+    def _prepare_tpm_filtered_genes(
+        self,
+        genes: str,
+        gene_windows: str, 
+        base_nodes: str
+    ) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes, _ = _tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
@@ -154,7 +160,7 @@ class LocalContextParser:
         )
 
         windows = (
-            pybedtools.BedTool(f"{self.tissue_dir}/local/base_nodes.txt")
+            pybedtools.BedTool(base_nodes)
             .slop(g=self.chromfile, b=25000)
             .sort()
         )
@@ -545,7 +551,7 @@ class LocalContextParser:
 
         # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, ['base_nodes'] + NODES)
+        pool.map(self._aggregate_attributes, ['basenodes'] + NODES)
         pool.close()
 
         # parse edges into individual files
@@ -553,7 +559,7 @@ class LocalContextParser:
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._save_node_attributes, ['base_nodes'] + NODES)
+        pool.map(self._save_node_attributes, ['basenodes'] + NODES)
         pool.close()
 
 

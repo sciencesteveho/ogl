@@ -11,7 +11,6 @@
 
 import argparse
 import csv
-import os
 from itertools import repeat
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple
@@ -21,7 +20,6 @@ import pandas as pd
 import pybedtools
 
 from utils import (
-    dir_check_make,
     genes_from_gencode,
     parse_yaml,
     time_decorator,
@@ -436,7 +434,7 @@ class EdgeParser:
             csv.writer(output, delimiter="\t").writerows(self.edges)
         
         # write nodes to file
-        with open(f"{self.tissue_dir}/local/base_nodes.txt", 'w+') as output:
+        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", 'w+') as output:
             csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
         
         # write edges with coordinates to file
