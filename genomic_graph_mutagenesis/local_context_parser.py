@@ -80,6 +80,7 @@ class LocalContextParser:
     # Local context set at 2kb. While association can vary widely, assume prior
     # information from 3d chromatin structure and the FENRIR network
     FEAT_WINDOWS = {
+        "basenodes": 2000,
         "cpgislands": 2000,
         "ctcfccre": 2000,
         "enhancers": 2000,
