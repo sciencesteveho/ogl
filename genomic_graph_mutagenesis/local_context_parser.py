@@ -3,17 +3,8 @@
 #
 # // TO-DO //
 # - [ ] fix params for cores
-# - [ ] add better location for poly(a)
 # - [ ] try and refactor yamls and init
-#
-# // PLAN //
-# Take the gene window - within 500kb of a TPM filtered gene
-# Make slop + take edges b/w local contexts
-# Get edges b/w local contexts and BASE NODES
-# Add all edges, but only keep edges that can be traversed back to a base node
-# Aggregate and save attributes
-# Add one-hot encoding polyadenylation
-# Add one-hot encoding gene vs tf for the first two feats
+
 
 """Parse local genomic data to nodes and attributes"""
 

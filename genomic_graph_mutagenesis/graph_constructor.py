@@ -17,7 +17,7 @@ import csv
 from itertools import repeat
 from multiprocessing import Pool
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import networkx as nx
 import numpy as np
@@ -93,13 +93,29 @@ class GraphConstructor:
         """Add polyadenylation to gencode ref dict used to fill in attributes.
         Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
-        they'll overrwrite without issue."""
+        they'll overrwrite without issue.
+        
+        Returns:
+            Dict[str, Dict[str, Any]]: nested dict of attributes for each node
+        """
         ref = pickle.load(open(f'{self.parse_dir}/attributes/basenodes_reference.pkl', 'rb'))
         for node in NODES:
             ref_for_concat = pickle.load(
                 open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
             )
             ref.update(ref_for_concat)
+
+        for key in ref:
+            if key in self.genes:
+                ref[key]["is_gene"] = 1
+                ref[key]["is_tf"] = 0
+            elif '_tf' in key:
+                ref[key]["is_gene"] = 0
+                ref[key]["is_tf"] = 1
+            else:
+                ref[key]["is_gene"] = 0
+                ref[key]["is_tf"] = 0
+
         return ref
     
     @time_decorator(print_args=True)
@@ -132,10 +148,10 @@ class GraphConstructor:
     
     @time_decorator(print_args=True)
     def _nx_to_tensors(self, graph: nx.Graph) -> None:
-        """_summary_
+        """Save graphs as np tensors
 
         Args:
-            graph (nx.Graph): _description_
+            graph (nx.Graph)
         """
         graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
         edges = nx.to_edgelist(graph)
@@ -153,6 +169,15 @@ class GraphConstructor:
                     "num_nodes": graph.number_of_nodes(),
                     "num_edges": graph.number_of_edges(),
                     "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
+                },
+                output,
+            )
+
+        with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
+            pickle.dump(
+                {
+                    node: idx for idx, node in enumerate(sorted(graph.nodes))
+                    if node in self.genes
                 },
                 output,
             )

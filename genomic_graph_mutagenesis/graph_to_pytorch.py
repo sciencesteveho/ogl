@@ -5,7 +5,14 @@
 # - [ ] 
 #
 
-"""Convert graphs from np tensors to pytorch geometric Data objects"""
+"""Convert graphs from np tensors to pytorch geometric Data objects.
+
+Graphs are padded with zeros to ensure that all graphs have the same number of
+numbers, saved as a pytorch geometric Data object, and a mask is applied to only
+consider the nodes that pass the TPM filter.
+
+# f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl"
+"""
 
 import argparse
 import pickle
@@ -15,6 +22,10 @@ import torch
 from torch_geometric.data import Data
 
 from utils import parse_yaml
+
+
+def _train_test_split_nodes():
+    
 
 def np_to_pytorch_geometric(graph: str) -> None:
     """Convert graph from np tensor to pytorch geometric Data object"""
@@ -62,3 +73,7 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+# save as pytorch geometric data object
+pyg_graph = from_networkx(graph)
+torch.save(pyg_graph, f"{self.graph_dir}/{self.tissue}_full_graph.pt")
