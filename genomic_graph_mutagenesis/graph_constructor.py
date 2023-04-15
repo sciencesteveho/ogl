@@ -177,7 +177,7 @@ class GraphConstructor:
         with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
             pickle.dump(
                 {
-                    node: idx for idx, node in enumerate(sorted(graph.nodes))
+                    node: idx for idx, node in enumerate(nodes)
                     if node in self.genes
                 },
                 output,
