@@ -94,7 +94,7 @@ class GraphConstructor:
         Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
         they'll overrwrite without issue."""
-        ref = pickle.load(open(f'{self.parse_dir}/attributes/base_nodes_reference.pkl', 'rb'))
+        ref = pickle.load(open(f'{self.parse_dir}/attributes/basenodes_reference.pkl', 'rb'))
         for node in NODES:
             ref_for_concat = pickle.load(
                 open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
