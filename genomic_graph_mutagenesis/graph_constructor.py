@@ -152,7 +152,7 @@ class GraphConstructor:
                     ),
                     "num_nodes": graph.number_of_nodes(),
                     "num_edges": graph.number_of_edges(),
-                    "avg_ages": graph.number_of_edges() / graph.number_of_nodes(),
+                    "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
                 },
                 output,
             )

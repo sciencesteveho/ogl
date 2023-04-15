@@ -78,6 +78,7 @@ class GenomeDataPreprocessor:
 
         self.tissue = self.resources["tissue"]
         self.root_dir = self.dirs["root_dir"]
+        self.shared_data_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
         self.data_dir = f"{self.root_dir}/raw_files/{self.tissue}"
 
@@ -133,10 +134,10 @@ class GenomeDataPreprocessor:
 
         interact_files = {
             "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
-            "mirdip": f"{self.dirs['shared_dir']}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
-            "mirnatargets": f"{self.dirs['shared_dir']}/interaction/{self.interaction['mirnatargets']}",
-            "ppis": f"{self.dirs['shared_dir']}/interaction/{self.interaction['ppis']}",
-            "tf_marker": f"{self.dirs['shared_dir']}/interaction/{self.interaction['tf_marker']}",
+            "mirdip": f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+            "mirnatargets": f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
+            "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
+            "tf_marker": f"{self.shared_data_dir}/interaction/{self.interaction['tf_marker']}",
         }
 
         for file in interact_files:
@@ -154,7 +155,7 @@ class GenomeDataPreprocessor:
                 response = requests.get(url)
                 file.write(response.content)
 
-        if os.listdir(f"{self.root_dir}/shared_data/local_feats") == self.shared:
+        if os.listdir(f"{self.root_dir}/local_feats") == self.shared:
             pass
         else:
             for file in self.shared.values():

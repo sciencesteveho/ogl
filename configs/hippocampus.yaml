@@ -3,7 +3,6 @@ dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
-  shared_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data
 interaction:
   circuits: hippocampus_adult.txt
   entrez_file: entrez_to_genesymbol.txt
