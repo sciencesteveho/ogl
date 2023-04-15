@@ -173,6 +173,7 @@ class GraphConstructor:
                 },
                 output,
             )
+        output.close()
 
         with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
             pickle.dump(
@@ -182,6 +183,7 @@ class GraphConstructor:
                 },
                 output,
             )
+        output.close()
 
     def process_graphs(self) -> None:
         """_summary_
