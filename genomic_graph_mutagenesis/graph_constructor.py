@@ -141,7 +141,7 @@ class GraphConstructor:
         edges = nx.to_edgelist(graph)
         nodes = sorted(graph.nodes)
 
-        with open(f"self.graph_dir/{self.tissue}_full_graph.pkl", "wb") as f:
+        with open(f"{self.graph_dir}/{self.tissue}_full_graph.pkl", "wb") as f:
             pickle.dump(
                 {
                     "edge_index": np.array(
