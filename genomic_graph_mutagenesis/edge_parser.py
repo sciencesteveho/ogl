@@ -94,7 +94,7 @@ class EdgeParser:
             f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
         )
         self.mirna_ref = self._blind_read_file(
-            f"{self.interaction_dir}/{self.tissue}_mirdip"
+            f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
         self.enhancer_ref = self._blind_read_file(
             f"{self.tissue_dir}/local/enhancers_lifted.bed"
