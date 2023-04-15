@@ -21,7 +21,8 @@ if __name__ == "__main__":
                         help='tissue_type')
     args = parser.parse_args()
 
-    scale_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler'
+    root_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess'
+    scale_dir=f'{root_dir}/data_scaler'
     graph_dir=f'/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/{args.tissue}'
     out_dir=f'{graph_dir}/scaled'
     dir_check_make(out_dir)

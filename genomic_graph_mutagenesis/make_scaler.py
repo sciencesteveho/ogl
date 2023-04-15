@@ -11,7 +11,7 @@ import joblib
 import pickle
 
 import numpy as np
-from sklearn.preprocessing import RobustScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 
 from dataset_split import _chr_split_train_test_val, genes_from_gff
 
@@ -52,14 +52,13 @@ def main() -> None:
 
     exclude = split["validation"] + split["test"]
 
-    scaler = RobustScaler()
+    scaler = MinMaxScaler()
     for tissue in TISSUES:
-        directory = f"{graph_dir}/{tissue}"
         with open(f"{graph_dir}/{tissue}/{tissue}_gene_idxs.pkl", "rb") as file:
             idxs = pickle.load(file)
-        skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
         with open(f"{graph_dir}/{tissue}/{tissue}_full_graph.pkl", "rb") as f:
             g = pickle.load(f)
+        skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
         node_feat = g["node_feat"]
         for idx in skip_idxs:
             node_feat = np.delete(
