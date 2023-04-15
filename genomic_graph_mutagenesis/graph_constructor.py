@@ -141,7 +141,7 @@ class GraphConstructor:
         edges = nx.to_edgelist(graph)
         nodes = sorted(graph.nodes)
 
-        with open(f"{self.graph_dir}/{self.tissue}_full_graph.pkl", "wb") as f:
+        with open(f"{self.graph_dir}/{self.tissue}_full_graph.pkl", "wb") as output:
             pickle.dump(
                 {
                     "edge_index": np.array(
@@ -153,7 +153,8 @@ class GraphConstructor:
                     "num_nodes": graph.number_of_nodes(),
                     "num_edges": graph.number_of_edges(),
                     "avg_ages": graph.number_of_edges() / graph.number_of_nodes(),
-                }
+                },
+                output,
             )
 
     def process_graphs(self) -> None:
