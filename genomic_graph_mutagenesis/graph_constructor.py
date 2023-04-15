@@ -173,17 +173,6 @@ class GraphConstructor:
                 },
                 output,
             )
-        output.close()
-
-        with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
-            pickle.dump(
-                {
-                    node: idx for idx, node in enumerate(nodes)
-                    if node in self.genes
-                },
-                output,
-            )
-        output.close()
 
     def process_graphs(self) -> None:
         """_summary_
@@ -210,6 +199,15 @@ class GraphConstructor:
 
         # add attributes
         nx.set_node_attributes(graph, ref)
+
+        # save dictionary of node to integer labels
+        with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
+            pickle.dump(
+                {
+                    node: idx for idx, node in enumerate(sorted(graph.nodes))
+                },
+                output,
+            )
 
         # save individual graph
         self._nx_to_tensors(graph=graph)
