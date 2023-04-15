@@ -148,7 +148,8 @@ class GraphConstructor:
     
     @time_decorator(print_args=True)
     def _nx_to_tensors(self, graph: nx.Graph) -> None:
-        """Save graphs as np tensors
+        """Save graphs as np tensors, additionally saves a dictionary to map
+        nodes to new integer labels
 
         Args:
             graph (nx.Graph)
