@@ -195,11 +195,13 @@ class GraphConstructor:
         base_edges = self._get_edges(
             edge_file=f"{self.interaction_dir}/interaction_edges.txt",
             edge_type="base",
+            add_tissue=True,
         )
 
         local_context_edges = self._get_edges(
             edge_file=f"{self.parse_dir}/edges/all_concat_sorted.bed",
             edge_type="local",
+            add_tissue=True,
         )
 
         # create graph
