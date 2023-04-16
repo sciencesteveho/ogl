@@ -28,12 +28,17 @@ from dataset_split import _chr_split_train_test_val, genes_from_gff
 # Generate a function to create a training mask for the graph based on a nested dictionary with the keys "train", "test", and "validation"
 def create_mask(
     index: str,
+    split: Dict[Dict[str, int]]
     ) -> np.ndarray:
     """Create mask for graph"""
     # load graph indexes
     with open(index, 'rb') as f:
         graph_index = pickle.load(f)
 
+    # create masks
+    train_mask = [graph_index[gene] for gene in split['train'] if gene in graph_index.keys()]
+    test_mask = [graph_index[gene] for gene in split['test'] if gene in graph_index.keys()]
+    val_mask = [graph_index[gene] for gene in split['validation'] if gene in graph_index.keys()]
 
 def np_to_pytorch_geometric(graph: str) -> None:
     """Convert graph from np tensor to pytorch geometric Data object"""
@@ -63,9 +68,10 @@ def main() -> None:
     val_chrs = ["chr7", "chr13"]
 
     split = _chr_split_train_test_val(
-        gene_gtf=genes_from_gff(gene_gtf),
+        genes=genes_from_gff(gene_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
+        tissue_append=True,
     )
 
 
