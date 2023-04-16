@@ -43,7 +43,7 @@ def main() -> None:
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open(f"{graph_dir}/all_tissue_{args.graph_type}_idxs.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph_idxs.pkl", "wb") as output:
         pickle.dump(
             {node: idx for idx, node in enumerate(sorted(graph.nodes))},
             output,

@@ -319,6 +319,6 @@ def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     """
     graph_list = []
     for tissue in tissue_list:
-        graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}.gml"))
+        graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml"))
 
     return nx.compose_all(graph_list)
