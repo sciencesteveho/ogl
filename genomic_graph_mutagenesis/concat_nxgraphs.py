@@ -50,7 +50,7 @@ def main() -> None:
         )
 
     edge_index = np.array([[edge[0] for edge in edges], [edge[1] for edge in edges]])
-    node_feat = [[val for val in graph.nodes[node].values()] for node in nodes]
+    node_feat = np.array([[val for val in graph.nodes[node].values()] for node in nodes])
 
     with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph.pkl", "wb") as output:
         pickle.dump(

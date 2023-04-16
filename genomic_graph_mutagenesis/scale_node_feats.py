@@ -8,6 +8,8 @@ import argparse
 import joblib
 import pickle
 
+import numpy as np
+
 from dataset_split import TISSUE_KEYS
 from utils import dir_check_make
 
@@ -37,6 +39,8 @@ def main() -> None:
     with open(f"{root_dir}/graphs/all_tissue_{args.graph_type}_graph.pkl", "rb") as f:
         g = pickle.load(f)
     node_feat = g["node_feat"]
+    if type(node_feat) == list:
+        node_feat = np.array(node_feat)
     for i in range(0, 36):
         node_feat[:, i] = (
             scalers[i].transform(node_feat[:, i].reshape(-1, 1)).reshape(1, -1)[0]
