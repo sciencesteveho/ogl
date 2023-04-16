@@ -26,17 +26,41 @@ from utils import parse_yaml, time_decorator
 DATA_SPLITS = ["train", "test", "validation"]
 
 TISSUE_KEYS = {
-    "mammary": ("breast_mammary_tissue", "breast", "breast_mammary_tissue"),
-    "hippocampus": ("brain_hippocampus", "brain_cortex", "brain_hippocampus"),
+    "mammary": (
+        "breast_mammary_tissue",
+        "breast",
+        "breast_mammary_tissue",
+    ),
+    "hippocampus": (
+        "brain_hippocampus",
+        "brain_cortex",
+        "brain_hippocampus",
+    ),
     "left_ventricle": (
         "heart_left_ventricle",
         "heart_ventricle",
         "heart_left_ventricle",
     ),
-    "liver": ("liver", "liver", "liver"),
-    "lung": ("lung", "lung", "lung"),
-    "pancreas": ("pancreas", "pancreas", "pancreas"),
-    "skeletal_muscle": ("muscle_skeletal", "muscle_skeletal", "muscle_skeletal"),
+    "liver": (
+        "liver",
+        "liver",
+        "liver",
+    ),
+    "lung": (
+        "lung",
+        "lung",
+        "lung"
+    ),
+    "pancreas": (
+        "pancreas",
+        "pancreas",
+        "pancreas"
+    ),
+    "skeletal_muscle": (
+        "muscle_skeletal",
+        "muscle_skeletal",
+        "muscle_skeletal"
+    ),
 }  # tissue: (tpm_key, protein_key, filtered_tpm_filename)
 
 
@@ -49,15 +73,48 @@ def genes_from_gff(gff: str) -> List[str]:
             }
 
 
-def _chr_split_train_test_val(genes, test_chrs, val_chrs):
+def _chr_split_train_test_val(
+    genes,
+    test_chrs,
+    val_chrs,
+    tissue_append: bool = False,
+):
     """
     Create a list of training, split, and val IDs
     """
-    return {
-        "train": [gene for gene in genes if genes[gene] not in test_chrs + val_chrs],
-        "test": [gene for gene in genes if genes[gene] in test_chrs],
-        "validation": [gene for gene in genes if genes[gene] in val_chrs],
-    }
+    if tissue_append:
+        return {
+            "train": [
+                f"{gene}_{tissue}"
+                for gene in genes
+                if genes[gene] not in test_chrs + val_chrs
+                for tissue in TISSUE_KEYS
+            ],
+            "test": [
+                f"{gene}_{tissue}"
+                for gene in genes
+                if genes[gene] in test_chrs
+                for tissue in TISSUE_KEYS
+            ],
+            "validation": [
+                f"{gene}_{tissue}"
+                for gene in genes
+                if genes[gene] in val_chrs
+                for tissue in TISSUE_KEYS
+            ],
+        }
+    else:
+        return {
+            "train": [
+                gene for gene in genes if genes[gene] not in test_chrs + val_chrs
+            ],
+            "test": [
+                gene for gene in genes if genes[gene] in test_chrs
+            ],
+            "validation": [
+                gene for gene in genes if genes[gene] in val_chrs
+            ],
+        }
 
 
 @time_decorator(print_args=False)
@@ -71,20 +128,14 @@ def datasplit_chromosomes(
     whole chromosomes and pkl as dictionary"""
 
     chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
-
-    if os.path.isfile(chr_split_dictionary):
-        with open(chr_split_dictionary, "rb") as f:
-            split = pickle.load(f)
-        return split
-    else:
-        split = _chr_split_train_test_val(
-            genes=genes,
-            test_chrs=test_chrs,
-            val_chrs=val_chrs,
-        )
-        with open(chr_split_dictionary, "wb") as output:
-            pickle.dump(split, output)
-        return split
+    split = _chr_split_train_test_val(
+        genes=genes,
+        test_chrs=test_chrs,
+        val_chrs=val_chrs,
+    )
+    with open(chr_split_dictionary, "wb") as output:
+        pickle.dump(split, output)
+    return split
 
 
 def _tpm_all_tissue_median(gct_file):
