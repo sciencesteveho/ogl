@@ -322,3 +322,16 @@ def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
         graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml"))
 
     return nx.compose_all(graph_list)
+
+
+def _combined_graph_arrays(
+    tissue_list: List[str],
+    graph_dir: str,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Combine graph arrays from multiple tissues"""
+    feats = []
+    for tissue in tissue_list:
+        graph_file = f'{graph_dir}/graph.pkl'
+        with open(graph_file, 'rb') as f:
+            graph = pickle.load(f)
+        feats.append(graph['node_feat'])

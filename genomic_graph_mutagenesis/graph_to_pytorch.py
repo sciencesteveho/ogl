@@ -21,43 +21,18 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import Data
 
 from utils import parse_yaml
 
 # Generate a function to create a training mask for the graph based on a nested dictionary with the keys "train", "test", and "validation"
 def create_mask(
-    graph_indexes: str,
+    index: str,
     ) -> np.ndarray:
     """Create mask for graph"""
     # load graph indexes
-    with open(graph_indexes, 'rb') as f:
+    with open(index, 'rb') as f:
         graph_index = pickle.load(f)
-    
-    
-    
-
-
-def _combined_graph_arrays(
-    tissue_list: List[str],
-    graph_dir: str,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Combine graph arrays from multiple tissues"""
-    feats = []
-    for tissue in tissue_list:
-        graph_file = f'{graph_dir}/graph.pkl'
-        with open(graph_file, 'rb') as f:
-            graph = pickle.load(f)
-        feats.append(graph['node_feat'])
-
-
-class GenomeGraphDataset(InMemoryDataset):
-    def __init__(self, root, transform=None):
-        super(GenomeGraphDataset, self).__init__(root, transform)
-        self.data, self.slices = torch.load(self.processed_paths[0])
-
-    def process(self):
-        
 
 
 def np_to_pytorch_geometric(graph: str) -> None:
@@ -93,20 +68,20 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
-    
-    # instantiate object
-    edgeparserObject = EdgeParser(
-        params=params,
-        )
-
-    # run pipeline!
-    edgeparserObject.parse_edges()
 
 
 if __name__ == '__main__':
     main()
 
-# save as pytorch geometric data object
-pyg_graph = from_networkx(graph)
-torch.save(pyg_graph, f"{self.graph_dir}/{self.tissue}_full_graph.pt")
+
+graph_dir = '/ocean/projects/bio210019p/stevesho/data/preprocess/graphs'
+graph = f'{graph_dir}/scaled/all_tissue_base_graph_scaled.pkl'
+index = f'{graph_dir}/all_tissue_full_graph_idxs.pkl'
+
+with open(graph, 'rb') as file:
+    data = pickle.load(file)
+
+edge_index = torch.tensor(data['edge_index'], dtype=torch.long)
+x = torch.tensor(data['node_feat'], dtype=torch.float)
+
+data = Data(x=x, edge_index=edge_index)

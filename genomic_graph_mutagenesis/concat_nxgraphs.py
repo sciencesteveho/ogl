@@ -39,16 +39,17 @@ def main() -> None:
         graph_type=args.graph_type,
     )
 
-    graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
-    edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
+    # save indexes before renaming to integers
     with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph_idxs.pkl", "wb") as output:
         pickle.dump(
-            {node: idx for idx, node in enumerate(sorted(graph.nodes))},
+            {node: idx for idx, node in enumerate(nodes)},
             output,
         )
 
+    graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
+    edges = nx.to_edgelist(graph)
     edge_index = np.array([[edge[0] for edge in edges], [edge[1] for edge in edges]])
     node_feat = np.array([[val for val in graph.nodes[node].values()] for node in nodes])
 
