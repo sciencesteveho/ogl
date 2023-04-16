@@ -311,7 +311,7 @@ def _graph_stats(tissue, graph_dir):
     print(graph['avg_edges'])
     
 
-def _concat_nx_graphs(tissue_list, graph_dir):
+def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     """_summary_
 
     Args:
@@ -319,6 +319,6 @@ def _concat_nx_graphs(tissue_list, graph_dir):
     """
     graph_list = []
     for tissue in tissue_list:
-        graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_full_graph.gml"))
+        graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}.gml"))
 
     return nx.compose_all(graph_list)

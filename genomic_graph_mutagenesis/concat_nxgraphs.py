@@ -4,6 +4,7 @@
 
 """Create concatenated NX graph for all tissues"""
 
+import argparse
 import pickle
 
 import networkx as nx
@@ -12,7 +13,18 @@ import numpy as np
 from utils import _concat_nx_graphs
 
 
-if __name__ == "__main__":
+def main() -> None:
+    # parse args
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-g'
+        '--graph_type',
+        type=str,
+        default='full',
+        help='Graph type to use (full or base)'
+    )
+
+    args = parser.parse_args()
     graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
     graph = _concat_nx_graphs(
         tissue_list=[
@@ -25,13 +37,14 @@ if __name__ == "__main__":
             "skeletal_muscle",
         ],
         graph_dir=graph_dir,
+        graph_type=args.graph_type,
     )
 
     graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open("all_tissue_graph_idxs.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{args.graph_type}_idxs.pkl", "wb") as output:
         pickle.dump(
             {node: idx for idx, node in enumerate(sorted(graph.nodes))},
             output,
@@ -40,7 +53,7 @@ if __name__ == "__main__":
     edge_index = np.array([[edge[0] for edge in edges], [edge[1] for edge in edges]])
     node_feat = [[val for val in graph.nodes[node].values()] for node in nodes]
 
-    with open("all_tissue_full_graph.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": edge_index,
@@ -51,3 +64,6 @@ if __name__ == "__main__":
             },
             output,
         )
+
+if __name__ == "__main__":
+        main()
