@@ -28,8 +28,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    out_dir = f"{graph_dir}/scaled"
     graph_dir = f"{root_dir}/graphs"
+    out_dir = f"{graph_dir}/scaled"
     dir_check_make(out_dir)
 
     scalers = {i: joblib.load(f"{scale_dir}/feat_{i}_scaler.pt") for i in range(0, 36)}
