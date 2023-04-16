@@ -25,6 +25,8 @@ from torch_geometric.data import Data, InMemoryDataset
 
 from utils import parse_yaml
 
+# Generate a class to load graph data from np arrays to a pytorch geometric Data object
+
 
 def _combined_graph_arrays(
     tissue_list: List[str],
