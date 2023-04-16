@@ -29,7 +29,7 @@ def main() -> None:
     args = parser.parse_args()
 
     out_dir = f"{graph_dir}/scaled"
-    graph_dir = f"{root_dir}/graphs/{args.tissue}"
+    graph_dir = f"{root_dir}/graphs"
     dir_check_make(out_dir)
 
     scalers = {i: joblib.load(f"{scale_dir}/feat_{i}_scaler.pt") for i in range(0, 36)}
@@ -42,7 +42,7 @@ def main() -> None:
             scalers[i].transform(node_feat[:, i].reshape(-1, 1)).reshape(1, -1)[0]
         )
     g["node_feat"] = node_feat
-    with open(f"{out_dir}/all_tissue_full_graph.pkl", "wb") as output:
+    with open(f"{out_dir}/all_tissue_{args.graph_type}_graph_scaled.pkl", "wb") as output:
         pickle.dump(g, output)
 
 
