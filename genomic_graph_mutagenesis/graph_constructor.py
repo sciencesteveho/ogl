@@ -43,7 +43,7 @@ class GraphConstructor:
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
-        ):
+    ):
         """Initialize the class"""
         self.tissue = params["resources"]["tissue"]
 
@@ -60,48 +60,63 @@ class GraphConstructor:
     def _filtered_genes(self, gencode_ref: str) -> List[str]:
         """Get genes from gencode ref that pass TPM filter"""
         a = pybedtools.BedTool(gencode_ref)
-        return [
-            tup[3] for tup in a
-        ]
-    
+        return [tup[3] for tup in a]
+
     def _base_graph(self, edges: List[str]):
         """Create a graph from list of edges"""
         G = nx.Graph()
         G.add_edges_from((tup[0], tup[1]) for tup in edges)
-        return G 
-    
+        return G
+
     @time_decorator(print_args=True)
     def _get_edges(
         self,
         edge_file: str,
         edge_type: str,
-        ) -> List[str]:
+        add_tissue: bool = False,
+    ) -> List[str]:
         """Get edges from file"""
         if edge_type == "base":
-            return [
-                (tup[0], tup[1]) for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-            ]
+            if add_tissue:
+                return [
+                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}")
+                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+                ]
+            else:
+                return [
+                    (tup[0], tup[1])
+                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+                ]
         if edge_type == "local":
-            return [
-                (tup[3], tup[7]) for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-            ]
+            if add_tissue:
+                return [
+                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}")
+                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+                ]
+            else:
+                return [
+                    (tup[3], tup[7])
+                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+                ]
         if edge_type not in ("base", "local"):
             raise ValueError("Edge type must be 'base' or 'local'")
-        
+
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(self) -> Dict[str, Dict[str, Any]]:
         """Add polyadenylation to gencode ref dict used to fill in attributes.
         Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
         they'll overrwrite without issue.
-        
+
         Returns:
             Dict[str, Dict[str, Any]]: nested dict of attributes for each node
         """
-        ref = pickle.load(open(f'{self.parse_dir}/attributes/basenodes_reference.pkl', 'rb'))
+        ref = pickle.load(
+            open(f"{self.parse_dir}/attributes/basenodes_reference.pkl", "rb")
+        )
         for node in NODES:
             ref_for_concat = pickle.load(
-                open(f'{self.parse_dir}/attributes/{node}_reference.pkl', 'rb')
+                open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "rb")
             )
             ref.update(ref_for_concat)
 
@@ -109,7 +124,7 @@ class GraphConstructor:
             if key in self.genes:
                 ref[key]["is_gene"] = 1
                 ref[key]["is_tf"] = 0
-            elif '_tf' in key:
+            elif "_tf" in key:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 1
             else:
@@ -117,7 +132,7 @@ class GraphConstructor:
                 ref[key]["is_tf"] = 0
 
         return ref
-    
+
     @time_decorator(print_args=True)
     def _n_ego_graph(
         self,
@@ -125,7 +140,7 @@ class GraphConstructor:
         max_nodes: int,
         node: str,
         radius: int,
-        ) -> nx.Graph:
+    ) -> nx.Graph:
         """Get n-ego graph centered around a gene (node)"""
         # get n-ego graph
         n_ego_graph = nx.ego_graph(
@@ -136,7 +151,7 @@ class GraphConstructor:
         )
 
         # if n_ego_graph is too big, reduce radius until n_ego_graph has nodes < max_nodes
-        while n_ego_graph.number_of_nodes() > max_nodes:    
+        while n_ego_graph.number_of_nodes() > max_nodes:
             radius -= 1
             n_ego_graph = nx.ego_graph(
                 graph=graph,
@@ -145,7 +160,7 @@ class GraphConstructor:
             )
 
         return n_ego_graph
-    
+
     @time_decorator(print_args=True)
     def _nx_to_tensors(self, graph: nx.Graph) -> None:
         """Save graphs as np tensors, additionally saves a dictionary to map
@@ -175,8 +190,7 @@ class GraphConstructor:
             )
 
     def process_graphs(self) -> None:
-        """_summary_
-        """
+        """_summary_"""
         # get edges
         base_edges = self._get_edges(
             edge_file=f"{self.interaction_dir}/interaction_edges.txt",
@@ -206,9 +220,7 @@ class GraphConstructor:
         # save dictionary of node to integer labels
         with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
             pickle.dump(
-                {
-                    node: idx for idx, node in enumerate(sorted(graph.nodes))
-                },
+                {node: idx for idx, node in enumerate(sorted(graph.nodes))},
                 output,
             )
 
@@ -222,15 +234,11 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to .yaml file with filenames"
-    )
+    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
     params = parse_yaml(args.config)
-    
+
     # instantiate object
     graphconstructorObj = GraphConstructor(params=params)
 
@@ -238,5 +246,5 @@ def main() -> None:
     graphconstructorObj.process_graphs()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
