@@ -456,14 +456,15 @@ class LocalContextParser:
         poly_a_targets = _polyadenylation_targets(
             f"{self.root_dir}/shared_data/interaction/PDUI_polyA_sites/{self.tissue_specific['polyadenylation']}"
         )
-        poly_a_targets = [f"target_{self.tissue}" for target in poly_a_targets]
+        poly_a_targets = [f"{target}_{self.tissue}" for target in poly_a_targets]
+
         for line in set_dict["gc"]:
-            if line[3] in poly_a_targets:
+            if f"{line[3]}_{self.tissue}" in poly_a_targets:
                 for dictionary in [attr_dict, attr_dict_nochr]:
-                    dictionary[line[3]]["polyadenylation"] = 1
+                    dictionary[f"{line[3]}_{self.tissue}"]["polyadenylation"] = 1
             else:
                 for dictionary in [attr_dict, attr_dict_nochr]:
-                    dictionary[line[3]]["polyadenylation"] = 0
+                    dictionary[f"{line[3]}_{self.tissue}"]["polyadenylation"] = 0
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
