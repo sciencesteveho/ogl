@@ -456,6 +456,7 @@ class LocalContextParser:
         poly_a_targets = _polyadenylation_targets(
             f"{self.root_dir}/shared_data/interaction/PDUI_polyA_sites/{self.tissue_specific['polyadenylation']}"
         )
+        poly_a_targets = [f"target_{self.tissue}" for target in poly_a_targets]
         for line in set_dict["gc"]:
             if line[3] in poly_a_targets:
                 for dictionary in [attr_dict, attr_dict_nochr]:
