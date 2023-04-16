@@ -393,7 +393,8 @@ class LocalContextParser:
                 f"{self.parse_dir}/edges/all_concat.bed",
             ],
             "sort_cmd": [
-                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 -u {self.parse_dir}/edges/all_concat.bed >",
+                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed |",
+                "uniq >"
                 f"{self.parse_dir}/edges/all_concat_sorted.bed",
             ],
         }

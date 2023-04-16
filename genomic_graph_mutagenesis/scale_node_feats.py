@@ -10,8 +10,6 @@ import argparse
 import joblib
 import pickle
 
-import numpy as np
-
 from utils import dir_check_make
 
 
