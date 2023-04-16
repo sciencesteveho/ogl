@@ -8,6 +8,7 @@ from datetime import timedelta
 import functools
 import inspect
 import os
+import pickle
 import random
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -296,16 +297,21 @@ def _calculate_max_distance_base_graph(bed: List[List[str]]) -> List[List[str]]:
     }
 
 
-def _max_node_calculation():
-    """Calculate the max number of nodes for a given internal. First, we take
-    all base nodes and all nodes connected to those nodes within the window.
-    We then apply a genome window and count the number of nodes per window,
-    reporting the max, mean, and median. Based off of these numbers a window
-    is decided for each tissue.
+def _graph_stats(tissue, graph_dir):
+    """_summary_
 
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        _type_: _description_
+    Args:
+        tissue (str): _description_
     """
+    with open(f"{graph_dir}/graph.pkl", "rb") as file:
+        graph = pickle.load(file)
+
+    print(graph['num_nodes'])
+    print(graph['num_edges'])
+    print(graph['avg_edges'])
+    
+for tissue in ['hippocampus', 'left_ventricle', 'liver', 'lung', 'mammary', 'pancreas', 'skeletal_muscle']:
+    graph_dir = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/{tissue}/scaled" 
+    _graph_stats(tissue, graph_dir)
+
+# size = 7, 64787, 36

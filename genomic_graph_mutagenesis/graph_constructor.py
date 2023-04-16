@@ -197,6 +197,9 @@ class GraphConstructor:
         # get attribute reference dictionary
         ref = self._prepare_reference_attributes()
 
+        # save nx graph
+        nx.write_gml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.gml")
+
         # add attributes
         nx.set_node_attributes(graph, ref)
 

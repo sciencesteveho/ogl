@@ -12,20 +12,41 @@ numbers, saved as a pytorch geometric Data object, and a mask is applied to only
 consider the nodes that pass the TPM filter.
 
 # f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl"
+# size = 7, 64787, 36
 """
 
 import argparse
 import pickle
 from typing import Any, Dict, List, Tuple
 
+import numpy as np
 import torch
-from torch_geometric.data import Data
+from torch_geometric.data import Data, InMemoryDataset
 
 from utils import parse_yaml
 
 
-def _train_test_split_nodes():
-    
+def _combined_graph_arrays(
+    tissue_list: List[str],
+    graph_dir: str,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Combine graph arrays from multiple tissues"""
+    feats = []
+    for tissue in tissue_list:
+        graph_file = f'{graph_dir}/graph.pkl'
+        with open(graph_file, 'rb') as f:
+            graph = pickle.load(f)
+        feats.append(graph['node_feat'])
+
+
+class GenomeGraphDataset(InMemoryDataset):
+    def __init__(self, root, transform=None):
+        super(GenomeGraphDataset, self).__init__(root, transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    def process(self):
+        
+
 
 def np_to_pytorch_geometric(graph: str) -> None:
     """Convert graph from np tensor to pytorch geometric Data object"""
