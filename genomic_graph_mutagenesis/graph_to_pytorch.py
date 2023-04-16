@@ -23,7 +23,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from utils import parse_yaml
+from dataset_split import _chr_split_train_test_val, genes_from_gff
 
 # Generate a function to create a training mask for the graph based on a nested dictionary with the keys "train", "test", and "validation"
 def create_mask(
@@ -57,17 +57,17 @@ def np_to_pytorch_geometric(graph: str) -> None:
 
 def main() -> None:
     """Pipeline to generate individual graphs"""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
+    gene_gtf = f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+    test_chrs = ["chr8", "chr9"]
+    val_chrs = ["chr7", "chr13"]
+
+    split = _chr_split_train_test_val(
+        gene_gtf=genes_from_gff(gene_gtf),
+        test_chrs=test_chrs,
+        val_chrs=val_chrs,
     )
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to .yaml file with filenames"
-    )
-
-    args = parser.parse_args()
 
 
 if __name__ == '__main__':

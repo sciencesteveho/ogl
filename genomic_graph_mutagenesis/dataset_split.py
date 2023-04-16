@@ -73,6 +73,7 @@ def genes_from_gff(gff: str) -> List[str]:
             }
 
 
+@time_decorator(print_args=False)
 def _chr_split_train_test_val(
     genes,
     test_chrs,
@@ -115,27 +116,6 @@ def _chr_split_train_test_val(
                 gene for gene in genes if genes[gene] in val_chrs
             ],
         }
-
-
-@time_decorator(print_args=False)
-def datasplit_chromosomes(
-    genes: List[str],
-    test_chrs: List[str],
-    val_chrs: List[str],
-    save_dir: str,
-) -> Dict[str, List[str]]:
-    """Create train, test, and validation sets for genes based on
-    whole chromosomes and pkl as dictionary"""
-
-    chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
-    split = _chr_split_train_test_val(
-        genes=genes,
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-    )
-    with open(chr_split_dictionary, "wb") as output:
-        pickle.dump(split, output)
-    return split
 
 
 def _tpm_all_tissue_median(gct_file):
@@ -333,13 +313,17 @@ def main() -> None:
     protein_file = "protein_relative_abundance_all_gtex.csv"
     protein_median_file = "protein_relative_abundance_median_gtex.csv"
 
-    # split genes in train, test, validation  44786 / 4469 / 4033, total = 53288
-    split = datasplit_chromosomes(
-        genes=genes_from_gff(gene_gtf),
+    save_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
+    chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
+
+    split = _chr_split_train_test_val(
+        gene_gtf=genes_from_gff(gene_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
-        save_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
     )
+
+    with open(chr_split_dictionary, "wb") as output:
+        pickle.dump(split, output)
 
     # get targets - 313502 /31283/28231 train/test/validation, total = 373016
     targets = tissue_targets(
