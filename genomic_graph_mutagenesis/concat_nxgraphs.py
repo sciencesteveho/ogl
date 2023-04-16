@@ -17,14 +17,13 @@ def main() -> None:
     # parse args
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-g'
+        '-g',
         '--graph_type',
         type=str,
-        default='full',
-        help='Graph type to use (full or base)'
+        help='Graph type to use (full or base)',
     )
-
     args = parser.parse_args()
+
     graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
     graph = _concat_nx_graphs(
         tissue_list=[
