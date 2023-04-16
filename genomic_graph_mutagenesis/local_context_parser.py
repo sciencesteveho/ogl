@@ -434,11 +434,11 @@ class LocalContextParser:
                 set_dict[attribute] = set(lines)
             for line in set_dict[attribute]:
                 if attribute == "gc":
-                    attr_dict[line[3]] = {
+                    attr_dict[f"{line[3]}_{self.tissue}"] = {
                         "chr": line[0].replace("chr", ""),
                     }
                     for dictionary in [attr_dict, attr_dict_nochr]:
-                        dictionary[line[3]] = {
+                        dictionary[f"{line[3]}_{self.tissue}"] = {
                             "start": float(line[1]),
                             "end": float(line[2]),
                             "size": float(line[4]),
@@ -447,10 +447,10 @@ class LocalContextParser:
                 else:
                     try:
                         for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[line[3]][attribute] = float(line[5])
+                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(line[5])
                     except ValueError:
                         for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[line[3]][attribute] = 0
+                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
 
         # add polyadenylation attribute
         poly_a_targets = _polyadenylation_targets(

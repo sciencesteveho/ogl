@@ -162,7 +162,7 @@ class GraphConstructor:
         return n_ego_graph
 
     @time_decorator(print_args=True)
-    def _nx_to_tensors(self, graph: nx.Graph) -> None:
+    def _nx_to_tensors(self, graph: nx.Graph, save_str: str) -> None:
         """Save graphs as np tensors, additionally saves a dictionary to map
         nodes to new integer labels
 
@@ -173,7 +173,7 @@ class GraphConstructor:
         edges = nx.to_edgelist(graph)
         nodes = sorted(graph.nodes)
 
-        with open(f"{self.graph_dir}/{self.tissue}_full_graph.pkl", "wb") as output:
+        with open(f"{self.graph_dir}/{self.tissue}_{save_str}.pkl", "wb") as output:
             pickle.dump(
                 {
                     "edge_index": np.array(
@@ -204,30 +204,40 @@ class GraphConstructor:
             add_tissue=True,
         )
 
-        # create graph
-        graph = self._base_graph(edges=base_edges)
-
-        # add local context edges
-        graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
-
         # get attribute reference dictionary
         ref = self._prepare_reference_attributes()
 
-        # save nx graph
+        # create graphs
+        base_graph = self._base_graph(edges=base_edges)
+        graph = self._base_graph(edges=base_edges)
+
+        # add local context edges to full graph
+        graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
+        
+        # add attributes
+        for g in [base_graph, graph]:
+            nx.set_node_attributes(g, ref)
+
+        # save graphs as gml
+        nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.gml")
         nx.write_gml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.gml")
 
-        # add attributes
-        nx.set_node_attributes(graph, ref)
-
         # save dictionary of node to integer labels
+        with open(f"{self.graph_dir}/{self.tissue}_base_gene_idxs.pkl", "wb") as output:
+            pickle.dump(
+                {node: idx for idx, node in enumerate(sorted(base_graph.nodes))},
+                output,
+            )
+
         with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
             pickle.dump(
                 {node: idx for idx, node in enumerate(sorted(graph.nodes))},
                 output,
             )
 
-        # save individual graph
-        self._nx_to_tensors(graph=graph)
+        # save graphs as np arrays
+        self._nx_to_tensors(graph=graph, save_str="full_graph")
+        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
 
 
 def main() -> None:
