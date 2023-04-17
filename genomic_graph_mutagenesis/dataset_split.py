@@ -9,18 +9,15 @@
 training the network.
 """
 
-import argparse
 import csv
-import os
 import pickle
 from typing import Any, Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
-import networkx as nx
 import numpy as np
 import pandas as pd
 
-from utils import parse_yaml, time_decorator
+from utils import time_decorator
 
 
 DATA_SPLITS = ["train", "test", "validation"]

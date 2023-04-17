@@ -10,7 +10,6 @@
 import argparse
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
@@ -23,15 +22,15 @@ class GNN(torch.nn.Module):
         super(GNN, self).__init__()
         self.conv1 = SAGEConv(in_size, embedding_size)  # GCNConv, SAGEConv
         self.conv1.aggr = "max"
-        self.conv2 = SAGEConv(embedding_size, out_size)
+        self.conv2 = SAGEConv(embedding_size, out_size=500)
         self.conv2.aggr = "max"
-        self.conv3 = SAGEConv(embedding_size, out_size)
+        self.conv3 = SAGEConv(embedding_size, out_size=500)
         self.conv3.aggr = "max"
-        self.conv4 = SAGEConv(embedding_size, out_size)
+        self.conv4 = SAGEConv(embedding_size, out_size=500)
         self.conv4.aggr = "max"
-        self.conv5 = SAGEConv(embedding_size, out_size)
+        self.conv5 = SAGEConv(embedding_size, out_size=500)
         self.conv5.aggr = "max"
-        self.conv6 = SAGEConv(embedding_size, out_size)
+        self.conv6 = SAGEConv(embedding_size, out_size=4)
         self.conv6.aggr = "max"
 
     def forward(self, x, edge_index):
@@ -124,11 +123,11 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GNN(in_size=data.x.shape[1], embedding_size=500, out_size=1).to(device)
+    model = GNN(in_size=data.x.shape[1], embedding_size=500).to(device)
     data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
-    criterion = torch.nn.MSELoss()
+    # criterion = torch.nn.MSELoss()
 
     epochs = 100
     for epoch in range(0, epochs):
