@@ -18,19 +18,19 @@ from graph_to_pytorch import graph_to_pytorch
 
 # Define/Instantiate GNN model
 class GNN(torch.nn.Module):
-    def __init__(self, in_size, embedding_size):
+    def __init__(self, in_size, embedding_size, out_channels):
         super(GNN, self).__init__()
         self.conv1 = SAGEConv(in_size, embedding_size)  # GCNConv, SAGEConv
         self.conv1.aggr = "max"
-        self.conv2 = SAGEConv(embedding_size, out_size=500)
+        self.conv2 = SAGEConv(embedding_size, embedding_size)
         self.conv2.aggr = "max"
-        self.conv3 = SAGEConv(embedding_size, out_size=500)
+        self.conv3 = SAGEConv(embedding_size, embedding_size)
         self.conv3.aggr = "max"
-        self.conv4 = SAGEConv(embedding_size, out_size=500)
+        self.conv4 = SAGEConv(embedding_size, embedding_size)
         self.conv4.aggr = "max"
-        self.conv5 = SAGEConv(embedding_size, out_size=500)
+        self.conv5 = SAGEConv(embedding_size, embedding_size)
         self.conv5.aggr = "max"
-        self.conv6 = SAGEConv(embedding_size, out_size=4)
+        self.conv6 = SAGEConv(embedding_size, out_channels)
         self.conv6.aggr = "max"
 
     def forward(self, x, edge_index):
@@ -123,7 +123,11 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GNN(in_size=data.x.shape[1], embedding_size=500).to(device)
+    model = GNN(
+        in_size=data.x.shape[1], 
+        embedding_size=500,
+        out_channels=4
+    ).to(device)
     data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
