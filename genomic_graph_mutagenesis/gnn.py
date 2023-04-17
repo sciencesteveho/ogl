@@ -157,14 +157,14 @@ def main() -> None:
 
     model = GNN(
         in_size=data.x.shape[1], 
-        embedding_size=64,
+        embedding_size=512,
         out_channels=4
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
     # criterion = torch.nn.MSELoss()
 
-    epochs = 100
+    epochs = 200
     for epoch in range(0, epochs):
         loss = train(
             model=model,
