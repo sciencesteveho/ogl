@@ -18,7 +18,7 @@ from graph_to_pytorch import graph_to_pytorch
 
 # Define/Instantiate GNN model
 class GNN(torch.nn.Module):
-    def __init__(self, in_size, embedding_size, out_size):
+    def __init__(self, in_size, embedding_size):
         super(GNN, self).__init__()
         self.conv1 = SAGEConv(in_size, embedding_size)  # GCNConv, SAGEConv
         self.conv1.aggr = "max"

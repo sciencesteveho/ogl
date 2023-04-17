@@ -12,12 +12,12 @@ import pickle
 import random
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-import yaml
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 import pybedtools
+import yaml
 
 
 ATTRIBUTES = [
