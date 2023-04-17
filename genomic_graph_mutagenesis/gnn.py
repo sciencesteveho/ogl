@@ -125,7 +125,7 @@ def main() -> None:
 
     model = GNN(
         in_size=data.x.shape[1], 
-        embedding_size=500,
+        embedding_size=64,
         out_channels=4
     ).to(device)
     data = data.to(device)
