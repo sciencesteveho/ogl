@@ -23,21 +23,25 @@ class GraphSAGE(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels):
         super(GraphSAGE, self).__init__()
         self.conv1 = SAGEConv(in_size, embedding_size)  # GCNConv, SAGEConv
-        self.conv1.aggr = "max"
+        self.conv1.aggr = "sum"
         self.conv2 = SAGEConv(embedding_size, embedding_size)
-        self.conv2.aggr = "max"
+        self.conv2.aggr = "mean"
         self.conv3 = SAGEConv(embedding_size, embedding_size)
         self.conv3.aggr = "max"
         self.conv4 = SAGEConv(embedding_size, embedding_size)
-        self.conv4.aggr = "max"
+        self.conv4.aggr = "sum"
         self.conv5 = SAGEConv(embedding_size, embedding_size)
-        self.conv5.aggr = "max"
+        self.conv5.aggr = "mean"
         self.conv6 = SAGEConv(embedding_size, embedding_size)
         self.conv6.aggr = "max"
         self.conv7 = SAGEConv(embedding_size, embedding_size)
-        self.conv7.aggr = "max"
-        self.conv8 = SAGEConv(embedding_size, out_channels)
-        self.conv8.aggr = "max"
+        self.conv7.aggr = "sum"
+        self.conv8 = SAGEConv(embedding_size, embedding_size)
+        self.conv8.aggr = "mean"
+        self.conv9 = SAGEConv(embedding_size, embedding_size)
+        self.conv9.aggr = "max"
+        self.conv10 = SAGEConv(embedding_size, out_channels)
+        self.conv10.aggr = "mean"
 
 
     def forward(self, x, edge_index):
@@ -58,6 +62,12 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv8(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv9(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv10(x, edge_index)
         return x
 
 
