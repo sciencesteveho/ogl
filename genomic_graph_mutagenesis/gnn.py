@@ -73,7 +73,9 @@ def test(model, data):
     train_acc = F.mse_loss(
         out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze()
     )
-    val_acc = F.mse_loss(out[data.val_mask].squeeze(), data.y[data.val_mask].squeeze())
+    val_acc = F.mse_loss(
+        out[data.val_mask].squeeze(), data.y[data.val_mask].squeeze()
+    )
     test_acc = F.mse_loss(
         out[data.test_mask].squeeze(), data.y[data.test_mask].squeeze()
     )
@@ -95,7 +97,8 @@ def main() -> None:
 
     data = graph_to_pytorch(
         root_dir=args.root,
-        graph_di=f"{args.root}/graphs",
+        graph_dir=f"{args.root}/graphs",
+        graph_type=args.graph_type,
     )
 
     ### check for GPU
@@ -127,6 +130,11 @@ if __name__ == "__main__":
         "--root", type=str, required=True, help="Root directory of dataset storage."
     )
     parser.add_argument("--device", type=int, default=0)
+    parser.add_argument(
+        "--graph_type",
+        type=str,
+        default="full",
+    )
     args = parser.parse_args()
 
     # "/ocean/projects/bio210019p/stevesho/data/preprocess"

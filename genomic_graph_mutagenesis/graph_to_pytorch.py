@@ -80,6 +80,7 @@ def _get_masked_tensor(num_nodes: int):
 def graph_to_pytorch(
     root_dir: str,
     graph_dir: str,
+    graph_type: str,
     ):
     """Main function"""
 
@@ -98,8 +99,8 @@ def graph_to_pytorch(
     )
 
     graph_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
-    graph = f"{graph_dir}/scaled/all_tissue_full_graph_scaled.pkl"
-    index = f"{graph_dir}/all_tissue_full_graph_idxs.pkl"
+    graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
+    index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
     targets = f"{graph_dir}/target_dict_unfiltered.pkl"
 
     with open(graph, "rb") as file:
