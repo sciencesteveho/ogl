@@ -8,9 +8,11 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
+from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
+from torch_geometric.loader import RandomNodeLoader
 from torch_geometric.nn import SAGEConv
 
 from graph_to_pytorch import graph_to_pytorch
@@ -50,24 +52,41 @@ class GNN(torch.nn.Module):
         return x
 
 
-def train(model, optimizer, data):
+def train(model, device, optimizer, train_loader, epoch):
     model.train()
-    optimizer.zero_grad()
 
-    out = model(data.x, data.edge_index)
-    loss = F.mse_loss(out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze())
+    pbar = tqdm(total=len(train_loader))
+    pbar.set_description(f'Training epoch: {epoch:04d}')
 
-    loss.backward()
-    optimizer.step()
+    total_loss = total_examples = 0
+    for data in train_loader:
+        optimizer.zero_grad()
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+        loss = F.mse_loss(out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze())
+        loss.backward()
+        optimizer.step()
 
-    return loss.item()
+        total_loss += float(loss) * int(data.train_mask.sum())
+        total_examples += int(data.train_mask.sum())
+
+        pbar.update(1)
+
+    pbar.close()
+
+    return total_loss / total_examples
 
 
 @torch.no_grad()
-def test(model, data):
+def test(model, device, test_loader, epoch):
     model.eval()
 
-    out = model(data.x, data.edge_index)
+    pbar = tqdm(total=len(test_loader))
+    pbar.set_description(f'Evaluating epoch: {epoch:04d}')
+
+    for data in test_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
 
     train_acc = F.mse_loss(
         out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze()
@@ -116,6 +135,19 @@ def main() -> None:
         graph_type=args.graph_type,
     )
 
+    train_loader = RandomNodeLoader(
+        data,
+        num_parts=50,
+        shuffle=True,
+        num_workers=5,
+    )
+
+    test_loader = RandomNodeLoader(
+        data,
+        num_parts=5,
+        num_workers=5,
+    )
+
     ### check for GPU
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
@@ -128,19 +160,26 @@ def main() -> None:
         embedding_size=64,
         out_channels=4
     ).to(device)
-    data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
     # criterion = torch.nn.MSELoss()
 
     epochs = 100
     for epoch in range(0, epochs):
-        loss = train(model, optimizer, data)
-        train_acc, val_acc, test_acc = test(model, data)
-        if epoch % 10 == 0:
-            print(
-                f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
-            )
+        loss = train(
+            model=model,
+            device=device,
+            optimizer=optimizer, 
+            train_loader=train_loader,
+            epopch=epoch,
+        )
+        # train_acc, val_acc, test_acc = test(model, data)
+        # print(
+        #     f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
+        # )
+        print(
+            f"Epoch: {epoch:03d}, Loss: {loss}"
+        )
 
 
 if __name__ == "__main__":
