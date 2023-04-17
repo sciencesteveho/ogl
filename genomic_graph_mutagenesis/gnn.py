@@ -83,7 +83,7 @@ def test(model, data):
     return train_acc, val_acc, test_acc
 
 
-def main(args) -> None:
+def main() -> None:
     """_summary_"""
     ### Training settings
     parser = argparse.ArgumentParser()
