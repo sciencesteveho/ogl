@@ -83,15 +83,37 @@ def test(model, data):
     return train_acc, val_acc, test_acc
 
 
-def main() -> None:
+def main(args) -> None:
     """_summary_"""
     ### Training settings
-    parser = argparse.ArgumentParser(description="Graph regression attempts")
+    parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--seed", type=int, default=42, help="random seed to use (default: 42)"
+        "--seed",
+        type=int,
+        default=42,
+        help="random seed to use (default: 42)",
     )
     parser.add_argument(
-        "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
+        "--device",
+        type=int,
+        default=0,
+        help="which gpu to use if any (default: 0)",
+    )
+    parser.add_argument(
+        "--root",
+        type=str,
+        help="Root directory of dataset storage.",
+        default="/ocean/projects/bio210019p/stevesho/data/preprocess",
+    )
+    parser.add_argument(
+        "--device",
+        type=int, 
+        default=0,
+    )
+    parser.add_argument(
+        "--graph_type",
+        type=str,
+        default="full",
     )
     args = parser.parse_args()
 
@@ -124,24 +146,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--root",
-        type=str,
-        help="Root directory of dataset storage.",
-        default="/ocean/projects/bio210019p/stevesho/data/preprocess",
-    )
-    parser.add_argument(
-        "--device",
-        type=int, 
-        default=0,
-    )
-    parser.add_argument(
-        "--graph_type",
-        type=str,
-        default="full",
-    )
-    args = parser.parse_args()
-
-    # "/ocean/projects/bio210019p/stevesho/data/preprocess"
     main()
