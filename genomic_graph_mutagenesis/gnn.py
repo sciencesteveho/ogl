@@ -171,7 +171,7 @@ def main() -> None:
             device=device,
             optimizer=optimizer, 
             train_loader=train_loader,
-            epopch=epoch,
+            epoch=epoch,
         )
         # train_acc, val_acc, test_acc = test(model, data)
         # print(
