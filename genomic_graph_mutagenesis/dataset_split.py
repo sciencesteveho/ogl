@@ -184,12 +184,13 @@ def _fold_change_median(tissue_df, all_median_df, type=None) -> pd.DataFrame:
 
 @time_decorator(print_args=False)
 def _get_dict_with_target_array(
-    split_dict, tissue, tpmkey, prokey, tpm_targets_df, protein_targets_df
+    split_dict, tpmkey, prokey, tpm_targets_df, protein_targets_df
 ):
     """_lorem"""
     new = {}
-    for gene in split_dict:
-        new[gene] = np.array(
+    for gene_tis in split_dict:
+        gene = gene_tis.split("_")[0]
+        new[gene_tis] = np.array(
             [
                 tpm_targets_df[tpmkey].loc[gene],  # median tpm in the tissue
                 tpm_targets_df[tpmkey + "_foldchange"].loc[gene],  # fold change
@@ -213,10 +214,9 @@ def _tissue_dicts(
 ):
     """_lorem"""
     all_dict = {}
-    for idx, tissue in enumerate(tissue_params):
+    for tissue in tissue_params:
         all_dict[tissue] = _get_dict_with_target_array(
             split_dict=split,
-            tissue=tissue,
             tpmkey=tissue_params[tissue][0],
             prokey=tissue_params[tissue][1],
             tpm_targets_df=tpm_targets_df,
@@ -290,16 +290,6 @@ def filtered_targets(
     return targets
 
 
-def _get_split_by_node_idxs(graph_dir, tissue, split, targets):
-    tissue_specific_targets = {}
-    with open(f"{graph_dir}/{tissue})gene_idxs.pkl", "rb") as file:
-        node_idxs = pickle.load(file)
-
-    for training_split in split:
-        tissue_specific_targets[training_split] = {
-            gene: targets[training_split][gene] for gene in node_idxs.keys()
-        }
-
 def main() -> None:
     """Pipeline to generate dataset split and target values"""
 
@@ -317,13 +307,14 @@ def main() -> None:
     chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
 
     split = _chr_split_train_test_val(
-        gene_gtf=genes_from_gff(gene_gtf),
+        genes=genes_from_gff(gene_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
+        tissue_append=True,
     )
 
-    with open(chr_split_dictionary, "wb") as output:
-        pickle.dump(split, output)
+    # with open(chr_split_dictionary, "wb") as output:
+    #     pickle.dump(split, output)
 
     # get targets - 313502 /31283/28231 train/test/validation, total = 373016
     targets = tissue_targets(
@@ -335,9 +326,14 @@ def main() -> None:
         protein_median_file=f"{root_dir}/shared_data/{protein_median_file}",
     )
 
+    parsed_targets = {}
+    parsed_targets['train'] = targets['train']['mammary']
+    parsed_targets['test'] = targets['test']['mammary']
+    parsed_targets['validation'] = targets['validation']['mammary']
+
     # save targets
-    with open("graphs/all_targets_unfiltered.pkl", "wb") as output:
-        pickle.dump(targets, output)
+    with open("graphs/target_dict_unfiltered.pkl", "wb") as output:
+        pickle.dump(parsed_targets, output)
 
 
 if __name__ == "__main__":
