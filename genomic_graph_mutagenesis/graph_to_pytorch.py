@@ -79,12 +79,14 @@ def _get_masked_tensor(num_nodes: int):
 
 def graph_to_pytorch(
     root_dir: str,
-    graph_dir: str,
     graph_type: str,
     ):
     """Main function"""
+    graph_dir = f"{root_dir}/graphs"
+    graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
+    index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
+    targets = f"{graph_dir}/target_dict_unfiltered.pkl"
 
-    root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
     )
@@ -97,11 +99,6 @@ def graph_to_pytorch(
         val_chrs=val_chrs,
         tissue_append=True,
     )
-
-    graph_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
-    graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
-    index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/target_dict_unfiltered.pkl"
 
     with open(graph, "rb") as file:
         data = pickle.load(file)

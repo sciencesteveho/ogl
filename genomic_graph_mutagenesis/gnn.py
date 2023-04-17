@@ -97,7 +97,6 @@ def main() -> None:
 
     data = graph_to_pytorch(
         root_dir=args.root,
-        graph_dir=f"{args.root}/graphs",
         graph_type=args.graph_type,
     )
 
@@ -127,9 +126,16 @@ def main() -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--root", type=str, required=True, help="Root directory of dataset storage."
+        "--root",
+        type=str,
+        help="Root directory of dataset storage.",
+        default="/ocean/projects/bio210019p/stevesho/data/preprocess",
     )
-    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument(
+        "--device",
+        type=int, 
+        default=0,
+    )
     parser.add_argument(
         "--graph_type",
         type=str,
