@@ -106,11 +106,6 @@ def main() -> None:
         default="/ocean/projects/bio210019p/stevesho/data/preprocess",
     )
     parser.add_argument(
-        "--device",
-        type=int, 
-        default=0,
-    )
-    parser.add_argument(
         "--graph_type",
         type=str,
         default="full",
