@@ -124,7 +124,7 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GNN(in_size=data.x.shape[1], embedding_size=500, out_size=1).to_device()
+    model = GNN(in_size=data.x.shape[1], embedding_size=500, out_size=1).to(device)
     data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
