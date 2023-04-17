@@ -32,9 +32,9 @@ class GNN(torch.nn.Module):
         self.conv4.aggr = "max"
         self.conv5 = SAGEConv(embedding_size, embedding_size)
         self.conv5.aggr = "max"
-        self.conv6 = SAGEConv(embedding_size, out_channels)
+        self.conv6 = SAGEConv(embedding_size, embedding_size)
         self.conv6.aggr = "max"
-        self.conv7 = SAGEConv(embedding_size, out_channels)
+        self.conv7 = SAGEConv(embedding_size, embedding_size)
         self.conv7.aggr = "max"
         self.conv8 = SAGEConv(embedding_size, out_channels)
         self.conv8.aggr = "max"
