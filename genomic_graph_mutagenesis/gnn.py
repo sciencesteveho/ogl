@@ -34,6 +34,11 @@ class GNN(torch.nn.Module):
         self.conv5.aggr = "max"
         self.conv6 = SAGEConv(embedding_size, out_channels)
         self.conv6.aggr = "max"
+        self.conv7 = SAGEConv(embedding_size, out_channels)
+        self.conv7.aggr = "max"
+        self.conv8 = SAGEConv(embedding_size, out_channels)
+        self.conv8.aggr = "max"
+
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
@@ -44,11 +49,15 @@ class GNN(torch.nn.Module):
         x = F.relu(x)
         x = self.conv4(x, edge_index)
         x = F.relu(x)
-        x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv5(x, edge_index)
         x = F.relu(x)
-        x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv6(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv7(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv8(x, edge_index)
         return x
 
 
