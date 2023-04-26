@@ -148,9 +148,7 @@ def dir_check_make(dir: str) -> None:
 
 
 def _ls(dir: str) -> List[str]:
-    """
-    Returns a list of files within the directory
-    """
+    """Returns a list of files within the directory"""
     return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
 
 
@@ -195,6 +193,13 @@ def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
 
 
 def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
+    """Decorator to time functions
+
+    Args:
+        print_args (bool, optional): Defaults to False.
+        display_arg (str, optional): Decides wether or not args are printed to
+        stdout. Defaults to "".
+    """
     def _time_decorator_func(function: Callable) -> Callable:
         @functools.wraps(function)
         def _execute(*args: Any, **kwargs: Any) -> Any:
@@ -335,3 +340,23 @@ def _combined_graph_arrays(
         with open(graph_file, 'rb') as f:
             graph = pickle.load(f)
         feats.append(graph['node_feat'])
+
+
+def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:
+    """_summary_
+
+    Args:
+        tss_path (str): _description_
+        annotation_path (str): _description_
+
+    Returns:
+        List[str]: _description_
+    """
+    genesymbol_dict = {
+        line[0]: line[7] for line in csv.reader(open(annotation_path), delimiter="\t")
+    }
+
+    return [
+        (line[0], line[1], line[2], f"tss_{line[3]}_{genesymbol_dict[line[3]]}")
+        for line in csv.reader(open(tss_path), delimiter="\t")
+    ]

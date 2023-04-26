@@ -94,11 +94,12 @@ function _rbp_sites () {
 }
 
 # transcription start sites for hg38 are downloaded from refTSS v3.3, release
-# 18/08/2021
+# 18/08/2021. Gene symbols are added to refTSS names
 # Arguments:
 #   $1 - 
 #   $2 - 
 function _tss () {
+    cut -f1,8 $1 
     awk -v OFS='\t' '{print $1,$2,$3,"tss_"$4}' $1 \
         > $2/tss_parsed_hg38.bed
 }
