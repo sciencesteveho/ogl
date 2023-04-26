@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # / TODO /
-# - [ ] properly instatiate the tss, and remove the hardcode name for tss or enhancers and use feats
 # - [ ] get active enhancers from FENRIR
-# - [ ] only keep TSS with gene targets
 # - [ ] adjust the edges output to resembl that from edge_parser.py
 # - [ ] figure out why product returns key error. need to check for empty keys
 
@@ -21,12 +19,12 @@ import pybedtools
 
 
 def _load_tss(tss_path: str) -> pybedtools.BedTool:
-    """Load TSS file and ignore any TSS that do not have a gene target. 
+    """Load TSS file and ignore any TSS that do not have a gene target.
     Returns:
         pybedtools.BedTool - TSS w/ target genes
     """
     tss = pybedtools.BedTool(tss_path)
-    return tss.filter(lambda x: x[3].split('_')[3] != '').saveas()
+    return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
 
 
 def _split_chromatin_loops(
@@ -51,28 +49,25 @@ def _split_chromatin_loops(
 
 
 def _loop_direct_overlap(
-    loops: pybedtools.BedTool, enhancers: pybedtools.BedTool
+    loops: pybedtools.BedTool, features: pybedtools.BedTool
 ) -> pybedtools.BedTool:
-    """_summary_ of function"""
-    return loops.intersect(enhancers, wo=True)
+    """Get features that directly overlap with loop anchor"""
+    return loops.intersect(features, wo=True)
 
 
 def _loop_within_distance(
     loops: pybedtools.BedTool,
-    tss: pybedtools.BedTool,
+    features: pybedtools.BedTool,
     distance: int,
 ) -> pybedtools.BedTool:
-    """_summary_
+    """Get features 2kb within loop anchor
 
     Args:
         loops (pybedtools.BedTool): _description_
-        tss (pybedtools.BedTool): _description_
+        features (pybedtools.BedTool): _description_
         distance (int): _description_
-
-    Returns:
-        pybedtools.BedTool: _description_
     """
-    return loops.window(tss, w=distance)
+    return loops.window(features, w=distance)
 
 
 def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
@@ -128,9 +123,8 @@ def main() -> None:
     first_anchor_edges = _flatten_anchors(anchor_one_overlaps, anchor_one_tss)
     second_anchor_edges = _flatten_anchors(anchor_two_overlaps, anchor_two_tss)
 
-    edges = _loop_edges(
-        first_anchor, first_anchor_edges, second_anchor_edges
-    )
+    edges = _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)
+
 
 if __name__ == "__main__":
     main()
