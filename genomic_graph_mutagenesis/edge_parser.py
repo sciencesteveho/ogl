@@ -350,7 +350,7 @@ class EdgeParser:
         )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}",
-            score_filter=80
+            score_filter=30
         )
 
         self.edges = (

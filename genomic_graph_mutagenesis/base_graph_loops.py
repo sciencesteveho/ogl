@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# / TODO /
-# - [ ] get active enhancers from FENRIR
+# // TO-DO //
+# - [ ] add index for loop in edge feat
 # - [ ] adjust the edges output to resembl that from edge_parser.py
 # - [ ] figure out why product returns key error. need to check for empty keys
 
@@ -105,35 +105,48 @@ def _loop_edges(
 
 def main() -> None:
     """Main function"""
+    # enhancer_path = (
+    #     "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/GRCh38-ELS.bed"
+    # )
     enhancer_path = (
-        "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/GRCh38-ELS.bed"
+        "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed"
     )
+    # enhancer_path = (
+    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/hippocampus/local/enhancers_lifted_hippocampus.bed_noalt"
+    # )
+    # enhancer_path = (
+    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/liver/local/enhancers_lifted_liver.bed_noalt"
+    # # )
     loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver/Leung_2015.Liver.hg38.peakachu-merged.loops"
+    # loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus/Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
     tss_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed"
 
     enhancers = pybedtools.BedTool(enhancer_path)
     tss = _load_tss(tss_path)
     first_anchor, second_anchor = _split_chromatin_loops(loop_path)
 
-    anchor_one_overlaps = _loop_direct_overlap(first_anchor, enhancers)
-    anchor_two_overlaps = _loop_direct_overlap(second_anchor, enhancers)
-    anchor_one_tss = _loop_within_distance(first_anchor, tss, 2000)
-    anchor_two_tss = _loop_within_distance(second_anchor, tss, 2000)
-
-    first_anchor_edges = _flatten_anchors(anchor_one_overlaps, anchor_one_tss)
-    second_anchor_edges = _flatten_anchors(anchor_two_overlaps, anchor_two_tss)
+    first_anchor_edges = _flatten_anchors(
+        _loop_direct_overlap(first_anchor, enhancers),
+        _loop_within_distance(first_anchor, tss, 2000),
+    )
+    second_anchor_edges = _flatten_anchors(
+        _loop_direct_overlap(second_anchor, enhancers),
+        _loop_within_distance(second_anchor, tss, 2000),
+    )
 
     edges = _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)
+    len(set([x for edge in edges for x in edge]))
 
 
 if __name__ == "__main__":
     main()
 
 
-# chr17	55520000	55530000	chr17	55710000	55720000	0.8337972452258688	chr17	55521213	55521552	EH38D5024294	EH38E3231805	dELS	339
-# chr17	55710000	55720000	55520000	55530000	chr17	chr17	55710038	55710344	EH38D5024414	EH38E3231894dELS	306
-# chr17	64010000	64020000	chr17	64130000	64140000	0.8159749505187259	chr17	64020220	64020241	tss_hg_162245.1_
-# chr17	64130000	64140000	64010000	64020000	chr17	chr17	64130030	64130055	tss_hg_167554.1_ERN1
+# liver
+# all els - 137720
+# fenrir specific - 16539
+# epimap - 20149
 
-
-# [6:10]
+# hippocampus
+# all els - 110449
+# fenrir specific - 12515

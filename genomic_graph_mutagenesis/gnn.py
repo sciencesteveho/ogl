@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ]
-#
+# - [ ] fix layer sizes
+# - [ ] add option for different architectures
+# - [ ] add hyperparamters as parser args that output to a log
+# - [ ] implement tensorboard
 
 """Code to train GNNs on the graph data!"""
 
@@ -40,7 +42,7 @@ class GraphSAGE(torch.nn.Module):
         self.conv8.aggr = "mean"
         self.conv9 = SAGEConv(embedding_size, embedding_size)
         self.conv9.aggr = "max"
-        self.conv10 = SAGEConv(embedding_size, out_channels)
+        self.conv10 = SAGEConv(embedding_size, embedding_size)
         self.conv10.aggr = "mean"
 
 
@@ -68,6 +70,9 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv10(x, edge_index)
+        x = F.linear(x, 4)
+        x = F.relu(x)
+        x = F.linear(x, 4)
         return x
 
 

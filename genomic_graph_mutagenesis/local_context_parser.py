@@ -22,6 +22,7 @@ import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
 from utils import (
+    _listdir_isfile_wrapper,
     _tpm_filter_gene_windows,
     ATTRIBUTES,
     dir_check_make,
@@ -30,13 +31,6 @@ from utils import (
     parse_yaml,
     time_decorator,
 )
-
-
-def _listdir_isfile_wrapper(dir: str) -> List[str]:
-    """
-    Returns a list of bedfiles within the directory.
-    """
-    return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
 
 
 class LocalContextParser:

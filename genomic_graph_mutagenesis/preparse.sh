@@ -3,6 +3,32 @@
 # tissue-specific and are stored in a common directory, other than the
 # tissue-specific mirDIP files, which are pre-parsed to individual tissues.
 
+# function to convert imputed bigWig to .bed w/ peak calls
+# wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
+#   $1 -
+#   $2 - 
+#   $3 - 
+function _bigWig_to_peaks () {
+    $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/${3}.bedGraph
+    macs3 bdgpeakcall -i ${2}/${3}.bedGraph -o ${2}/${3}.bed
+    # cleanup 
+    tail -n +2 ${2}/${3}.bed > tmp && mv tmp ${2}/${3}.bed 
+    rm ${2}/${3}.bedGraph
+}
+
+# function to liftover 
+# wget link/to/liftOvertool
+#   $1 -
+#   $2 - 
+#   $3 - 
+function _liftover_19_to_38 () {
+    $1/liftOver \
+        $2/${3}.bed \
+        $1/hg19ToHg38.over.chain.gz \
+        ${3}._lifted_hg38.bed \
+        ${3}.unlifted
+}
+
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
 # "gene" entries. Additionally, make a lookup table top convert from gencode to
 # genesymbol.
@@ -22,7 +48,7 @@ function _gencode_nodetype_featsaver () {
 }
 
 # Parse mirDIP database v5.2 in tissue-specific files of active miRNAs. Requires
-# "mirDIP_ZA_TISSUE_MIRS.txt" from "All data / TSV" and "final_data.gff" from
+# "mirDIP_ZA_TISSUE_MIRS.txt" from "All data / TSV" and "final_data.gff",
 # "All data / GFF". miRNA targets are downloaded from miRTarBase v9.0 and
 # filtered for only interactions in homo sapiens. Interactions with a blank
 # "support type" were removed.
@@ -229,20 +255,6 @@ function _cleanup () {
     done
 }
 
-# OPTIONAL
-# function to convert imputed bigWig to .bed w/ peak calls
-# wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
-#   $1 -
-#   $2 - 
-#   $3 - 
-function _bigWig_to_peaks () {
-    $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/${3}.bedGraph
-    macs3 bdgpeakcall -i ${2}/${3}.bedGraph -o ${2}/${3}.bed
-    # cleanup 
-    tail -n +2 ${2}/${3}.bed > tmp && mv tmp ${2}/${3}.bed 
-    rm ${2}/${3}.bedGraph
-}
-
 # Main function to run all preparsing
 # Arguments:
 #   $1 - 
@@ -320,11 +332,6 @@ function main() {
     _tf_marker \
         /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/tf_markers_col_filtered.txt \
         /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction
-
-    _bigWig_to_peaks \
-        /ocean/projects/bio210019p/stevesho/resources \
-        /ocean/projects/bio210019p/stevesho/data/imputations \
-        ENCFF692UQE
 
     _cleanup
 }

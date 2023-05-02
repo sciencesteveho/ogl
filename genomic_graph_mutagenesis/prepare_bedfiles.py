@@ -230,11 +230,8 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
         """
-        Parse tissue-specific transcription factor binding sites from Funk et
-        al., Cell Reports, 2020. We use 20-seed HINT TFs with score > 200 and
-        use the locations of the motifs, not the footprints, as HINT footprints
-        are motif agnostic. Motifs are merged to form tf-binding clusters
-        (within 600bp, from Chen et al., Scientific Reports, 2015)
+        Parse tissue-specific transcription factor binding sites Vierstra et al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al., footprints are 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints, as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp,
+        from Chen et al., Scientific Reports, 2015). Vierstra et al., footprints are FPR thresholded with p value < 0.05. Footprints within 46bp are merged to form clusters, and then intersected with collapsed motifs. If 90% of the collapsed motif falls within the cluster, the cluster is annotated with the binding motif.
         """
         cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
             | cut -f1,2,3,4 \
@@ -242,7 +239,7 @@ class GenomeDataPreprocessor:
             | cut -f1,2,3,6 \
             | sed 's/\..*$//g' \
             | sort -k1,1 -k2,2n \
-            | bedtools merge -i - -d 600 -c 4 -o distinct \
+            | bedtools merge -i - -d 46 -c 4 -o distinct \
             > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
 
         self._run_cmd(cmd)
@@ -263,7 +260,7 @@ class GenomeDataPreprocessor:
 
         if self.options["cpg_filetype"] == "ENCODE":
             file = f"{self.tissue_dir}/unprocessed/{bed}_gt75"
-            gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 75' {self.tissue_dir}/unprocessed/{bed} \
+            gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 70' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
             self._run_cmd(gt_gc)
         else:
