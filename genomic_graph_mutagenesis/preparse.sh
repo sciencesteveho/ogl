@@ -29,6 +29,18 @@ function _liftover_19_to_38 () {
         ${3}.unlifted
 }
 
+# function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
+# Done for both enhancers and promoters.
+function _overlap_regulatory_regions () {
+    bedtools intersect \
+        -a $1/$2 \
+        -b $3/$4 \
+        -wa \
+        -wb \
+        -sorted \
+        > $5/$6
+}
+
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
 # "gene" entries. Additionally, make a lookup table top convert from gencode to
 # genesymbol.

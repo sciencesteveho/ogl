@@ -12,7 +12,9 @@
 We filter for distal ELSs and link them to other enhancers and promoters (loop
 overlap) or genes (within 2kb of a loop anchor)."""
 
+import csv
 import itertools
+import re
 from typing import Dict, List, Tuple
 
 import pybedtools
@@ -29,6 +31,8 @@ def _load_tss(tss_path: str) -> pybedtools.BedTool:
 
 def _split_chromatin_loops(
     loop_path: str,
+    caller: str = "yue",
+    cutoff: int = 0,
 ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
     """_summary_
 
@@ -38,6 +42,22 @@ def _split_chromatin_loops(
     Returns:
         Tuple[pybedtools.BedTool, pybedtools.BedTool]: _description_
     """
+    if caller == "yue":
+        loop_path = loop_path
+    elif caller == "deeploop":
+        file_reader = csv.reader(open(loop_path), delimiter="\t")
+        anchors = [
+            (re.split(":|-", line[0] + ":" + line[1])) + [line[2]]
+            for line in file_reader
+        ]
+        sorted_anchors = sorted(
+            [anchor for idx, anchor in enumerate(anchors) if idx > cutoff],
+            key=lambda x: float(x[6]),
+            reverse=True,
+        )  # sort by score and keep n top anchors
+        loop_path = sorted_anchors
+    else:
+        raise ValueError("Caller must be either 'yue' or 'deeploop'")
     first_anchor = pybedtools.BedTool(loop_path)
     second_anchor = pybedtools.BedTool(
         "\n".join(
@@ -108,9 +128,7 @@ def main() -> None:
     # enhancer_path = (
     #     "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/GRCh38-ELS.bed"
     # )
-    enhancer_path = (
-        "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed"
-    )
+    enhancer_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed"
     # enhancer_path = (
     #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/hippocampus/local/enhancers_lifted_hippocampus.bed_noalt"
     # )
@@ -123,7 +141,11 @@ def main() -> None:
 
     enhancers = pybedtools.BedTool(enhancer_path)
     tss = _load_tss(tss_path)
-    first_anchor, second_anchor = _split_chromatin_loops(loop_path)
+
+    first_anchor, second_anchor = _split_chromatin_loops(
+        loop_path=loop_path,
+        caller="yue",
+    )
 
     first_anchor_edges = _flatten_anchors(
         _loop_direct_overlap(first_anchor, enhancers),
