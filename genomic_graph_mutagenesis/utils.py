@@ -54,7 +54,6 @@ ATTRIBUTES = [
 ]
 
 NODES = [
-    "chromatinloops",
     "cpgislands",
     "ctcfccre",
     "enhancers",
@@ -65,6 +64,21 @@ NODES = [
     "tads",
     "tfbindingclusters",
     "tss",
+]
+
+TISSUES = [
+    "hela",
+    "hippocampus",
+    "k562",
+    "left_ventricle",
+    "liver",
+    "lung",
+    "mammary",
+    "npc",
+    "pancreas",
+    "skeletal_muscle",
+    "skin",
+    "small_intestine",
 ]
 
 TISSUE_TPM_KEYS = {

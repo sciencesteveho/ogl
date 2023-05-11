@@ -1,64 +1,114 @@
-resources:
-  tissue: 'skeletal_muscle'
-  tissue_name: 'Muscle - Skeletal'
-  window: 125000
-  ppi_tissue: 'skeletal muscle'
-  chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
-  fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
-  tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt'
-  marker_name: ''
-
+---
 dirs:
-  circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
-  data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle'  # place where unprocessed files exists
-  root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
-  shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
-  ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
-  poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
-
-tissue_specific:
-  cpg: 'ENCFF942KJO.bed'
-  dnase: 'ENCFF071WCJ.bed'
-  H3K27ac: 'H3K27ac_adrenal_ENCFF317ENJ.bed'
-  H3K27me3: 'H3K27me3_adrenal_ENCFF822TFO.bed'
-  H3K36me3: 'H3K36me3_adrenal_ENCFF946XSY.bed'
-  H3K4me1: 'H3K4me1_adrenal_ENCFF876NSG.bed'
-  H3K4me3: 'H3K4me3_adrenal_ENCFF545SIG.bed'
-  H3K9me3: 'H3K9me3_adrenal_ENCFF816NIJ.bed'
-  chromatinloops: 'Schmitt_2016.Adrenal.hg38.peakachu-merged.loops'
-  enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
-  enhancers_e_g: 'Enhancer_gene_network_082619.txt'
-  tads: 'Adrenal_Schmitt2016-raw_TADs.txt'
-  tf_binding: 'adrenal_gland_hint_20-footprint.bed.gz'
-  ctcf: 'ENCFF418GYV.bed'
-  polr2a: 'ENCFF569MJS.bed'
-  super_enhancer: SE_01_0069_SE_hg38.bed
-
-shared:
-  cpgislands: 'cpgislands_hg38_parsed.bed'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  line: 'line_hg38.bed'
-  ltr: 'ltr_hg38.bed'
-  microsatellites: 'microsatellites_hg38_parsed.bed'
-  mirnatargets: 'mirnatargets_parsed_hg38.bed'
-  phastcons: 'phastcons_gt_0.9_h38.bed'
-  polyasites: 'polyasites_filtered_hg38.bed'
-  promoters: 'promoters_parsed_hg38.bed'
-  rbpbindingistes: 'rbpbindingsites_parsed_hg38.bed'
-  rnarepeat: 'rnarepeat_hg38.bed'
-  simplerepeats: 'simplerepeats_hg38.bed'
-  sine: 'sine_hg38.bed'
-  tss: 'tss_parsed_hg38.bed'
-
+  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
+  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle
+  root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 interaction:
-  id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
-  entrez_file: 'entrez_to_genesymbol.txt'
-  gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
-  gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
-  circuits: 'skeletal_muscle_adult.txt'
-  polyadenylation: 'Muscle_Skeletal.txt'
-  ppis: 'IID_annotated_PPI.txt'
-
+  circuits: skeletal_muscle_adult.txt
+  entrez_file: entrez_to_genesymbol.txt
+  gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  id_lookup: gencode_to_genesymbol_lookup_table.txt
+  mirdip: skeletal.muscle_mirdip
+  mirnatargets: mirtargets_filtered.txt
+  ppis: IID_annotated_PPI.txt
+  tf_marker: tf_marker.txt
 options:
-  cpg_liftover: False
-  cpg_filetype: 'ENCODE' #ENCODE or GEO
+  cpg_filetype: ENCODE
+  cpg_liftover: false
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  marker_name: Skeletal muscle
+  ppi_tissue: skeletal muscle
+  tissue: skeletal_muscle
+  tissue_name: Muscle - Skeletal
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt
+  key_tpm: 
+  key_protein_abundance: Skin Unexpo
+  window: 500000
+shared:
+  ctcfccre: ctcfccre_parsed_hg38.bed
+  cnv: cnv_hg38.bed
+  cpgislands: cpgislands_hg38_parsed.bed
+  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+  gencode_attr: gencode_v26_node_attr.bed
+  indels: indels_hg38.bed
+  line: line_hg38.bed
+  ltr: ltr_hg38.bed
+  microsatellites: microsatellites_hg38_parsed.bed
+  phastcons: phastcons_gt_0.9_h38.bed
+  polyasites: polyasites_filtered_hg38.bed
+  promoters: promoters_parsed_hg38.bed
+  rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  recombination: recombination_hg38.bed
+  repg1b: repg1b_hg38.bed
+  repg2: repg2_hg38.bed
+  reps1: reps1_hg38.bed
+  reps2: reps2_hg38.bed
+  reps3: reps3_hg38.bed
+  reps4: reps4_hg38.bed
+  rnarepeat: rnarepeat_hg38.bed
+  simplerepeats: simplerepeats_hg38.bed
+  sine: sine_hg38.bed
+  snp: snp_hg38.bed
+  tss: tss_parsed_hg38.bed
+tissue_specific:
+  ATAC_1:
+  ATAC_2:
+  ATAC_3:
+  CTCF_1:
+  CTCF_2:
+  CTCF_3:
+  DNase_1:
+  DNase_2:
+  DNase_3:
+  H3K27ac_1:
+  H3K27ac_2:
+  H3K27ac_3:
+  H3K27me3_1:
+  H3K27me3_2:
+  H3K27me3_3:
+  H3K36me3_1:
+  H3K36me3_2:
+  H3K36me3_3:
+  H3K4me1_1:
+  H3K4me1_2:
+  H3K4me1_3:
+  H3K4me2_1:
+  H3K4me2_2:
+  H3K4me2_3:
+  H3K4me3_1:
+  H3K4me3_2:
+  H3K4me3_3:
+  H3K79me2_1:
+  H3K79me2_2:
+  H3K79me2_3:
+  H3K9ac_1:
+  H3K9ac_2:
+  H3K9ac_3:
+  H3K9me3_1:
+  H3K9me3_2:
+  H3K9me3_3:
+  POLR2A_1:
+  POLR2A_2:
+  POLR2A_3:
+  RAD21_1:
+  RAD21_2:
+  RAD21_3:
+  SMC3_1:
+  SMC3_2: 
+  SMC3_3: 
+  chromatinloops: Schmitt_2016.Psoas.hg38.peakachu-merged.loops
+  cpg: cpg_methyl_ENCFF341TLB.bed
+  ctcf: ENCFF143NGY.bed
+  dnase: ENCFF884XQO.bed
+  enhancers_e_e: Enhancer_Enhancer_network_082619.txt
+  enhancers_e_g: Enhancer_gene_network_082619.txt
+  polr2a: ENCFF039TJY.bed
+  polyadenylation: Muscle_Skeletal.txt
+  super_enhancer: SE_01_0063_SE_hg38.bed
+  tads: Psoas_Schmitt2016-raw_TADs.txt
+  tf_binding: muscle_organ_hint_20-footprint.bed

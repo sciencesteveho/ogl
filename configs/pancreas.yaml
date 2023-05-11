@@ -26,6 +26,8 @@ resources:
   tissue: pancreas
   tissue_name: Pancreas
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/pancreas.tpm.txt
+  key_tpm: pancreas
+  key_protein_abundance: pancreas
   window: 500000
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
@@ -54,12 +56,51 @@ shared:
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 tissue_specific:
-  H3K27ac: H3K27ac_pancreas_ENCFF731GWD.bed
-  H3K27me3: H3K27me3_pancreas_ENCFF578BBF.bed
-  H3K36me3: H3K36me3_pancreas_ENCFF283YWD.bed
-  H3K4me1: H3K4me1_pancreas_ENCFF098CNJ.bed
-  H3K4me3: H3K4me3_pancreas_ENCFF067NZN.bed
-  H3K9me3: H3K9me3_pancreas_ENCFF334VVE.bed
+  ATAC_1:
+  ATAC_2:
+  ATAC_3:
+  CTCF_1:
+  CTCF_2:
+  CTCF_3:
+  DNase_1:
+  DNase_2:
+  DNase_3:
+  H3K27ac_1:
+  H3K27ac_2:
+  H3K27ac_3:
+  H3K27me3_1:
+  H3K27me3_2:
+  H3K27me3_3:
+  H3K36me3_1:
+  H3K36me3_2:
+  H3K36me3_3:
+  H3K4me1_1:
+  H3K4me1_2:
+  H3K4me1_3:
+  H3K4me2_1:
+  H3K4me2_2:
+  H3K4me2_3:
+  H3K4me3_1:
+  H3K4me3_2:
+  H3K4me3_3:
+  H3K79me2_1:
+  H3K79me2_2:
+  H3K79me2_3:
+  H3K9ac_1:
+  H3K9ac_2:
+  H3K9ac_3:
+  H3K9me3_1:
+  H3K9me3_2:
+  H3K9me3_3:
+  POLR2A_1:
+  POLR2A_2:
+  POLR2A_3:
+  RAD21_1:
+  RAD21_2:
+  RAD21_3:
+  SMC3_1:
+  SMC3_2: 
+  SMC3_3: 
   chromatinloops: Schmitt_2016.Pancreas.hg38.peakachu-merged.loops
   cpg: cpg_methyl_ENCFF556VBV.bed
   ctcf: ENCFF225IGV.bed

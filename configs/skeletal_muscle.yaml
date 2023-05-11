@@ -26,6 +26,8 @@ resources:
   tissue: skeletal_muscle
   tissue_name: Muscle - Skeletal
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt
+  key_tpm: muscle_skeletal
+  key_protein_abundance: muscle_skeletal
   window: 500000
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
@@ -54,12 +56,51 @@ shared:
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 tissue_specific:
-  H3K27ac: H3K27ac_muscle_ENCFF267KHM.bed
-  H3K27me3: H3K27me3_muscle_ENCFF028WQO.bed
-  H3K36me3: H3K36me3_muscle_ENCFF489DQX.bed
-  H3K4me1: H3K4me1_muscle_ENCFF851MDY.bed
-  H3K4me3: H3K4me3_muscle_ENCFF640JXX.bed
-  H3K9me3: H3K9me3_muscle_ENCFF301KYN.bed
+  ATAC_1:
+  ATAC_2:
+  ATAC_3:
+  CTCF_1:
+  CTCF_2:
+  CTCF_3:
+  DNase_1:
+  DNase_2:
+  DNase_3:
+  H3K27ac_1:
+  H3K27ac_2:
+  H3K27ac_3:
+  H3K27me3_1:
+  H3K27me3_2:
+  H3K27me3_3:
+  H3K36me3_1:
+  H3K36me3_2:
+  H3K36me3_3:
+  H3K4me1_1:
+  H3K4me1_2:
+  H3K4me1_3:
+  H3K4me2_1:
+  H3K4me2_2:
+  H3K4me2_3:
+  H3K4me3_1:
+  H3K4me3_2:
+  H3K4me3_3:
+  H3K79me2_1:
+  H3K79me2_2:
+  H3K79me2_3:
+  H3K9ac_1:
+  H3K9ac_2:
+  H3K9ac_3:
+  H3K9me3_1:
+  H3K9me3_2:
+  H3K9me3_3:
+  POLR2A_1:
+  POLR2A_2:
+  POLR2A_3:
+  RAD21_1:
+  RAD21_2:
+  RAD21_3:
+  SMC3_1:
+  SMC3_2: 
+  SMC3_3: 
   chromatinloops: Schmitt_2016.Psoas.hg38.peakachu-merged.loops
   cpg: cpg_methyl_ENCFF341TLB.bed
   ctcf: ENCFF143NGY.bed

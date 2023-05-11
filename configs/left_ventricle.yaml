@@ -26,7 +26,8 @@ resources:
   tissue: left_ventricle
   tissue_name: Heart - Left Ventricle
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt
-  window: 500000
+  key_tpm: heart_left_venticle
+  key_protein_abundance: heart_ventricle
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed
@@ -54,12 +55,51 @@ shared:
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 tissue_specific:
-  H3K27ac: H3K27ac_lv_ENCFF635VBV.bed
-  H3K27me3: H3K27me3_lv_ENCFF242JDO.bed
-  H3K36me3: H3K36me3_lv_ENCFF767VOC.bed
-  H3K4me1: H3K4me1_lv_ENCFF194KSV.bed
-  H3K4me3: H3K4me3_lv_ENCFF175CMC.bed
-  H3K9me3: H3K9me3_lv_ENCFF242JDO.bed
+  ATAC_1:
+  ATAC_2:
+  ATAC_3:
+  CTCF_1:
+  CTCF_2:
+  CTCF_3:
+  DNase_1:
+  DNase_2:
+  DNase_3:
+  H3K27ac_1:
+  H3K27ac_2:
+  H3K27ac_3:
+  H3K27me3_1:
+  H3K27me3_2:
+  H3K27me3_3:
+  H3K36me3_1:
+  H3K36me3_2:
+  H3K36me3_3:
+  H3K4me1_1:
+  H3K4me1_2:
+  H3K4me1_3:
+  H3K4me2_1:
+  H3K4me2_2:
+  H3K4me2_3:
+  H3K4me3_1:
+  H3K4me3_2:
+  H3K4me3_3:
+  H3K79me2_1:
+  H3K79me2_2:
+  H3K79me2_3:
+  H3K9ac_1:
+  H3K9ac_2:
+  H3K9ac_3:
+  H3K9me3_1:
+  H3K9me3_2:
+  H3K9me3_3:
+  POLR2A_1:
+  POLR2A_2:
+  POLR2A_3:
+  RAD21_1:
+  RAD21_2:
+  RAD21_3:
+  SMC3_1:
+  SMC3_2: 
+  SMC3_3: 
   chromatinloops: Leung_2015.VentricleLeft.hg38.peakachu-merged.loops
   cpg: cpg_methyl_ENCFF318IKY.bed
   ctcf: ENCFF165RCX.bed

@@ -26,7 +26,15 @@ def _get_mask_idxs(
     index: str,
     split,
 ) -> np.ndarray:
-    """Create mask for graph"""
+    """_summary_
+
+    Args:
+        index (str): _description_
+        split (_type_): _description_
+
+    Returns:
+        np.ndarray: _description_
+    """
     # load graph indexes
     with open(index, "rb") as f:
         graph_index = pickle.load(f)
@@ -59,7 +67,14 @@ def _get_mask_idxs(
 def _get_target_values_for_mask(
     targets: str,
 ) -> np.ndarray:
-    """Create mask for graph"""
+    """_summary_
+
+    Args:
+        targets (str): _description_
+
+    Returns:
+        np.ndarray: _description_
+    """
     # load graph indexes
     with open(targets, "rb") as f:
         graph_targets = pickle.load(f)
@@ -72,6 +87,14 @@ def _get_target_values_for_mask(
 
 
 def _get_masked_tensor(num_nodes: int):
+    """_summary_
+
+    Args:
+        num_nodes (int): _description_
+
+    Returns:
+        _type_: _description_
+    """
     tensor = torch.zeros(num_nodes, dtype=torch.float)
     tensor[tensor == 0] = -1
     return tensor
@@ -81,7 +104,15 @@ def graph_to_pytorch(
     root_dir: str,
     graph_type: str,
     ):
-    """Main function"""
+    """_summary_
+
+    Args:
+        root_dir (str): _description_
+        graph_type (str): _description_
+
+    Returns:
+        _type_: _description_
+    """
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
@@ -162,6 +193,3 @@ def graph_to_pytorch(
     data.y = y.T
 
     return data
-
-# if __name__ == "__main__":
-#     main()

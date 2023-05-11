@@ -1,0 +1,113 @@
+---
+    dirs:
+      circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
+      data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus
+      root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+    interaction:
+      circuits: hippocampus_adult.txt
+      entrez_file: entrez_to_genesymbol.txt
+      gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
+      gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+      id_lookup: gencode_to_genesymbol_lookup_table.txt
+      mirdip: brain_mirdip
+      mirnatargets: mirtargets_filtered.txt
+      ppis: IID_annotated_PPI.txt
+      tf_marker: tf_marker.txt
+    options:
+      cpg_filetype: GEO
+      cpg_liftover: true
+    resources:
+      chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+      fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+      liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+      liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+      marker_name: Brain
+      ppi_tissue: hippocampal formation
+      tissue: hippocampus
+      tissue_name: Brain - Hippocampus
+      tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
+      key_tpm: brain_hippocampus
+      key_protein_abundance: 'brain_cortex'
+    shared:
+      ctcfccre: ctcfccre_parsed_hg38.bed
+      cnv: cnv_hg38.bed
+      cpgislands: cpgislands_hg38_parsed.bed
+      gencode: gencode_v26_genes_only_with_GTEx_targets.bed
+      gencode_attr: gencode_v26_node_attr.bed
+      indels: indels_hg38.bed
+      line: line_hg38.bed
+      ltr: ltr_hg38.bed
+      microsatellites: microsatellites_hg38_parsed.bed
+      phastcons: phastcons_gt_0.9_h38.bed
+      polyasites: polyasites_filtered_hg38.bed
+      promoters: promoters_parsed_hg38.bed
+      rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+      recombination: recombination_hg38.bed
+      repg1b: repg1b_hg38.bed
+      repg2: repg2_hg38.bed
+      reps1: reps1_hg38.bed
+      reps2: reps2_hg38.bed
+      reps3: reps3_hg38.bed
+      reps4: reps4_hg38.bed
+      rnarepeat: rnarepeat_hg38.bed
+      simplerepeats: simplerepeats_hg38.bed
+      sine: sine_hg38.bed
+      snp: snp_hg38.bed
+      tss: tss_parsed_hg38.bed
+    tissue_specific:
+      ATAC_1:
+      ATAC_2:
+      ATAC_3:
+      CTCF_1:
+      CTCF_2:
+      CTCF_3:
+      DNase_1:
+      DNase_2:
+      DNase_3:
+      H3K27ac_1:
+      H3K27ac_2:
+      H3K27ac_3:
+      H3K27me3_1:
+      H3K27me3_2:
+      H3K27me3_3:
+      H3K36me3_1:
+      H3K36me3_2:
+      H3K36me3_3:
+      H3K4me1_1:
+      H3K4me1_2:
+      H3K4me1_3:
+      H3K4me2_1:
+      H3K4me2_2:
+      H3K4me2_3:
+      H3K4me3_1:
+      H3K4me3_2:
+      H3K4me3_3:
+      H3K79me2_1:
+      H3K79me2_2:
+      H3K79me2_3:
+      H3K9ac_1:
+      H3K9ac_2:
+      H3K9ac_3:
+      H3K9me3_1:
+      H3K9me3_2:
+      H3K9me3_3:
+      POLR2A_1:
+      POLR2A_2:
+      POLR2A_3:
+      RAD21_1:
+      RAD21_2:
+      RAD21_3:
+      SMC3_1:
+      SMC3_2: 
+      SMC3_3: 
+      chromatinloops: Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops
+      cpg: CpgMethly_hippocampus_GSE46644.bed
+      ctcf: ENCFF450EVR.bed
+      dnase: ENCFF102QMS.bed
+      enhancers_e_e: Enhancer_Enhancer_network_082619.txt
+      enhancers_e_g: Enhancer_gene_network_082619.txt
+      polr2a: ENCFF692UQE.bed
+      polyadenylation: Brain_Hippocampus.txt
+      super_enhancer: SE_02_0351_SE_hg38.bedipp
+      tads: Hippocampus_Schmitt2016-raw_TADs.txt
+      tf_binding: brain_hint_20-footprint.bed

@@ -9,6 +9,7 @@
 training the network.
 """
 
+import argparse
 import csv
 import pickle
 from typing import Any, Dict, List, Tuple
@@ -17,51 +18,17 @@ from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
 import pandas as pd
 
-from utils import time_decorator
+from utils import (
+    parse_yaml, 
+    TISSUES, 
+    time_decorator,
+)
 
 
 DATA_SPLITS = ["train", "test", "validation"]
 
-TISSUE_KEYS = {
-    "mammary": (
-        "breast_mammary_tissue",
-        "breast",
-        "breast_mammary_tissue",
-    ),
-    "hippocampus": (
-        "brain_hippocampus",
-        "brain_cortex",
-        "brain_hippocampus",
-    ),
-    "left_ventricle": (
-        "heart_left_ventricle",
-        "heart_ventricle",
-        "heart_left_ventricle",
-    ),
-    "liver": (
-        "liver",
-        "liver",
-        "liver",
-    ),
-    "lung": (
-        "lung",
-        "lung",
-        "lung"
-    ),
-    "pancreas": (
-        "pancreas",
-        "pancreas",
-        "pancreas"
-    ),
-    "skeletal_muscle": (
-        "muscle_skeletal",
-        "muscle_skeletal",
-        "muscle_skeletal"
-    ),
-}  # tissue: (tpm_key, protein_key, filtered_tpm_filename)
 
-
-def genes_from_gff(gff: str) -> List[str]:
+def _genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file"""
     with open(gff, newline = '') as file:
         return {
@@ -122,13 +89,13 @@ def _tpm_all_tissue_median(gct_file):
     median_series.to_pickle("gtex_tpm_median_across_all_tissues.pkl")
 
 
-def _protein_abundance_all_tissue_median(protein_file: str):
+def _protein_abundance_all_tissue_median(protein_abundance_matrix: str):
     """
     For now, "BRAIN-CORTEX" values are being used for hippocampus. We choose cortex due
     to similarites shown between the tissues in GTEx Consortium, Science, 2020.
     Values are log2 so we inverse log them (2^x)
     """
-    df = pd.read_csv(protein_file, sep=",", index_col="gene.id.full").drop(
+    df = pd.read_csv(protein_abundance_matrix, sep=",", index_col="gene.id.full").drop(
         columns=["gene.id"]
     )
 
@@ -136,7 +103,7 @@ def _protein_abundance_all_tissue_median(protein_file: str):
     return pd.Series(df.median(axis=1), name="all_tissues").to_frame()
 
 
-def _protein_std_dev_and_mean(protein_median_file: str) -> pd.DataFrame:
+def _protein_std_dev_and_mean(protein_abundance_medians: str) -> pd.DataFrame:
     """Get means and standard deviation for protein abundance for specific tissue
     Calulates fold change of median of tissue relative to all_tissue_median
     """
@@ -150,7 +117,7 @@ def _protein_std_dev_and_mean(protein_median_file: str) -> pd.DataFrame:
         "Pancreas",
     ]
     df = pd.read_csv(
-        protein_median_file,
+        protein_abundance_medians,
         sep=",",
         index_col="gene.id.full",
         usecols=["gene.id.full"] + tissues,
@@ -225,26 +192,26 @@ def _tissue_dicts(
 def tissue_targets(
     split: dict,
     tissue_params: dict,
-    tpm_pkl: str,
-    tpm_median_file: str,
-    protein_file: str,
-    protein_median_file: str,
+    gene_expression_tpm_individuals: str,
+    gene_expression_tpm_medians: str,
+    protein_abundance_matrix: str,
+    protein_abundance_medians: str,
 ):
     """
     """
 
     # proteins
-    pro_median_df = _protein_std_dev_and_mean(protein_median_file)
-    pro_all_median = _protein_abundance_all_tissue_median(protein_file)
+    pro_median_df = _protein_std_dev_and_mean(protein_abundance_medians)
+    pro_all_median = _protein_abundance_all_tissue_median(protein_abundance_matrix)
     protein_targets_df = _fold_change_median(
         pro_median_df, pro_all_median, type="protein"
     )
 
     # expression TPMs
-    with open(tpm_pkl, "rb") as file:
+    with open(gene_expression_tpm_individuals, "rb") as file:
         tpm_all_median = pickle.load(file)
 
-    tpm_median_df = parse(tpm_median_file).data_df
+    tpm_median_df = parse(gene_expression_tpm_medians).data_df
     tpm_targets_df = _fold_change_median(tpm_median_df, tpm_all_median, type="tpm")
 
     targets = {
@@ -287,24 +254,31 @@ def filtered_targets(
     return targets
 
 
-def main() -> None:
+def main(
+    config_dir: str,
+    gencode_gtf: str,
+    test_chrs: List[str],
+    val_chrs: List[str],
+    gene_expression_tpm_individuals: str,
+    gene_expression_tpm_medians: str,
+    protein_abundance_matrix: str,
+    protein_abundance_medians: str,
+    save_dir: str,
+) -> None:
     """Pipeline to generate dataset split and target values"""
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
-    gene_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-    test_chrs = ["chr8", "chr9"]
-    val_chrs = ["chr7", "chr13"]
+    keys = []
+    for tissue in TISSUES:
+        params = parse_yaml(f'{config_dir}/{tissue}.yaml')
+        keys[tissue] = (params["key_tpm"], params["key_protein_abundance"])
 
-    root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
-    tpm_pkl = "gtex_tpm_median_across_all_tissues.pkl"
-    tpm_median_file = "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
-    protein_file = "protein_relative_abundance_all_gtex.csv"
-    protein_median_file = "protein_relative_abundance_median_gtex.csv"
-
-    save_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
     chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
 
     split = _chr_split_train_test_val(
-        genes=genes_from_gff(gene_gtf),
+        genes=_genes_from_gff(gencode_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         tissue_append=True,
@@ -316,11 +290,11 @@ def main() -> None:
     # get targets - 313502 /31283/28231 train/test/validation, total = 373016
     targets = tissue_targets(
         split=split,
-        tissue_params=TISSUE_KEYS,
-        tpm_pkl=f"{root_dir}/shared_data/{tpm_pkl}",
-        tpm_median_file=f"{root_dir}/shared_data/{tpm_median_file}",
-        protein_file=f"{root_dir}/shared_data/{protein_file}",
-        protein_median_file=f"{root_dir}/shared_data/{protein_median_file}",
+        tissue_params=keys,
+        gene_expression_tpm_individuals=gene_expression_tpm_individuals,
+        gene_expression_tpm_medians=gene_expression_tpm_medians,
+        protein_abundance_matrix=protein_abundance_matrix,
+        protein_abundance_medians=protein_abundance_medians,
     )
 
     parsed_targets = {}
@@ -334,4 +308,14 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
+        gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
+        test_chrs=["chr8", "chr9"],
+        val_chrs=["chr7", "chr13"],
+        gene_expression_tpm_individuals="gtex_tpm_median_across_all_tissues.pkl",
+        gene_expression_tpm_medians="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
+        protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
+        protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
+        save_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
+    )

@@ -1,15 +1,15 @@
 ---
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
-  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver
+  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 interaction:
-  circuits: liver_adult.txt
+  circuits: skeletal_muscle_adult.txt
   entrez_file: entrez_to_genesymbol.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirdip: liver_mirdip
+  mirdip: skeletal.muscle_mirdip
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
@@ -21,13 +21,14 @@ resources:
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name: Liver
-  ppi_tissue: liver
-  tissue: liver
-  tissue_name: Liver
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt
-  key_tpm: liver
-  key_protein_abundance: liver
+  marker_name: Skeletal muscle
+  ppi_tissue: skeletal muscle
+  tissue: skeletal_muscle
+  tissue_name: Muscle - Skeletal
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt
+  key_tpm:
+  key_protein_abundance:
+  window: 500000
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed
@@ -100,14 +101,14 @@ tissue_specific:
   SMC3_1:
   SMC3_2: 
   SMC3_3: 
-  chromatinloops: Leung_2015.Liver.hg38.peakachu-merged.loops
-  cpg: cpg_methyl_ENCFF080ETP.bed
-  ctcf: ENCFF046XEZ.bed
-  dnase: ENCFF905THS.bed
+  chromatinloops: Schmitt_2016.Psoas.hg38.peakachu-merged.loops
+  cpg: cpg_methyl_ENCFF341TLB.bed
+  ctcf: ENCFF143NGY.bed
+  dnase: ENCFF884XQO.bed
   enhancers_e_e: Enhancer_Enhancer_network_082619.txt
   enhancers_e_g: Enhancer_gene_network_082619.txt
-  polr2a: ENCFF064ASM.bed
-  polyadenylation: Liver.txt
-  super_enhancer: SE_02_1299_SE_hg38.bed
-  tads: Liver_STL011_Leung_2015-raw_TADs.txt
-  tf_binding: liver_hint_20-footprint.bed  # mirnatargets: 'mirtargets_filtered.txt'
+  polr2a: ENCFF039TJY.bed
+  polyadenylation: Muscle_Skeletal.txt
+  super_enhancer: SE_01_0063_SE_hg38.bed
+  tads: Psoas_Schmitt2016-raw_TADs.txt
+  tf_binding: muscle_organ_hint_20-footprint.bed

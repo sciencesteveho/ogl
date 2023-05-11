@@ -1,0 +1,65 @@
+resources:
+    tissue: 'skeletal_muscle'
+    tissue_name: 'Muscle - Skeletal'
+    window: 125000
+    ppi_tissue: 'skeletal muscle'
+    chromfile: '/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt'
+    fasta: '/ocean/projects/bio210019p/stevesho/resources/hg38.fa'
+    tpm: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/muscle_skeletal.tpm.txt'
+    marker_name: ''
+  
+  dirs:
+    circuit_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks'
+    data_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle'  # place where unprocessed files exists
+    root_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess'  # place to process data
+    shared_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data'
+    ppi_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/Humanproteinatlas-Protein'
+    poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
+  
+  tissue_specific:
+    cpg: 'ENCFF942KJO.bed'
+    dnase: 'ENCFF071WCJ.bed'
+    H3K27ac: 'H3K27ac_adrenal_ENCFF317ENJ.bed'
+    H3K27me3: 'H3K27me3_adrenal_ENCFF822TFO.bed'
+    H3K36me3: 'H3K36me3_adrenal_ENCFF946XSY.bed'
+    H3K4me1: 'H3K4me1_adrenal_ENCFF876NSG.bed'
+    H3K4me3: 'H3K4me3_adrenal_ENCFF545SIG.bed'
+    H3K9me3: 'H3K9me3_adrenal_ENCFF816NIJ.bed'
+    chromatinloops: 'Schmitt_2016.Adrenal.hg38.peakachu-merged.loops'
+    enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'
+    enhancers_e_g: 'Enhancer_gene_network_082619.txt'
+    tads: 'Adrenal_Schmitt2016-raw_TADs.txt'
+    tf_binding: 'adrenal_gland_hint_20-footprint.bed.gz'
+    ctcf: 'ENCFF418GYV.bed'
+    polr2a: 'ENCFF569MJS.bed'
+    super_enhancer: SE_01_0069_SE_hg38.bed
+  
+  shared:
+    cpgislands: 'cpgislands_hg38_parsed.bed'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    line: 'line_hg38.bed'
+    ltr: 'ltr_hg38.bed'
+    microsatellites: 'microsatellites_hg38_parsed.bed'
+    mirnatargets: 'mirnatargets_parsed_hg38.bed'
+    phastcons: 'phastcons_gt_0.9_h38.bed'
+    polyasites: 'polyasites_filtered_hg38.bed'
+    promoters: 'promoters_parsed_hg38.bed'
+    rbpbindingistes: 'rbpbindingsites_parsed_hg38.bed'
+    rnarepeat: 'rnarepeat_hg38.bed'
+    simplerepeats: 'simplerepeats_hg38.bed'
+    sine: 'sine_hg38.bed'
+    tss: 'tss_parsed_hg38.bed'
+  
+  interaction:
+    id_lookup: 'gencode_to_genesymbol_lookup_table.txt'
+    entrez_file: 'entrez_to_genesymbol.txt'
+    gct: 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct'
+    gencode: 'gencode_v26_genes_only_with_GTEx_targets.bed'
+    circuits: 'skeletal_muscle_adult.txt'
+    polyadenylation: 'Muscle_Skeletal.txt'
+    ppis: 'IID_annotated_PPI.txt'
+  
+  options:
+    cpg_liftover: False
+    cpg_filetype: 'ENCODE' #ENCODE or GEO
+  

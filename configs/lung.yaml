@@ -26,7 +26,8 @@ resources:
   tissue: lung
   tissue_name: Lung
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/lung.tpm.txt
-  window: 500000
+  key_tpm: lung
+  key_protein_abundance: lung
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed
@@ -54,12 +55,51 @@ shared:
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 tissue_specific:
-  H3K27ac: H3K27ac_lung_ENCFF496RDA.bed
-  H3K27me3: H3K27me3_lung_ENCFF248IPH.bed
-  H3K36me3: H3K36me3_lung_ENCFF459IYH.bed
-  H3K4me1: H3K4me1_lung_ENCFF926YKP.bed
-  H3K4me3: H3K4me3_lung_ENCFF843JPR.bed
-  H3K9me3: H3K9me3_lung_ENCFF080ZRB.bed
+  ATAC_1:
+  ATAC_2:
+  ATAC_3:
+  CTCF_1:
+  CTCF_2:
+  CTCF_3:
+  DNase_1:
+  DNase_2:
+  DNase_3:
+  H3K27ac_1:
+  H3K27ac_2:
+  H3K27ac_3:
+  H3K27me3_1:
+  H3K27me3_2:
+  H3K27me3_3:
+  H3K36me3_1:
+  H3K36me3_2:
+  H3K36me3_3:
+  H3K4me1_1:
+  H3K4me1_2:
+  H3K4me1_3:
+  H3K4me2_1:
+  H3K4me2_2:
+  H3K4me2_3:
+  H3K4me3_1:
+  H3K4me3_2:
+  H3K4me3_3:
+  H3K79me2_1:
+  H3K79me2_2:
+  H3K79me2_3:
+  H3K9ac_1:
+  H3K9ac_2:
+  H3K9ac_3:
+  H3K9me3_1:
+  H3K9me3_2:
+  H3K9me3_3:
+  POLR2A_1:
+  POLR2A_2:
+  POLR2A_3:
+  RAD21_1:
+  RAD21_2:
+  RAD21_3:
+  SMC3_1:
+  SMC3_2: 
+  SMC3_3: 
   chromatinloops: Schmitt_2016.Lung.hg38.peakachu-merged.loops
   cpg: cpg_methyl_ENCFF532PDE.bed
   ctcf: ENCFF629UDP.bed
