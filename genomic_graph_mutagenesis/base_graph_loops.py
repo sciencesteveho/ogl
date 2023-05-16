@@ -123,22 +123,12 @@ def _loop_edges(
     return edges
 
 
-def main() -> None:
+def main(
+    enhancer_path: str,
+    loop_path: str,
+    tss_path: str,   
+) -> None:
     """Main function"""
-    # enhancer_path = (
-    #     "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/GRCh38-ELS.bed"
-    # )
-    enhancer_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed"
-    # enhancer_path = (
-    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/hippocampus/local/enhancers_lifted_hippocampus.bed_noalt"
-    # )
-    # enhancer_path = (
-    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/liver/local/enhancers_lifted_liver.bed_noalt"
-    # # )
-    loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver/Leung_2015.Liver.hg38.peakachu-merged.loops"
-    # loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus/Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
-    tss_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed"
-
     enhancers = pybedtools.BedTool(enhancer_path)
     tss = _load_tss(tss_path)
 
@@ -161,8 +151,24 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        enhancer_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed",
+        loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver/Leung_2015.Liver.hg38.peakachu-merged.loops",
+        tss_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed",
+    )
 
+
+# enhancer_path = (
+#     "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/GRCh38-ELS.bed"
+# )
+# enhancer_path = (
+#     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/hippocampus/local/enhancers_lifted_hippocampus.bed_noalt"
+# )
+# enhancer_path = (
+#     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/liver/local/enhancers_lifted_liver.bed_noalt"
+# # )
+# loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus/Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
+    
 
 # liver
 # all els - 137720
