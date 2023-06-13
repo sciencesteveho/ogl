@@ -5,6 +5,7 @@
 
 # function to convert imputed bigWig to .bed w/ peak calls
 # wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
+# Arguments:
 #   $1 -
 #   $2 - 
 #   $3 - 
@@ -18,6 +19,7 @@ function _bigWig_to_peaks () {
 
 # function to liftover 
 # wget link/to/liftOvertool
+# Arguments:
 #   $1 -
 #   $2 - 
 #   $3 - 
@@ -31,20 +33,88 @@ function _liftover_19_to_38 () {
 
 # function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
 # Done for both enhancers and promoters.
+# Arguments:
+#   $1 -
+#   $2 - 
+#   $3 - 
+#   $4 - 
+#   $5 - 
 function _overlap_regulatory_regions () {
+    _liftover_19_to_38 \
+        $1 \
+        $2 \
+        $3
+
     bedtools intersect \
-        -a $1/$2 \
-        -b $3/$4 \
+        -a $2/$4 \
+        -b $2/$3._lifted_hg38.bed \
         -wa \
         -wb \
-        -sorted \
-        > $5/$6
+        | sort -k1,1 -k2,2n \
+        | cut -f1,2,3 \
+        | uniq \
+        | awk -v OFS='\t' '{print $1,$2,$3,"enhancer"}' \
+        > $2/epimap_screen_${5}_overlap.bed
+
+    rm ${3}.unlifted
 }
+
+# function to overlap SCREEN regulatory regions with EpiMap dyadic regions
+# Arguments:
+#   $1 -
+#   $2 - 
+#   $3 - 
+#   $4 - 
+#   $5 - 
+function _overlap_dyadic_elements () {
+    _liftover_19_to_38 \
+        $1 \
+        $2 \
+        $3
+    
+    bedtools intersect \
+        -a $2/$3._lifted_hg38.bed \
+        -b $2/$4 $2/$5 \
+        -wa \
+        | sort -k1,1 -k2,2n \
+        | cut -f1,2,3 \
+        | uniq \
+        | awk -v OFS='\t' '{print $1,$2,$3,"dyadic"}' \
+        > $2/epimap_screen_${6}_overlap.bed
+
+    rm ${3}.unlifted
+}
+
+# enhancers
+_overlap_regulatory_regions \
+    /ocean/projects/bio210019p/stevesho/resources \
+    /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/regulatory_elements \
+    ENH_masterlist_locations \
+    GRCh38-ELS.bed \
+    enhancer
+
+# promoters
+_overlap_regulatory_regions \
+    /ocean/projects/bio210019p/stevesho/resources \
+    /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/regulatory_elements \
+    PROM_masterlist_locations \
+    GRCh38-PLS.bed \
+    promoter
+
+# dyadic
+_overlap_dyadic_elements \
+    /ocean/projects/bio210019p/stevesho/resources \
+    /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/regulatory_elements \
+    DYADIC_masterlist_locations \
+    GRCh38-ELS.bed \
+    GRCh38-PLS.bed \
+    dyadic
 
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
 # "gene" entries. Additionally, make a lookup table top convert from gencode to
 # genesymbol.
 # wget https://storage.googleapis.com/gtex_analysis_v8/reference/gencode.v26.GRCh38.genes.gtf 
+# Arguments:
 function _gencode_bed () {
     gtf2bed <  $1/$2 | awk '$8 == "gene"' | grep -v miR > $3/local/gencode_v26_genes_only_with_GTEx_targets.bed
     cut -f4,10 $3/local/gencode_v26_genes_only_with_GTEx_targets.bed | sed 's/;/\t/g' | cut -f1,5 | sed -e 's/ gene_name //g' -e 's/\"//g' > $3/interaction/gencode_to_genesymbol_lookup_table.txt
@@ -52,6 +122,7 @@ function _gencode_bed () {
 
 # save alternative names for gencode entries. This is for parsing node features
 # downstream of graph construction
+# Arguments:
 function _gencode_nodetype_featsaver () {
     cat <(awk -v OFS='\t' '{print $1, $2, $3, $4}' $1/$2) \
         <(awk -v OFS='\t' '{print $1, $2, $3, $4"_protein"}' $1/$2) \
@@ -64,6 +135,7 @@ function _gencode_nodetype_featsaver () {
 # "All data / GFF". miRNA targets are downloaded from miRTarBase v9.0 and
 # filtered for only interactions in homo sapiens. Interactions with a blank
 # "support type" were removed.
+# Arguments:
 #   $1 - 
 #   $2 - 
 #   $3 - 
@@ -84,6 +156,7 @@ function _active_mirna () {
         | awk -v OFS="\t" '($6 == 1) { print>"tissues/"$5}'
 }
 
+# DEPRECATED 
 # Encode SCREEN enhancer cCREs downloaded from FENRIR. Enhancers are lifted over
 # to hg38 from hg19 and an index for each enhancer is kept for easier
 # identification
@@ -91,21 +164,25 @@ function _active_mirna () {
 #   $2 - 
 #   $3 - 
 #   $4 - 
-function _enhancer_lift () {
-    awk -v OFS=FS='\t' '{print $2, $3, $4, "enhancer_"$1}' $1/$2 | tail -n +2 > enhancer_regions_unlifted.txt
-    # awk -v OFS=FS='\t' '{print $2":"$3"-"$4, "enhancer_"$1}' $1/$2 | tail -n +2 > enhancer_indexes_unlifted.txt
+# function _enhancer_lift () {
+#     awk -v OFS=FS='\t' '{print $2, $3, $4, "enhancer_"$1}' $1/$2 | tail -n +2 > enhancer_regions_unlifted.txt
+#     # awk -v OFS=FS='\t' '{print $2":"$3"-"$4, "enhancer_"$1}' $1/$2 | tail -n +2 > enhancer_indexes_unlifted.txt
 
-    $3/liftOver \
-        enhancerregions.txt \
-        $3/hg19ToHg38.over.chain.gz \
-        $4/enhancer_regions_lifted.txt \
-        enhancers_unlifted.txt
+#     $3/liftOver \
+#         enhancerregions.txt \
+#         $3/hg19ToHg38.over.chain.gz \
+#         $4/enhancer_regions_lifted.txt \
+#         enhancers_unlifted.txt
 
-    awk -v OFS=FS='\t' '{print $1":"$2"-"$3, $4}' enhancer_regions_lifted.txt > $4/enhancer_indexes.txt
-}
+#     awk -v OFS=FS='\t' '{print $1":"$2"-"$3, $4}' enhancer_regions_lifted.txt > $4/enhancer_indexes.txt
+# }
 
 # poly-(A) target sites for hg38 are downloaded from PolyASite, homo sapiens
 # v2.0, release 21/04/2020
+# Arguments:
+#   $1 - 
+#   $2 - 
+#   $3 - 
 function _poly_a () {
     awk -v OFS='\t' '{print "chr"$1,$2,$3,"polya_"$4_$10}' $1/$2 \
         > $3/polyasites_filtered_hg38.bed
@@ -114,6 +191,7 @@ function _poly_a () {
 # RNA Binding protein sites were downloaded from POSTAR 3. We first merged
 # adjacent sites to create RBP binding site clusters. We keep sites present in
 # at least 20% of the sampes (8)
+# Arguments:
 #   $1 - 
 #   $2 - 
 #   $3 - 
@@ -147,17 +225,19 @@ function _tss () {
 # Arguments:
 #   $1 - 
 #   $2 - 
+#   $3 - 
+#   $4 - 
 function _target_scan () {
-    $1/liftOver \
-        $2/$3 \
-        $1/hg19ToHg38.over.chain.gz \
-        miRNAtargets_lifted_hg38.bed \
-        mirRNA_unlifted
+    _liftover_19_to_38 \
+        $1 \
+        $2 \
+        $3
 
-    awk -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' miRNAtargets_lifted_hg38.bed \
+    awk -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' Predicted_Target_Locations.default_predictions.hg19._lifted_hg38.bed \
         | sed 's/::/__/g' \
         > $4/mirnatargets_parsed_hg38.bed
 }
+
 
 # ENCODE SCREEN candidate promoters from SCREEN registry of cCREs V3
 # Arguments:
@@ -354,3 +434,52 @@ main \
     var2 \
     var3 \
     var4 
+
+
+# extra function to liftover deeploop bedpe files
+# Arguments:
+#   $1 - filename
+#   $2 - directory to process files
+#   $3 - directory of liftover and liftover chain
+function _liftover_deeploop_bedpe () {
+    sed \
+        -e 's/:/\t/g' \
+        -e 's/-/\t/g' \
+        $1.txt \
+        > $2/$1.bedpe
+        
+    awk -v OFS='\t' '{print $1,$2,$3,NR}' $2/$1.bedpe > $2/$1.bedpe_1
+    awk -v OFS='\t' '{print $4,$5,$6,NR,$7,$8}' $2/$1.bedpe > $2/$1.bedpe_2
+
+    for file in bedpe_1 bedpe_2;
+    do
+        $3/liftOver \
+            $2/$1.${file} \
+            $3/hg19ToHg38.over.chain.gz \
+            $2/$1.${file}.hg38 \
+            $2/$1.${file}.unmapped
+        
+        sort -k4,4 -o $2/$1.${file}.hg38 $2/$1.${file}.hg38
+    done
+
+    join \
+        -j 4 \
+        -o 1.1,1.2,1.3,2.1,2.2,2.3,2.4,2.5,2.6 \
+        $2/$1.bedpe_1.hg38 \
+        $2/$1.bedpe_2.hg38 \
+        | sed 's/ /\t/g' \
+        > $2/$1.bedpe.hg38
+
+    for file in $1.bedpe $1.bedpe_1 $1.bedpe_1.hg38 $1.bedpe_1.unmapped $1.bedpe_2 $1.bedpe_2.hg38 $1.bedpe_2.unmapped;
+    do
+        rm $2/$file
+    done
+}
+
+for tissue in GSE167200_Liver.top300K GSE167200_Hippocampus.top300K GSE167200_LeftVentricle.top300K GSE167200_Lung.top300K GSE167200_Pancreas.top300K GSE167200_Psoas_Muscle.top300k GSE167200_Small_Intenstine.top300K;
+do
+    _liftover_deeploop_bedpe \
+        $tissue \
+        liftover_processing \
+        /ocean/projects/bio210019p/stevesho/resources
+done

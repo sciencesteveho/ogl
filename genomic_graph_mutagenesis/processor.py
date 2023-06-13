@@ -17,7 +17,7 @@ from .local_context_parser import LocalContextParser
 from utils import _listdir_isfile_wrapper, parse_yaml
 
 
-class OGMProcessor:
+class GGMProcessor:
     def __init__(
         self,
         params: Dict[str, Dict[str, str]],
@@ -56,7 +56,7 @@ def main() -> None:
     args = parser.parse_args()
     params = parse_yaml(args.config)
     
-    ogmprocessorObj = OGMProcessor(params=params)
+    ogmprocessorObj = GGMProcessor(params=params)
     ogmprocessorObj.process()
 
 

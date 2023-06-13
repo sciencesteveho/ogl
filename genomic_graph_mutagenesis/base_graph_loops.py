@@ -42,7 +42,7 @@ def _split_chromatin_loops(
     Returns:
         Tuple[pybedtools.BedTool, pybedtools.BedTool]: _description_
     """
-    if caller == "yue":
+    if caller == "peakachu":
         loop_path = loop_path
     elif caller == "deeploop":
         file_reader = csv.reader(open(loop_path), delimiter="\t")
@@ -50,18 +50,21 @@ def _split_chromatin_loops(
             (re.split(":|-", line[0] + ":" + line[1])) + [line[2]]
             for line in file_reader
         ]
-        sorted_anchors = sorted(
-            [anchor for idx, anchor in enumerate(anchors) if idx > cutoff],
-            key=lambda x: float(x[6]),
-            reverse=True,
-        )  # sort by score and keep n top anchors
-        loop_path = sorted_anchors
+        try:
+            sorted_anchors = sorted(
+                [anchor for idx, anchor in enumerate(anchors) if idx > cutoff],
+                key=lambda x: float(x[6]),
+                reverse=True,
+            )  # sort by score and keep n top anchors
+            loop_path = sorted_anchors
+        except IndexError:
+            print("Deeploop calls have associated scores, which are missing. Is this a loop file from Peakachu?")
     else:
-        raise ValueError("Caller must be either 'yue' or 'deeploop'")
+        raise ValueError("Caller must be either 'peakachu' or 'deeploop'")
     first_anchor = pybedtools.BedTool(loop_path)
     second_anchor = pybedtools.BedTool(
         "\n".join(
-            ["\t".join([x[3], x[4], x[5], x[1], x[2], x[3]]) for x in first_anchor]
+            ["\t".join([x[3], x[4], x[5], x[0], x[1], x[2]]) for x in first_anchor]
         ),
         from_string=True,
     )
@@ -123,20 +126,17 @@ def _loop_edges(
     return edges
 
 
-def main(
-    enhancer_path: str,
-    loop_path: str,
-    tss_path: str,   
-) -> None:
-    """Main function"""
-    enhancers = pybedtools.BedTool(enhancer_path)
-    tss = _load_tss(tss_path)
-
+def get_loop_edges(
+    enhancers,
+    tss,
+    loop_path,
+    caller,
+):
     first_anchor, second_anchor = _split_chromatin_loops(
         loop_path=loop_path,
-        caller="yue",
+        caller=caller,
     )
-
+    
     first_anchor_edges = _flatten_anchors(
         _loop_direct_overlap(first_anchor, enhancers),
         _loop_within_distance(first_anchor, tss, 2000),
@@ -145,15 +145,28 @@ def main(
         _loop_direct_overlap(second_anchor, enhancers),
         _loop_within_distance(second_anchor, tss, 2000),
     )
+    
+    return _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)
 
-    edges = _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)
+
+def main(
+    enhancer_path: str,
+    loop_path: str,
+    tss_path: str,   
+) -> None:
+    """Main function"""
+    enhancers = pybedtools.BedTool(enhancer_path)
+    tss = _load_tss(tss_path)
+    edges = get_loop_edges(
+        enhancers=enhancers
+    )
     len(set([x for edge in edges for x in edge]))
 
 
 if __name__ == "__main__":
     main(
         enhancer_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed",
-        loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver/Leung_2015.Liver.hg38.peakachu-merged.loops",
+        loop_path = "GSE167200_Liver.top300K.txt",
         tss_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed",
     )
 

@@ -14,7 +14,7 @@ based on the average activity of that specific gene across all samples adapted
 from Schrieber et al., Genome Biology, 2020."""
 
 import pickle
-from typing import Tuple
+from typing import List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
@@ -39,7 +39,6 @@ def _tpm_all_tissue_median(expression_gct: str) -> np.ndarray:
     summed_activity.to_pickle('baseline_activitiy_gtex_expression.pkl')
     return summed_activity.div(sample_count, axis=0).fillna(0).values
 
-
 def _get_targets(
     split: str,
     targets: dict,
@@ -50,16 +49,26 @@ def _get_targets(
     )
     
     
-def _get_baseline_predictions(labels, s):
+def _avg_activity_baseline_predictions(labels, s):
     return [
         s['all_tissues'][label.split('_')[0]] for label in labels
     ]
+    
+def _nonzero_tpms(tpms: List(List(float))) -> np.ndarray:
+    """_summary_
+
+    Args:
+        expression_gct (str): _description_
+
+    Returns:
+        np.ndarray: _description_
+    """
 
 
-def main() -> None:
+def main(
+    expression_gct: str,
+) -> None:
     """Main function"""
-    expression_gct = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
-
     # get predictions as the average tpm for that gene across all tissues
     average_activity = _tpm_all_tissue_median(expression_gct)
     # with open('average_activity_before_transform.pkl', 'wb') as f:
@@ -78,9 +87,9 @@ def main() -> None:
     val_labels, val_true = _get_targets('validation', targets)
     train_labels, train_true = _get_targets('train', targets)
     
-    train_preds = _get_baseline_predictions(train_labels, s)
-    test_preds = _get_baseline_predictions(test_labels, s)
-    val_preds = _get_baseline_predictions(val_labels, s)
+    train_preds = _avg_activity_baseline_predictions(train_labels, s)
+    test_preds = _avg_activity_baseline_predictions(test_labels, s)
+    val_preds = _avg_activity_baseline_predictions(val_labels, s)
     
     train_error = mean_squared_error(train_true, train_preds, squared=False)
     test_error = mean_squared_error(test_true, test_preds, squared=False)
@@ -92,4 +101,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        expression_gct = 'GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct'
+    )

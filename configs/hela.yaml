@@ -1,8 +1,10 @@
----
+# raw filepath directories
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/skeletal_muscle
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+
+# filenames for interaction type data
 interaction:
   circuits: skeletal_muscle_adult.txt
   entrez_file: entrez_to_genesymbol.txt
@@ -13,9 +15,11 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
+
 options:
   cpg_filetype: ENCODE
   cpg_liftover: false
+
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
@@ -29,6 +33,7 @@ resources:
   key_tpm:
   key_protein_abundance:
   window: 500000
+
 shared:
   ctcfccre: ctcfccre_parsed_hg38.bed
   cnv: cnv_hg38.bed
@@ -55,6 +60,7 @@ shared:
   sine: sine_hg38.bed
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
+
 tissue_specific:
   ATAC_1:
   ATAC_2:
