@@ -44,7 +44,7 @@ function _merge_epimap_features () {
 function main () {
     for file in $1/$2/*;
     do
-        if [ -f $file]; then
+        if [ -f $file ]; then
             name=$(echo $file | sed 's/\.bigWig//g')
             _bigWig_to_peaks \
                 /ocean/projects/bio210019p/stevesho/resources \
