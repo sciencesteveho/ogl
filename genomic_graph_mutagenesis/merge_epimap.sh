@@ -1,27 +1,39 @@
+#!/bin/bash
+#
+# This script is used to convert epimap bigwigs to narrow or broad peak bedfiles
+# with liftover to hg38. Broad peaks are called for histone marks and narrow
+# peaks for TFs. Histones and TFs are then merged across the three samples to
+# act as "representative" potential tracks for the given tissue.
+
+
 # convert bigwig to bed
 # Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
+#   $1 - pseudo bool, true if histone, false if TF
+#   $2 - directory to bigWigToBedGraph
+#   $3 - bigwig tissue directory
+#   $4 - filename without extension
 function _bigWig_to_peaks () {
-    $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/tmp/${3}.bedGraph
-    macs3 bdgpeakcall \
-        -i ${2}/tmp/${3}.bedGraph \
-        -o ${2}/tmp/${3}.bed \
-        --min-length 100 \
-        --cutoff 2
+    local histone="${1:-false}"
+
+    $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
+    if "$histone"; then
+        macs3 bdgbroadcall \
+            -i ${3}/tmp/${4}.bedGraph \
+            -o ${3}/tmp/${4}.bed \
+            --broad
+    else
+        macs3 bdgpeakcall \
+            -i ${3}/tmp/${4}.bedGraph \
+            -o ${3}/tmp/${4}.bed
     # cleanup 
-    tail -n +2 ${2}/tmp/${3}.bed > tmpfile && mv tmpfile ${2}/tmp/${3}.bed
+    tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
 }
 
-
-
-# function to liftover 
-# wget link/to/liftOvertool
+# liftover hg19 to hg38
 # Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
+#   $1 - directory to liftOver
+#   $2 - bigwig tissue directory
+#   $3 - filename without extension
 function _liftover_19_to_38 () {
     $1/liftOver \
         $2/tmp/${3}.bed \
@@ -33,11 +45,10 @@ function _liftover_19_to_38 () {
     rm $2/tmp/${3}.unlifted
 }
 
-# function to merge epimap peaks
+# merge epimap peaks
 # Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
+#   $1 - directory to parsed peaks
+#   $2 - directory to save merged peaks
 function _merge_epimap_features () {
     for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
@@ -46,45 +57,60 @@ function _merge_epimap_features () {
 }
 
 # main function to perform processing in a given tissue!
-function main () {
-    if [ ! -d $1/$2/merged ]; then
-        mkdir $1/$2/merged
-    fi
+#   $1 - directory to bigwigs
+#   $2 - name of tissue
+#   $3 - directory to liftOver
+function main_func () {
+    # make directories if they don't exist
+    for dir in merged peaks tmp:
+    do
+        if [ ! -d $1/$2/$dir ]; then
+            mkdir $1/$2/$dir
+        fi
+    done
 
-    if [ ! -d $1/$2/peaks ]; then
-        mkdir $1/$2/peaks
-    fi
-
-    if [ ! -d $1/$2/tmp ]; then
-        mkdir $1/$2/tmp
-    fi
-
+    # loop through bigwigs and convert to peaks, based on which epi feature in
+    # filename
     for file in $1/$2/*;
     do
         if [ -f $file ]; then
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
-            _bigWig_to_peaks \
-                /ocean/projects/bio210019p/stevesho/resources \
-                $1/$2 \
-                $name
+            case $name in
+                *H3K27ac* | *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K4me2* | *H3K4me3* | *H3K79me2* | *H3K9ac* | *H3K9me3*)
+                    _bigWig_to_peaks \
+                        true \
+                        $3 \
+                        $1/$2 \
+                        $name
+                    ;;
+                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3*)
+                    _bigWig_to_peaks \
+                        false \
+                        $3 \
+                        $1/$2 \
+                        $name
+                    ;;
+            esac
 
+            # liftover to hg38
             _liftover_19_to_38 \
-                /ocean/projects/bio210019p/stevesho/resources \
+                $3 \
                 $1/$2 \
                 $name
         fi
     done
 
+    # merge epimap features across 3 samples
     _merge_epimap_features \
         $1/$2/peaks \
         $1/$2/merged
 }
 
-# run main function! 
+# run main_func function! 
 #   $1 - bigwig directory, one level before tissues
 #   $2 - name of tissue
 #   $3 - directory to liftover and bigwig conversion file
-main \
+main_func \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs \
     $1 \
     /ocean/projects/bio210019p/stevesho/resources \ 
