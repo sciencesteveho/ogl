@@ -5,7 +5,7 @@
 #   $3 - 
 function _bigWig_to_peaks () {
     $1/bigWigToWig ${2}/${3}.bigWig ${2}/tmp/${3}.wig
-    wig2bed --zero-indexed < ${2}/tmp/${3}.bedGraph > ${2}/tmp/${3}.bed
+    wig2bed --zero-indexed < ${2}/tmp/${3}.wig > ${2}/tmp/${3}.bed
     # cleanup 
     tail -n +2 ${2}/tmp/${3}.bed > tmp && mv tmp ${2}/tmp/${3}.bed
 }
