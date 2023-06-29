@@ -45,7 +45,7 @@ function main () {
     for file in $1/$2/*;
     do
         if [ -f $file ]; then
-            name=$(echo $file | sed 's/\.bigWig//g')
+            name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
             _bigWig_to_peaks \
                 /ocean/projects/bio210019p/stevesho/resources \
                 $1/$2 \
