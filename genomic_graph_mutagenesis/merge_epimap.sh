@@ -4,11 +4,10 @@
 #   $2 - 
 #   $3 - 
 function _bigWig_to_peaks () {
-    $1/bigWigToBedGraph ${2}/${3}.bigWig ${3}.bedGraph
-    macs3 bdgpeakcall -i ${3}.bedGraph -o ${4}/${3}.bed
+    $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/tmp/${3}.bedGraph
+    macs3 bdgpeakcall -i ${2}/tmp/${3}.bedGraph -o ${4}/${3}.bed
     # cleanup 
     tail -n +2 ${4}/${3}.bed > tmp && mv tmp ${4}/${3}.bed 
-    rm ${3}.bedGraph
 }
 
 # function to liftover 
@@ -42,6 +41,7 @@ function _merge_epimap_features () {
 
 # main function to perform processing in a given tissue!
 function main () {
+    mkdir $1/$2/tmp
     for file in $1/$2/*;
     do
         if [ -f $file ]; then
