@@ -4,11 +4,17 @@
 #   $2 - 
 #   $3 - 
 function _bigWig_to_peaks () {
-    $1/bigWigToWig ${2}/${3}.bigWig ${2}/tmp/${3}.wig
-    wig2bed --zero-indexed < ${2}/tmp/${3}.wig > ${2}/tmp/${3}.bed
+    $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/tmp/${3}.bedGraph
+    macs3 bdgpeakcall \
+        -i ${2}/tmp/${3}.bedGraph \
+        -o ${2}/tmp/${3}.bed \
+        --min-length 100 \
+        --cutoff 2
     # cleanup 
-    tail -n +2 ${2}/tmp/${3}.bed > tmp && mv tmp ${2}/tmp/${3}.bed
+    tail -n +2 ${2}/tmp/${3}.bed > tmpfile && mv tmpfile ${2}/tmp/${3}.bed
 }
+
+
 
 # function to liftover 
 # wget link/to/liftOvertool
@@ -35,7 +41,7 @@ function _liftover_19_to_38 () {
 function _merge_epimap_features () {
     for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
-        bedops -m $1/*${feature}* | awk -v FS='\t' '{print $1, $2, $3, $4 }' > $2/${feature}_merged.bed
+        bedops -m $1/*${feature}* | awk -v FS='\t' '{print $1, $2, $3}' > $2/${feature}_merged.bed
     done
 }
 
@@ -60,8 +66,7 @@ function main () {
             _bigWig_to_peaks \
                 /ocean/projects/bio210019p/stevesho/resources \
                 $1/$2 \
-                $name \
-                $1/$2/peaks
+                $name
 
             _liftover_19_to_38 \
                 /ocean/projects/bio210019p/stevesho/resources \
