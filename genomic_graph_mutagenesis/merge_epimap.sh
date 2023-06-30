@@ -25,6 +25,7 @@ function _bigWig_to_peaks () {
         macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed
+    fi
     # cleanup 
     tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
 }
