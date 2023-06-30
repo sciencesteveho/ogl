@@ -17,7 +17,8 @@ function _bigWig_to_peaks () {
 
     $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
     if "$histone"; then
-        macs3 bdgbroadcall \
+        # macs3 bdgbroadcall \
+        macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed
     else
@@ -25,6 +26,9 @@ function _bigWig_to_peaks () {
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed
     fi
+    macs3 bdgpeakcall \
+        -i ${3}/tmp/${4}.bedGraph \
+        -o ${3}/tmp/${4}.bed
     # cleanup 
     tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
 }
