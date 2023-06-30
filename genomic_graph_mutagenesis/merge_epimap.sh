@@ -63,7 +63,7 @@ function _merge_epimap_features () {
 #   $3 - directory to liftOver
 function main_func () {
     # make directories if they don't exist
-    for dir in merged peaks tmp:
+    for dir in merged peaks tmp;
     do
         if [ ! -d $1/$2/$dir ]; then
             mkdir $1/$2/$dir
