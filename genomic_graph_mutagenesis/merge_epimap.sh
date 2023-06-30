@@ -19,8 +19,7 @@ function _bigWig_to_peaks () {
     if "$histone"; then
         macs3 bdgbroadcall \
             -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.bed \
-            --broad
+            -o ${3}/tmp/${4}.bed
     else
         macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
