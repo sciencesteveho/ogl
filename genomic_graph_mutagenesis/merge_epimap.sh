@@ -4,7 +4,7 @@
 # with liftover to hg38. Broad peaks are called for histone marks and narrow
 # peaks for TFs. Histones and TFs are then merged across the three samples to
 # act as "representative" potential tracks for the given tissue.
-start=`date +%s`
+SECONDS=0
 
 # convert bigwig to bed
 # wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
@@ -13,29 +13,55 @@ start=`date +%s`
 #   $2 - directory to bigWigToBedGraph
 #   $3 - bigwig tissue directory
 #   $4 - filename without extension
+# function _bigWig_to_peaks () {
+#     local histone="${1:-false}"
+
+#     $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
+#     if "$histone"; then
+#         macs2 bdgbroadcall \
+#             -i ${3}/tmp/${4}.bedGraph \
+#             -o ${3}/tmp/${4}.bed \
+#             -c 2 \
+#             -l 73 \
+#             -g 100
+
+#     else
+#         macs2 bdgpeakcall \
+#             -i ${3}/tmp/${4}.bedGraph \
+#             -o ${3}/tmp/${4}.bed \
+#             -c 2 \
+#             -l 73 \
+#             -g 100
+#     fi
+#     # cleanup 
+#     tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
+# }
+
 function _bigWig_to_peaks () {
     local histone="${1:-false}"
 
     $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
-    if "$histone"; then
-        macs2 bdgbroadcall \
-            -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.bed \
-            -c 2 \
-            -l 73 \
-            -g 100
+    macs2 bdgbroadcall \
+        -i ${3}/tmp/${4}.bedGraph \
+        -o ${3}/tmp/${4}.broad.bed \
+        -c 2 \
+        -l 73 \
+        -g 100
 
-    else
-        macs2 bdgpeakcall \
-            -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.bed \
-            -c 2 \
-            -l 73 \
-            -g 100
-    fi
+    macs2 bdgpeakcall \
+        -i ${3}/tmp/${4}.bedGraph \
+        -o ${3}/tmp/${4}.narrow.bed \
+        -c 2 \
+        -l 73 \
+        -g 100
+
     # cleanup 
-    tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
+    for peak in broad narrow;
+    do
+        tail -n +2 ${3}/tmp/${4}.${peak}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.bed
+    done
 }
+
 
 # liftover hg19 to hg38
 # Arguments:
@@ -101,17 +127,20 @@ function main_func () {
             esac
 
             # liftover to hg38
-            _liftover_19_to_38 \
-                $3 \
-                $1/$2 \
-                $name
+            for peak in broad narrow;
+            do
+                _liftover_19_to_38 \
+                    $3 \
+                    $1/$2 \
+                    $name.${peak}
+            done
         fi
     done
 
     # merge epimap features across 3 samples
-    _merge_epimap_features \
-        $1/$2/peaks \
-        $1/$2/merged
+    # _merge_epimap_features \
+    #     $1/$2/peaks \
+    #     $1/$2/merged
 }
 
 # run main_func function! 
@@ -124,6 +153,5 @@ main_func \
     /ocean/projects/bio210019p/stevesho/resources
 
 
-end=`date +%s`
-time=$((end-start))
-echo "Finished! in $time seconds."
+t=$SECONDS
+printf 'Time elapsed: %d days, %d minutes\n' "$(( t/86400 ))" "$(( t/60 - 1440*(t/86400) ))"

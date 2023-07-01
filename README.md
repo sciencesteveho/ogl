@@ -32,16 +32,23 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
         Tissue-specific
             CpG methylation
 
-            ChIP-seq peaks
-                CTCF ChIP-seq peaks
-                DNase ChIP-seq peaks
-                H3K27ac ChIP-seq peaks
-                H3K27me3 ChIP-seq peaks
-                H3K36me3 ChIP-seq peaks
-                H3K4me1 ChIP-seq peaks
-                H3K4me3 ChIP-seq peaks
-                H3K9me3 ChIP-seq peaks
-                POLR2a ChIP-seq peaks
+            Peak calls
+                DNase
+                ATAC-seq
+                CTCF
+                H3K27ac
+                H3K27me3
+                H3K36me3
+                H3K4me1
+                H3K4me2
+                H3K4me3
+                H3K79me2
+                H3K9ac
+                H3K9me3
+                POLR2A
+                RAD21
+                SMC3
+
 
         Genome-static
             GC content
@@ -101,7 +108,7 @@ cmapPy==4.0.1
 joblib==1.0.1
 keras==2.10.0
 Keras-Preprocessing==1.1.2
-MACS3==3.0.0a7
+MACS2==2.2.8
 networkx==2.6.3
 numpy==1.20.2
 nvidia-cudnn-cu11==8.5.0.96
@@ -131,14 +138,14 @@ do
 done
 
 # Add chromatin loops together
-$ sh chrom_loops_basefiles.sh
+sh chrom_loops_basefiles.sh
 
 # Preparse bedfiles
-$ sh preparse.sh
+sh preparse.sh
 
 # Run python scripts
-$ python -u genomic_graph_mutagenesis/prepare_bedfiles.py --config ${yaml}
-$ python -u genomic_graph_mutagenesis/edge_parser.py --config ${yaml}
-$ python -u genomic_graph_mutagenesis/local_context_parser.py --config ${yaml}
-$ python -u genomic_graph_mutagenesis/graph_constructor.py --config ${yaml}
+python -u genomic_graph_mutagenesis/prepare_bedfiles.py --config ${yaml}
+python -u genomic_graph_mutagenesis/edge_parser.py --config ${yaml}
+python -u genomic_graph_mutagenesis/local_context_parser.py --config ${yaml}
+python -u genomic_graph_mutagenesis/graph_constructor.py --config ${yaml}
 ```
