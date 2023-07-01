@@ -16,7 +16,7 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
 
             Chromatinloops
             Histone binding clusters (collapsed)
-            Transcription factor binding sites (Clustered, and from Funk et al., 2020)
+            Transcription factor binding sites 
             TADs
             Super-enhancers (sedb)
 
@@ -69,13 +69,18 @@ Tools to construct graphs heterogenous multi-omics data and train a GNN to regre
 
 
 Working tissues:
-    hippocampus
-    left ventricle
-    mammary
-    liver
-    lung
-    pancreas
-    skeletal muscle
+    HeLa
+    Hippocampus
+    K562
+    Left ventricle
+    Liver
+    Lung
+    Mammary
+    Neural progenitor cell
+    Pancreas
+    Skeletal muscle
+    Skin
+    Small intestine
 
 &nbsp;
 
@@ -97,8 +102,17 @@ $ lorem ipsum
 
 Note: not all arguments are compatible with one another, so see examples below for the program's capabilities.
 ```sh
+# Convert epimap bigwig files to broad and narrow peaks
+for tissue in hela hippocampus k562 left_ventricle liver lung mammary npc pancreas skeletal_muscle skin small_intestine;
+do
+    merge_epimap.sh $tissue
+done
+
+# Add chromatin loops together
+$ sh chrom_loops_basefiles.sh
+
 # Preparse bedfiles
-$ preparse.sh
+$ sh preparse.sh
 
 # Run python scripts
 $ python -u genomic_graph_mutagenesis/prepare_bedfiles.py --config ${yaml}

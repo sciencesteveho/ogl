@@ -20,17 +20,17 @@ function _bigWig_to_peaks () {
         macs3 bdgbroadcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed \
-            --cutoff 2 \
-            --min-length 73 \
-            --max-gap 100
+            -c 2 \
+            -l 73 \
+            -g 100
 
     else
         macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed \
-            --cutoff 2 \
-            --min-length 73 \
-            --max-gap 100
+            -c 2 \
+            -l 73 \
+            -g 100
     fi
     macs3 bdgpeakcall \
         -i ${3}/tmp/${4}.bedGraph \
@@ -123,7 +123,7 @@ function main_func () {
 main_func \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs \
     $1 \
-    /ocean/projects/bio210019p/stevesho/resources \ 
+    /ocean/projects/bio210019p/stevesho/resources
 
 
 end=`date +%s`
