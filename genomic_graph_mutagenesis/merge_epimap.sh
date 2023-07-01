@@ -44,14 +44,14 @@ function _bigWig_to_peaks () {
     macs2 bdgbroadcall \
         -i ${3}/tmp/${4}.bedGraph \
         -o ${3}/tmp/${4}.broad.bed \
-        -c 2 \
+        -c 3 \
         -l 73 \
         -g 100
 
     macs2 bdgpeakcall \
         -i ${3}/tmp/${4}.bedGraph \
         -o ${3}/tmp/${4}.narrow.bed \
-        -c 2 \
+        -c 3 \
         -l 73 \
         -g 100
 
