@@ -40,20 +40,23 @@ SECONDS=0
 function _bigWig_to_peaks () {
     local histone="${1:-false}"
 
-    $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
-    macs2 bdgbroadcall \
-        -i ${3}/tmp/${4}.bedGraph \
-        -o ${3}/tmp/${4}.broad.bed \
-        -c 3 \
-        -l 73 \
-        -g 100
+    for pval in 3 4 5;
+    do
+        $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
+        macs2 bdgbroadcall \
+            -i ${3}/tmp/${4}.bedGraph \
+            -o ${3}/tmp/${4}.broad.{pval}.bed \
+            -c ${pval} \
+            -l 73 \
+            -g 100
 
-    macs2 bdgpeakcall \
-        -i ${3}/tmp/${4}.bedGraph \
-        -o ${3}/tmp/${4}.narrow.bed \
-        -c 3 \
-        -l 73 \
-        -g 100
+        macs2 bdgpeakcall \
+            -i ${3}/tmp/${4}.bedGraph \
+            -o ${3}/tmp/${4}.narrow.{pval}.bed \
+            -c ${pval} \
+            -l 73 \
+            -g 100
+    done
 
     # cleanup 
     for peak in broad narrow;
@@ -129,10 +132,13 @@ function main_func () {
             # liftover to hg38
             for peak in broad narrow;
             do
-                _liftover_19_to_38 \
-                    $3 \
-                    $1/$2 \
-                    $name.${peak}
+                for pval in 3 4 5;
+                do
+                    _liftover_19_to_38 \
+                        $3 \
+                        $1/$2 \
+                        $name.${peak}.${pval}
+                done
             done
         fi
     done
