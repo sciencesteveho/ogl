@@ -45,24 +45,26 @@ function _bigWig_to_peaks () {
         $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
         macs2 bdgbroadcall \
             -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.broad.{pval}.bed \
+            -o ${3}/tmp/${4}.broad.${pval}.bed \
             -c ${pval} \
             -l 73 \
             -g 100
 
         macs2 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.narrow.{pval}.bed \
+            -o ${3}/tmp/${4}.narrow.${pval}.bed \
             -c ${pval} \
             -l 73 \
             -g 100
+
+        for peak in broad narrow;
+        do
+            tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
+        done
     done
 
     # cleanup 
-    for peak in broad narrow;
-    do
-        tail -n +2 ${3}/tmp/${4}.${peak}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.bed
-    done
+
 }
 
 
