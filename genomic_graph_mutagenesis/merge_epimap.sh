@@ -83,7 +83,7 @@ function main_func () {
         if [ -f $file ]; then
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
             case $name in
-                *H3K27me3* | *H3K36me3* | *H3K4me1* * | *H3K79me2*)
+                *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
                     _bigWig_to_peaks \
                         true \
                         $3 \
