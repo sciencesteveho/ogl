@@ -7,6 +7,7 @@
 start=`date +%s`
 
 # convert bigwig to bed
+# wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
 # Arguments:
 #   $1 - pseudo bool, true if histone, false if TF
 #   $2 - directory to bigWigToBedGraph
@@ -93,7 +94,7 @@ function main_func () {
                         $1/$2 \
                         $name
                     ;;
-                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3 | *H3K9ac* | *H3K9me3*)
+                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K9me3*)
                     _bigWig_to_peaks \
                         false \
                         $3 \

@@ -90,10 +90,32 @@ Working tissues:
 $ git clone https://github.com/sciencesteveho/genomic_graph_mutagenesis.git
 ```
 
+&nbsp;
+
 ## Dependencies
 
+&nbsp;
+
 ```sh
-$ lorem ipsum
+cmapPy==4.0.1
+joblib==1.0.1
+keras==2.10.0
+Keras-Preprocessing==1.1.2
+MACS3==3.0.0a7
+networkx==2.6.3
+numpy==1.20.2
+nvidia-cudnn-cu11==8.5.0.96
+pandas==1.2.4
+pybedtools==0.9.0
+pysam==0.19.0
+PyYAML==5.4.1
+scikit-learn==0.24.2
+scipy==1.7.3
+shyaml==0.6.2
+tensorflow==2.10.0
+torch==1.13.1
+torch-geometric==2.3.0
+tqdm==4.60.0
 ```
 &nbsp;
 
@@ -105,7 +127,7 @@ Note: not all arguments are compatible with one another, so see examples below f
 # Convert epimap bigwig files to broad and narrow peaks
 for tissue in hela hippocampus k562 left_ventricle liver lung mammary npc pancreas skeletal_muscle skin small_intestine;
 do
-    merge_epimap.sh $tissue
+    sbatch merge_epimap.sh $tissue
 done
 
 # Add chromatin loops together

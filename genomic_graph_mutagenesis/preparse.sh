@@ -3,20 +3,6 @@
 # tissue-specific and are stored in a common directory, other than the
 # tissue-specific mirDIP files, which are pre-parsed to individual tissues.
 
-# function to convert imputed bigWig to .bed w/ peak calls
-# wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
-# Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
-function _bigWig_to_peaks () {
-    $1/bigWigToBedGraph ${2}/${3}.bigWig ${3}.bedGraph
-    macs3 bdgpeakcall -i ${3}.bedGraph -o ${4}/${3}.bed
-    # cleanup 
-    tail -n +2 ${4}/${3}.bed > tmp && mv tmp ${4}/${3}.bed 
-    rm ${3}.bedGraph
-}
-
 # function to liftover 
 # wget link/to/liftOvertool
 # Arguments:
@@ -32,14 +18,6 @@ function _liftover_19_to_38 () {
 
     # cleanup
     rm $2/${3}.unlifted
-}
-
-# function to merge epimap peaks
-function _merge_epimap_features () {
-    for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
-    do
-        bedops -m $1/*${feature}* | awk -v FS='\t' '{print $1, $2, $3, $4 }' > $1/${feature}_merged.bed
-    done
 }
 
 # function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
@@ -445,70 +423,3 @@ main \
     var2 \
     var3 \
     var4 
-
-
-
-
-
-
-# extra function to liftover deeploop bedpe files
-# only keep top 5K interactions
-# Arguments:
-#   $1 - filename
-#   $2 - directory to process files
-#   $3 - directory of liftover and liftover chain
-function _liftover_deeploop_bedpe () {
-    sed \
-        -e 's/:/\t/g' \
-        -e 's/-/\t/g' \
-        $1.txt \
-        > $2/$1.bedpe
-        
-    awk -v OFS='\t' '{print $1,$2,$3,NR}' $2/$1.bedpe > $2/$1.bedpe_1
-    awk -v OFS='\t' '{print $4,$5,$6,NR,$7,$8}' $2/$1.bedpe > $2/$1.bedpe_2
-
-    for file in bedpe_1 bedpe_2;
-    do
-        $3/liftOver \
-            $2/$1.${file} \
-            $3/hg19ToHg38.over.chain.gz \
-            $2/$1.${file}.hg38 \
-            $2/$1.${file}.unmapped
-        
-        sort -k4,4 -o $2/$1.${file}.hg38 $2/$1.${file}.hg38
-    done
-
-    join \
-        -j 4 \
-        -o 1.1,1.2,1.3,2.1,2.2,2.3,2.4,2.5,2.6 \
-        $2/$1.bedpe_1.hg38 \
-        $2/$1.bedpe_2.hg38 \
-        | sed 's/ /\t/g' \
-        | sort -k8,8n \
-        | tail -n 5000 \
-        > $2/$1.bedpe.hg38
-    
-    for file in $1.bedpe $1.bedpe_1 $1.bedpe_1.hg38 $1.bedpe_1.unmapped $1.bedpe_2 $1.bedpe_2.hg38 $1.bedpe_2.unmapped;
-    do
-        rm $2/$file
-    done
-}
-
-
-function _combine_chromatin_loops_lowcov () {
-
-}
-
-function _combine_chromatin_loops_highcov () {
-
-}
-
-# process chromatin loops
-# For low coverage, loops are lifted over from deeploop. We take the top 10K loop pixels from deeploop and add them to peakachu. For high coverage, we called loops from refhic. We combine any loops with 80% reciprocal overlap w/ peakachu and take the remaining union (we keep the refhic boundaries for the overlapping loops).
-for tissue in GSE167200_Liver.top300K GSE167200_Hippocampus.top300K GSE167200_LeftVentricle.top300K GSE167200_Lung.top300K GSE167200_Pancreas.top300K GSE167200_Psoas_Muscle.top300K GSE167200_Small_Intenstine.top300K;
-do
-    _liftover_deeploop_bedpe \
-        $tissue \
-        liftover_processing \
-        /ocean/projects/bio210019p/stevesho/resources
-done
