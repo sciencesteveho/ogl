@@ -20,14 +20,17 @@ function _bigWig_to_peaks () {
         macs3 bdgbroadcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed \
-            -c 2 \
-            -g 100 
+            --cutoff 2 \
+            --min-length 73 \
+            --max-gap 100
+
     else
         macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
             -o ${3}/tmp/${4}.bed \
-            -c 2 \
-            -g 100 
+            --cutoff 2 \
+            --min-length 73 \
+            --max-gap 100
     fi
     macs3 bdgpeakcall \
         -i ${3}/tmp/${4}.bedGraph \
