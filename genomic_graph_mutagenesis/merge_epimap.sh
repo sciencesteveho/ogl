@@ -4,7 +4,7 @@
 # with liftover to hg38. Broad peaks are called for histone marks and narrow
 # peaks for TFs. Histones and TFs are then merged across the three samples to
 # act as "representative" potential tracks for the given tissue.
-
+start=`date +%s`
 
 # convert bigwig to bed
 # Arguments:
@@ -17,14 +17,17 @@ function _bigWig_to_peaks () {
 
     $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
     if "$histone"; then
-        # macs3 bdgbroadcall \
-        macs3 bdgpeakcall \
+        macs3 bdgbroadcall \
             -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.bed
+            -o ${3}/tmp/${4}.bed \
+            -c 2 \
+            -g 100 
     else
         macs3 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.bed
+            -o ${3}/tmp/${4}.bed \
+            -c 2 \
+            -g 100 
     fi
     macs3 bdgpeakcall \
         -i ${3}/tmp/${4}.bedGraph \
@@ -80,14 +83,14 @@ function main_func () {
         if [ -f $file ]; then
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
             case $name in
-                *H3K27ac* | *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K4me2* | *H3K4me3* | *H3K79me2* | *H3K9ac* | *H3K9me3*)
+                 *H3K27me3* | *H3K36me3* | *H3K4me1* * | *H3K79me2*)
                     _bigWig_to_peaks \
                         true \
                         $3 \
                         $1/$2 \
                         $name
                     ;;
-                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3*)
+                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3 | *H3K9ac* | *H3K9me3*)
                     _bigWig_to_peaks \
                         false \
                         $3 \
@@ -118,3 +121,8 @@ main_func \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs \
     $1 \
     /ocean/projects/bio210019p/stevesho/resources \ 
+
+
+end=`date +%s`
+time=$((end-start))
+echo "Finished! in $time seconds."
