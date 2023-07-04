@@ -13,14 +13,22 @@ resources:
     poly_dir: '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/PDUI_polyA_sites'
   
   tissue_specific:
-    cpg: 'cpg_methyl_ENCFF532PDE.bed'
-    dnase: 'ENCFF591LZL.bed'
-    H3K27ac: 'H3K27ac_lv_ENCFF635VBV.bed'
-    H3K27me3: 'H3K27me3_lv_ENCFF242JDO.bed'
-    H3K36me3: 'H3K36me3_lv_ENCFF767VOC.bed'
-    H3K4me1: 'H3K4me1_lv_ENCFF194KSV.bed'
-    H3K4me3: 'H3K4me3_lv_ENCFF175CMC.bed'
-    H3K9me3: 'H3K9me3_lv_ENCFF242JDO.bed'
+tissue_specific:
+  ATAC:
+  CTCF:
+  DNase:
+  H3K27ac:
+  H3K27me3:
+  H3K36me3:
+  H3K4me1:
+  H3K4me2:
+  H3K4me3:
+  H3K79me2:
+  H3K9ac:
+  H3K9me3:
+  POLR2A:
+  RAD21:
+  SMC3:
     chromhmm: 'E096_15_coreMarks_mnemonics.bed'
     chromatinloops: 'Leung_2015.VentricleLeft.hg38.peakachu-merged.loops'
     enhancers_e_e: 'Enhancer_Enhancer_network_082619.txt'

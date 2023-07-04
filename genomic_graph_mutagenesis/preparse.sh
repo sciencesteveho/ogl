@@ -69,7 +69,7 @@ function _overlap_dyadic_elements () {
         | cut -f1,2,3 \
         | uniq \
         | awk -v OFS='\t' '{print $1,$2,$3,"dyadic"}' \
-        > $2/epimap_screen_${6}_overlap.bed
+        > $2/${6}_epimap_screen_overlap.bed
 
     rm ${3}.unlifted
 }

@@ -231,17 +231,24 @@ class GenomeDataPreprocessor:
     def _tf_binding_clusters(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites Vierstra et al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al., footprints are 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints, as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp,
-        from Chen et al., Scientific Reports, 2015). Vierstra et al., footprints are FPR thresholded with p value < 0.05. Footprints within 46bp are merged to form clusters, and then intersected with collapsed motifs. If 90% of the collapsed motif falls within the cluster, the cluster is annotated with the binding motif.
+        from Chen et al., Scientific Reports, 2015). Vierstra et al., footprints are FPR thresholded with p value < 0.001. Footprints within 46bp are merged to form clusters, and then intersected with collapsed motifs. If 90% of the collapsed motif falls within the cluster, the cluster is annotated with the binding motif.
         """
-        cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
-            | cut -f1,2,3,4 \
-            | sed 's/-/\t/g' \
-            | cut -f1,2,3,6 \
-            | sed 's/\..*$//g' \
-            | sort -k1,1 -k2,2n \
-            | bedtools merge -i - -d 46 -c 4 -o distinct \
+        # if study == "Funk":
+        #     cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
+        #         | cut -f1,2,3,4 \
+        #         | sed 's/-/\t/g' \
+        #         | cut -f1,2,3,6 \
+        #         | sed 's/\..*$//g' \
+        #         | sort -k1,1 -k2,2n \
+        #         | bedtools merge -i - -d 46 -c 4 -o distinct \
+        #         > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
+        # else:
+        cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
+            | bedtools merge -i - -d 46 \
+            | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
+            | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
             > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-
+            
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
@@ -274,78 +281,78 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(bedtools_cmd)
 
-    @time_decorator(print_args=True)
-    def _combine_and_split_histones(self) -> None:
-        """Overlap and merge histone chip-seq bedfiles. Histone marks are
-        combined if they overlap and their measurement is score / base pairs
+    # @time_decorator(print_args=True)
+    # def _combine_and_split_histones(self) -> None:
+    #     """Overlap and merge histone chip-seq bedfiles. Histone marks are
+    #     combined if they overlap and their measurement is score / base pairs
 
-        1 - Histone marks are collapsed, base pairs are kept constant. Clusters
-        are made if greater than .25 reciprocal overlap
-        2 - Clusters are kept only if more than 1 type of histone mark is
-        represented
-        3 - Adacent marks are combined, and number of base pairs are
-        kept for each histone mark across the combined feature
-        """
+    #     1 - Histone marks are collapsed, base pairs are kept constant. Clusters
+    #     are made if greater than .50 reciprocal overlap
+    #     2 - Clusters are kept only if more than 1 type of histone mark is
+    #     represented
+    #     3 - Adacent marks are combined, and number of base pairs are
+    #     kept for each histone mark across the combined feature
+    #     """
 
-        histone_idx = {
-            "H3K27ac": 4,
-            "H3K27me3": 5,
-            "H3K36me3": 6,
-            "H3K4me1": 7,
-            "H3K4me3": 8,
-            "H3K9me3": 9,
-        }
+    #     histone_idx = {
+    #         "H3K27ac": 4,
+    #         "H3K27me3": 5,
+    #         "H3K36me3": 6,
+    #         "H3K4me1": 7,
+    #         "H3K4me3": 8,
+    #         "H3K9me3": 9,
+    #     }
 
-        def _add_histone_feat(feature: str, histone: str) -> str:
-            feature[3] = histone + "_" + feature[3]
-            return feature
+    #     def _add_histone_feat(feature: str, histone: str) -> str:
+    #         feature[3] = histone + "_" + feature[3]
+    #         return feature
 
-        def count_histone_bp(feature: str) -> str:
-            feature = extend_fields(feature, 10)
-            for histone in histone_idx:
-                if histone in feature[3]:
-                    feature[histone_idx[histone]] = feature.length
-                else:
-                    feature[histone_idx[histone]] = 0
-            return feature
+    #     def count_histone_bp(feature: str) -> str:
+    #         feature = extend_fields(feature, 10)
+    #         for histone in histone_idx:
+    #             if histone in feature[3]:
+    #                 feature[histone_idx[histone]] = feature.length
+    #             else:
+    #                 feature[histone_idx[histone]] = 0
+    #         return feature
 
-        all_histones = []
-        for histone in self.HISTONES:
-            file = self.tissue_specific[histone]
-            if file:
-                a = pybedtools.BedTool(f"{self.tissue_dir}/unprocessed/{file}")
-                b = a.each(_add_histone_feat, histone)
-                b.cut([0, 1, 2, 3]).sort().saveas(f"{self.tissue_dir}/histones/{file}")
-                all_histones.append(f"{self.tissue_dir}/histones/{file}")
+    #     all_histones = []
+    #     for histone in self.HISTONES:
+    #         file = self.tissue_specific[histone]
+    #         if file:
+    #             a = pybedtools.BedTool(f"{self.tissue_dir}/unprocessed/{file}")
+    #             b = a.each(_add_histone_feat, histone)
+    #             b.cut([0, 1, 2, 3]).sort().saveas(f"{self.tissue_dir}/histones/{file}")
+    #             all_histones.append(f"{self.tissue_dir}/histones/{file}")
 
-        bedops_everything = f"bedops --everything {' '.join(all_histones)} \
-            > {self.tissue_dir}/histones/histones_union.bed"
-        bedops_partition = f"bedops --partition {' '.join(all_histones)} \
-            > {self.tissue_dir}/histones/histones_partition.bed"
-        bedmap = f"bedmap \
-            --echo \
-            --echo-map-id \
-            --delim '\t' \
-            --fraction-both 0.25 \
-            {self.tissue_dir}/histones/histones_partition.bed \
-            {self.tissue_dir}/histones/histones_union.bed \
-            | grep ';' - \
-            > {self.tissue_dir}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
-        for command in [bedops_everything, bedops_partition, bedmap]:
-            self._run_cmd(command)
+    #     bedops_everything = f"bedops --everything {' '.join(all_histones)} \
+    #         > {self.tissue_dir}/histones/histones_union.bed"
+    #     bedops_partition = f"bedops --partition {' '.join(all_histones)} \
+    #         > {self.tissue_dir}/histones/histones_partition.bed"
+    #     bedmap = f"bedmap \
+    #         --echo \
+    #         --echo-map-id \
+    #         --delim '\t' \
+    #         --fraction-both 0.50 \
+    #         {self.tissue_dir}/histones/histones_partition.bed \
+    #         {self.tissue_dir}/histones/histones_union.bed \
+    #         | grep ';' - \
+    #         > {self.tissue_dir}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
+    #     for command in [bedops_everything, bedops_partition, bedmap]:
+    #         self._run_cmd(command)
 
-        ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
-        a = pybedtools.BedTool(f"{self.tissue_dir}/histones/histones_collapsed.bed")
-        b = (
-            a.each(count_histone_bp)
-            .sort()
-            .saveas(f"{self.tissue_dir}/histones/histones_collapsed_bp.bed")
-        )
+    #     ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
+    #     a = pybedtools.BedTool(f"{self.tissue_dir}/histones/histones_collapsed.bed")
+    #     b = (
+    #         a.each(count_histone_bp)
+    #         .sort()
+    #         .saveas(f"{self.tissue_dir}/histones/histones_collapsed_bp.bed")
+    #     )
 
-        bedtools_merge = f"bedtools merge \
-            -i {self.tissue_dir}/histones/histones_collapsed_bp.bed \
-            > {self.tissue_dir}/local/histones_merged_{self.tissue}.bed"
-        self._run_cmd(bedtools_merge)
+    #     bedtools_merge = f"bedtools merge \
+    #         -i {self.tissue_dir}/histones/histones_collapsed_bp.bed \
+    #         > {self.tissue_dir}/local/histones_merged_{self.tissue}.bed"
+    #     self._run_cmd(bedtools_merge)
 
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:

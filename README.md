@@ -124,6 +124,10 @@ torch==1.13.1
 torch-geometric==2.3.0
 tqdm==4.60.0
 ```
+Additionally, GGM uses peakMerge.py from ReMap2022 (Hammal et al., *Nucleic Acids Research*, 2021) to call tissue-specific cis-regulatory modules from epimap data. Download the script and place its path in the configuration file.
+```sh
+wget https://raw.githubusercontent.com/remap-cisreg/peakMerge/main/peakMerge.py
+```
 &nbsp;
 
 ## Usage

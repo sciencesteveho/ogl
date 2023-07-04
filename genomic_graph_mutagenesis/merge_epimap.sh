@@ -89,9 +89,17 @@ function _liftover_19_to_38 () {
 #   $1 - directory to parsed peaks
 #   $2 - directory to save merged peaks
 function _merge_epimap_features () {
+    cd $1
     for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
-        bedops -m $1/*${feature}* | awk -v FS='\t' '{print $1, $2, $3}' > $2/${feature}_merged.bed
+        for peak in broad narrow;
+        do
+            for num in 3 4 5;
+            do
+                files=$(ls $1 | grep ${feature} | grep "\.${num}\." | grep $peak)
+                bedops -m $1/${files} | awk -v FS='\t' '{print $1, $2, $3}' > $2/${feature}_${peak}_${num}_merged.bed
+            done
+        done
     done
 }
 
@@ -101,7 +109,7 @@ function _merge_epimap_features () {
 #   $3 - directory to liftOver
 function main_func () {
     # make directories if they don't exist
-    for dir in merged peaks tmp;
+    for dir in merged peaks tmp crms;
     do
         if [ ! -d $1/$2/$dir ]; then
             mkdir $1/$2/$dir
@@ -146,9 +154,9 @@ function main_func () {
     done
 
     # merge epimap features across 3 samples
-    # _merge_epimap_features \
-    #     $1/$2/peaks \
-    #     $1/$2/merged
+    _merge_epimap_features \
+        $1/$2/peaks \
+        $1/$2/merged
 }
 
 # run main_func function! 
@@ -163,3 +171,33 @@ main_func \
 
 t=$SECONDS
 printf 'Time elapsed: %d days, %d minutes\n' "$(( t/86400 ))" "$(( t/60 - 1440*(t/86400) ))"
+
+# get concensus from epimap peaks
+# peakmerge_dir=$2
+peakmerge_dir=/ocean/projects/bio210019p/stevesho/remap2022
+working_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs
+
+function _get_crms_from_epimap () {
+    minsize=1
+    for file in ${1}/*narrow.5*;
+    do
+        file_size=$(wc -l $file | cut -d' ' -f1)
+        if [ $file_size -gt $minsize ]; then
+            cp $file ${2}
+        fi
+    done
+
+    python ${peakmerge_dir}/peakMerge.py \
+        "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt" \
+        ${2} \
+        "narrowPeak" \
+        ${3}
+}
+
+for tissue in hela hippocampus k562 left_ventricle liver lung mammary npc pancreas skeletal_muscle skin small_intestine;
+do
+    _get_crms_from_epimap \
+        ${working_dir}/${tissue}/peaks \
+        ${working_dir}/${tissue}/crms_processing \
+        ${working_dir}/${tissue}/crms/
+done
