@@ -1,6 +1,6 @@
 ---
 dirs:
-  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/universal_genome/raw
+  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome/Network_compendium/Tissue-specific_regulatory_networks_FANTOM5-v1/32_high-level_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/universal_genome/raw
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 

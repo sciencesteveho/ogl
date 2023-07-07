@@ -101,16 +101,7 @@ class UniversalGenomeDataPreprocessor:
                 boolean=True,
             )
 
-        # for file in ["enhancers_e_e", "enhancers_e_g"]:
-        #     check_and_symlink(
-        #         dst=f"{self.tissue_dir}/interaction/{self.tissue_specific[file]}",
-        #         src=f"{self.data_dir}/{self.tissue_specific[file]}",
-        #         boolean=False,
-        #     )
-
         interact_files = {
-            "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
-            "mirdip": f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
             "mirnatargets": f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
             "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
             "tf_marker": f"{self.shared_data_dir}/interaction/{self.interaction['tf_marker']}",
@@ -122,6 +113,44 @@ class UniversalGenomeDataPreprocessor:
                 src=interact_files[file],
                 boolean=False,
             )
+
+    @time_decorator(print_args=True)
+    def _add_TAD_id(self, bed: str) -> None:
+        """Add identification number to each TAD"""
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
+            {self.tissue_dir}/unprocessed/{bed} \
+            > {self.tissue_dir}/local/tads_{self.tissue}.txt"
+
+        self._run_cmd(cmd)
+        
+    @time_decorator(print_args=True)
+    def _superenhancers(self, bed: str) -> None:
+        """Simple parser to remove superenhancer bed unneeded info"""
+        cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
+            | awk -vOFS='\t' '{{print $3, $4, $5, $2}}' \
+            | sort -j1,1 -k2,2n \
+            | bedtools merge -i - \
+            | awk -vOFS='\t' '{{$1, $2, $3, \"superenhancer\"}}' \
+            > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
+
+        self._run_cmd(cmd)
+
+    @time_decorator(print_args=True)
+    def _tf_binding_clusters(self, bed: str) -> None:
+        """
+        Parse tissue-specific transcription factor binding sites Vierstra et
+        al., Nature, 2020. Footprints are FPR thresholded with p value < 0.001.
+        Footprints within 46bp are merged to form clusters, and then intersected
+        with collapsed motifs. If 90% of the collapsed motif falls within the
+        cluster, the cluster is annotated with the binding motif.
+        """
+        cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
+            | bedtools merge -i - -d 46 \
+            | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
+            | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
+            > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
+            
+        self._run_cmd(cmd)  
 
 
 

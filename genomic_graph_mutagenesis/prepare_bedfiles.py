@@ -149,51 +149,6 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    # @time_decorator(print_args=True)
-    # def _split_chromatinloops(self, bed: str) -> None:
-    #     """Split chromatinloop file in separate entries"""
-    #     full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
-    #         | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
-    #         > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
-
-    #     self._run_cmd(full_loop)
-
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
-    #     """
-    #     Get a list of the individual enhancer sites from FENRIR (Chen et al.,
-    #     Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
-    #     networks and sorting
-    #     """
-    #     split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-    #         | cut -f1 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
-    #     split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-    #         | cut -f2 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
-    #     enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
-    #         | cut -f1 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
-    #         | sort -k1,1 -k2,2n \
-    #         | uniq \
-    #         > {self.tissue_dir}/unprocessed/enhancers.bed"
-
-    #     liftover_sort = f"{self.resources['liftover']} \
-    #         {self.tissue_dir}/unprocessed/enhancers.bed \
-    #         {self.resources['liftover_chain']} \
-    #         {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-    #         {self.tissue_dir}/unprocessed/enhancers_unlifted "
-
-    #     enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
-    #        {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-    #        > {self.tissue_dir}/local/enhancers_lifted.bed"
-
-    #     for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
-    #         self._run_cmd(cmd)
-
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
@@ -206,8 +161,18 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _tf_binding_clusters(self, bed: str) -> None:
         """
-        Parse tissue-specific transcription factor binding sites Vierstra et al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al., footprints are 20-seed HINT TFs with score > 200 and use the locations of the motifs, not the footprints, as HINT footprints are motif agnostic. Motifs are merged to form tf-binding clusters (within 46bp,
-        from Chen et al., Scientific Reports, 2015). Vierstra et al., footprints are FPR thresholded with p value < 0.001. Footprints within 46bp are merged to form clusters, and then intersected with collapsed motifs. If 90% of the collapsed motif falls within the cluster, the cluster is annotated with the binding motif.
+        Parse tissue-specific transcription factor binding sites Vierstra et
+        al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al.,
+        footprints are 20-seed HINT TFs with score > 200 and use the locations
+        of the motifs, not the footprints, as HINT footprints are motif
+        agnostic. Motifs are merged to form tf-binding clusters (within 46bp,
+        from Chen et al., Scientific Reports, 2015). Vierstra et al., footprints
+        are FPR thresholded with p value < 0.001. Footprints within 46bp are
+        merged to form clusters, and then intersected with collapsed motifs. If
+        90% of the collapsed motif falls within the cluster, the cluster is
+        annotated with the binding motif.
+        
+        ** Removed clustering
         """
         # if study == "Funk":
         #     cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
@@ -219,12 +184,16 @@ class GenomeDataPreprocessor:
         #         | bedtools merge -i - -d 46 -c 4 -o distinct \
         #         > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
         # else:
+        # cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
+        #     | bedtools merge -i - -d 46 \
+        #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
+        #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
+        #     > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
+            
         cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-            | bedtools merge -i - -d 46 \
             | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
             | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
-            > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-            
+            > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
@@ -313,6 +282,51 @@ class GenomeDataPreprocessor:
         #     self.tissue_specific["enhancers_e_e"],
         #     self.tissue_specific["enhancers_e_g"],
         # )
+        
+    # @time_decorator(print_args=True)
+    # def _split_chromatinloops(self, bed: str) -> None:
+    #     """Split chromatinloop file in separate entries"""
+    #     full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
+    #         | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
+    #         > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
+
+    #     self._run_cmd(full_loop)
+
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
+    #     """
+    #     Get a list of the individual enhancer sites from FENRIR (Chen et al.,
+    #     Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
+    #     networks and sorting
+    #     """
+    #     split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
+    #         | cut -f1 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
+    #     split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
+    #         | cut -f2 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
+    #     enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
+    #         | cut -f1 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
+    #         | sort -k1,1 -k2,2n \
+    #         | uniq \
+    #         > {self.tissue_dir}/unprocessed/enhancers.bed"
+
+    #     liftover_sort = f"{self.resources['liftover']} \
+    #         {self.tissue_dir}/unprocessed/enhancers.bed \
+    #         {self.resources['liftover_chain']} \
+    #         {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
+    #         {self.tissue_dir}/unprocessed/enhancers_unlifted "
+
+    #     enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
+    #        {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
+    #        > {self.tissue_dir}/local/enhancers_lifted.bed"
+
+    #     for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
+    #         self._run_cmd(cmd)
 
 
 def main() -> None:

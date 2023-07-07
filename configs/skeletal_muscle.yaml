@@ -82,4 +82,4 @@ tissue_specific:
   crms: consensuses.bed
   super_enhancer: SE_01_0063_SE_hg38.bed
   tads: Psoas_Schmitt2016-raw_TADs.txt
-  tf_binding: interval.all.fps.0.001.bed
+  tf_binding: interval.all.fps.0.0001.bed
