@@ -3,9 +3,9 @@ dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/liver
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+
 interaction:
   circuits: liver_adult.txt
-  entrez_file: entrez_to_genesymbol.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
@@ -13,25 +13,31 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
+
 options:
   cpg_filetype: ENCODE
   cpg_liftover: false
+
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  key_protein_abundance: liver
+  key_tpm: liver
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name: Liver
   ppi_tissue: liver
+  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: liver
   tissue_name: Liver
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/liver.tpm.txt
-  key_tpm: liver
-  key_protein_abundance: liver
-shared:
-  ctcfccre: ctcfccre_parsed_hg38.bed
+
+local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
+  ctcfccre: ctcfccre_parsed_hg38.bed
+  dyadic: dyadic_epimap_screen_overlap.bed
+  enhancers: enhancers_epimap_screen_overlap.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   gencode_attr: gencode_v26_node_attr.bed
   indels: indels_hg38.bed
@@ -40,7 +46,7 @@ shared:
   microsatellites: microsatellites_hg38_parsed.bed
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
-  promoters: promoters_parsed_hg38.bed
+  promoters: promoters_epimap_screen_overlap.bed
   rbpbindingistes: rbpbindingsites_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
@@ -54,30 +60,26 @@ shared:
   sine: sine_hg38.bed
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
+
 tissue_specific:
-  ATAC:
-  CTCF:
-  DNase:
-  H3K27ac:
-  H3K27me3:
-  H3K36me3:
-  H3K4me1:
-  H3K4me2:
-  H3K4me3:
-  H3K79me2:
-  H3K9ac:
-  H3K9me3:
-  POLR2A:
-  RAD21:
-  SMC3:
-  chromatinloops: Leung_2015.Liver.hg38.peakachu-merged.loops
+  ATAC: ATAC-seq_narrow_5_merged.bed
+  CTCF: CTCF_narrow_5_merged.bed
+  DNase: DNase-seq_narrow_5_merged.bed
+  H3K27ac: H3K27ac_narrow_5_merged.bed
+  H3K27me3: H3K27me3_narrow_5_merged.bed
+  H3K36me3: H3K36me3_narrow_5_merged.bed
+  H3K4me1: H3K4me1_narrow_5_merged.bed
+  H3K4me2: H3K4me2_narrow_5_merged.bed
+  H3K4me3: H3K4me3_narrow_5_merged.bed
+  H3K79me2: H3K79me2_narrow_5_merged.bed
+  H3K9ac: H3K9ac_narrow_5_merged.bed
+  H3K9me3: H3K9me3_narrow_4_merged.bed
+  POLR2A: POLR2A_narrow_5_merged.bed
+  RAD21: RAD21_narrow_5_merged.bed
+  SMC3: SMC3_narrow_5_merged.bed
+  chromatinloops: Liver.hg38.combined_loops
   cpg: cpg_methyl_ENCFF080ETP.bed
-  ctcf: ENCFF046XEZ.bed
-  dnase: ENCFF905THS.bed
-  enhancers_e_e: Enhancer_Enhancer_network_082619.txt
-  enhancers_e_g: Enhancer_gene_network_082619.txt
-  polr2a: ENCFF064ASM.bed
-  polyadenylation: Liver.txt
+  crms: consensuses.bed
   super_enhancer: SE_02_1299_SE_hg38.bed
   tads: Liver_STL011_Leung_2015-raw_TADs.txt
-  tf_binding: liver_hint_20-footprint.bed  # mirnatargets: 'mirtargets_filtered.txt'
+  tf_binding: interval.all.fps.0.001.bed

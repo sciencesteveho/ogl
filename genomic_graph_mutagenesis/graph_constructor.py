@@ -133,33 +133,33 @@ class GraphConstructor:
 
         return ref
 
-    @time_decorator(print_args=True)
-    def _n_ego_graph(
-        self,
-        graph: nx.Graph,
-        max_nodes: int,
-        node: str,
-        radius: int,
-    ) -> nx.Graph:
-        """Get n-ego graph centered around a gene (node)"""
-        # get n-ego graph
-        n_ego_graph = nx.ego_graph(
-            graph=graph,
-            n=node,
-            radius=radius,
-            undirected=True,
-        )
+    # @time_decorator(print_args=True)
+    # def _n_ego_graph(
+    #     self,
+    #     graph: nx.Graph,
+    #     max_nodes: int,
+    #     node: str,
+    #     radius: int,
+    # ) -> nx.Graph:
+    #     """Get n-ego graph centered around a gene (node)"""
+    #     # get n-ego graph
+    #     n_ego_graph = nx.ego_graph(
+    #         graph=graph,
+    #         n=node,
+    #         radius=radius,
+    #         undirected=True,
+    #     )
 
-        # if n_ego_graph is too big, reduce radius until n_ego_graph has nodes < max_nodes
-        while n_ego_graph.number_of_nodes() > max_nodes:
-            radius -= 1
-            n_ego_graph = nx.ego_graph(
-                graph=graph,
-                n=node,
-                radius=radius,
-            )
+    #     # if n_ego_graph is too big, reduce radius until n_ego_graph has nodes < max_nodes
+    #     while n_ego_graph.number_of_nodes() > max_nodes:
+    #         radius -= 1
+    #         n_ego_graph = nx.ego_graph(
+    #             graph=graph,
+    #             n=node,
+    #             radius=radius,
+    #         )
 
-        return n_ego_graph
+    #     return n_ego_graph
 
     @time_decorator(print_args=True)
     def _nx_to_tensors(self, graph: nx.Graph, save_str: str) -> None:

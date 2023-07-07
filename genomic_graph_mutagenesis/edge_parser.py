@@ -265,60 +265,60 @@ class EdgeParser:
         ) -> str:
         return f"{input.replace(':', '-').split('-')[index]}"
 
-    @time_decorator(print_args=True)
-    def _fenrir_enhancer_enhancer(
-        self,
-        interaction_file: str,
-        score_filter: int,
-        ) -> List[Tuple[str, str, float, str]]:
-        """Convert each enhancer-enhancer link to hg38 and return a formatted
-        tuple."""
-        e_e_liftover, scores = [], []
-        with open(interaction_file, newline='') as file:
-            file_reader = csv.reader(file, delimiter='\t')
-            next(file_reader)
-            for line in file_reader:
-                scores.append(int(line[2]))
-                if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
-                    e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancer_enhancer(
+    #     self,
+    #     interaction_file: str,
+    #     score_filter: int,
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Convert each enhancer-enhancer link to hg38 and return a formatted
+    #     tuple."""
+    #     e_e_liftover, scores = [], []
+    #     with open(interaction_file, newline='') as file:
+    #         file_reader = csv.reader(file, delimiter='\t')
+    #         next(file_reader)
+    #         for line in file_reader:
+    #             scores.append(int(line[2]))
+    #             if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
+    #                 e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
 
-        cutoff = np.percentile(scores, score_filter)
-        return [
-            (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-            f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
-            -1,
-            'enhancer-enhancer',)
-            for line in e_e_liftover
-            if int(line[2]) >= cutoff 
-        ]
+    #     cutoff = np.percentile(scores, score_filter)
+    #     return [
+    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+    #         f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
+    #         -1,
+    #         'enhancer-enhancer',)
+    #         for line in e_e_liftover
+    #         if int(line[2]) >= cutoff 
+    #     ]
 
-    @time_decorator(print_args=True)
-    def _fenrir_enhancer_gene(
-        self,
-        interaction_file: str,
-        score_filter: int,
-        ) -> List[Tuple[str, str, float, str]]:
-        """Convert each enhancer-gene link to hg38 and ensemble ID, return a
-        formatted tuple.
-        """
-        e_g_liftover, scores = [], []
-        with open(interaction_file, newline='') as file:
-            file_reader = csv.reader(file, delimiter='\t')
-            next(file_reader)
-            for line in file_reader:
-                scores.append(int(line[3]))
-                if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
-                    e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancer_gene(
+    #     self,
+    #     interaction_file: str,
+    #     score_filter: int,
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Convert each enhancer-gene link to hg38 and ensemble ID, return a
+    #     formatted tuple.
+    #     """
+    #     e_g_liftover, scores = [], []
+    #     with open(interaction_file, newline='') as file:
+    #         file_reader = csv.reader(file, delimiter='\t')
+    #         next(file_reader)
+    #         for line in file_reader:
+    #             scores.append(int(line[3]))
+    #             if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
+    #                 e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
 
-        cutoff = np.percentile(scores, score_filter)
-        return [
-            (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-            line[1],
-            -1,
-            'enhancer-gene')
-            for line in e_g_liftover
-            if int(line[2]) >= cutoff
-        ]
+    #     cutoff = np.percentile(scores, score_filter)
+    #     return [
+    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+    #         line[1],
+    #         -1,
+    #         'enhancer-gene')
+    #         for line in e_g_liftover
+    #         if int(line[2]) >= cutoff
+    #     ]
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
@@ -340,21 +340,21 @@ class EdgeParser:
         tf_markers = self._tf_markers(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
-        e_e_edges = self._fenrir_enhancer_enhancer(
-            f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-            score_filter=30,
-        )
-        e_g_edges = self._fenrir_enhancer_gene(
-            f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-            score_filter=70,
-        )
+        # e_e_edges = self._fenrir_enhancer_enhancer(
+        #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
+        #     score_filter=30,
+        # )
+        # e_g_edges = self._fenrir_enhancer_gene(
+        #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
+        #     score_filter=70,
+        # )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}",
             score_filter=30
         )
 
         self.edges = (
-            ppi_edges + mirna_targets + tf_markers + e_e_edges + e_g_edges + circuit_edges
+            ppi_edges + mirna_targets + tf_markers + circuit_edges
         )
         
         gencode_nodes = (
@@ -363,20 +363,13 @@ class EdgeParser:
             + [tup[1] for tup in mirna_targets]
             + [tup[0] for tup in tf_markers]
             + [tup[1] for tup in tf_markers]
-            + [tup[1] for tup in e_g_edges]
             + [tup[0] for tup in circuit_edges]
             + [tup[1] for tup in circuit_edges]
         )
 
-        enhancers = (
-            [tup[0] for tup in e_e_edges]
-            + [tup[1] for tup in e_e_edges]
-            + [tup[0] for tup in e_g_edges]
-        )
-
         mirnas = [tup[0] for tup in mirna_targets]
 
-        return set(gencode_nodes), set(enhancers), set(mirnas)
+        return set(gencode_nodes), set(mirnas)
     
     @time_decorator(print_args=False)
     def _add_node_coordinates(

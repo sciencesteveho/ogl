@@ -12,11 +12,7 @@ import os
 import argparse
 import requests
 import subprocess
-
-import pybedtools
-
 from typing import Dict
-from pybedtools.featurefuncs import extend_fields
 
 from utils import dir_check_make, parse_yaml, time_decorator
 
@@ -73,7 +69,7 @@ class GenomeDataPreprocessor:
         self.interaction = params["interaction"]
         self.options = params["options"]
         self.resources = params["resources"]
-        self.shared = params["shared"]
+        self.shared = params["local"]
         self.tissue_specific = params["tissue_specific"]
 
         self.tissue = self.resources["tissue"]
@@ -125,12 +121,12 @@ class GenomeDataPreprocessor:
                 boolean=True,
             )
 
-        for file in ["enhancers_e_e", "enhancers_e_g"]:
-            check_and_symlink(
-                dst=f"{self.tissue_dir}/interaction/{self.tissue_specific[file]}",
-                src=f"{self.data_dir}/{self.tissue_specific[file]}",
-                boolean=False,
-            )
+        # for file in ["enhancers_e_e", "enhancers_e_g"]:
+        #     check_and_symlink(
+        #         dst=f"{self.tissue_dir}/interaction/{self.tissue_specific[file]}",
+        #         src=f"{self.data_dir}/{self.tissue_specific[file]}",
+        #         boolean=False,
+        #     )
 
         interact_files = {
             "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
@@ -173,50 +169,50 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @time_decorator(print_args=True)
-    def _split_chromatinloops(self, bed: str) -> None:
-        """Split chromatinloop file in separate entries"""
-        full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
-            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
-            > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
+    # @time_decorator(print_args=True)
+    # def _split_chromatinloops(self, bed: str) -> None:
+    #     """Split chromatinloop file in separate entries"""
+    #     full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
+    #         | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
+    #         > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
 
-        self._run_cmd(full_loop)
+    #     self._run_cmd(full_loop)
 
-    @time_decorator(print_args=True)
-    def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
-        """
-        Get a list of the individual enhancer sites from FENRIR (Chen et al.,
-        Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
-        networks and sorting
-        """
-        split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-            | cut -f1 \
-            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
-        split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-            | cut -f2 \
-            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
-        enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
-            | cut -f1 \
-            | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-            | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
-            | sort -k1,1 -k2,2n \
-            | uniq \
-            > {self.tissue_dir}/unprocessed/enhancers.bed"
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
+    #     """
+    #     Get a list of the individual enhancer sites from FENRIR (Chen et al.,
+    #     Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
+    #     networks and sorting
+    #     """
+    #     split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
+    #         | cut -f1 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
+    #     split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
+    #         | cut -f2 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
+    #     enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
+    #         | cut -f1 \
+    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
+    #         | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
+    #         | sort -k1,1 -k2,2n \
+    #         | uniq \
+    #         > {self.tissue_dir}/unprocessed/enhancers.bed"
 
-        liftover_sort = f"{self.resources['liftover']} \
-            {self.tissue_dir}/unprocessed/enhancers.bed \
-            {self.resources['liftover_chain']} \
-            {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-            {self.tissue_dir}/unprocessed/enhancers_unlifted "
+    #     liftover_sort = f"{self.resources['liftover']} \
+    #         {self.tissue_dir}/unprocessed/enhancers.bed \
+    #         {self.resources['liftover_chain']} \
+    #         {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
+    #         {self.tissue_dir}/unprocessed/enhancers_unlifted "
 
-        enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
-           {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-           > {self.tissue_dir}/local/enhancers_lifted.bed"
+    #     enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
+    #        {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
+    #        > {self.tissue_dir}/local/enhancers_lifted.bed"
 
-        for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
-            self._run_cmd(cmd)
+    #     for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
+    #         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
@@ -281,79 +277,6 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(bedtools_cmd)
 
-    # @time_decorator(print_args=True)
-    # def _combine_and_split_histones(self) -> None:
-    #     """Overlap and merge histone chip-seq bedfiles. Histone marks are
-    #     combined if they overlap and their measurement is score / base pairs
-
-    #     1 - Histone marks are collapsed, base pairs are kept constant. Clusters
-    #     are made if greater than .50 reciprocal overlap
-    #     2 - Clusters are kept only if more than 1 type of histone mark is
-    #     represented
-    #     3 - Adacent marks are combined, and number of base pairs are
-    #     kept for each histone mark across the combined feature
-    #     """
-
-    #     histone_idx = {
-    #         "H3K27ac": 4,
-    #         "H3K27me3": 5,
-    #         "H3K36me3": 6,
-    #         "H3K4me1": 7,
-    #         "H3K4me3": 8,
-    #         "H3K9me3": 9,
-    #     }
-
-    #     def _add_histone_feat(feature: str, histone: str) -> str:
-    #         feature[3] = histone + "_" + feature[3]
-    #         return feature
-
-    #     def count_histone_bp(feature: str) -> str:
-    #         feature = extend_fields(feature, 10)
-    #         for histone in histone_idx:
-    #             if histone in feature[3]:
-    #                 feature[histone_idx[histone]] = feature.length
-    #             else:
-    #                 feature[histone_idx[histone]] = 0
-    #         return feature
-
-    #     all_histones = []
-    #     for histone in self.HISTONES:
-    #         file = self.tissue_specific[histone]
-    #         if file:
-    #             a = pybedtools.BedTool(f"{self.tissue_dir}/unprocessed/{file}")
-    #             b = a.each(_add_histone_feat, histone)
-    #             b.cut([0, 1, 2, 3]).sort().saveas(f"{self.tissue_dir}/histones/{file}")
-    #             all_histones.append(f"{self.tissue_dir}/histones/{file}")
-
-    #     bedops_everything = f"bedops --everything {' '.join(all_histones)} \
-    #         > {self.tissue_dir}/histones/histones_union.bed"
-    #     bedops_partition = f"bedops --partition {' '.join(all_histones)} \
-    #         > {self.tissue_dir}/histones/histones_partition.bed"
-    #     bedmap = f"bedmap \
-    #         --echo \
-    #         --echo-map-id \
-    #         --delim '\t' \
-    #         --fraction-both 0.50 \
-    #         {self.tissue_dir}/histones/histones_partition.bed \
-    #         {self.tissue_dir}/histones/histones_union.bed \
-    #         | grep ';' - \
-    #         > {self.tissue_dir}/histones/histones_collapsed.bed"  # grep to select the divider, indicating >1 histone
-    #     for command in [bedops_everything, bedops_partition, bedmap]:
-    #         self._run_cmd(command)
-
-    #     ### chr start end H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me3 H3K9me3
-    #     a = pybedtools.BedTool(f"{self.tissue_dir}/histones/histones_collapsed.bed")
-    #     b = (
-    #         a.each(count_histone_bp)
-    #         .sort()
-    #         .saveas(f"{self.tissue_dir}/histones/histones_collapsed_bp.bed")
-    #     )
-
-    #     bedtools_merge = f"bedtools merge \
-    #         -i {self.tissue_dir}/histones/histones_collapsed_bp.bed \
-    #         > {self.tissue_dir}/local/histones_merged_{self.tissue}.bed"
-    #     self._run_cmd(bedtools_merge)
-
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles"""
@@ -369,15 +292,24 @@ class GenomeDataPreprocessor:
 
         ### Make symlinks and rename files that do not need preprocessing
         nochange = [
-            "ctcf",
-            "dnase",
+            "ATAC",
+            "CTCF",
+            "DNase",
             "H3K27ac",
             "H3K27me3",
             "H3K36me3",
-            "H3K4me1",
+            "H3K4me1"
+            "H3K4me2",
             "H3K4me3",
+            "H3K79me2",
+            "H3K9ac",
             "H3K9me3",
-            "polr2a",
+            "POLR2A",
+            "RAD21",
+            "SMC3",
+            "chromatinloops",
+            "crms",
+            
         ]
         for datatype in nochange:
             if self.tissue_specific[datatype]:
@@ -390,20 +322,18 @@ class GenomeDataPreprocessor:
 
         self._add_TAD_id(self.tissue_specific["tads"])
 
-        self._split_chromatinloops(self.tissue_specific["chromatinloops"])
-
         self._superenhancers(self.tissue_specific["super_enhancer"])
-
-        self._fenrir_enhancers(
-            self.tissue_specific["enhancers_e_e"],
-            self.tissue_specific["enhancers_e_g"],
-        )
 
         self._tf_binding_clusters(self.tissue_specific["tf_binding"])
 
         self._merge_cpg(self.tissue_specific["cpg"])
 
-        self._combine_and_split_histones()
+        # self._split_chromatinloops(self.tissue_specific["chromatinloops"])
+        
+        # self._fenrir_enhancers(
+        #     self.tissue_specific["enhancers_e_e"],
+        #     self.tissue_specific["enhancers_e_g"],
+        # )
 
 
 def main() -> None:
