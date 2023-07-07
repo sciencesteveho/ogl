@@ -298,7 +298,7 @@ class GenomeDataPreprocessor:
             "H3K27ac",
             "H3K27me3",
             "H3K36me3",
-            "H3K4me1"
+            "H3K4me1",
             "H3K4me2",
             "H3K4me3",
             "H3K79me2",
@@ -309,7 +309,6 @@ class GenomeDataPreprocessor:
             "SMC3",
             "chromatinloops",
             "crms",
-            
         ]
         for datatype in nochange:
             if self.tissue_specific[datatype]:
