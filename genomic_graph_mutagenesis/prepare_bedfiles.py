@@ -33,35 +33,15 @@ class GenomeDataPreprocessor:
         symlink the raw data to a folder within the directory
     _download_shared_files:
         download files used by multiple tissues
-    _split_chromatinloops:
-        split double columned file to single column
     _add_tad_id:
         add IDs to tad file
-    _fenrir_enhancers:
-        enhancers from fenrir bayesian network
-    _chromhmm_to_attribute:
-        selected chromhmm genome segmentations to attributes
     _tf_binding_clusters:
         clusters of tf binding sites
     _merge_cpg:
         merge book-ended cpg features
-    _combine_and_split_histones:
-        collapse histones into a single file with bp count
     prepare_data_files:
         main pipeline function
-
-    # Helpers
-        HISTONES -- list of histone features
     """
-
-    HISTONES = [
-        "H3K27ac",
-        "H3K27me3",
-        "H3K36me3",
-        "H3K4me1",
-        "H3K4me3",
-        "H3K9me3",
-    ]
 
     def __init__(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize the class"""

@@ -15,8 +15,8 @@ interaction:
   tf_marker: tf_marker.txt
 
 options:
-  cpg_filetype: GEO
-  cpg_liftover: true
+  cpg_filetype: ENCODE
+  cpg_liftover: false
 
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
