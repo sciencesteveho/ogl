@@ -102,6 +102,7 @@ class EdgeParser:
 
         self.gencode = params["shared"]["gencode"]
         self.interaction_files = params["interaction"]
+        self.tissue = params["resources"]["tissue"]
         self.tissue_specific = params["tissue_specific"]
 
         self.root_dir = params["dirs"]["root_dir"]

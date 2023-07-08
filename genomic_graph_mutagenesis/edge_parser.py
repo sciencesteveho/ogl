@@ -13,7 +13,6 @@ import argparse
 import csv
 import itertools
 from multiprocessing import Pool
-import re
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -82,6 +81,7 @@ class EdgeParser:
         self.root_dir = params["dirs"]["root_dir"]
         self.shared_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.local_dir = f"{self.tissue_dir}/local"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
@@ -119,7 +119,7 @@ class EdgeParser:
         edges = list(
             zip(
                 *map(t_spec_filtered.get, ["symbol1", "symbol2"]),
-                itertool.repeat(-1),
+                itertools.repeat(-1),
                 itertools.repeat("ppi"),
             )
         )
@@ -239,25 +239,35 @@ class EdgeParser:
         Returns:
             pybedtools.BedTool - TSS w/ target genes
         """
-        tss = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.shared['tss']}")
+        tss = pybedtools.BedTool(f"{self.local_dir}/{self.shared['tss']}")
         return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
 
     @time_decorator(print_args=True)
     def get_loop_edges(
         self,
-        feat_1,
-        feat_2,
-        loop_path,
-        caller,
-    ):
-        def _split_chromatin_loops() -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
+        feat_1: str,
+        feat_2: str,
+        tss: bool = False,
+    ) -> List[Tuple[str, str, float, str]]:
+        """Connects nodes if they are linked by chromatin loops. Can specify if
+        the loops should only be done for direct overlaps or if they should
+        be within 2mb of a loop anchor for TSS. If using TSS, make sure to
+        specify the TSS as the second feature!
+
+        Args:
+            feat_1 (str): _description_
+            feat_2 (str): _description_
+            type (str): _description_
+
+        Returns:
+            List[Tuple[str, str, float, str]]: _description_
+        """
+        def _split_chromatin_loops(loops: str) -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
             """_summary_
             Returns:
                 Tuple[pybedtools.BedTool, pybedtools.BedTool]: _description_
             """
-            first_anchor = pybedtools.BedTool(
-                f"{self.tissue_dir}/local/chromatinloops_{self.tissue_name}.bed"
-            )
+            first_anchor = pybedtools.BedTool(loops)
             second_anchor = pybedtools.BedTool(
                 "\n".join(
                     [
@@ -279,7 +289,6 @@ class EdgeParser:
             loops: pybedtools.BedTool,
             features: pybedtools.BedTool,
             distance: int,
-            type: str,
         ) -> pybedtools.BedTool:
             """Get features 2kb within loop anchor
 
@@ -305,7 +314,7 @@ class EdgeParser:
             loops: pybedtools.BedTool,
             first_anchor_edges: Dict[str, List[str]],
             second_anchor_edges: Dict[str, List[str]],
-        ) -> None:
+        ) -> List[Any]:
             """Return a list of edges that are connected by their overlap over chromatin
             loop anchors by matching the anchor names across dicts"""
             edges = []
@@ -325,25 +334,27 @@ class EdgeParser:
             return edges
         
         # split loops into anchors
-        first_anchor, second_anchor = _split_chromatin_loops()
+        first_anchor, second_anchor = _split_chromatin_loops(
+            f"{self.tissue_dir}/local/chromatinloops_{self.tissue_name}.bed"
+        )
         
-        if type == "tss":
+        if tss:
             first_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(first_anchor, elements),
-                _loop_within_distance(first_anchor, tss, 2000),
+                _loop_direct_overlap(first_anchor, feat_1),
+                _loop_within_distance(first_anchor, feat_2, 2000),
             )
             second_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(second_anchor, elements),
-                _loop_within_distance(second_anchor, tss, 2000),
+                _loop_direct_overlap(second_anchor, feat_1),
+                _loop_within_distance(second_anchor, feat_2, 2000),
             )
         else:
             first_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(first_anchor, elements),
-                _loop_direct_overlap(first_anchor, tss, 2000),
+                _loop_direct_overlap(first_anchor, feat_1),
+                _loop_direct_overlap(first_anchor, feat_2),
             )
             second_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(second_anchor, elements),
-                _loop_direct_overlap(second_anchor, tss, 2000),
+                _loop_direct_overlap(second_anchor, feat_1),
+                _loop_direct_overlap(second_anchor, feat_2),
             )
 
         return list(
@@ -375,13 +386,34 @@ class EdgeParser:
         
         Only overlap
         promoter - distal ELS
-        promoter - SE
         promoter - dyadic
+        promoter - SE
 
         Returns:
             A list of all edges
         """
-        e_g_edges = self.get_loop_edges()
+        tss = self._load_tss()
+        distal_enhancers = pybedtools.BedTool(f"{self.local_dir}/{self.shared['enhancers']}").filter(lambda x: x[3] == 'dELS').saveas()
+        promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
+        dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
+        super_enhancers = pybedtools.BedTool(f"{self.local_dir}/superenhancers_{self.tissue}.bed")
+        
+        tss_edges = []
+        for element in [distal_enhancers, promoters, dyadic, super_enhancers]:
+            tss_edges.extend(self.get_loop_edges(
+                feat_1=tss,
+                feat_2=element,
+                tss=True,
+            ))
+        
+        promoter_edges = []
+        for element in [distal_enhancers, dyadic, super_enhancers]:
+            promoter_edges.extend(self.get_loop_edges(
+                feat_1=promoters,
+                feat_2=element,
+                tss=False,
+            ))
+        
         ppi_edges = self._iid_ppi(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
             tissue=self.ppi_tissue,
@@ -400,6 +432,7 @@ class EdgeParser:
         )
 
         self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
+        self.chrom_edges = tss_edges + promoter_edges
 
         gencode_nodes = (
             [tup[0] for tup in ppi_edges]
@@ -412,7 +445,6 @@ class EdgeParser:
         )
 
         mirnas = [tup[0] for tup in mirna_targets]
-
         return set(gencode_nodes), set(mirnas)
 
     @time_decorator(print_args=False)
@@ -465,8 +497,12 @@ class EdgeParser:
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
+        all_chrom_loop_file = f"{self.interaction_dir}/chromatin_loop_edges.txt"
         with open(all_interaction_file, "w+") as output:
             csv.writer(output, delimiter="\t").writerows(self.edges)
+            
+        with open(all_chrom_loop_file, "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(self.chrom_edges)
 
         # write nodes to file
         with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:

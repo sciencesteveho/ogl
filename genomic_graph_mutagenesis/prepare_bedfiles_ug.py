@@ -184,6 +184,8 @@ class UniversalGenomeDataPreprocessor:
                 if self.tissue_specific[datatype]:
                     if '_' in datatype:
                         src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
+                    elif datatype == 'tf_binding':
+                        src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     else:
                         src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
