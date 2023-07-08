@@ -88,7 +88,7 @@ class EdgeParser:
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
-        self.gencode_attr_ref =  self._blind_read_file(
+        self.gencode_attr_ref = self._blind_read_file(
             f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
         )
         self.mirna_ref = self._blind_read_file(
@@ -100,29 +100,33 @@ class EdgeParser:
         lists
         """
         return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
-    
+
     @time_decorator(print_args=True)
     def _iid_ppi(
         self,
         interaction_file: str,
         tissue: str,
-        ) -> List[Tuple[str, str, float, str]]:
+    ) -> List[Tuple[str, str, float, str]]:
         """Protein-protein interactions from the Integrated Interactions
         Database v 2021-05"""
-        df = pd.read_csv(interaction_file, delimiter='\t')
-        df = df[['symbol1', 'symbol2', 'evidence_type', 'n_methods', tissue]]
+        df = pd.read_csv(interaction_file, delimiter="\t")
+        df = df[["symbol1", "symbol2", "evidence_type", "n_methods", tissue]]
         t_spec_filtered = df[
             (df[tissue] > 0)
-            & (df['n_methods'] >= 3)
-            & (df['evidence_type'].str.contains('exp'))
-            ]
+            & (df["n_methods"] >= 3)
+            & (df["evidence_type"].str.contains("exp"))
+        ]
         edges = list(
-                zip(*map(t_spec_filtered.get, ['symbol1', 'symbol2']), itertool.repeat(-1), itertools.repeat('ppi'))
-                )
+            zip(
+                *map(t_spec_filtered.get, ["symbol1", "symbol2"]),
+                itertool.repeat(-1),
+                itertools.repeat("ppi"),
+            )
+        )
         return [
             (
-                f'{self.genesymbol_to_gencode[edge[0]]}',
-                f'{self.genesymbol_to_gencode[edge[1]]}',
+                f"{self.genesymbol_to_gencode[edge[0]]}",
+                f"{self.genesymbol_to_gencode[edge[1]]}",
                 edge[2],
                 edge[3],
             )
@@ -133,16 +137,16 @@ class EdgeParser:
 
     @time_decorator(print_args=True)
     def _mirna_targets(
-        self,
-        target_list: str,
-        tissue_active_mirnas: str
-        ) -> List[Tuple[str, str]]:
+        self, target_list: str, tissue_active_mirnas: str
+    ) -> List[Tuple[str, str]]:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.
         """
         active_mirna = [
             line[3]
-            for line in csv.reader(open(tissue_active_mirnas, newline=""), delimiter="\t")
+            for line in csv.reader(
+                open(tissue_active_mirnas, newline=""), delimiter="\t"
+            )
         ]
 
         return [
@@ -155,7 +159,7 @@ class EdgeParser:
             for line in csv.reader(open(target_list, newline=""), delimiter="\t")
             if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode.keys()
         ]
-    
+
     @time_decorator(print_args=True)
     def _tf_markers(self, interaction_file: str) -> List[Tuple[str, str]]:
         tf_keep = ["TF", "I Marker", "TFMarker"]
@@ -169,21 +173,21 @@ class EdgeParser:
                         if ";" in line[10]:
                             genes = line[10].split(";")
                             for gene in genes:
-                                if line[2] == 'I Marker':
+                                if line[2] == "I Marker":
                                     tf_markers.append((gene, line[1]))
                                 else:
                                     tf_markers.append((line[1], gene))
                         else:
-                            if line[2] == 'I Marker':
+                            if line[2] == "I Marker":
                                 tf_markers.append((line[10], line[1]))
                             else:
                                 tf_markers.append((line[1], line[10]))
-                    except IndexError: 
-                        pass 
+                    except IndexError:
+                        pass
 
         return [
             (
-                f'{self.genesymbol_to_gencode[tup[0]]}_tf',
+                f"{self.genesymbol_to_gencode[tup[0]]}_tf",
                 self.genesymbol_to_gencode[tup[1]],
                 -1,
                 "tf_marker",
@@ -198,79 +202,84 @@ class EdgeParser:
         self,
         interaction_file: str,
         score_filter: int,
-        ) -> List[Tuple[str, str, float, str]]:
+    ) -> List[Tuple[str, str, float, str]]:
         """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
         network is in the following format:
             col_1   TF
             col_2   Target gene
-            col_3   Edge weight 
+            col_3   Edge weight
         """
         tf_g, scores = [], []
-        with open(interaction_file, newline = '') as file:
-            file_reader = csv.reader(file, delimiter='\t')
+        with open(interaction_file, newline="") as file:
+            file_reader = csv.reader(file, delimiter="\t")
             for line in file_reader:
                 scores.append(float(line[2]))
-                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys():
+                if (
+                    line[0] in self.genesymbol_to_gencode.keys()
+                    and line[1] in self.genesymbol_to_gencode.keys()
+                ):
                     tf_g.append((line[0], line[1], float(line[2])))
-        
+
         cutoff = np.percentile(scores, score_filter)
 
         return [
-            (f'{self.genesymbol_to_gencode[line[0]]}_tf',
-            self.genesymbol_to_gencode[line[1]],
-            line[2],
-            'circuits',)
+            (
+                f"{self.genesymbol_to_gencode[line[0]]}_tf",
+                self.genesymbol_to_gencode[line[1]],
+                line[2],
+                "circuits",
+            )
             for line in tf_g
             if line[2] >= cutoff
-            ]
-        
+        ]
+
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
-        
+
         Returns:
             pybedtools.BedTool - TSS w/ target genes
         """
         tss = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.shared['tss']}")
         return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
-    
+
     @time_decorator(print_args=True)
     def get_loop_edges(
         self,
-        elements,
-        tss,
+        feat_1,
+        feat_2,
         loop_path,
         caller,
     ):
         def _split_chromatin_loops() -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
             """_summary_
-
-            Args:
-                loop_path (str): _description_
-
             Returns:
                 Tuple[pybedtools.BedTool, pybedtools.BedTool]: _description_
             """
-            first_anchor = pybedtools.BedTool(f"{self.tissue_dir}/local/chromatinloops_{self.tissue_name}.bed")
+            first_anchor = pybedtools.BedTool(
+                f"{self.tissue_dir}/local/chromatinloops_{self.tissue_name}.bed"
+            )
             second_anchor = pybedtools.BedTool(
                 "\n".join(
-                    ["\t".join([x[3], x[4], x[5], x[0], x[1], x[2]]) for x in first_anchor]
+                    [
+                        "\t".join([x[3], x[4], x[5], x[0], x[1], x[2]])
+                        for x in first_anchor
+                    ]
                 ),
                 from_string=True,
             )
             return first_anchor, second_anchor
-        
+
         def _loop_direct_overlap(
-            loops: pybedtools.BedTool,
-            features: pybedtools.BedTool
+            loops: pybedtools.BedTool, features: pybedtools.BedTool
         ) -> pybedtools.BedTool:
             """Get features that directly overlap with loop anchor"""
             return loops.intersect(features, wo=True)
-
 
         def _loop_within_distance(
             loops: pybedtools.BedTool,
             features: pybedtools.BedTool,
             distance: int,
+            type: str,
         ) -> pybedtools.BedTool:
             """Get features 2kb within loop anchor
 
@@ -281,14 +290,15 @@ class EdgeParser:
             """
             return loops.window(features, w=distance)
 
-
         def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
             """Creates a dict to store each anchor and its overlaps. Adds the feature by
             ignoring the first 7 columns of the bed file and adding whatever is left."""
             anchor = {}
             for bed in beds:
                 for feature in bed:
-                    anchor.setdefault("_".join(feature[0:3]), []).append("_".join(feature[7:]))
+                    anchor.setdefault("_".join(feature[0:3]), []).append(
+                        "_".join(feature[7:])
+                    )
             return anchor
 
         def _loop_edges(
@@ -305,54 +315,73 @@ class EdgeParser:
                 try:
                     uniq_edges = list(
                         itertools.product(
-                            first_anchor_edges[first_anchor], second_anchor_edges[second_anchor]
+                            first_anchor_edges[first_anchor],
+                            second_anchor_edges[second_anchor],
                         )
                     )
                     edges.extend(uniq_edges)
                 except KeyError:
                     continue
             return edges
-    
-        first_anchor, second_anchor = _split_chromatin_loops(
-            loop_path=loop_path,
-            caller=caller,
-        )
         
-        first_anchor_edges = _flatten_anchors(
-            _loop_direct_overlap(first_anchor, elements),
-            _loop_within_distance(first_anchor, tss, 2000),
-        )
-        second_anchor_edges = _flatten_anchors(
-            _loop_direct_overlap(second_anchor, elements),
-            _loop_within_distance(second_anchor, tss, 2000),
-        )
+        # split loops into anchors
+        first_anchor, second_anchor = _split_chromatin_loops()
         
-        return list(set([edge for edge in _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)]))
-        
+        if type == "tss":
+            first_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(first_anchor, elements),
+                _loop_within_distance(first_anchor, tss, 2000),
+            )
+            second_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(second_anchor, elements),
+                _loop_within_distance(second_anchor, tss, 2000),
+            )
+        else:
+            first_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(first_anchor, elements),
+                _loop_direct_overlap(first_anchor, tss, 2000),
+            )
+            second_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(second_anchor, elements),
+                _loop_direct_overlap(second_anchor, tss, 2000),
+            )
+
+        return list(
+            set(
+                [
+                    edge
+                    for edge in _loop_edges(
+                        first_anchor, first_anchor_edges, second_anchor_edges
+                    )
+                ]
+            )
+        )
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file.
         Edges will be loaded from the text file for subsequent runs to save
         processing time.
-        
+
         We filter for distal ELSs and link them to other enhancers and promoters (loop
         overlap) or genes (within 2kb of a loop anchor).
         TSS represents genes.
+        
+        TSS - 2kb loop 
         Gene - distal ELS
         Gene - promoters
         Gene - dyadic
         Gene - super enhancer
-        promoter - distal ELS 
-        promoter - SE 
-        promoter - dyadic
         
+        Only overlap
+        promoter - distal ELS
+        promoter - SE
+        promoter - dyadic
+
         Returns:
             A list of all edges
         """
-        e_g_edges = self.get_loop_edges(
-        
-        )
+        e_g_edges = self.get_loop_edges()
         ppi_edges = self._iid_ppi(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
             tissue=self.ppi_tissue,
@@ -365,14 +394,13 @@ class EdgeParser:
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
         circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}", f"/{self.interaction_files['circuits']}",
-            score_filter=30
+            f"{self.interaction_dir}",
+            f"/{self.interaction_files['circuits']}",
+            score_filter=30,
         )
 
-        self.interaction_edges = (
-            ppi_edges + mirna_targets + tf_markers + circuit_edges
-        )
-        
+        self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
+
         gencode_nodes = (
             [tup[0] for tup in ppi_edges]
             + [tup[1] for tup in ppi_edges]
@@ -386,7 +414,7 @@ class EdgeParser:
         mirnas = [tup[0] for tup in mirna_targets]
 
         return set(gencode_nodes), set(mirnas)
-    
+
     @time_decorator(print_args=False)
     def _add_node_coordinates(
         self,
@@ -399,9 +427,7 @@ class EdgeParser:
             nodes:
             node_ref:
         """
-        return [
-            line[0:4] for line in node_ref if line[3] in set(nodes)
-        ]
+        return [line[0:4] for line in node_ref if line[3] in set(nodes)]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
@@ -441,14 +467,15 @@ class EdgeParser:
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
         with open(all_interaction_file, "w+") as output:
             csv.writer(output, delimiter="\t").writerows(self.edges)
-        
+
         # write nodes to file
-        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", 'w+') as output:
+        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
             csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
-        
+
         # write edges with coordinates to file
-        with open(f"{self.interaction_dir}/full_edges.txt", 'w+') as output:
+        with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
             csv.writer(output, delimiter="\t").writerows(full_edges)
+
 
 def main() -> None:
     """Pipeline to generate individual graphs"""
@@ -456,28 +483,23 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to .yaml file with filenames"
-    )
+    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
     params = parse_yaml(args.config)
-    
+
     # instantiate object
     edgeparserObject = EdgeParser(
         params=params,
-        )
+    )
 
     # run pipeline!
     edgeparserObject.parse_edges()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-    
-    
+
     # @time_decorator(print_args=True)
     # def _fenrir_enhancer_enhancer(
     #     self,
@@ -502,7 +524,7 @@ if __name__ == '__main__':
     #         -1,
     #         'enhancer-enhancer',)
     #         for line in e_e_liftover
-    #         if int(line[2]) >= cutoff 
+    #         if int(line[2]) >= cutoff
     #     ]
 
     # @time_decorator(print_args=True)
@@ -532,7 +554,7 @@ if __name__ == '__main__':
     #         for line in e_g_liftover
     #         if int(line[2]) >= cutoff
     #     ]
-    
+
     # e_e_edges = self._fenrir_enhancer_enhancer(
     #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
     #     score_filter=30,
@@ -541,10 +563,10 @@ if __name__ == '__main__':
     #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
     #     score_filter=70,
     # )
-    
+
     # def _enhancer_index(
     #     self,
-    #     e_index: str, 
+    #     e_index: str,
     #     e_index_unlifted: str
     #     ) -> Dict[str, str]:
     #     """Returns a dict to map enhancers from hg19 to hg38"""

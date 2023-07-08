@@ -185,7 +185,7 @@ class UniversalGenomeDataPreprocessor:
                     if '_' in datatype:
                         src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
                     else:
-                        src = f"{self.data_dir}/bigwigs/peaks/{self.tissue_specific[datatype]}"
+                        src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
                     try:
                         os.symlink(src, dst)
