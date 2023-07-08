@@ -1,5 +1,6 @@
 ---
 dirs:
+  bigwig_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universalgenome/bigwigs/peaks
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome/Network_compendium/Tissue-specific_regulatory_networks_FANTOM5-v1/32_high-level_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/universal_genome/raw
   methylation_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universalgenome/FractionalMethylation_Removed_E027_E064_Fixed_E012

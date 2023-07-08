@@ -13,6 +13,7 @@ import argparse
 import csv
 from itertools import repeat
 from multiprocessing import Pool
+import re
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -91,13 +92,6 @@ class EdgeParser:
         )
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
-        )
-        self.enhancer_ref = self._blind_read_file(
-            f"{self.tissue_dir}/local/enhancers_lifted.bed"
-        )
-        self.e_indexes = self._enhancer_index(
-            e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
-            e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt",
         )
 
     def _blind_read_file(self, file: str) -> List[str]:
@@ -229,38 +223,6 @@ class EdgeParser:
             if line[2] >= cutoff
             ]
 
-    def _enhancer_index(
-        self,
-        e_index: str, 
-        e_index_unlifted: str
-        ) -> Dict[str, str]:
-        """Returns a dict to map enhancers from hg19 to hg38"""
-        def text_to_dict(txt, idx1, idx2):
-            with open(txt) as file:
-                file_reader = csv.reader(file, delimiter='\t')
-                return {
-                    line[idx1]:line[idx2]
-                    for line in file_reader
-                }
-        e_dict = text_to_dict(e_index, 1, 0)
-        e_dict_unlifted = text_to_dict(e_index_unlifted, 0, 1)
-        e_dict_unfiltered = {
-            enhancer:e_dict[e_dict_unlifted[enhancer]]
-            for enhancer in e_dict_unlifted
-            if e_dict_unlifted[enhancer] in e_dict.keys()
-            }
-        return {
-            k:v for k,v in e_dict_unfiltered.items()
-            if 'alt' not in v
-            }
-
-    def _format_enhancer(
-        self,
-        input: str,
-        index: int,
-        ) -> str:
-        return f"{input.replace(':', '-').split('-')[index]}"
-
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file.
@@ -282,11 +244,11 @@ class EdgeParser:
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
         circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}",
+            f"{self.interaction_dir}", f"/{self.interaction_files['circuits']}",
             score_filter=30
         )
 
-        self.edges = (
+        self.interaction_edges = (
             ppi_edges + mirna_targets + tf_markers + circuit_edges
         )
         
@@ -458,3 +420,35 @@ if __name__ == '__main__':
     #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
     #     score_filter=70,
     # )
+    
+    # def _enhancer_index(
+    #     self,
+    #     e_index: str, 
+    #     e_index_unlifted: str
+    #     ) -> Dict[str, str]:
+    #     """Returns a dict to map enhancers from hg19 to hg38"""
+    #     def text_to_dict(txt, idx1, idx2):
+    #         with open(txt) as file:
+    #             file_reader = csv.reader(file, delimiter='\t')
+    #             return {
+    #                 line[idx1]:line[idx2]
+    #                 for line in file_reader
+    #             }
+    #     e_dict = text_to_dict(e_index, 1, 0)
+    #     e_dict_unlifted = text_to_dict(e_index_unlifted, 0, 1)
+    #     e_dict_unfiltered = {
+    #         enhancer:e_dict[e_dict_unlifted[enhancer]]
+    #         for enhancer in e_dict_unlifted
+    #         if e_dict_unlifted[enhancer] in e_dict.keys()
+    #         }
+    #     return {
+    #         k:v for k,v in e_dict_unfiltered.items()
+    #         if 'alt' not in v
+    #         }
+
+    # def _format_enhancer(
+    #     self,
+    #     input: str,
+    #     index: int,
+    #     ) -> str:
+    #     return f"{input.replace(':', '-').split('-')[index]}"

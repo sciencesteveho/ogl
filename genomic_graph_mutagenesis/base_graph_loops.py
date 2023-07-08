@@ -10,7 +10,13 @@
 """Create a base graph from chromatin loop data.
 
 We filter for distal ELSs and link them to other enhancers and promoters (loop
-overlap) or genes (within 2kb of a loop anchor)."""
+overlap) or genes (within 2kb of a loop anchor).
+TSS represents genes.
+Gene - distal ELS
+Gene - promoters
+Gene - dyadic
+Gene - super enhancer
+"""
 
 import csv
 import itertools
