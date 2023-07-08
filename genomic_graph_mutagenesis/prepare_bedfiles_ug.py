@@ -113,8 +113,8 @@ class UniversalGenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
-        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
-            {self.data_dir}/{bed} \
+        cmd = f"sed 's/ /\t/g' {self.data_dir}/{bed} \
+            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
@@ -180,7 +180,7 @@ class UniversalGenomeDataPreprocessor:
             
         ### Make symlinks and rename files that do not need preprocessing
         for datatype in self.tissue_specific:
-            if datatype not in ['super_enhancer, tads']:
+            if datatype not in ['super_enhancer', 'tads']:
                 if self.tissue_specific[datatype]:
                     src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"

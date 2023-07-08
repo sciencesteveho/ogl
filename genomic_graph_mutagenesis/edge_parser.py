@@ -60,10 +60,6 @@ class EdgeParser:
         Lorem
     _format_enhancer:
         Lorem
-    _fenrir_enhancer_enhancer:
-        Lorem
-    _fenrir_enhancer_gene:
-        Lorem
     _process_graph_edges:
         Lorem
     """
@@ -265,61 +261,6 @@ class EdgeParser:
         ) -> str:
         return f"{input.replace(':', '-').split('-')[index]}"
 
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancer_enhancer(
-    #     self,
-    #     interaction_file: str,
-    #     score_filter: int,
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Convert each enhancer-enhancer link to hg38 and return a formatted
-    #     tuple."""
-    #     e_e_liftover, scores = [], []
-    #     with open(interaction_file, newline='') as file:
-    #         file_reader = csv.reader(file, delimiter='\t')
-    #         next(file_reader)
-    #         for line in file_reader:
-    #             scores.append(int(line[2]))
-    #             if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
-    #                 e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
-
-    #     cutoff = np.percentile(scores, score_filter)
-    #     return [
-    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-    #         f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
-    #         -1,
-    #         'enhancer-enhancer',)
-    #         for line in e_e_liftover
-    #         if int(line[2]) >= cutoff 
-    #     ]
-
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancer_gene(
-    #     self,
-    #     interaction_file: str,
-    #     score_filter: int,
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Convert each enhancer-gene link to hg38 and ensemble ID, return a
-    #     formatted tuple.
-    #     """
-    #     e_g_liftover, scores = [], []
-    #     with open(interaction_file, newline='') as file:
-    #         file_reader = csv.reader(file, delimiter='\t')
-    #         next(file_reader)
-    #         for line in file_reader:
-    #             scores.append(int(line[3]))
-    #             if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
-    #                 e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
-
-    #     cutoff = np.percentile(scores, score_filter)
-    #     return [
-    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-    #         line[1],
-    #         -1,
-    #         'enhancer-gene')
-    #         for line in e_g_liftover
-    #         if int(line[2]) >= cutoff
-    #     ]
-
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file.
@@ -340,14 +281,6 @@ class EdgeParser:
         tf_markers = self._tf_markers(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
-        # e_e_edges = self._fenrir_enhancer_enhancer(
-        #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-        #     score_filter=30,
-        # )
-        # e_g_edges = self._fenrir_enhancer_gene(
-        #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-        #     score_filter=70,
-        # )
         circuit_edges = self._marbach_regulatory_circuits(
             f"{self.interaction_dir}" f"/{self.interaction_files['circuits']}",
             score_filter=30
@@ -460,3 +393,68 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+    
+    
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancer_enhancer(
+    #     self,
+    #     interaction_file: str,
+    #     score_filter: int,
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Convert each enhancer-enhancer link to hg38 and return a formatted
+    #     tuple."""
+    #     e_e_liftover, scores = [], []
+    #     with open(interaction_file, newline='') as file:
+    #         file_reader = csv.reader(file, delimiter='\t')
+    #         next(file_reader)
+    #         for line in file_reader:
+    #             scores.append(int(line[2]))
+    #             if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
+    #                 e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
+
+    #     cutoff = np.percentile(scores, score_filter)
+    #     return [
+    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+    #         f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
+    #         -1,
+    #         'enhancer-enhancer',)
+    #         for line in e_e_liftover
+    #         if int(line[2]) >= cutoff 
+    #     ]
+
+    # @time_decorator(print_args=True)
+    # def _fenrir_enhancer_gene(
+    #     self,
+    #     interaction_file: str,
+    #     score_filter: int,
+    #     ) -> List[Tuple[str, str, float, str]]:
+    #     """Convert each enhancer-gene link to hg38 and ensemble ID, return a
+    #     formatted tuple.
+    #     """
+    #     e_g_liftover, scores = [], []
+    #     with open(interaction_file, newline='') as file:
+    #         file_reader = csv.reader(file, delimiter='\t')
+    #         next(file_reader)
+    #         for line in file_reader:
+    #             scores.append(int(line[3]))
+    #             if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
+    #                 e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
+
+    #     cutoff = np.percentile(scores, score_filter)
+    #     return [
+    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
+    #         line[1],
+    #         -1,
+    #         'enhancer-gene')
+    #         for line in e_g_liftover
+    #         if int(line[2]) >= cutoff
+    #     ]
+    
+    # e_e_edges = self._fenrir_enhancer_enhancer(
+    #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
+    #     score_filter=30,
+    # )
+    # e_g_edges = self._fenrir_enhancer_gene(
+    #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
+    #     score_filter=70,
+    # )
