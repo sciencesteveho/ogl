@@ -24,6 +24,7 @@ resources:
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
 
 local:

@@ -69,14 +69,14 @@ class EdgeParser:
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
-        self.gencode = params["shared"]["gencode"]
+        self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
         self.tissue = params["resources"]["tissue"]
         self.tissue_name = params["resources"]["tissue_name"]
         self.marker_name = params["resources"]["marker_name"]
         self.ppi_tissue = params["resources"]["ppi_tissue"]
         self.tissue_specific = params["tissue_specific"]
-        self.shared = params["shared"]
+        self.shared = params["local"]
 
         self.root_dir = params["dirs"]["root_dir"]
         self.shared_dir = f"{self.root_dir}/shared_data"
