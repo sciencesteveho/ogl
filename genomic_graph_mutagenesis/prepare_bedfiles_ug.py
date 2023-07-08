@@ -121,7 +121,7 @@ class UniversalGenomeDataPreprocessor:
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
-            {self.tissue_dir}/unprocessed/{bed} \
+            {self.tissue_dir}/{bed} \
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
@@ -129,7 +129,7 @@ class UniversalGenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
-        cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
+        cmd = f" tail -n +2 {self.tissue_dir}/{bed} \
             | awk -vOFS='\t' '{{print $3, $4, $5, $2}}' \
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - \
@@ -146,7 +146,7 @@ class UniversalGenomeDataPreprocessor:
         """
         dir_check_make(f"{self.dirs['methylation_dir']}/processing")
 
-        for chr in range(0, 23):
+        for chr in range(1, 23):
             df = pd.read_csv(
                 f"{self.dirs['methylation_dir']}/chr{chr}.fm",
                 header=None,
@@ -166,7 +166,7 @@ class UniversalGenomeDataPreprocessor:
                     f"{self.dirs['methylation_dir']}/processing/chr{chr}_{column}.bed"
                 )
 
-        for column in range(0, 23):
+        for column in range(0, 37):
             cmd = f"cat {self.dirs['methylation_dir']}/processing/_{column}.bed* \
                 | sort -k1,1 -k2,2n \
                 > {self.tissue_dir}/local/methylation_{column}.bed"
