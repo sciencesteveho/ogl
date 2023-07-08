@@ -14,25 +14,6 @@ interaction:
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
 
-options:
-  cpg_filetype: ENCODE
-  cpg_liftover: false
-
-resources:
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  key_protein_abundance: skin_not_expo
-  key_tpm: skin_not_expo
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name: Skin
-  ppi_tissue: hippocampal formation
-  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: skin
-  tissue_name: Skin - Not Sun Exposed (Suprapubic)
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/skin_not_sun_exposed_suprapubic.tpm.txt
-
 local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
@@ -61,6 +42,27 @@ local:
   sine: sine_hg38.bed
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
+
+options:
+  cpg_filetype: ENCODE
+  cpg_liftover: false
+
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
+  key_protein_abundance: skin_not_expo
+  key_tpm: skin_not_expo
+  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  marker_name: Skin
+  ppi_tissue: hippocampal formation
+  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  tissue: skin
+  tissue_name: Skin - Not Sun Exposed (Suprapubic)
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/skin_not_sun_exposed_suprapubic.tpm.txt
 
 tissue_specific:
   ATAC: ATAC-seq_narrow_5_merged.bed

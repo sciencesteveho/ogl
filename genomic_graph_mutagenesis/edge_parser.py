@@ -92,6 +92,9 @@ class EdgeParser:
         self.gencode_attr_ref = self._blind_read_file(
             f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
         )
+        self.regulatory_attr_ref = self._blind_read_file(
+            params["resources"]["reg_ref"]
+        )
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
@@ -498,6 +501,7 @@ class EdgeParser:
 
         self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
         self.chrom_edges = list(set(chrom_loop_edges))
+        self.all_edges = self.chrom_edges + self.interaction_edges
 
         chrom_loops_gencode_nodes = [
             edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]
@@ -518,8 +522,7 @@ class EdgeParser:
             + chrom_loops_gencode_nodes
         )
 
-        mirnas = [tup[0] for tup in mirna_targets]
-        return set(gencode_nodes), set(chrom_loops_regulatory_nodes), set(mirnas)
+        return set(gencode_nodes), set(chrom_loops_regulatory_nodes), set([tup[0] for tup in mirna_targets])
 
     @time_decorator(print_args=False)
     def _add_node_coordinates(
@@ -549,7 +552,7 @@ class EdgeParser:
             list(
                 zip(
                     [gencode_nodes, regulatory_nodes, mirnas],
-                    [self.gencode_attr_ref, self.enhancer_ref, self.mirna_ref],
+                    [self.gencode_attr_ref, self.regulatory_attr_ref, self.mirna_ref],
                 )
             ),
         )
@@ -571,13 +574,9 @@ class EdgeParser:
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
-        all_chrom_loop_file = f"{self.interaction_dir}/chromatin_loop_edges.txt"
         
         with open(all_interaction_file, "w+") as output:
             csv.writer(output, delimiter="\t").writerows(self.edges)
-
-        with open(all_chrom_loop_file, "w+") as output:
-            csv.writer(output, delimiter="\t").writerows(self.chrom_edges)
 
         # write nodes to file
         with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:

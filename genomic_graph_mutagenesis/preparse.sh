@@ -41,6 +41,7 @@ function _overlap_regulatory_regions () {
         -wb \
         | sort -k1,1 -k2,2n \
         | cut -f1,2,3,6 \
+        | cut -f1 -d',' \
         | uniq \
         | awk -v OFS='\t' '{print $1,$2,$3,$4}' \
         > $2/${5}s_epimap_screen_overlap.bed
@@ -76,6 +77,17 @@ function _overlap_dyadic_elements () {
     rm ${3}.unlifted
 }
 
+function _make_ref_for_regulatory_elements () {
+    cat \
+        $1/dyadic_epimap_screen_overlap.bed \
+        $1/enhancers_epimap_screen_overlap.bed \
+        $1/promoters_epimap_screen_overlap.bed \
+        | awk -vOFS='\t' '{print $1,$2,$3,$1"_"$2"_"$4}' \
+        | cat - <(tail -n +2 $2/SE_package_hg38.bed | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}') \
+        | sort -k1,1 -k2,2n \
+        > $3/regulatory_elements_node_attr.bed
+}
+
 # enhancers
 _overlap_regulatory_regions \
     /ocean/projects/bio210019p/stevesho/resources \
@@ -100,6 +112,12 @@ _overlap_dyadic_elements \
     GRCh38-ELS.bed \
     GRCh38-PLS.bed \
     dyadic
+
+# make refs
+_make_ref_for_regulatory_elements \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universalgenome \
+    /ocean/projects/bio210019p/stevesho/resources
 
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
 # "gene" entries. Additionally, make a lookup table top convert from gencode to

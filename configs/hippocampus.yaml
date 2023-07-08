@@ -14,25 +14,6 @@ interaction:
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
 
-options:
-  cpg_filetype: GEO
-  cpg_liftover: true
-
-resources:
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  key_protein_abundance: brain_cortex
-  key_tpm: brain_hippocampus
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name: Brain
-  ppi_tissue: hippocampal formation
-  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: hippocampus
-  tissue_name: Brain - Hippocampus
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
-
 local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
@@ -40,7 +21,6 @@ local:
   dyadic: dyadic_epimap_screen_overlap.bed
   enhancers: enhancers_epimap_screen_overlap.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
-  gencode_attr: gencode_v26_node_attr.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed
@@ -61,6 +41,27 @@ local:
   sine: sine_hg38.bed
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
+
+options:
+  cpg_filetype: GEO
+  cpg_liftover: true
+
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
+  key_protein_abundance: brain_cortex
+  key_tpm: brain_hippocampus
+  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  marker_name: Brain
+  ppi_tissue: hippocampal formation
+  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  tissue: hippocampus
+  tissue_name: Brain - Hippocampus
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
 
 tissue_specific:
   ATAC: ATAC-seq_narrow_5_merged.bed

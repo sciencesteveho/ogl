@@ -14,25 +14,6 @@ interaction:
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
 
-options:
-  cpg_filetype: ENCODE
-  cpg_liftover: false
-
-resources:
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  key_protein_abundance: breast
-  key_tpm: mammary_breast_tissue
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name: Breast
-  ppi_tissue: mammary gland
-  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: mammary
-  tissue_name: Breast - Mammary Tissue
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/breast_mammary_tissue.tpm.txt
-
 local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
@@ -61,6 +42,27 @@ local:
   sine: sine_hg38.bed
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
+
+options:
+  cpg_filetype: ENCODE
+  cpg_liftover: false
+
+resources:
+  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
+  key_protein_abundance: breast
+  key_tpm: mammary_breast_tissue
+  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  marker_name: Breast
+  ppi_tissue: mammary gland
+  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  tissue: mammary
+  tissue_name: Breast - Mammary Tissue
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/breast_mammary_tissue.tpm.txt
 
 tissue_specific:
   ATAC: ATAC-seq_narrow_5_merged.bed
