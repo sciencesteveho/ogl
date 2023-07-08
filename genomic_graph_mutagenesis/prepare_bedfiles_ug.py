@@ -159,11 +159,11 @@ class UniversalGenomeDataPreprocessor:
         #             f"{self.dirs['methylation_dir']}/processing/chr{chr}_{column}.bed"
         #         )
 
-        for column in range(1, 38):
-            cmd = f"cat {self.dirs['methylation_dir']}/processing/*_{column}.bed* \
-                | sort -k1,1 -k2,2n \
-                > {self.tissue_dir}/local/methylation_{column}.bed"
-            self._run_cmd(cmd)
+        # for column in range(1, 38):
+        #     cmd = f"cat {self.dirs['methylation_dir']}/processing/*_{column}.bed* \
+        #         | sort -k1,1 -k2,2n \
+        #         > {self.tissue_dir}/local/methylation_{column}.bed"
+        #     self._run_cmd(cmd)
             
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:

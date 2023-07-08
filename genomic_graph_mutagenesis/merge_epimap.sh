@@ -252,9 +252,9 @@ cp impute_BSS00122_H3K36me3.narrow.4._lifted_hg38.bed ../crms_processing/impute_
 bedops -m FINAL_H3K36me3_BSS00123.sub_VS_FINAL_WCE_BSS00123.pval.signal.bedgraph.gz.narrow.5._lifted_hg38.bed impute_BSS00122_H3K36me3.narrow.4._lifted_hg38.bed impute_BSS00758_H3K36me3.narrow.5._lifted_hg38.bed | awk -v FS='\t' '{print $1, $2, $3}' > ../merged/H3K36me3_narrow_5_merged.bed
 cp ../merged/H3K36me3_narrow_5_merged.bed ../../pancreas/H3K36me3_narrow_5_merged.bed
 
-raw_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
 peakmerge_dir=/ocean/projects/bio210019p/stevesho/remap2022
 working_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs
+rawdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
 
 function _remv_epimap () {
     minsize=1
@@ -274,8 +274,7 @@ do
         ${working_dir}/${tissue}/crms_processing
 done
 
-bigwigdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs
-rawdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
+
 for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle skin small_intestine;
 do
     echo $tissue
@@ -307,26 +306,32 @@ done
 
 
 
+working_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs
+rawdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
+peakmerge_dir=/ocean/projects/bio210019p/stevesho/remap2022
+
 function _get_crms_from_epimap () {
     python ${peakmerge_dir}/peakMerge.py \
         "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt" \
-        ${2} \
+        ${1} \
         "narrowPeak" \
-        ${3}
+        ${2}
 }
 
 for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle skin small_intestine;
 do
+    rm -r ${working_dir}/${tissue}/crms
+done
+
+for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle skin small_intestine;
+do
     _get_crms_from_epimap \
-        ${working_dir}/${tissue}/peaks \
         ${working_dir}/${tissue}/crms_processing \
         ${working_dir}/${tissue}/crms/
 
     # copy to raw_files
     cp \
         ${working_dir}/${tissue}/crms/consensuses.bed \
-        ${raw_dir}/${tissue}/consensuses.bed
+        ${rawdir}/${tissue}/consensuses.bed
 done
-
-
 """

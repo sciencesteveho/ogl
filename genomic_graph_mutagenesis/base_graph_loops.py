@@ -16,6 +16,9 @@ Gene - distal ELS
 Gene - promoters
 Gene - dyadic
 Gene - super enhancer
+promoter - distal ELS 
+promoter - SE 
+promoter - dyadic
 """
 
 import csv

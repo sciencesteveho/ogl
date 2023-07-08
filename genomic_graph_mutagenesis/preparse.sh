@@ -40,12 +40,14 @@ function _overlap_regulatory_regions () {
         -wa \
         -wb \
         | sort -k1,1 -k2,2n \
-        | cut -f1,2,3 \
+        | cut -f1,2,3,6 \
         | uniq \
-        | awk -v OFS='\t' '{print $1,$2,$3,"enhancer"}' \
-        > $2/epimap_screen_${5}_overlap.bed
+        | awk -v OFS='\t' '{print $1,$2,$3,$4}' \
+        > $2/${5}s_epimap_screen_overlap.bed
 
-    rm ${3}.unlifted
+    if [ -f $2/${3}.unlifted ]; then
+        rm ${3}.unlifted
+    fi
 }
 
 # function to overlap SCREEN regulatory regions with EpiMap dyadic regions

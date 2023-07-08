@@ -248,7 +248,15 @@ class EdgeParser:
             for line in tf_g
             if line[2] >= cutoff
             ]
-
+        
+    def _load_tss(self, tss_path: str) -> pybedtools.BedTool:
+        """Load TSS file and ignore any TSS that do not have a gene target.
+        Returns:
+            pybedtools.BedTool - TSS w/ target genes
+        """
+        tss = pybedtools.BedTool(tss_path)
+        return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
+    
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """_summary_ of function"""
