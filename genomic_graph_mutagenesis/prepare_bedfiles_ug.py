@@ -126,7 +126,7 @@ class UniversalGenomeDataPreprocessor:
             | awk -vOFS='\t' '{{print $3, $4, $5, $2}}' \
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - \
-            | awk -vOFS='\t' '{{$1, $2, $3, \"superenhancer\"}}' \
+            | awk -vOFS='\t' '{{print $1, $2, $3, \"superenhancer\"}}' \
             > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
 
         self._run_cmd(cmd)
