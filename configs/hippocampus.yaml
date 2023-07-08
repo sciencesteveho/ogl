@@ -80,6 +80,6 @@ tissue_specific:
   chromatinloops: Hippocampus.hg38.combined_loops
   cpg: CpgMethly_hippocampus_GSE46644.bed
   crms: consensuses.bed
-  super_enhancer: SE_02_0351_SE_hg38.bedipp
+  super_enhancer: SE_02_0351_SE_hg38.bed
   tads: Hippocampus_Schmitt2016-raw_TADs.txt
   tf_binding: interval.all.fps.0.0001.bed
