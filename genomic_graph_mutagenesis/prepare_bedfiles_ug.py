@@ -14,6 +14,9 @@ import requests
 import subprocess
 from typing import Dict
 
+import pandas as pd
+import pybedtools
+
 from utils import dir_check_make, parse_yaml, time_decorator
 
 
@@ -122,13 +125,13 @@ class UniversalGenomeDataPreprocessor:
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
-        
+
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
             | awk -vOFS='\t' '{{print $3, $4, $5, $2}}' \
-            | sort -j1,1 -k2,2n \
+            | sort -k1,1 -k2,2n \
             | bedtools merge -i - \
             | awk -vOFS='\t' '{{$1, $2, $3, \"superenhancer\"}}' \
             > {self.tissue_dir}/local/superenhancers_{self.tissue}.bed"
@@ -136,27 +139,89 @@ class UniversalGenomeDataPreprocessor:
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
-    def _tf_binding_clusters(self, bed: str) -> None:
+    def _split_merge_fractional_methylation(self) -> None:
+        """Splits fractional methylation into merged bedfiles for each sample.
+        We keep CpGs if fractional methylation is greater than 0.70 and adjacent
+        methylated CpGs are merged.
         """
-        Parse tissue-specific transcription factor binding sites Vierstra et
-        al., Nature, 2020. Footprints are FPR thresholded with p value < 0.001.
-        Footprints within 46bp are merged to form clusters, and then intersected
-        with collapsed motifs. If 90% of the collapsed motif falls within the
-        cluster, the cluster is annotated with the binding motif.
-        """
-        cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-            | bedtools merge -i - -d 46 \
-            | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
-            | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
-            > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-            
-        self._run_cmd(cmd)  
+        dir_check_make(f"{self.dirs['methylation_dir']}/processing")
 
+        for chr in range(0, 23):
+            df = pd.read_csv(
+                f"{self.dirs['methylation_dir']}/chr{chr}.fm",
+                header=None,
+                delimiter="\t",
+                index_col=0,
+            )
+            for column in df.columns:
+                newdf = pd.DataFrame(columns=["chrom", "start", "end", "value"])
+                newdf["end"] = list(df.index)
+                newdf["start"] = list(df.index - 1)
+                newdf["value"] = list(df[column])
+                newdf["chrom"] = f"chr{chr}"
+
+                pybedtools.BedTool.from_dataframe(newdf).filter(
+                    lambda x: float(x[3]) > 0.7
+                ).merge().saveas(
+                    f"{self.dirs['methylation_dir']}/processing/chr{chr}_{column}.bed"
+                )
+
+        for column in range(0, 23):
+            cmd = f"cat {self.dirs['methylation_dir']}/processing/_{column}.bed* \
+                | sort -k1,1 -k2,2n \
+                > {self.tissue_dir}/local/methylation_{column}.bed"
+            self._run_cmd(cmd)
+            
+    @time_decorator(print_args=True)
+    def prepare_data_files(self) -> None:
+        """Pipeline to prepare all bedfiles"""
+
+        ### Make symlinks for shared data files
+        for file in self.shared.values():
+            src = f"{self.root_dir}/shared_data/local/{file}"
+            dst = f"{self.tissue_dir}/local/{file}"
+            try:
+                os.symlink(src, dst)
+            except FileExistsError:
+                pass
+            
+        ### Make symlinks and rename files that do not need preprocessing
+        for datatype in self.tissue_specific:
+            if datatype not in ['super_enhancer, tads']:
+                if self.tissue_specific[datatype]:
+                    src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
+                    dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+                    try:
+                        os.symlink(src, dst)
+                    except FileExistsError:
+                        pass
+                
+        self._add_TAD_id(self.tissue_specific["tads"])
+        
+        self._superenhancers(self.tissue_specific["super_enhancer"])
+        
+        self._split_merge_fractional_methylation()
 
 
 def main() -> None:
     """Main function"""
-    pass
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to .yaml file with filenames",
+    )
+
+    args = parser.parse_args()
+    params = parse_yaml(args.config)
+
+    preprocessObject = UniversalGenomeDataPreprocessor(params)
+    preprocessObject.prepare_data_files()
+
+    print("Preprocessing complete!")
 
 
 if __name__ == "__main__":

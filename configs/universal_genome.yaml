@@ -2,6 +2,7 @@
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome/Network_compendium/Tissue-specific_regulatory_networks_FANTOM5-v1/32_high-level_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/universal_genome/raw
+  methylation_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome/FractionalMethylation_Removed_E027_E064_Fixed_E012
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 
 interaction:
@@ -54,9 +55,7 @@ local:
   tss: tss_parsed_hg38.bed
 
 tissue_specific:
-  DHS: DHS_Index_and_Vocabulary_hg38_WM20190703.txt
   chromatinloops: pan_chr_loops_grubert.bedpe
-  cpg: 
   crms: remap2022_crm_macs2_hg38_v1_0.bed
   super_enhancer: SE_package_hg38.bed
   tads: TADMap_scaffold_hs.bed
