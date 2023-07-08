@@ -78,7 +78,21 @@ sh concat nx.sh
 &nbsp;
 
 # Tissue-specific models
-Base interactions are derived tissue-specific chromatin loops, which is then combined with the interaction type graphs to creates the base nodes. Edges are added to these base nodes if local context nodes are within 2mb of a base node.
+Base interactions are derived tissue-specific chromatin loops, which is then combined with the interaction type graphs to creates the base nodes.
+The following chromatin loop interactions are parsed:
+```
+*gene TSS - reg element interactions require one anchor to overlap the element, and the other anchor to be within 2kb of a TSS
+gene TSS - gene TSS
+gene TSS - distal enhancer
+gene TSS - promoter
+gene TSS - dyadic element
+gene TSS - super enhancer
+
+element to element interactions require that both elements directly overlap opposing anchors
+promoter - distal enhancer
+promoter - dyadic element
+promoter - super enhancer
+```
 
 There are 14 node types, 4 edge types, and each node has a 36-dimensional feature vector.
 Each training target is a 4-dimensional feature vector.
