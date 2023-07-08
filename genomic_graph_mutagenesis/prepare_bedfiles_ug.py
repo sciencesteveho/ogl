@@ -97,13 +97,6 @@ class UniversalGenomeDataPreprocessor:
             except FileExistsError:
                 pass
 
-        for file in self.tissue_specific.values():
-            check_and_symlink(
-                dst=f"{self.tissue_dir}/unprocessed/{file}",
-                src=f"{self.data_dir}/{file}",
-                boolean=True,
-            )
-
         interact_files = {
             "mirnatargets": f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
             "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
@@ -121,7 +114,7 @@ class UniversalGenomeDataPreprocessor:
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
-            {self.tissue_dir}/{bed} \
+            {self.data_dir}/{bed} \
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
@@ -129,7 +122,7 @@ class UniversalGenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
-        cmd = f" tail -n +2 {self.tissue_dir}/{bed} \
+        cmd = f" tail -n +2 {self.data_dir}/{bed} \
             | awk -vOFS='\t' '{{print $3, $4, $5, $2}}' \
             | sort -k1,1 -k2,2n \
             | bedtools merge -i - \
