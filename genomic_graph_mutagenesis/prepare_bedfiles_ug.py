@@ -55,7 +55,7 @@ class UniversalGenomeDataPreprocessor:
         self.shared = params["local"]
         self.tissue_specific = params["tissue_specific"]
 
-        self.tissue = self.resources["tissue"]
+        self.tissue = 'universalgenome'
         self.root_dir = self.dirs["root_dir"]
         self.shared_data_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
