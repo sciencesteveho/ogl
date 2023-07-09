@@ -72,18 +72,18 @@ NODES = [
 ]
 
 TISSUES = [
-    "hela",
     "hippocampus",
-    "k562",
     "left_ventricle",
     "liver",
     "lung",
     "mammary",
-    "npc",
     "pancreas",
     "skeletal_muscle",
     "skin",
     "small_intestine",
+    # "hela",
+    # "k562",
+    # "npc",
 ]
 
 # dict helpers

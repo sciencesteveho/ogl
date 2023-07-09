@@ -18,23 +18,21 @@ from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
 import pandas as pd
 
-from utils import (
-    parse_yaml, 
-    TISSUES, 
-    time_decorator,
-)
-
+from utils import parse_yaml
+from utils import time_decorator
+from utils import TISSUES
 
 DATA_SPLITS = ["train", "test", "validation"]
 
 
 def _genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file"""
-    with open(gff, newline = '') as file:
+    with open(gff, newline="") as file:
         return {
-            line[3]: line[0] for line in csv.reader(file, delimiter='\t')
-            if line[0] not in ['chrX', 'chrY', 'chrM']
-            }
+            line[3]: line[0]
+            for line in csv.reader(file, delimiter="\t")
+            if line[0] not in ["chrX", "chrY", "chrM"]
+        }
 
 
 @time_decorator(print_args=False)
@@ -73,12 +71,8 @@ def _chr_split_train_test_val(
             "train": [
                 gene for gene in genes if genes[gene] not in test_chrs + val_chrs
             ],
-            "test": [
-                gene for gene in genes if genes[gene] in test_chrs
-            ],
-            "validation": [
-                gene for gene in genes if genes[gene] in val_chrs
-            ],
+            "test": [gene for gene in genes if genes[gene] in test_chrs],
+            "validation": [gene for gene in genes if genes[gene] in val_chrs],
         }
 
 
@@ -197,8 +191,7 @@ def tissue_targets(
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
 ):
-    """
-    """
+    """ """
 
     # proteins
     pro_median_df = _protein_std_dev_and_mean(protein_abundance_medians)
@@ -272,7 +265,7 @@ def main(
 
     keys = []
     for tissue in TISSUES:
-        params = parse_yaml(f'{config_dir}/{tissue}.yaml')
+        params = parse_yaml(f"{config_dir}/{tissue}.yaml")
         keys[tissue] = (params["key_tpm"], params["key_protein_abundance"])
 
     chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
@@ -298,9 +291,9 @@ def main(
     )
 
     parsed_targets = {}
-    parsed_targets['train'] = targets['train']['mammary']
-    parsed_targets['test'] = targets['test']['mammary']
-    parsed_targets['validation'] = targets['validation']['mammary']
+    parsed_targets["train"] = targets["train"]["mammary"]
+    parsed_targets["test"] = targets["test"]["mammary"]
+    parsed_targets["validation"] = targets["validation"]["mammary"]
 
     # save targets
     with open("graphs/target_dict_unfiltered.pkl", "wb") as output:

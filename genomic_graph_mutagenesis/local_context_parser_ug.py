@@ -684,12 +684,12 @@ class LocalContextParser:
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
+        self.tissue = "universalgenome"
+
         self.bedfiles = bedfiles
         self.resources = params["resources"]
         self.tissue_specific = params["tissue_specific"]
         self.gencode = params["local"]["gencode"]
-
-        self.tissue = self.resources["tissue"]
         self.chromfile = self.resources["chromfile"]
         self.fasta = self.resources["fasta"]
 
