@@ -81,12 +81,12 @@ class GraphConstructor:
         if edge_type == "base":
             if add_tissue:
                 return [
-                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}", tup[2])
+                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}", tup[3])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
                 return [
-                    (tup[0], tup[1], tup[2])
+                    (tup[0], tup[1], tup[3])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
         if edge_type == "local":
