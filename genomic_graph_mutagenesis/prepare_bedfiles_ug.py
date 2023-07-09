@@ -134,6 +134,14 @@ class UniversalGenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
+    @time_decorator(print_args=True)
+    def _tf_binding_sites(self, bed: str) -> None:
+        cmd = f" awk -vOFS='\t' '{{print $1,$2,$3,$12}}' \
+            | awk -F '\t' -v OFS='\t' \"$4 == \"\"{{$4 = \"notfs\"}};1' \
+            > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
+
+        self._run_cmd(cmd)
+
     # @time_decorator(print_args=True)
     # def _split_merge_fractional_methylation(self) -> None:
     #     """Splits fractional methylation into merged bedfiles for each sample.
@@ -183,11 +191,10 @@ class UniversalGenomeDataPreprocessor:
 
         ### Make symlinks and rename files that do not need preprocessing
         for datatype in self.tissue_specific:
-            if datatype not in ["super_enhancer", "tads"]:
+            if datatype not in ["super_enhancer", "tads", "tf_binding"]:
                 if self.tissue_specific[datatype]:
-                    if datatype == "tf_binding" or "_" not in datatype:
-                        src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
-                        dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+                    src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
+                    dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
                     try:
                         os.symlink(src, dst)
                     except FileExistsError:
@@ -204,6 +211,8 @@ class UniversalGenomeDataPreprocessor:
         self._add_TAD_id(self.tissue_specific["tads"])
 
         self._superenhancers(self.tissue_specific["super_enhancer"])
+
+        self._tf_binding_sites(self.tissue_specific["tf_binding"])
 
         # self._split_merge_fractional_methylation()
 

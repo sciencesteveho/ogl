@@ -23,7 +23,6 @@ import pybedtools
 
 from utils import dir_check_make
 from utils import NODES
-from utils import ONEHOT_EDGETYPE
 from utils import parse_yaml
 from utils import time_decorator
 
@@ -65,9 +64,7 @@ class GraphConstructor:
     def _base_graph(self, edges: List[str]):
         """Create a graph from list of edges"""
         G = nx.Graph()
-        for tup in edges:
-            G.add_edges_from([(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})])
-        # G.add_edges_from((tup[0], tup[1]) for tup in edges)
+        G.add_edges_from((tup[0], tup[1]) for tup in edges)
         return G
 
     @time_decorator(print_args=True)
@@ -81,23 +78,23 @@ class GraphConstructor:
         if edge_type == "base":
             if add_tissue:
                 return [
-                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}", tup[2])
+                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}")
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
                 return [
-                    (tup[0], tup[1], tup[2])
+                    (tup[0], tup[1])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
         if edge_type == "local":
             if add_tissue:
                 return [
-                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}", "local")
+                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}")
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
                 return [
-                    (tup[3], tup[7], "local")
+                    (tup[3], tup[7])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
         if edge_type not in ("base", "local"):
@@ -155,9 +152,6 @@ class GraphConstructor:
                     ),
                     "node_feat": np.array(
                         [[val for val in graph.nodes[node].values()] for node in nodes]
-                    ),
-                    "edge_feat": np.array(
-                        [[val for val in graph.edges[edge].values()] for edge in edges]
                     ),
                     "num_nodes": graph.number_of_nodes(),
                     "num_edges": graph.number_of_edges(),

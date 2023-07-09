@@ -86,14 +86,20 @@ TISSUES = [
     # "npc",
 ]
 
-# dict helpers
-# g_e g_p g_d g_se p_e p_d p_se g_g ppi mirna tf_marker circuits
 ONEHOT_EDGETYPE = {
-    "local": [1, 0, 0, 0, 0],
-    "enhancer-enhancer": [0, 1, 0, 0, 0],
-    "enhancer-gene": [0, 0, 1, 0, 0],
-    "circuits": [0, 0, 0, 1, 0],
-    "ppi": [0, 0, 0, 0, 1],
+    "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
+    "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
+    "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
+    "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
+    "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "promoter-enhancer"
+    "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "promoter-dyadic"
+    "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "promoter-superenhancer"
+    "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "gene-gene"
+    "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "protein-protein"
+    "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "mirna-gene"
+    "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "tf-marker"
+    "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "circuits"
+    "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "local"
 }
 
 TISSUE_TPM_KEYS = {
@@ -390,3 +396,31 @@ def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:
         (line[0], line[1], line[2], f"tss_{line[3]}_{genesymbol_dict[line[3]]}")
         for line in csv.reader(open(tss_path), delimiter="\t")
     ]
+
+
+@time_decorator(print_args=True)
+def _n_ego_graph(
+    graph: nx.Graph,
+    max_nodes: int,
+    node: str,
+    radius: int,
+) -> nx.Graph:
+    """Get n-ego graph centered around a gene (node)"""
+    # get n-ego graph
+    n_ego_graph = nx.ego_graph(
+        graph=graph,
+        n=node,
+        radius=radius,
+        undirected=True,
+    )
+
+    # if n_ego_graph is too big, reduce radius until n_ego_graph has nodes < max_nodes
+    while n_ego_graph.number_of_nodes() > max_nodes:
+        radius -= 1
+        n_ego_graph = nx.ego_graph(
+            graph=graph,
+            n=node,
+            radius=radius,
+        )
+
+    return n_ego_graph
