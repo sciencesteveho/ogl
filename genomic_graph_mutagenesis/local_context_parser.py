@@ -503,6 +503,7 @@ def main() -> None:
     bedfiles = _listdir_isfile_wrapper(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
     )
+    bedfiles = [x for x in bedfiles if "chromatinloops" not in x]
 
     # instantiate object
     localparseObject = LocalContextParser(
