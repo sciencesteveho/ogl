@@ -423,9 +423,16 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_direct_overlap(second_anchor, feat_2),
             )
-            return list(
-                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
-            )
+            return [
+                (edge[0], edge[1], -1, edge_type)
+                for edge in list(
+                    set(
+                        _loop_edges(
+                            first_anchor, first_anchor_edges, second_anchor_edges
+                        )
+                    )
+                )
+            ]
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
@@ -573,7 +580,7 @@ class EdgeParser:
         )
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
-        
+
         # write nodes to file
         with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
             csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
