@@ -501,15 +501,19 @@ class EdgeParser:
         self.chrom_edges = list(set(chrom_loop_edges))
         self.all_edges = self.chrom_edges + self.interaction_edges
 
-        chrom_loops_gencode_nodes = [
-            edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]
-        ] + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
-
         chrom_loops_regulatory_nodes = [
-            edge[0] for edge in self.chrom_edges if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
-        ] + [edge[1] for edge in self.chrom_edges if "ENSG" not in edge[1] and "superenhancer" not in edge[1]]
-        
-        chrom_loops_se_nodes = [edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
+            edge[0]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+        ] + [
+            edge[1]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
+        ]
+
+        chrom_loops_se_nodes = [
+            edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]
+        ] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
 
         gencode_nodes = (
             [tup[0] for tup in ppi_edges]
@@ -519,7 +523,8 @@ class EdgeParser:
             + [tup[1] for tup in tf_markers]
             + [tup[0] for tup in circuit_edges]
             + [tup[1] for tup in circuit_edges]
-            + chrom_loops_gencode_nodes
+            + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
+            + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
         )
 
         return (
@@ -557,7 +562,12 @@ class EdgeParser:
             list(
                 zip(
                     [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
-                    [self.gencode_attr_ref, self.regulatory_attr_ref, self.se_ref, self.mirna_ref],
+                    [
+                        self.gencode_attr_ref,
+                        self.regulatory_attr_ref,
+                        self.se_ref,
+                        self.mirna_ref,
+                    ],
                 )
             ),
         )

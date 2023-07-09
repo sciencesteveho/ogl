@@ -98,12 +98,13 @@ class EdgeParser:
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
-        self.tissue_name = "universalgenome"
-
-        self.gencode = params["shared"]["gencode"]
+        self.tissue = 'universalgenome'
+        
+        self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
-        self.tissue = params["resources"]["tissue"]
+        self.tss = params["resources"]["reftss_genes"]
         self.tissue_specific = params["tissue_specific"]
+        self.shared = params["local"]
 
         self.root_dir = params["dirs"]["root_dir"]
         self.circuit_dir = params["dirs"]["circuit_dir"]
@@ -116,12 +117,10 @@ class EdgeParser:
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_attr_ref = self._blind_read_file(
-            f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
+            params["resources"]["gencode_attr"]
         )
-        self.e_indexes = self._enhancer_index(
-            e_index=f"{self.shared_interaction_dir}/enhancer_indexes.txt",
-            e_index_unlifted=f"{self.shared_interaction_dir}/enhancer_indexes_unlifted.txt",
-        )
+        self.regulatory_attr_ref = self._blind_read_file(params["resources"]["reg_ref"])
+        self.se_ref = self._blind_read_file(params["resources"]["se_ref"])
 
     def _blind_read_file(self, file: str) -> List[str]:
         """Blindly reads a file into csv reader and stores file as a list of
@@ -509,7 +508,42 @@ class EdgeParser:
         # get tf-gene interactions across multiple tissues
         circuit_edges = [self._marbach_regulatory_circuits(interaction_file=f"{self.circuit_dir}/{file}", score_filter=80) for file in os.listdir(self.circuit_dir)]
         
+        self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
+        self.chrom_edges = list(set(chrom_loop_edges))
+        self.all_edges = self.chrom_edges + self.interaction_edges
         
+        chrom_loops_regulatory_nodes = [
+            edge[0]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+        ] + [
+            edge[1]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
+        ]
+
+        chrom_loops_se_nodes = [
+            edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]
+        ] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
+
+        gencode_nodes = (
+            [tup[0] for tup in ppi_edges]
+            + [tup[1] for tup in ppi_edges]
+            + [tup[1] for tup in mirna_targets]
+            + [tup[0] for tup in tf_markers]
+            + [tup[1] for tup in tf_markers]
+            + [tup[0] for tup in circuit_edges]
+            + [tup[1] for tup in circuit_edges]
+            + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
+            + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
+        )
+
+        return (
+            set(gencode_nodes),
+            set(chrom_loops_regulatory_nodes),
+            set(chrom_loops_se_nodes),
+            set([tup[0] for tup in mirna_targets]),
+        )
     
     @time_decorator(print_args=False)
     def _add_node_coordinates(
@@ -532,3 +566,63 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+
+parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
+params = parse_yaml('/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/universal_genome.yaml')
+
+# instantiate object
+edgeparserObject = EdgeParser(
+    params=params,
+)
+
+gencode_nodes, regulatory_nodes, se_nodes, mirnas = edgeparserObject._process_graph_edges()
+
+# add coordinates to nodes in parallel
+pool = Pool(processes=4)
+nodes_for_attr = pool.starmap(
+    edgeparserObject._add_node_coordinates,
+    list(
+        zip(
+            [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
+            [
+                edgeparserObject.gencode_attr_ref,
+                edgeparserObject.regulatory_attr_ref,
+                edgeparserObject.se_ref,
+                edgeparserObject.mirna_ref,
+            ],
+        )
+    ),
+)
+pool.close()
+nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+
+# add coordinates to edges
+full_edges = []
+nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
+for edge in edgeparserObject.edges:
+    if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
+        full_edges.append(
+            [edge[0]]
+            + nodes_with_coords[edge[0]]
+            + [edge[1]]
+            + nodes_with_coords[edge[1]]
+            + [edge[2], edge[3]]
+        )
+
+# write edges to file
+all_interaction_file = f"{edgeparserObject.interaction_dir}/interaction_edges.txt"
+
+with open(all_interaction_file, "w+") as output:
+    csv.writer(output, delimiter="\t").writerows(edgeparserObject.edges)
+
+# write nodes to file
+with open(f"{edgeparserObject.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
+    csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
+
+# write edges with coordinates to file
+with open(f"{edgeparserObject.interaction_dir}/full_edges.txt", "w+") as output:
+    csv.writer(output, delimiter="\t").writerows(full_edges)

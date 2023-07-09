@@ -27,6 +27,8 @@ resources:
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
 
 local:
   cnv: cnv_hg38.bed
