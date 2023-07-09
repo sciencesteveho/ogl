@@ -591,7 +591,7 @@ class EdgeParser:
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
 
         with open(all_interaction_file, "w+") as output:
-            csv.writer(output, delimiter="\t").writerows(self.edges)
+            csv.writer(output, delimiter="\t").writerows(self.all_edges)
 
         # write nodes to file
         with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
