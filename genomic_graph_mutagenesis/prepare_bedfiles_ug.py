@@ -196,7 +196,7 @@ class UniversalGenomeDataPreprocessor:
         
         self._superenhancers(self.tissue_specific["super_enhancer"])
         
-        self._split_merge_fractional_methylation()
+        # self._split_merge_fractional_methylation()
 
 
 def main() -> None:
