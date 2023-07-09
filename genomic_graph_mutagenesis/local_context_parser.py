@@ -49,43 +49,17 @@ class LocalContextParser:
     # Helpers
         ATTRIBUTES -- list of node attribute types
         DIRECT -- list of datatypes that only get direct overlaps, no slop
-        FEAT_WINDOWS -- dictionary of each nodetype: overlap windows
         NODES -- list of nodetypes
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
     """
 
-    DIRECT = ["chromatinloops", "tads"]
-    NODE_FEATS = ["start", "end", "size", "gc"] + ATTRIBUTES
+    # list helpers
+    DIRECT = ["tads"]
+    NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
     # var helpers - for CPU cores
     NODE_CORES = len(NODES) + 1  # 12
-    ATTRIBUTE_CORES = len(ATTRIBUTES)  # 30
-
-    # Local context set at 2kb. While association can vary widely, assume prior
-    # information from 3d chromatin structure and the FENRIR network
-    FEAT_WINDOWS = {
-        "basenodes": 2000,
-        "cpgislands": 2000,
-        "ctcfccre": 2000,
-        "enhancers": 2000,
-        "gencode": 2000,
-        "histones": 2000,
-        "promoters": 2000,
-        "superenhancers": 2000,
-        "tfbindingclusters": 2000,
-        "tss": 2000,
-    }
-
-    # dict helpers
-    # ONEHOT_NODETYPE = {}
-
-    # ONEHOT_EDGETYPE = {
-    #     'local': [1,0,0,0,0],
-    #     'enhancer-enhancer': [0,1,0,0,0],
-    #     'enhancer-gene': [0,0,1,0,0],
-    #     'circuits': [0,0,0,1,0],
-    #     'ppi': [0,0,0,0,1],
-    # }
+    ATTRIBUTE_CORES = len(ATTRIBUTES)  # 3
 
     def __init__(
         self,
@@ -96,10 +70,9 @@ class LocalContextParser:
         self.bedfiles = bedfiles
         self.resources = params["resources"]
         self.tissue_specific = params["tissue_specific"]
-        self.gencode = params["shared"]["gencode"]
+        self.gencode = params["local"]["gencode"]
 
         self.tissue = self.resources["tissue"]
-        self.tissue_name = self.resources["tissue_name"]
         self.chromfile = self.resources["chromfile"]
         self.fasta = self.resources["fasta"]
 
@@ -112,6 +85,7 @@ class LocalContextParser:
         genes = f"{self.tissue_dir}/tpm_filtered_genes.bed"
         gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
 
+        # prepare list of genes passing tpm filter
         if not (os.path.exists(genes) and os.stat(genes).st_size > 0):
             self._prepare_tpm_filtered_genes(
                 genes=genes,
@@ -119,6 +93,7 @@ class LocalContextParser:
                 base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
             )
 
+        # prepare references
         self.gencode_ref = pybedtools.BedTool(genes)
         self.gene_windows = pybedtools.BedTool(gene_windows)
         self.genesymbol_to_gencode = genes_from_gencode(
@@ -132,17 +107,15 @@ class LocalContextParser:
         self, genes: str, gene_windows: str, base_nodes: str
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes, _ = _tpm_filter_gene_windows(
+        filtered_genes = _tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
             tpm_file=self.resources["tpm"],
             chromfile=self.chromfile,
-            window=self.resources["window"],
-            slop=True,
+            slop=False,
         )
 
         windows = pybedtools.BedTool(base_nodes).slop(g=self.chromfile, b=25000).sort()
-
         filtered_genes.saveas(genes)
         windows.saveas(gene_windows)
 
@@ -175,30 +148,23 @@ class LocalContextParser:
             Cpgislands add prefix to feature names  # enhancers,
             Histones add an additional column
             """
-            rename_strings = [
+            simple_rename = [
                 "cpgislands",
-                "enhancers",
-                "histones",
-                "polyasites",
-                "tfbindingclusters",
+                "crms",
             ]
-            if prefix in rename_strings:
+            if prefix in simple_rename:
                 feature = extend_fields(feature, 4)
-                feature[3] = f"{prefix}_{feature[0]}_{feature[1]}"
+                feature[3] = f"{feature[0]}_{feature[1]}_{prefix}"
             else:
-                feature[3] = f"{feature[3]}_{feature[0]}_{feature[1]}"
+                feature[3] = f"{feature[0]}_{feature[1]}_{feature[3]}"
             return feature
 
         # prepare data as pybedtools objects
         bed_dict = {}
-        prefix = bed.split("_")[0]
+        prefix = bed.split("_")[0].lower()
         a = self.gene_windows
         b = pybedtools.BedTool(f"{self.root_dir}/{self.tissue}/local/{bed}").sort()
         ab = b.intersect(a, sorted=True, u=True)
-        if prefix == "enhancers":  # save enhancers early for attr ref
-            b.each(rename_feat_chr_start).filter(lambda x: "alt" not in x[0]).saveas(
-                f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
-            )
 
         # take specific windows and format each file
         if prefix in NODES and prefix != "gencode":
@@ -211,7 +177,7 @@ class LocalContextParser:
 
     @time_decorator(print_args=True)
     def _slop_sort(
-        self, bedinstance: Dict[str, str], chromfile: str
+        self, bedinstance: Dict[str, str], chromfile: str, feat_window: int = 2000
     ) -> Tuple[
         Dict[str, pybedtools.bedtool.BedTool], Dict[str, pybedtools.bedtool.BedTool]
     ]:
@@ -231,9 +197,7 @@ class LocalContextParser:
             if key in ATTRIBUTES + self.DIRECT:
                 pass
             else:
-                nodes = (
-                    bedinstance[key].slop(g=chromfile, b=self.FEAT_WINDOWS[key]).sort()
-                )
+                nodes = bedinstance[key].slop(g=chromfile, b=feat_window).sort()
                 newstrings = []
                 for line_1, line_2 in zip(nodes, bedinstance[key]):
                     newstrings.append(str(line_1).split("\n")[0] + "\t" + str(line_2))
@@ -327,12 +291,9 @@ class LocalContextParser:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        if node_type == "enhancers":  # ignore ALT chr
-            ref_file = f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
-        else:
-            ref_file = f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
-
-        ref_file = pybedtools.BedTool(ref_file)
+        ref_file = pybedtools.BedTool(
+            f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
+        )
         ref_file = (
             ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
         )
@@ -397,17 +358,6 @@ class LocalContextParser:
         from interaction data
         """
 
-        def _polyadenylation_targets(interaction_file: str) -> List[str]:
-            """Genes which are listed as alternative polyadenylation targets"""
-            with open(interaction_file, newline="") as file:
-                file_reader = csv.reader(file, delimiter="\t")
-                next(file_reader)
-                return [
-                    self.genesymbol_to_gencode[line[6]]
-                    for line in file_reader
-                    if line[6] in self.genesymbol_to_gencode.keys()
-                ]
-
         attr_dict, attr_dict_nochr, set_dict = (
             {},
             {},
@@ -441,20 +391,6 @@ class LocalContextParser:
                     except ValueError:
                         for dictionary in [attr_dict, attr_dict_nochr]:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
-
-        # add polyadenylation attribute
-        poly_a_targets = _polyadenylation_targets(
-            f"{self.root_dir}/shared_data/interaction/PDUI_polyA_sites/{self.tissue_specific['polyadenylation']}"
-        )
-        poly_a_targets = [f"{target}_{self.tissue}" for target in poly_a_targets]
-
-        for line in set_dict["gc"]:
-            if f"{line[3]}_{self.tissue}" in poly_a_targets:
-                for dictionary in [attr_dict, attr_dict_nochr]:
-                    dictionary[f"{line[3]}_{self.tissue}"]["polyadenylation"] = 1
-            else:
-                for dictionary in [attr_dict, attr_dict_nochr]:
-                    dictionary[f"{line[3]}_{self.tissue}"]["polyadenylation"] = 0
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
@@ -521,7 +457,9 @@ class LocalContextParser:
 
         # sort and extend windows according to FEAT_WINDOWS
         bedinstance_sorted, bedinstance_slopped = self._slop_sort(
-            bedinstance=bedinstance, chromfile=self.chromfile
+            bedinstance=bedinstance,
+            chromfile=self.chromfile,
+            feat_window=2000,
         )
 
         # save intermediate files

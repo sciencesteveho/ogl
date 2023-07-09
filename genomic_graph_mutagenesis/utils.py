@@ -19,7 +19,6 @@ import pandas as pd
 import pybedtools
 import yaml
 
-
 ATTRIBUTES = [
     "gc",
     "cnv",
@@ -30,7 +29,10 @@ ATTRIBUTES = [
     "h3k27me3",
     "h3k36me3",
     "h3k4me1",
+    "h3k4me2",
     "h3k4me3",
+    "h3k79me2",
+    "h3k9ac",
     "h3k9me3",
     "indels",
     "line",
@@ -39,6 +41,7 @@ ATTRIBUTES = [
     "phastcons",
     "polr2a",
     "polyasites",
+    "rad21",
     "rbpbindingsites",
     "recombination",
     "repg1b",
@@ -50,19 +53,21 @@ ATTRIBUTES = [
     "rnarepeat",
     "simplerepeats",
     "sine",
+    "smc3",
     "snp",
 ]
 
 NODES = [
     "cpgislands",
+    "crms",
     "ctcfccre",
+    "dyadic",
     "enhancers",
     "gencode",
-    "histones",
     "promoters",
     "superenhancers",
     "tads",
-    "tfbindingclusters",
+    "tfbindingsites",
     "tss",
 ]
 
@@ -80,6 +85,16 @@ TISSUES = [
     "skin",
     "small_intestine",
 ]
+
+# dict helpers
+# g_e g_p g_d g_se p_e p_d p_se g_g ppi mirna tf_marker circuits
+ONEHOT_EDGETYPE = {
+    "local": [1, 0, 0, 0, 0],
+    "enhancer-enhancer": [0, 1, 0, 0, 0],
+    "enhancer-gene": [0, 0, 1, 0, 0],
+    "circuits": [0, 0, 0, 1, 0],
+    "ppi": [0, 0, 0, 0, 1],
+}
 
 TISSUE_TPM_KEYS = {
     "Adipose - Subcutaneous": 3,
@@ -214,6 +229,7 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
         display_arg (str, optional): Decides wether or not args are printed to
         stdout. Defaults to "".
     """
+
     def _time_decorator_func(function: Callable) -> Callable:
         @functools.wraps(function)
         def _execute(*args: Any, **kwargs: Any) -> Any:
@@ -295,9 +311,7 @@ def _tpm_filter_gene_windows(
         # [x[3] for x in genes_filtered]
 
 
-def _get_sorted_node_degrees(
-    graph: nx.Graph
-    ) -> None:
+def _get_sorted_node_degrees(graph: nx.Graph) -> None:
     """_summary_
 
     Args:
@@ -311,7 +325,7 @@ def _calculate_max_distance_base_graph(bed: List[List[str]]) -> List[List[str]]:
     max, mean, and median distances for all interaction type data.
     """
     return {
-        max(int(line[2]), int(line[6]))-min(int(line[3]), int(line[7]))
+        max(int(line[2]), int(line[6])) - min(int(line[3]), int(line[7]))
         for line in bed
     }
 
@@ -325,10 +339,10 @@ def _graph_stats(tissue, graph_dir):
     with open(f"{graph_dir}/graph.pkl", "rb") as file:
         graph = pickle.load(file)
 
-    print(graph['num_nodes'])
-    print(graph['num_edges'])
-    print(graph['avg_edges'])
-    
+    print(graph["num_nodes"])
+    print(graph["num_edges"])
+    print(graph["avg_edges"])
+
 
 def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     """_summary_
@@ -338,7 +352,9 @@ def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     """
     graph_list = []
     for tissue in tissue_list:
-        graph_list.append(nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml"))
+        graph_list.append(
+            nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
+        )
 
     return nx.compose_all(graph_list)
 
@@ -350,10 +366,10 @@ def _combined_graph_arrays(
     """Combine graph arrays from multiple tissues"""
     feats = []
     for tissue in tissue_list:
-        graph_file = f'{graph_dir}/graph.pkl'
-        with open(graph_file, 'rb') as f:
+        graph_file = f"{graph_dir}/graph.pkl"
+        with open(graph_file, "rb") as f:
             graph = pickle.load(f)
-        feats.append(graph['node_feat'])
+        feats.append(graph["node_feat"])
 
 
 def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:

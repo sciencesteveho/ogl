@@ -279,58 +279,6 @@ class GenomeDataPreprocessor:
 
         self._merge_cpg(self.tissue_specific["cpg"])
 
-        # self._split_chromatinloops(self.tissue_specific["chromatinloops"])
-
-        # self._fenrir_enhancers(
-        #     self.tissue_specific["enhancers_e_e"],
-        #     self.tissue_specific["enhancers_e_g"],
-        # )
-
-    # @time_decorator(print_args=True)
-    # def _split_chromatinloops(self, bed: str) -> None:
-    #     """Split chromatinloop file in separate entries"""
-    #     full_loop = f"sort -k 1,1 -k2,2n {self.tissue_dir}/unprocessed/{bed} \
-    #         | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
-    #         > {self.tissue_dir}/local/chromatinloops_{self.tissue}.txt"
-
-    #     self._run_cmd(full_loop)
-
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancers(self, e_e_bed: str, e_g_bed: str) -> None:
-    #     """
-    #     Get a list of the individual enhancer sites from FENRIR (Chen et al.,
-    #     Cell Systems, 2021) by combining enhancer-gene and enhancer-enhancer
-    #     networks and sorting
-    #     """
-    #     split_1 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-    #         | cut -f1 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_1"
-    #     split_2 = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_e_bed} \
-    #         | cut -f2 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         > {self.tissue_dir}/unprocessed/{e_e_bed}_2"
-    #     enhancer_cat = f"tail -n +2 {self.tissue_dir}/unprocessed/{e_g_bed} \
-    #         | cut -f1 \
-    #         | sed -e 's/:/\t/g' -e s'/-/\t/g' \
-    #         | cat - {self.tissue_dir}/unprocessed/{e_e_bed}_1 {self.tissue_dir}/unprocessed/{e_e_bed}_2 \
-    #         | sort -k1,1 -k2,2n \
-    #         | uniq \
-    #         > {self.tissue_dir}/unprocessed/enhancers.bed"
-
-    #     liftover_sort = f"{self.resources['liftover']} \
-    #         {self.tissue_dir}/unprocessed/enhancers.bed \
-    #         {self.resources['liftover_chain']} \
-    #         {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-    #         {self.tissue_dir}/unprocessed/enhancers_unlifted "
-
-    #     enhancer_rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"enhancer_\"$1\"_\"$2}}' \
-    #        {self.tissue_dir}/unprocessed/enhancers_lifted_{self.tissue}.bed \
-    #        > {self.tissue_dir}/local/enhancers_lifted.bed"
-
-    #     for cmd in [split_1, split_2, enhancer_cat, liftover_sort, enhancer_rename]:
-    #         self._run_cmd(cmd)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
