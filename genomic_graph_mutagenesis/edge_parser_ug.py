@@ -445,18 +445,85 @@ class EdgeParser:
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """_summary_ of function"""
+        chromatin_loops = f"{self.tissue_dir}/local/chromatinloops_{self.tissue}.bed"
+        tss = self._load_tss()
+        distal_enhancers = (
+            pybedtools.BedTool(f"{self.local_dir}/{self.shared['enhancers']}")
+            .filter(lambda x: x[3] == "dELS")
+            .saveas()
+        )
+        promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
+        dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
+        super_enhancers = pybedtools.BedTool(
+            f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+        )
+
+        chrom_loop_edges = []
+        for element in [
+            (distal_enhancers, "g_e"),
+            (promoters, "g_p"),
+            (dyadic, "g_d"),
+            (super_enhancers, "g_se"),
+        ]:
+            chrom_loop_edges.extend(
+                self.get_loop_edges(
+                    chromatin_loops=chromatin_loops,
+                    feat_1=element[0],
+                    feat_2=tss,
+                    tss=True,
+                    edge_type=element[1],
+                )
+            )
+
+        for element in [
+            (distal_enhancers, "p_e"),
+            (dyadic, "p_d"),
+            (super_enhancers, "p_se"),
+        ]:
+            chrom_loop_edges.extend(
+                self.get_loop_edges(
+                    chromatin_loops=chromatin_loops,
+                    feat_1=element[0],
+                    feat_2=promoters,
+                    tss=False,
+                    edge_type=element[1],
+                )
+            )
+        
+        # get PPI for multiple tissues
         ppi_edges = [
             self.iid_ppi(
                 f"{self.interaction_dir}/{self.interaction_files['ppis']}", tissue
             )
             for tissue in self.PROTEIN_TISSUES
         ]
+        
+        # get all miRNA targets
         mirna_targets = self._mirna_targets(target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}")
+        
+        # get all from tf marker that fit tf type
         tf_markers = self._tf_markers(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
-        circuit_edges = [self._marbach_regulatory_circuits(interaction_file=f"{self.circuit_dir}/{file}", score_filter=80,) for file in os.listdir(self.circuit_dir)]
         
+        # get tf-gene interactions across multiple tissues
+        circuit_edges = [self._marbach_regulatory_circuits(interaction_file=f"{self.circuit_dir}/{file}", score_filter=80) for file in os.listdir(self.circuit_dir)]
+        
+        
+    
+    @time_decorator(print_args=False)
+    def _add_node_coordinates(
+        self,
+        nodes,
+        node_ref,
+    ) -> None:
+        """_summary_
+
+        Args:
+            nodes:
+            node_ref:
+        """
+        return [line[0:4] for line in node_ref if line[3] in set(nodes)]
 
 def main() -> None:
     """Main function"""
