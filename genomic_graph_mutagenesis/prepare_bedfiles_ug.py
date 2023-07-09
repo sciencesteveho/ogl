@@ -182,12 +182,10 @@ class UniversalGenomeDataPreprocessor:
         for datatype in self.tissue_specific:
             if datatype not in ['super_enhancer', 'tads']:
                 if self.tissue_specific[datatype]:
-                    if '_' in datatype:
-                        src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
-                    elif datatype == 'tf_binding':
+                    if datatype == 'tf_binding' or '_' not in datatype:
                         src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     else:
-                        src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
+                        src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
                     dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
                     try:
                         os.symlink(src, dst)

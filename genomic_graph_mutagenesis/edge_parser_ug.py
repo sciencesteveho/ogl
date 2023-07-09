@@ -10,9 +10,9 @@
 
 import argparse
 import csv
-from itertools import repeat
+import itertools
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -147,8 +147,8 @@ class EdgeParser:
         edges = list(
             zip(
                 *map(t_spec_filtered.get, ["symbol1", "symbol2"]),
-                repeat(-1),
-                repeat("ppi"),
+                itertools.repeat(-1),
+                itertools.repeat("ppi"),
             )
         )
         return [
@@ -250,13 +250,197 @@ class EdgeParser:
             if line[2] >= cutoff
             ]
         
-    def _load_tss(self, tss_path: str) -> pybedtools.BedTool:
+    def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
+
         Returns:
             pybedtools.BedTool - TSS w/ target genes
         """
-        tss = pybedtools.BedTool(tss_path)
+        tss = pybedtools.BedTool(f"{self.tss}")
         return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
+
+    @time_decorator(print_args=True)
+    def get_loop_edges(
+        self,
+        chromatin_loops: str,
+        feat_1: str,
+        feat_2: str,
+        edge_type: str,
+        tss: bool = False,
+    ) -> List[Tuple[str, str, float, str]]:
+        """Connects nodes if they are linked by chromatin loops. Can specify if
+        the loops should only be done for direct overlaps or if they should
+        be within 2mb of a loop anchor for TSS. If using TSS, make sure to
+        specify the TSS as the second feature!
+
+        Args:
+            feat_1 (str): _description_
+            feat_2 (str): _description_
+            type (str): _description_
+
+        Returns:
+            List[Tuple[str, str, float, str]]: _description_
+        """
+
+        def _split_chromatin_loops(
+            chromatin_loops: str,
+        ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
+            """_summary_
+            Returns:
+                Tuple[pybedtools.BedTool, pybedtools.BedTool]: _description_
+            """
+            first_anchor = pybedtools.BedTool(chromatin_loops)
+            second_anchor = pybedtools.BedTool(
+                "\n".join(
+                    [
+                        "\t".join([x[3], x[4], x[5], x[0], x[1], x[2]])
+                        for x in first_anchor
+                    ]
+                ),
+                from_string=True,
+            )
+            return first_anchor.cut([0, 1, 2, 3, 4, 5]), second_anchor.cut(
+                [0, 1, 2, 3, 4, 5]
+            )
+
+        def _loop_direct_overlap(
+            loops: pybedtools.BedTool, features: pybedtools.BedTool
+        ) -> pybedtools.BedTool:
+            """Get features that directly overlap with loop anchor"""
+            return loops.intersect(features, wo=True)
+
+        def _loop_within_distance(
+            loops: pybedtools.BedTool,
+            features: pybedtools.BedTool,
+            distance: int,
+        ) -> pybedtools.BedTool:
+            """Get features 2kb within loop anchor
+
+            Args:
+                loops (pybedtools.BedTool): _description_
+                features (pybedtools.BedTool): _description_
+                distance (int): _description_
+            """
+            return loops.window(features, w=distance)
+
+        def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
+            """Creates a dict to store each anchor and its overlaps. Adds the feature by
+            ignoring the first 7 columns of the bed file and adding whatever is left."""
+            anchor = {}
+            for bed in beds:
+                for feature in bed:
+                    anchor.setdefault("_".join(feature[0:3]), []).append(
+                        "_".join([feature[6], feature[7], feature[9]])
+                    )
+            return anchor
+
+        def _loop_edges(
+            loops: pybedtools.BedTool,
+            first_anchor_edges: Dict[str, List[str]],
+            second_anchor_edges: Dict[str, List[str]],
+        ) -> List[Any]:
+            """Return a list of edges that are connected by their overlap over chromatin
+            loop anchors by matching the anchor names across dicts"""
+            edges = []
+            for loop in loops:
+                first_anchor = "_".join(loop[0:3])
+                second_anchor = "_".join(loop[3:6])
+                try:
+                    uniq_edges = list(
+                        itertools.product(
+                            first_anchor_edges[first_anchor],
+                            second_anchor_edges[second_anchor],
+                        )
+                    )
+                    edges.extend(uniq_edges)
+                except KeyError:
+                    continue
+            return edges
+
+        def _check_tss_gene_in_gencode(tss: str) -> bool:
+            """Simple check to see if gene has gencode ID"""
+            gene = tss.split("_")[5]
+            if gene in self.genesymbol_to_gencode.keys():
+                return self.genesymbol_to_gencode[gene]
+            else:
+                return False
+
+        # split loops into anchors
+        first_anchor, second_anchor = _split_chromatin_loops(chromatin_loops)
+
+        if tss:
+            first_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(first_anchor, feat_1),
+                _loop_within_distance(first_anchor, feat_2, 2000),
+            )
+            second_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(second_anchor, feat_1),
+                _loop_within_distance(second_anchor, feat_2, 2000),
+            )
+            return_edges = []
+            for edge in list(
+                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
+            ):
+                if "tss" in edge[0] and "tss" in edge[1]:
+                    if _check_tss_gene_in_gencode(
+                        edge[0]
+                    ) and _check_tss_gene_in_gencode(edge[1]):
+                        return_edges.append(
+                            (
+                                _check_tss_gene_in_gencode(edge[0]),
+                                _check_tss_gene_in_gencode(edge[1]),
+                                -1,
+                                "g_g",
+                            )
+                        )
+                    else:
+                        pass
+                elif "tss" in edge[0] and "tss" not in edge[1]:
+                    if _check_tss_gene_in_gencode(edge[0]):
+                        return_edges.append(
+                            (
+                                _check_tss_gene_in_gencode(edge[0]),
+                                edge[1],
+                                -1,
+                                edge_type,
+                            )
+                        )
+                    else:
+                        pass
+                elif "tss" not in edge[0] and "tss" in edge[1]:
+                    if _check_tss_gene_in_gencode(edge[1]):
+                        return_edges.append(
+                            (
+                                edge[0],
+                                _check_tss_gene_in_gencode(edge[1]),
+                                -1,
+                                edge_type,
+                            )
+                        )
+                    else:
+                        pass
+                else:
+                    return_edges.append(
+                        (
+                            edge[0],
+                            edge[1],
+                            -1,
+                            edge_type,
+                        )
+                    )
+            return return_edges
+        else:
+            first_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(first_anchor, feat_1),
+                _loop_direct_overlap(first_anchor, feat_2),
+            )
+            second_anchor_edges = _flatten_anchors(
+                _loop_direct_overlap(second_anchor, feat_1),
+                _loop_direct_overlap(second_anchor, feat_2),
+            )
+            return list(
+                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
+            )
     
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:

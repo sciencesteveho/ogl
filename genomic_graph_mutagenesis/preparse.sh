@@ -86,9 +86,8 @@ function _make_ref_for_regulatory_elements () {
         | sort -k1,1 -k2,2n \
         > $3/regulatory_elements_node_attr.bed
     
-    cat \
-        - \
-        <(tail -n +2 $2/SE_package_hg38.bed | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}') \
+    tail -n +2 $2/SE_package_hg38.bed \
+        | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}' \
         > $3/se_node_attr.bed
 }
 
@@ -117,7 +116,7 @@ _overlap_dyadic_elements \
     GRCh38-PLS.bed \
     dyadic
 
-# make refs
+# make refs for adding feats to base nodes
 _make_ref_for_regulatory_elements \
     /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universalgenome \
