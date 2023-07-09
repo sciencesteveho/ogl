@@ -8,16 +8,18 @@
 
 """_summary_ of project"""
 
-import os
 import argparse
-import requests
+import os
 import subprocess
 from typing import Dict
 
 import pandas as pd
 import pybedtools
+import requests
 
-from utils import dir_check_make, parse_yaml, time_decorator
+from utils import dir_check_make
+from utils import parse_yaml
+from utils import time_decorator
 
 
 class UniversalGenomeDataPreprocessor:
@@ -55,7 +57,7 @@ class UniversalGenomeDataPreprocessor:
         self.shared = params["local"]
         self.tissue_specific = params["tissue_specific"]
 
-        self.tissue = 'universalgenome'
+        self.tissue = "universalgenome"
         self.root_dir = self.dirs["root_dir"]
         self.shared_data_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
@@ -164,7 +166,7 @@ class UniversalGenomeDataPreprocessor:
     #             | sort -k1,1 -k2,2n \
     #             > {self.tissue_dir}/local/methylation_{column}.bed"
     #         self._run_cmd(cmd)
-            
+
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles"""
@@ -177,12 +179,12 @@ class UniversalGenomeDataPreprocessor:
                 os.symlink(src, dst)
             except FileExistsError:
                 pass
-            
+
         ### Make symlinks and rename files that do not need preprocessing
         for datatype in self.tissue_specific:
-            if datatype not in ['super_enhancer', 'tads']:
+            if datatype not in ["super_enhancer", "tads"]:
                 if self.tissue_specific[datatype]:
-                    if datatype == 'tf_binding' or '_' not in datatype:
+                    if datatype == "tf_binding" or "_" not in datatype:
                         src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
                     else:
                         src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
@@ -191,11 +193,11 @@ class UniversalGenomeDataPreprocessor:
                         os.symlink(src, dst)
                     except FileExistsError:
                         pass
-                
+
         self._add_TAD_id(self.tissue_specific["tads"])
-        
+
         self._superenhancers(self.tissue_specific["super_enhancer"])
-        
+
         # self._split_merge_fractional_methylation()
 
 

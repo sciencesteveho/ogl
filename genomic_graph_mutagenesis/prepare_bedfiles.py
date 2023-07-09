@@ -8,13 +8,16 @@
 
 """Code to preprocess bedfiles before parsing into graph structures"""
 
-import os
 import argparse
-import requests
+import os
 import subprocess
 from typing import Dict
 
-from utils import dir_check_make, parse_yaml, time_decorator
+import requests
+
+from utils import dir_check_make
+from utils import parse_yaml
+from utils import time_decorator
 
 
 class GenomeDataPreprocessor:
@@ -171,7 +174,7 @@ class GenomeDataPreprocessor:
         merged to form clusters, and then intersected with collapsed motifs. If
         90% of the collapsed motif falls within the cluster, the cluster is
         annotated with the binding motif.
-        
+
         ** Removed clustering
         """
         # if study == "Funk":
@@ -189,7 +192,7 @@ class GenomeDataPreprocessor:
         #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
         #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
         #     > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-            
+
         cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
             | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
             | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
@@ -277,12 +280,12 @@ class GenomeDataPreprocessor:
         self._merge_cpg(self.tissue_specific["cpg"])
 
         # self._split_chromatinloops(self.tissue_specific["chromatinloops"])
-        
+
         # self._fenrir_enhancers(
         #     self.tissue_specific["enhancers_e_e"],
         #     self.tissue_specific["enhancers_e_g"],
         # )
-        
+
     # @time_decorator(print_args=True)
     # def _split_chromatinloops(self, bed: str) -> None:
     #     """Split chromatinloop file in separate entries"""

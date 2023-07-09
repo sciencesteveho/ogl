@@ -20,11 +20,9 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import (
-    genes_from_gencode,
-    parse_yaml,
-    time_decorator,
-)
+from utils import genes_from_gencode
+from utils import parse_yaml
+from utils import time_decorator
 
 
 class EdgeParser:
@@ -458,6 +456,7 @@ class EdgeParser:
                     )
                 )
             ]
+
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """_summary_ of function"""
