@@ -11,6 +11,7 @@
 import argparse
 import csv
 import itertools
+from multiprocessing import Pool
 import os
 from typing import Any, Dict, List, Tuple
 
@@ -98,8 +99,8 @@ class EdgeParser:
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
-        self.tissue = 'universalgenome'
-        
+        self.tissue = "universalgenome"
+
         self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
         self.tss = params["resources"]["reftss_genes"]
@@ -110,6 +111,7 @@ class EdgeParser:
         self.circuit_dir = params["dirs"]["circuit_dir"]
         self.shared_dir = f"{self.root_dir}/shared_data"
         self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.local_dir = f"{self.tissue_dir}/local"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
@@ -180,7 +182,7 @@ class EdgeParser:
             for line in csv.reader(open(target_list, newline=""), delimiter="\t")
             if line[1] in self.genesymbol_to_gencode.keys()
         ]
-        
+
     @time_decorator(print_args=True)
     def _tf_markers(self, interaction_file: str) -> List[Tuple[str, str]]:
         tf_keep = ["TF", "I Marker", "TFMarker"]
@@ -194,21 +196,21 @@ class EdgeParser:
                         if ";" in line[10]:
                             genes = line[10].split(";")
                             for gene in genes:
-                                if line[2] == 'I Marker':
+                                if line[2] == "I Marker":
                                     tf_markers.append((gene, line[1]))
                                 else:
                                     tf_markers.append((line[1], gene))
                         else:
-                            if line[2] == 'I Marker':
+                            if line[2] == "I Marker":
                                 tf_markers.append((line[10], line[1]))
                             else:
                                 tf_markers.append((line[1], line[10]))
-                    except IndexError: 
-                        pass 
+                    except IndexError:
+                        pass
 
         return [
             (
-                f'{self.genesymbol_to_gencode[tup[0]]}_tf',
+                f"{self.genesymbol_to_gencode[tup[0]]}_tf",
                 self.genesymbol_to_gencode[tup[1]],
                 -1,
                 "tf_marker",
@@ -223,32 +225,37 @@ class EdgeParser:
         self,
         interaction_file: str,
         score_filter: int,
-        ) -> List[Tuple[str, str, float, str]]:
+    ) -> List[Tuple[str, str, float, str]]:
         """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
         network is in the following format:
             col_1   TF
             col_2   Target gene
-            col_3   Edge weight 
+            col_3   Edge weight
         """
         tf_g, scores = [], []
-        with open(interaction_file, newline = '') as file:
-            file_reader = csv.reader(file, delimiter='\t')
+        with open(interaction_file, newline="") as file:
+            file_reader = csv.reader(file, delimiter="\t")
             for line in file_reader:
                 scores.append(float(line[2]))
-                if line[0] in self.genesymbol_to_gencode.keys() and line[1] in self.genesymbol_to_gencode.keys():
+                if (
+                    line[0] in self.genesymbol_to_gencode.keys()
+                    and line[1] in self.genesymbol_to_gencode.keys()
+                ):
                     tf_g.append((line[0], line[1], float(line[2])))
-        
+
         cutoff = np.percentile(scores, score_filter)
 
         return [
-            (f'{self.genesymbol_to_gencode[line[0]]}_tf',
-            self.genesymbol_to_gencode[line[1]],
-            line[2],
-            'circuits',)
+            (
+                f"{self.genesymbol_to_gencode[line[0]]}_tf",
+                self.genesymbol_to_gencode[line[1]],
+                line[2],
+                "circuits",
+            )
             for line in tf_g
             if line[2] >= cutoff
-            ]
-        
+        ]
+
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
 
@@ -440,7 +447,7 @@ class EdgeParser:
             return list(
                 set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
             )
-    
+
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """_summary_ of function"""
@@ -488,30 +495,39 @@ class EdgeParser:
                     edge_type=element[1],
                 )
             )
-        
+
         # get PPI for multiple tissues
-        ppi_edges = [
-            self.iid_ppi(
-                f"{self.interaction_dir}/{self.interaction_files['ppis']}", tissue
+        ppi_edges = []
+        for tissue in self.PROTEIN_TISSUES:
+            ppi_edges.extend(
+                self._iid_ppi(
+                    f"{self.interaction_dir}/{self.interaction_files['ppis']}", tissue
+                )
             )
-            for tissue in self.PROTEIN_TISSUES
-        ]
-        
+
         # get all miRNA targets
-        mirna_targets = self._mirna_targets(target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}")
-        
+        mirna_targets = self._mirna_targets(
+            target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}"
+        )
+
         # get all from tf marker that fit tf type
         tf_markers = self._tf_markers(
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
-        
+
         # get tf-gene interactions across multiple tissues
-        circuit_edges = [self._marbach_regulatory_circuits(interaction_file=f"{self.circuit_dir}/{file}", score_filter=80) for file in os.listdir(self.circuit_dir)]
-        
+        circuit_edges = []
+        for file in os.listdir(self.circuit_dir):
+            circuit_edges.extend(
+                self._marbach_regulatory_circuits(
+                    interaction_file=f"{self.circuit_dir}/{file}", score_filter=80
+                )
+            )
+
         self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
         self.chrom_edges = list(set(chrom_loop_edges))
         self.all_edges = self.chrom_edges + self.interaction_edges
-        
+
         chrom_loops_regulatory_nodes = [
             edge[0]
             for edge in self.chrom_edges
@@ -544,7 +560,7 @@ class EdgeParser:
             set(chrom_loops_se_nodes),
             set([tup[0] for tup in mirna_targets]),
         )
-    
+
     @time_decorator(print_args=False)
     def _add_node_coordinates(
         self,
@@ -559,70 +575,79 @@ class EdgeParser:
         """
         return [line[0:4] for line in node_ref if line[3] in set(nodes)]
 
+    @time_decorator(print_args=True)
+    def parse_edges(self) -> None:
+        """Constructs tissue-specific interaction base graph"""
+
+        # retrieve interaction-based edges
+        gencode_nodes, regulatory_nodes, se_nodes, mirnas = self._process_graph_edges()
+
+        # add coordinates to nodes in parallel
+        pool = Pool(processes=4)
+        nodes_for_attr = pool.starmap(
+            self._add_node_coordinates,
+            list(
+                zip(
+                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
+                    [
+                        self.gencode_attr_ref,
+                        self.regulatory_attr_ref,
+                        self.se_ref,
+                        self.mirna_ref,
+                    ],
+                )
+            ),
+        )
+        pool.close()
+        nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+
+        # add coordinates to edges
+        full_edges = []
+        nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
+        for edge in self.edges:
+            if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
+                full_edges.append(
+                    [edge[0]]
+                    + nodes_with_coords[edge[0]]
+                    + [edge[1]]
+                    + nodes_with_coords[edge[1]]
+                    + [edge[2], edge[3]]
+                )
+
+        # write edges to file
+        all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
+
+        with open(all_interaction_file, "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(self.edges)
+
+        # write nodes to file
+        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
+
+        # write edges with coordinates to file
+        with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(full_edges)
+
+
 def main() -> None:
-    """Main function"""
-    pass
+    """Pipeline to generate individual graphs"""
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
+
+    args = parser.parse_args()
+    params = parse_yaml(args.config)
+
+    # instantiate object
+    edgeparserObject = EdgeParser(
+        params=params,
+    )
+
+    # run pipeline!
+    edgeparserObject.parse_edges()
 
 
 if __name__ == "__main__":
     main()
-
-parser = argparse.ArgumentParser(
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter
-)
-
-parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
-params = parse_yaml('/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/universal_genome.yaml')
-
-# instantiate object
-edgeparserObject = EdgeParser(
-    params=params,
-)
-
-gencode_nodes, regulatory_nodes, se_nodes, mirnas = edgeparserObject._process_graph_edges()
-
-# add coordinates to nodes in parallel
-pool = Pool(processes=4)
-nodes_for_attr = pool.starmap(
-    edgeparserObject._add_node_coordinates,
-    list(
-        zip(
-            [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
-            [
-                edgeparserObject.gencode_attr_ref,
-                edgeparserObject.regulatory_attr_ref,
-                edgeparserObject.se_ref,
-                edgeparserObject.mirna_ref,
-            ],
-        )
-    ),
-)
-pool.close()
-nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
-
-# add coordinates to edges
-full_edges = []
-nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
-for edge in edgeparserObject.edges:
-    if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
-        full_edges.append(
-            [edge[0]]
-            + nodes_with_coords[edge[0]]
-            + [edge[1]]
-            + nodes_with_coords[edge[1]]
-            + [edge[2], edge[3]]
-        )
-
-# write edges to file
-all_interaction_file = f"{edgeparserObject.interaction_dir}/interaction_edges.txt"
-
-with open(all_interaction_file, "w+") as output:
-    csv.writer(output, delimiter="\t").writerows(edgeparserObject.edges)
-
-# write nodes to file
-with open(f"{edgeparserObject.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
-    csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
-
-# write edges with coordinates to file
-with open(f"{edgeparserObject.interaction_dir}/full_edges.txt", "w+") as output:
-    csv.writer(output, delimiter="\t").writerows(full_edges)
