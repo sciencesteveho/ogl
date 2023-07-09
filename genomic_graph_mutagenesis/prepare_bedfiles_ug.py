@@ -131,39 +131,39 @@ class UniversalGenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @time_decorator(print_args=True)
-    def _split_merge_fractional_methylation(self) -> None:
-        """Splits fractional methylation into merged bedfiles for each sample.
-        We keep CpGs if fractional methylation is greater than 0.70 and adjacent
-        methylated CpGs are merged.
-        """
-        dir_check_make(f"{self.dirs['methylation_dir']}/processing")
+    # @time_decorator(print_args=True)
+    # def _split_merge_fractional_methylation(self) -> None:
+    #     """Splits fractional methylation into merged bedfiles for each sample.
+    #     We keep CpGs if fractional methylation is greater than 0.70 and adjacent
+    #     methylated CpGs are merged.
+    #     """
+    #     dir_check_make(f"{self.dirs['methylation_dir']}/processing")
 
-        for chr in range(1, 23):
-            df = pd.read_csv(
-                f"{self.dirs['methylation_dir']}/chr{chr}.fm",
-                header=None,
-                delimiter="\t",
-                index_col=0,
-            )
-            for column in df.columns:
-                newdf = pd.DataFrame(columns=["chrom", "start", "end", "value"])
-                newdf["end"] = list(df.index)
-                newdf["start"] = list(df.index - 1)
-                newdf["value"] = list(df[column])
-                newdf["chrom"] = f"chr{chr}"
+    #     for chr in range(1, 23):
+    #         df = pd.read_csv(
+    #             f"{self.dirs['methylation_dir']}/chr{chr}.fm",
+    #             header=None,
+    #             delimiter="\t",
+    #             index_col=0,
+    #         )
+    #         for column in df.columns:
+    #             newdf = pd.DataFrame(columns=["chrom", "start", "end", "value"])
+    #             newdf["end"] = list(df.index)
+    #             newdf["start"] = list(df.index - 1)
+    #             newdf["value"] = list(df[column])
+    #             newdf["chrom"] = f"chr{chr}"
 
-                pybedtools.BedTool.from_dataframe(newdf).filter(
-                    lambda x: float(x[3]) > 0.7
-                ).merge().saveas(
-                    f"{self.dirs['methylation_dir']}/processing/chr{chr}_{column}.bed"
-                )
+    #             pybedtools.BedTool.from_dataframe(newdf).filter(
+    #                 lambda x: float(x[3]) > 0.7
+    #             ).merge().saveas(
+    #                 f"{self.dirs['methylation_dir']}/processing/chr{chr}_{column}.bed"
+    #             )
 
-        for column in range(1, 38):
-            cmd = f"cat {self.dirs['methylation_dir']}/processing/*_{column}.bed* \
-                | sort -k1,1 -k2,2n \
-                > {self.tissue_dir}/local/methylation_{column}.bed"
-            self._run_cmd(cmd)
+    #     for column in range(1, 38):
+    #         cmd = f"cat {self.dirs['methylation_dir']}/processing/*_{column}.bed* \
+    #             | sort -k1,1 -k2,2n \
+    #             > {self.tissue_dir}/local/methylation_{column}.bed"
+    #         self._run_cmd(cmd)
             
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
