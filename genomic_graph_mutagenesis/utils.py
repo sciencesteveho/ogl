@@ -176,7 +176,7 @@ def dir_check_make(dir: str) -> None:
         pass
 
 
-def _ls(dir: str) -> List[str]:
+def _listdir_isfile_wrapper(dir: str) -> List[str]:
     """Returns a list of files within the directory"""
     return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
 
