@@ -608,7 +608,7 @@ class EdgeParser:
         # add coordinates to edges
         full_edges = []
         nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
-        for edge in self.edges:
+        for edge in self.all_edges:
             if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
                 full_edges.append(
                     [edge[0]]

@@ -573,11 +573,15 @@ class EdgeParser:
         )
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+        
+        # write nodes to file
+        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
+            csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
 
         # add coordinates to edges
         full_edges = []
         nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
-        for edge in self.edges:
+        for edge in self.all_edges:
             if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
                 full_edges.append(
                     [edge[0]]
@@ -592,10 +596,6 @@ class EdgeParser:
 
         with open(all_interaction_file, "w+") as output:
             csv.writer(output, delimiter="\t").writerows(self.all_edges)
-
-        # write nodes to file
-        with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
-            csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
 
         # write edges with coordinates to file
         with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
