@@ -194,7 +194,7 @@ class UniversalGenomeDataPreprocessor:
                         pass
 
         for datatype in self.epigenomics:
-            src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
+            src = f"{self.dirs['bigwig_dir']}/{self.epigenomics[datatype]}"
             dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
             try:
                 os.symlink(src, dst)
