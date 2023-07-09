@@ -93,6 +93,7 @@ class EdgeParser:
             params["resources"]["gencode_attr"]
         )
         self.regulatory_attr_ref = self._blind_read_file(params["resources"]["reg_ref"])
+        self.se_ref = self._blind_read_file(params["resources"]["se_ref"])
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
@@ -505,8 +506,10 @@ class EdgeParser:
         ] + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
 
         chrom_loops_regulatory_nodes = [
-            edge[0] for edge in self.chrom_edges if "ENSG" not in edge[0]
-        ] + [edge[1] for edge in self.chrom_edges if "ENSG" not in edge[1]]
+            edge[0] for edge in self.chrom_edges if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+        ] + [edge[1] for edge in self.chrom_edges if "ENSG" not in edge[1] and "superenhancer" not in edge[1]]
+        
+        chrom_loops_se_nodes = [edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
 
         gencode_nodes = (
             [tup[0] for tup in ppi_edges]
@@ -522,6 +525,7 @@ class EdgeParser:
         return (
             set(gencode_nodes),
             set(chrom_loops_regulatory_nodes),
+            set(chrom_loops_se_nodes),
             set([tup[0] for tup in mirna_targets]),
         )
 
@@ -544,16 +548,16 @@ class EdgeParser:
         """Constructs tissue-specific interaction base graph"""
 
         # retrieve interaction-based edges
-        gencode_nodes, regulatory_nodes, mirnas = self._process_graph_edges()
+        gencode_nodes, regulatory_nodes, se_nodes, mirnas = self._process_graph_edges()
 
         # add coordinates to nodes in parallel
-        pool = Pool(processes=3)
+        pool = Pool(processes=4)
         nodes_for_attr = pool.starmap(
             self._add_node_coordinates,
             list(
                 zip(
-                    [gencode_nodes, regulatory_nodes, mirnas],
-                    [self.gencode_attr_ref, self.regulatory_attr_ref, self.mirna_ref],
+                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
+                    [self.gencode_attr_ref, self.regulatory_attr_ref, self.se_ref, self.mirna_ref],
                 )
             ),
         )

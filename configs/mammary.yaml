@@ -58,6 +58,7 @@ resources:
   marker_name: Breast
   ppi_tissue: mammary gland
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: mammary

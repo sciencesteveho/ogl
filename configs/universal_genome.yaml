@@ -22,10 +22,11 @@ options:
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
+  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
 
 local:
   cnv: cnv_hg38.bed
@@ -34,7 +35,6 @@ local:
   dyadic: dyadic_epimap_screen_overlap.bed
   enhancers: enhancers_epimap_screen_overlap.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
-  gencode_attr: gencode_v26_node_attr.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed

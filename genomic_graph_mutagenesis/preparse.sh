@@ -83,9 +83,13 @@ function _make_ref_for_regulatory_elements () {
         $1/enhancers_epimap_screen_overlap.bed \
         $1/promoters_epimap_screen_overlap.bed \
         | awk -vOFS='\t' '{print $1,$2,$3,$1"_"$2"_"$4}' \
-        | cat - <(tail -n +2 $2/SE_package_hg38.bed | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}') \
         | sort -k1,1 -k2,2n \
         > $3/regulatory_elements_node_attr.bed
+    
+    cat \
+        - \
+        <(tail -n +2 $2/SE_package_hg38.bed | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}') \
+        > $3/se_node_attr.bed
 }
 
 # enhancers
