@@ -15,22 +15,21 @@ from multiprocessing import Pool
 import os
 import pickle
 import subprocess
-from subprocess import Popen, PIPE
+from subprocess import PIPE
+from subprocess import Popen
 from typing import Dict, List, Optional, Tuple
 
 import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
-from utils import (
-    _listdir_isfile_wrapper,
-    _tpm_filter_gene_windows,
-    ATTRIBUTES,
-    dir_check_make,
-    genes_from_gencode,
-    NODES,
-    parse_yaml,
-    time_decorator,
-)
+from utils import _listdir_isfile_wrapper
+from utils import _tpm_filter_gene_windows
+from utils import ATTRIBUTES
+from utils import dir_check_make
+from utils import genes_from_gencode
+from utils import NODES
+from utils import parse_yaml
+from utils import time_decorator
 
 
 class LocalContextParser:
@@ -130,10 +129,7 @@ class LocalContextParser:
         self._make_directories()
 
     def _prepare_tpm_filtered_genes(
-        self,
-        genes: str,
-        gene_windows: str, 
-        base_nodes: str
+        self, genes: str, gene_windows: str, base_nodes: str
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes, _ = _tpm_filter_gene_windows(
@@ -145,11 +141,7 @@ class LocalContextParser:
             slop=True,
         )
 
-        windows = (
-            pybedtools.BedTool(base_nodes)
-            .slop(g=self.chromfile, b=25000)
-            .sort()
-        )
+        windows = pybedtools.BedTool(base_nodes).slop(g=self.chromfile, b=25000).sort()
 
         filtered_genes.saveas(genes)
         windows.saveas(gene_windows)
@@ -207,7 +199,7 @@ class LocalContextParser:
             b.each(rename_feat_chr_start).filter(lambda x: "alt" not in x[0]).saveas(
                 f"{self.local_dir}/enhancers_lifted_{self.tissue}.bed_noalt"
             )
-        
+
         # take specific windows and format each file
         if prefix in NODES and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
@@ -315,7 +307,6 @@ class LocalContextParser:
                 f"{self.parse_dir}/edges/{node_type}_dupes_removed"
             )
 
-
     @time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
         """For each node of a node_type get their overlap with gene windows then
@@ -388,8 +379,7 @@ class LocalContextParser:
             ],
             "sort_cmd": [
                 f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed |",
-                "uniq >"
-                f"{self.parse_dir}/edges/all_concat_sorted.bed",
+                "uniq >" f"{self.parse_dir}/edges/all_concat_sorted.bed",
             ],
         }
 
@@ -418,7 +408,11 @@ class LocalContextParser:
                     if line[6] in self.genesymbol_to_gencode.keys()
                 ]
 
-        attr_dict, attr_dict_nochr, set_dict = {}, {}, {}  # dict[gene] = [chr, start, end, size, gc]
+        attr_dict, attr_dict_nochr, set_dict = (
+            {},
+            {},
+            {},
+        )  # dict[gene] = [chr, start, end, size, gc]
         for attribute in ATTRIBUTES:
             filename = (
                 f"{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage"
@@ -441,7 +435,9 @@ class LocalContextParser:
                 else:
                     try:
                         for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(line[5])
+                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(
+                                line[5]
+                            )
                     except ValueError:
                         for dictionary in [attr_dict, attr_dict_nochr]:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
@@ -463,7 +459,9 @@ class LocalContextParser:
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
 
-        with open(f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb") as output:
+        with open(
+            f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb"
+        ) as output:
             pickle.dump(attr_dict_nochr, output)
 
     @time_decorator(print_args=True)
@@ -480,6 +478,7 @@ class LocalContextParser:
         Returns:
             c -- _description_
         """
+
         @time_decorator(print_args=True)
         def _save_intermediate(
             bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
@@ -540,7 +539,7 @@ class LocalContextParser:
 
         # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, ['basenodes'] + NODES)
+        pool.map(self._aggregate_attributes, ["basenodes"] + NODES)
         pool.close()
 
         # parse edges into individual files
@@ -548,7 +547,7 @@ class LocalContextParser:
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._save_node_attributes, ['basenodes'] + NODES)
+        pool.map(self._save_node_attributes, ["basenodes"] + NODES)
         pool.close()
 
 
