@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
+# - [ ] Add mirna ref to configuration file. Right now it is hardcoded during init.
 # - [ ] first TODO
 #   - [ ] nested TODO
 
@@ -123,6 +124,9 @@ class EdgeParser:
         )
         self.regulatory_attr_ref = self._blind_read_file(params["resources"]["reg_ref"])
         self.se_ref = self._blind_read_file(params["resources"]["se_ref"])
+        self.mirna_ref = self._blind_read_file(
+            f"{self.shared_dir}/interaction/mirna_coordinates_hg38.bed"
+        )
 
     def _blind_read_file(self, file: str) -> List[str]:
         """Blindly reads a file into csv reader and stores file as a list of
