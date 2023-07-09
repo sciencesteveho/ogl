@@ -9,7 +9,6 @@
 """Parse local genomic data to nodes and attributes"""
 
 import argparse
-import csv
 from itertools import repeat
 from multiprocessing import Pool
 import os

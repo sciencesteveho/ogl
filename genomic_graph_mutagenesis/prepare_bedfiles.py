@@ -70,7 +70,7 @@ class GenomeDataPreprocessor:
         """Make directories for processing"""
         dir_check_make(f"{self.root_dir}/shared_data")
 
-        for directory in ["local", "interaction", "unprocessed", "histones"]:
+        for directory in ["local", "interaction", "unprocessed"]:
             dir_check_make(f"{self.tissue_dir}/{directory}")
 
         for directory in ["local", "interaction"]:

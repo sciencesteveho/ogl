@@ -72,7 +72,7 @@ class UniversalGenomeDataPreprocessor:
         """Make directories for processing"""
         dir_check_make(f"{self.root_dir}/shared_data")
 
-        for directory in ["local", "interaction", "unprocessed", "histones"]:
+        for directory in ["local", "interaction", "unprocessed"]:
             dir_check_make(f"{self.tissue_dir}/{directory}")
 
         for directory in ["local", "interaction"]:
@@ -164,7 +164,7 @@ class UniversalGenomeDataPreprocessor:
     #     for column in range(1, 38):
     #         cmd = f"cat {self.dirs['methylation_dir']}/processing/*_{column}.bed* \
     #             | sort -k1,1 -k2,2n \
-    #             > {self.tissue_dir}/local/methylation_{column}.bed"
+    #             > {self.tissue_dir}/local/methylation-{column}_universalgenome.bed"
     #         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)

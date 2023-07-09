@@ -23,7 +23,10 @@ import networkx as nx
 import numpy as np
 import pybedtools
 
-from utils import dir_check_make, NODES, parse_yaml, time_decorator
+from utils import dir_check_make
+from utils import NODES
+from utils import parse_yaml
+from utils import time_decorator
 
 
 class GraphConstructor:
@@ -213,7 +216,7 @@ class GraphConstructor:
 
         # add local context edges to full graph
         graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
-        
+
         # add attributes
         for g in [base_graph, graph]:
             nx.set_node_attributes(g, ref)
