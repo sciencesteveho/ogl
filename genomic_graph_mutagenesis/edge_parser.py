@@ -90,11 +90,9 @@ class EdgeParser:
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_attr_ref = self._blind_read_file(
-            f"{self.tissue_dir}/local/gencode_v26_node_attr.bed"
+            params["resources"]["gencode_attr"]
         )
-        self.regulatory_attr_ref = self._blind_read_file(
-            params["resources"]["reg_ref"]
-        )
+        self.regulatory_attr_ref = self._blind_read_file(params["resources"]["reg_ref"])
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
@@ -494,8 +492,7 @@ class EdgeParser:
             interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
         )
         circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}",
-            f"/{self.interaction_files['circuits']}",
+            f"{self.interaction_dir}/{self.interaction_files['circuits']}",
             score_filter=30,
         )
 
@@ -506,7 +503,7 @@ class EdgeParser:
         chrom_loops_gencode_nodes = [
             edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]
         ] + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
-        
+
         chrom_loops_regulatory_nodes = [
             edge[0] for edge in self.chrom_edges if "ENSG" not in edge[0]
         ] + [edge[1] for edge in self.chrom_edges if "ENSG" not in edge[1]]
@@ -522,7 +519,11 @@ class EdgeParser:
             + chrom_loops_gencode_nodes
         )
 
-        return set(gencode_nodes), set(chrom_loops_regulatory_nodes), set([tup[0] for tup in mirna_targets])
+        return (
+            set(gencode_nodes),
+            set(chrom_loops_regulatory_nodes),
+            set([tup[0] for tup in mirna_targets]),
+        )
 
     @time_decorator(print_args=False)
     def _add_node_coordinates(
@@ -574,7 +575,7 @@ class EdgeParser:
 
         # write edges to file
         all_interaction_file = f"{self.interaction_dir}/interaction_edges.txt"
-        
+
         with open(all_interaction_file, "w+") as output:
             csv.writer(output, delimiter="\t").writerows(self.edges)
 
@@ -609,99 +610,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancer_enhancer(
-    #     self,
-    #     interaction_file: str,
-    #     score_filter: int,
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Convert each enhancer-enhancer link to hg38 and return a formatted
-    #     tuple."""
-    #     e_e_liftover, scores = [], []
-    #     with open(interaction_file, newline='') as file:
-    #         file_reader = csv.reader(file, delimiter='\t')
-    #         next(file_reader)
-    #         for line in file_reader:
-    #             scores.append(int(line[2]))
-    #             if line[0] in self.e_indexes.keys() and line[1] in self.e_indexes.keys():
-    #                 e_e_liftover.append((self.e_indexes[line[0]], self.e_indexes[line[1]], line[2]))
-
-    #     cutoff = np.percentile(scores, score_filter)
-    #     return [
-    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-    #         f"enhancer_{self._format_enhancer(line[1], 0)}_{self._format_enhancer(line[1], 1)}",
-    #         -1,
-    #         'enhancer-enhancer',)
-    #         for line in e_e_liftover
-    #         if int(line[2]) >= cutoff
-    #     ]
-
-    # @time_decorator(print_args=True)
-    # def _fenrir_enhancer_gene(
-    #     self,
-    #     interaction_file: str,
-    #     score_filter: int,
-    #     ) -> List[Tuple[str, str, float, str]]:
-    #     """Convert each enhancer-gene link to hg38 and ensemble ID, return a
-    #     formatted tuple.
-    #     """
-    #     e_g_liftover, scores = [], []
-    #     with open(interaction_file, newline='') as file:
-    #         file_reader = csv.reader(file, delimiter='\t')
-    #         next(file_reader)
-    #         for line in file_reader:
-    #             scores.append(int(line[3]))
-    #             if line[0] in self.e_indexes.keys() and line[2] in self.genesymbol_to_gencode.keys():
-    #                 e_g_liftover.append((self.e_indexes[line[0]], self.genesymbol_to_gencode[line[2]], line[3]))
-
-    #     cutoff = np.percentile(scores, score_filter)
-    #     return [
-    #         (f"enhancer_{self._format_enhancer(line[0], 0)}_{self._format_enhancer(line[0], 1)}",
-    #         line[1],
-    #         -1,
-    #         'enhancer-gene')
-    #         for line in e_g_liftover
-    #         if int(line[2]) >= cutoff
-    #     ]
-
-    # e_e_edges = self._fenrir_enhancer_enhancer(
-    #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_e']}",
-    #     score_filter=30,
-    # )
-    # e_g_edges = self._fenrir_enhancer_gene(
-    #     f"{self.interaction_dir}" f"/{self.tissue_specific['enhancers_e_g']}",
-    #     score_filter=70,
-    # )
-
-    # def _enhancer_index(
-    #     self,
-    #     e_index: str,
-    #     e_index_unlifted: str
-    #     ) -> Dict[str, str]:
-    #     """Returns a dict to map enhancers from hg19 to hg38"""
-    #     def text_to_dict(txt, idx1, idx2):
-    #         with open(txt) as file:
-    #             file_reader = csv.reader(file, delimiter='\t')
-    #             return {
-    #                 line[idx1]:line[idx2]
-    #                 for line in file_reader
-    #             }
-    #     e_dict = text_to_dict(e_index, 1, 0)
-    #     e_dict_unlifted = text_to_dict(e_index_unlifted, 0, 1)
-    #     e_dict_unfiltered = {
-    #         enhancer:e_dict[e_dict_unlifted[enhancer]]
-    #         for enhancer in e_dict_unlifted
-    #         if e_dict_unlifted[enhancer] in e_dict.keys()
-    #         }
-    #     return {
-    #         k:v for k,v in e_dict_unfiltered.items()
-    #         if 'alt' not in v
-    #         }
-
-    # def _format_enhancer(
-    #     self,
-    #     input: str,
-    #     index: int,
-    #     ) -> str:
-    #     return f"{input.replace(':', '-').split('-')[index]}"
