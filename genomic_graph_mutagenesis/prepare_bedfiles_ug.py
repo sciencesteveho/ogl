@@ -56,6 +56,7 @@ class UniversalGenomeDataPreprocessor:
         self.resources = params["resources"]
         self.shared = params["local"]
         self.tissue_specific = params["tissue_specific"]
+        self.epigenomics = params["epigenomics"]
 
         self.tissue = "universalgenome"
         self.root_dir = self.dirs["root_dir"]
@@ -186,13 +187,19 @@ class UniversalGenomeDataPreprocessor:
                 if self.tissue_specific[datatype]:
                     if datatype == "tf_binding" or "_" not in datatype:
                         src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
-                    else:
-                        src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
-                    dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+                        dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
                     try:
                         os.symlink(src, dst)
                     except FileExistsError:
                         pass
+
+        for datatype in self.epigenomics:
+            src = f"{self.dirs['bigwig_dir']}/{self.tissue_specific[datatype]}"
+            dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+            try:
+                os.symlink(src, dst)
+            except FileExistsError:
+                pass
 
         self._add_TAD_id(self.tissue_specific["tads"])
 

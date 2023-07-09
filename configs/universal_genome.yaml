@@ -64,6 +64,8 @@ tissue_specific:
   super_enhancer: SE_package_hg38.bed
   tads: TADMap_scaffold_hs.bed
   tf_binding: consensus_footprints_and_collapsed_motifs_hg38.bed
+
+epigenomics:
   ATAC-seq-BloodandT-cell: average_ATAC-seq_imputed_BloodandT-cell.narrow.5.bed
   ATAC-seq-Bone: average_ATAC-seq_imputed_Bone.narrow.5.bed
   ATAC-seq-Endothelial: average_ATAC-seq_imputed_Endothelial.narrow.5.bed
