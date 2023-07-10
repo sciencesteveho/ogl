@@ -166,7 +166,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open(f"{graph_dir}/all_tissue_{graph_type}_.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{graph_type}.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": np.array(
@@ -181,6 +181,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
                 "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
             },
             output,
+            protocol=4,
         )
 
 
@@ -192,11 +193,14 @@ def main(root_dir: str, graph_type: str) -> None:
     # pool = Pool(processes=CORES)
     # graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
     # pool.close()
-    graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
+    # graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
 
     # tmp save so we dont have to do this again
-    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
-        pickle.dump(graphs, output)
+    # with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
+    #     pickle.dump(graphs, output)
+
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "rb") as file:
+        graphs = pickle.load(file)
 
     # concat all
     graph = nx.compose_all(graphs)
