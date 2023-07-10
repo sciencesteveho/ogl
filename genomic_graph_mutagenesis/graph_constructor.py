@@ -55,8 +55,8 @@ class GraphConstructor:
         self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
         dir_check_make(self.graph_dir)
 
-        self.genes = self._read_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
-        self.all_genes = self._read_genes(params["resources"]["gencode_attr"])
+        # self.genes = self._read_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
+        # self.all_genes = self._read_genes(params["resources"]["gencode_attr"])
 
     def _read_genes(self, gencode_ref: str) -> List[str]:
         """Get genes from gencode ref that pass TPM filter"""
@@ -123,12 +123,12 @@ class GraphConstructor:
             ref.update(ref_for_concat)
 
         for key in ref:
-            if key in self.all_genes:
-                ref[key]["is_gene"] = 1
-                ref[key]["is_tf"] = 0
-            elif "_tf" in key:
+            if "_tf" in key:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 1
+            elif "ENSG" in key:
+                ref[key]["is_gene"] = 1
+                ref[key]["is_tf"] = 0
             else:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 0

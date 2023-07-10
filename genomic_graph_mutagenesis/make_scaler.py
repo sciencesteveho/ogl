@@ -25,13 +25,21 @@ def main(
     gene_gtf: str,
     graph_dir: str,
     output_dir: str,
+    test_chrs: list = ["chr8", "chr9"],
+    val_chrs: list = ["chr7", "chr13"],
 ) -> None:
+    """_summary_
+
+    Args:
+        gene_gtf (str): /path/to/gene_gtf
+        graph_dir (str): /path/to/graphs
+        output_dir (str): directory to ouput scaler
+        test_chrs (list, optional): Chrs to withhold for the tet set. Defaults to ["chr8", "chr9"].
+        val_chrs (list, optional): Chrs to withold for the validation set_. Defaults to ["chr7", "chr13"].
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--feat", type=int, required=True)
     args = parser.parse_args()
-
-    test_chrs = ["chr8", "chr9"]
-    val_chrs = ["chr7", "chr13"]
 
     genes = genes_from_gff(gene_gtf)
 
@@ -41,7 +49,6 @@ def main(
         test_chrs=test_chrs,
         val_chrs=val_chrs,
     )
-
     exclude = split["validation"] + split["test"]
 
     scaler = MinMaxScaler()
