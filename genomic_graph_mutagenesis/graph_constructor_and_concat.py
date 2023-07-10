@@ -167,7 +167,7 @@ class GraphConstructor:
         for g in [base_graph, graph]:
             nx.set_node_attributes(g, ref)
 
-        return g
+        return [g]
 
 
 @time_decorator(print_args=True)
