@@ -5,14 +5,13 @@
 """Code to scale node_feats"""
 
 import argparse
-import joblib
 import pickle
 
+import joblib
 import numpy as np
 
 from dataset_split import TISSUE_KEYS
 from utils import dir_check_make
-
 
 root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
 scale_dir = f"{root_dir}/data_scaler"
@@ -46,7 +45,9 @@ def main() -> None:
             scalers[i].transform(node_feat[:, i].reshape(-1, 1)).reshape(1, -1)[0]
         )
     g["node_feat"] = node_feat
-    with open(f"{out_dir}/all_tissue_{args.graph_type}_graph_scaled.pkl", "wb") as output:
+    with open(
+        f"{out_dir}/all_tissue_{args.graph_type}_graph_scaled.pkl", "wb"
+    ) as output:
         pickle.dump(g, output)
 
 

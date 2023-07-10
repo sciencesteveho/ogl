@@ -200,9 +200,11 @@ class GraphConstructor:
         self._nx_to_tensors(graph=graph, save_str="full_graph")
         self._nx_to_tensors(graph=base_graph, save_str="base_graph")
 
-        # save graphs as gml
-        nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.gml")
-        nx.write_gml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.gml")
+        # save graphs as graphml
+        nx.write_graphml(
+            base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.graphml"
+        )
+        nx.write_graphml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.graphml")
 
         # save dictionary of node to integer labels
         with open(f"{self.graph_dir}/{self.tissue}_base_gene_idxs.pkl", "wb") as output:
