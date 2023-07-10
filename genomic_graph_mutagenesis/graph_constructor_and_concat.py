@@ -200,7 +200,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, save_str: str) -> None:
         )
 
 
-def main(config_dir: str) -> None:
+def main(config_dir: str, graph_dir: str) -> None:
     """Pipeline to generate individual graphs"""
     # instantiate objects and process graphs in parallel
     object_list = [
@@ -215,10 +215,11 @@ def main(config_dir: str) -> None:
     graph = nx.compose_all(graphs)
 
     # save idxs and write to tensors
-    _nx_to_tensors(graph=graph, save_str="full_graph")
+    _nx_to_tensors(graph_dir=graph_dir, graph=graph, save_str="full_graph")
 
 
 if __name__ == "__main__":
     main(
-        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
+        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
+        graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
     )
