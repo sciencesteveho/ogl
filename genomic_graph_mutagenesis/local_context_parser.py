@@ -58,7 +58,7 @@ class LocalContextParser:
 
     # var helpers - for CPU cores
     NODE_CORES = len(NODES) + 1  # 12
-    ATTRIBUTE_CORES = len(ATTRIBUTES)  # 3
+    ATTRIBUTE_CORES = 64
 
     def __init__(
         self,
