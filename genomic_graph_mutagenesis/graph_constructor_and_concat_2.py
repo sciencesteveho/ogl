@@ -209,6 +209,6 @@ def main(root_dir: str, graph_type: str) -> None:
 
 if __name__ == "__main__":
     main(
-        root_dir="/ocean/projects/bio210019p/stevesho/data/preproces",
+        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
         graph_type="full",
     )
