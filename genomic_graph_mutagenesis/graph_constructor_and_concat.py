@@ -12,7 +12,6 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
-import argparse
 import csv
 from multiprocessing import Pool
 import pickle
@@ -29,6 +28,8 @@ from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
 
+CORES = len(TISSUES) + 1  # one process per tissue
+
 
 class GraphConstructor:
     """Object to construct tensor based graphs from parsed edges
@@ -44,9 +45,10 @@ class GraphConstructor:
 
     def __init__(
         self,
-        params: Dict[str, Dict[str, str]],
+        params: str,
     ):
         """Initialize the class"""
+        params = parse_yaml(params)
         self.tissue = params["resources"]["tissue"]
 
         self.root_dir = params["dirs"]["root_dir"]
@@ -56,9 +58,6 @@ class GraphConstructor:
         self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
         dir_check_make(self.graph_dir)
-
-        # self.genes = self._read_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
-        # self.all_genes = self._read_genes(params["resources"]["gencode_attr"])
 
     def _read_genes(self, gencode_ref: str) -> List[str]:
         """Get genes from gencode ref that pass TPM filter"""
@@ -70,7 +69,6 @@ class GraphConstructor:
         G = nx.Graph()
         for tup in edges:
             G.add_edges_from([(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})])
-        # G.add_edges_from((tup[0], tup[1]) for tup in edges)
         return G
 
     @time_decorator(print_args=True)
@@ -137,35 +135,6 @@ class GraphConstructor:
 
         return ref
 
-    @time_decorator(print_args=True)
-    def _nx_to_tensors(self, graph: nx.Graph, save_str: str) -> None:
-        """Save graphs as np tensors, additionally saves a dictionary to map
-        nodes to new integer labels
-
-        Args:
-            graph (nx.Graph)
-        """
-        graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
-        edges = nx.to_edgelist(graph)
-        nodes = sorted(graph.nodes)
-
-        with open(f"{self.graph_dir}/{self.tissue}_{save_str}.pkl", "wb") as output:
-            pickle.dump(
-                {
-                    "edge_index": np.array(
-                        [[edge[0] for edge in edges], [edge[1] for edge in edges]]
-                    ),
-                    "node_feat": np.array(
-                        [[val for val in graph.nodes[node].values()] for node in nodes]
-                    ),
-                    "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
-                    "num_nodes": graph.number_of_nodes(),
-                    "num_edges": graph.number_of_edges(),
-                    "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
-                },
-                output,
-            )
-
     def process_graphs(self) -> None:
         """_summary_"""
         # get edges
@@ -198,47 +167,58 @@ class GraphConstructor:
         for g in [base_graph, graph]:
             nx.set_node_attributes(g, ref)
 
-        # save graphs as np arrays
-        self._nx_to_tensors(graph=graph, save_str="full_graph")
-        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
+        return g
 
-        # save graphs as graphml
-        nx.write_graphml(
-            base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.graphml"
+
+@time_decorator(print_args=True)
+def _nx_to_tensors(graph_dir: str, graph: nx.Graph, save_str: str) -> None:
+    """Save graphs as np tensors, additionally saves a dictionary to map
+    nodes to new integer labels
+
+    Args:
+        graph (nx.Graph)
+    """
+    graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
+    edges = nx.to_edgelist(graph)
+    nodes = sorted(graph.nodes)
+
+    with open(f"{graph_dir}/all_tissues_{save_str}.pkl", "wb") as output:
+        pickle.dump(
+            {
+                "edge_index": np.array(
+                    [[edge[0] for edge in edges], [edge[1] for edge in edges]]
+                ),
+                "node_feat": np.array(
+                    [[val for val in graph.nodes[node].values()] for node in nodes]
+                ),
+                "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
+                "num_nodes": graph.number_of_nodes(),
+                "num_edges": graph.number_of_edges(),
+                "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
+            },
+            output,
         )
-        nx.write_graphml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.graphml")
-
-        # save dictionary of node to integer labels
-        with open(f"{self.graph_dir}/{self.tissue}_base_gene_idxs.pkl", "wb") as output:
-            pickle.dump(
-                {node: idx for idx, node in enumerate(sorted(base_graph.nodes))},
-                output,
-            )
-
-        with open(f"{self.graph_dir}/{self.tissue}_gene_idxs.pkl", "wb") as output:
-            pickle.dump(
-                {node: idx for idx, node in enumerate(sorted(graph.nodes))},
-                output,
-            )
 
 
-def main() -> None:
+def main(config_dir: str) -> None:
     """Pipeline to generate individual graphs"""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    # instantiate objects and process graphs in parallel
+    object_list = [
+        GraphConstructor(params=f"{config_dir}/{tissue}.yaml") for tissue in TISSUES
+    ]
 
-    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
+    pool = Pool(processes=CORES)
+    graphs = pool.map(GraphConstructor.process_graphs, object_list)
+    pool.close()
 
-    args = parser.parse_args()
-    params = parse_yaml(args.config)
+    # concat all
+    graph = nx.compose_all(graphs)
 
-    # instantiate object
-    graphconstructorObj = GraphConstructor(params=params)
-
-    # process graphs
-    graphconstructorObj.process_graphs()
+    # save idxs and write to tensors
+    _nx_to_tensors(graph=graph, save_str="full_graph")
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
+    )
