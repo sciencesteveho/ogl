@@ -6,6 +6,7 @@
 
 import argparse
 import pickle
+from typing import List
 
 import networkx as nx
 import numpy as np
@@ -13,22 +14,31 @@ import numpy as np
 from utils import TISSUES
 
 
-def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
-    """_summary_
+def _concat_nx_graphs(tissue_list: List[str], graph_dir: str, graph_type: str = "full"):
+    """Simple wrapper around nx.compose_all to load all graphs as the iterable
+    for the compose function
 
     Args:
-        tissue_list (str): _description_
+        tissue_list (str): Name of tissues to load, names should be the same as
+        the folder names
     """
     graph_list = []
     for tissue in tissue_list:
+        print(f"Adding {tissue} graph")
         graph_list.append(
             nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
         )
+        print(f"Finished adding {tissue} graph")
 
     return nx.compose_all(graph_list)
 
 
 def main(graph_dir: str) -> None:
+    """Create concatenated NX graph for all tissues
+
+    Args:
+        graph_dir (str): /path/to/graphs
+    """
     # parse args
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -58,6 +68,7 @@ def main(graph_dir: str) -> None:
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
+    # save as np arrays
     with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph.pkl", "wb") as output:
         pickle.dump(
             {
