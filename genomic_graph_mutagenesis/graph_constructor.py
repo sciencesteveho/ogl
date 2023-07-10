@@ -187,7 +187,10 @@ class GraphConstructor:
         graph = self._base_graph(edges=base_edges)
 
         # add local context edges to full graph
-        graph.add_edges_from((tup[0], tup[1]) for tup in local_context_edges)
+        for tup in local_context_edges:
+            graph.add_edges_from(
+                [(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})]
+            )
 
         # add attributes
         for g in [base_graph, graph]:
