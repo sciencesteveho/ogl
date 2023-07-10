@@ -21,6 +21,7 @@ import yaml
 
 ATTRIBUTES = [
     "gc",
+    "atac",
     "cnv",
     "cpg",
     "ctcf",

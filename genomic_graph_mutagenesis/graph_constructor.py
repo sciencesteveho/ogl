@@ -154,10 +154,7 @@ class GraphConstructor:
                         [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                     ),
                     "node_feat": np.array(
-                        [
-                            [float(val) for val in graph.nodes[node].values()]
-                            for node in nodes
-                        ]
+                        [[val for val in graph.nodes[node].values()] for node in nodes]
                     ),
                     "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
                     "num_nodes": graph.number_of_nodes(),
