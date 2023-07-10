@@ -19,7 +19,6 @@ from typing import Any, Dict, List
 
 import networkx as nx
 import numpy as np
-import pybedtools
 
 from utils import dir_check_make
 from utils import NODES
@@ -54,13 +53,6 @@ class GraphConstructor:
         self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
         dir_check_make(self.graph_dir)
 
-        self.genes = self._filtered_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
-
-    def _filtered_genes(self, gencode_ref: str) -> List[str]:
-        """Get genes from gencode ref that pass TPM filter"""
-        a = pybedtools.BedTool(gencode_ref)
-        return [tup[3] for tup in a]
-
     def _base_graph(self, edges: List[str]):
         """Create a graph from list of edges"""
         G = nx.Graph()
@@ -78,23 +70,23 @@ class GraphConstructor:
         if edge_type == "base":
             if add_tissue:
                 return [
-                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}")
+                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}", tup[3])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
                 return [
-                    (tup[0], tup[1])
+                    (tup[0], tup[1], tup[3])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
         if edge_type == "local":
             if add_tissue:
                 return [
-                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}")
+                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}", "local")
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
                 return [
-                    (tup[3], tup[7])
+                    (tup[3], tup[7], "local")
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
         if edge_type not in ("base", "local"):
@@ -120,12 +112,12 @@ class GraphConstructor:
             ref.update(ref_for_concat)
 
         for key in ref:
-            if key in self.genes:
-                ref[key]["is_gene"] = 1
-                ref[key]["is_tf"] = 0
-            elif "_tf" in key:
+            if "_tf" in key:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 1
+            elif "ENSG" in key:
+                ref[key]["is_gene"] = 1
+                ref[key]["is_tf"] = 0
             else:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 0
@@ -153,6 +145,7 @@ class GraphConstructor:
                     "node_feat": np.array(
                         [[val for val in graph.nodes[node].values()] for node in nodes]
                     ),
+                    "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
                     "num_nodes": graph.number_of_nodes(),
                     "num_edges": graph.number_of_edges(),
                     "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
@@ -189,6 +182,10 @@ class GraphConstructor:
         for g in [base_graph, graph]:
             nx.set_node_attributes(g, ref)
 
+        # save graphs as np arrays
+        self._nx_to_tensors(graph=graph, save_str="full_graph")
+        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
+
         # save graphs as gml
         nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.gml")
         nx.write_gml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.gml")
@@ -205,10 +202,6 @@ class GraphConstructor:
                 {node: idx for idx, node in enumerate(sorted(graph.nodes))},
                 output,
             )
-
-        # save graphs as np arrays
-        self._nx_to_tensors(graph=graph, save_str="full_graph")
-        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
 
 
 def main() -> None:
