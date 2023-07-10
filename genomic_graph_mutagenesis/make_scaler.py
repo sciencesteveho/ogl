@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
 from dataset_split import _chr_split_train_test_val
-from dataset_split import genes_from_gff
+from dataset_split import _genes_from_gff
 from utils import TISSUES
 
 # root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
@@ -41,7 +41,7 @@ def main(
     parser.add_argument("-f", "--feat", type=int, required=True)
     args = parser.parse_args()
 
-    genes = genes_from_gff(gene_gtf)
+    genes = _genes_from_gff(gene_gtf)
 
     # split genes by chr holdouts
     split = _chr_split_train_test_val(
