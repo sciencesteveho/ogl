@@ -208,7 +208,7 @@ def main(config_dir: str, graph_dir: str, graph_type: str) -> None:
     ]
 
     pool = Pool(processes=CORES)
-    graphs = pool.map(GraphConstructor.process_graphs, object_list)
+    graphs = pool.imap(GraphConstructor.process_graphs, object_list)
     pool.close()
 
     # concat all
