@@ -151,7 +151,7 @@ def graph_constructor(
     for g in [base_graph, graph]:
         nx.set_node_attributes(g, ref)
 
-    return [g]
+    return g
 
 
 @time_decorator(print_args=True)
@@ -193,6 +193,10 @@ def main(root_dir: str, graph_type: str) -> None:
     # graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
     # pool.close()
     graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
+
+    # tmp save so we dont have to do this again
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
+        pickle.dump(graphs, output)
 
     # concat all
     graph = nx.compose_all(graphs)
