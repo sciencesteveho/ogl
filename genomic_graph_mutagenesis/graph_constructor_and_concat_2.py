@@ -189,9 +189,10 @@ def main(root_dir: str, graph_type: str) -> None:
     graph_dir = f"{root_dir}/graphs"
 
     # instantiate objects and process graphs in parallel
-    pool = Pool(processes=CORES)
-    graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
-    pool.close()
+    # pool = Pool(processes=CORES)
+    # graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
+    # pool.close()
+    graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
 
     # concat all
     graph = nx.compose_all(graphs)
