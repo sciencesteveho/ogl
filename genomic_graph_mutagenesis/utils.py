@@ -87,19 +87,19 @@ TISSUES = [
 ]
 
 ONEHOT_EDGETYPE = {
-    "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
-    "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
-    "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
-    "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
-    "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "promoter-enhancer"
-    "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "promoter-dyadic"
-    "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "promoter-superenhancer"
-    "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "gene-gene"
-    "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "protein-protein"
-    "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "mirna-gene"
-    "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "tf-marker"
-    "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "circuits"
-    "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "local"
+    "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
+    "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
+    "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
+    "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
+    "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "promoter-enhancer"
+    "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "promoter-dyadic"
+    "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "promoter-superenhancer"
+    "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "gene-gene"
+    "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "protein-protein"
+    "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "mirna-gene"
+    "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "tf-marker"
+    "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "circuits"
+    "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "local"
 }
 
 TISSUE_TPM_KEYS = {

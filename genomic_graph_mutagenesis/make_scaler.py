@@ -7,39 +7,31 @@
 """Fit a scaler for node feats"""
 
 import argparse
-import joblib
 import pickle
 
+import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-from dataset_split import _chr_split_train_test_val, genes_from_gff
+from dataset_split import _chr_split_train_test_val
+from dataset_split import genes_from_gff
+from utils import TISSUES
 
 # root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
 # genes = gene_list_from_graphs(root_dir=root_dir, tissue=args.tissue)
 
-TISSUES = [
-    "hippocampus",
-    "liver",
-    "lung",
-    "mammary",
-    "pancreas",
-    "skeletal_muscle",
-    "left_ventricle",
-]
 
-
-def main() -> None:
+def main(
+    gene_gtf: str,
+    graph_dir: str,
+    output_dir: str,
+) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--feat", type=int, required=True)
     args = parser.parse_args()
 
     test_chrs = ["chr8", "chr9"]
     val_chrs = ["chr7", "chr13"]
-
-    gene_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-    graph_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
-    output_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler"
 
     genes = genes_from_gff(gene_gtf)
 
@@ -71,4 +63,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        gene_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
+        graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
+        output_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/data_scaler",
+    )

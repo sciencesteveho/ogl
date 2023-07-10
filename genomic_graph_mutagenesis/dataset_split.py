@@ -51,19 +51,19 @@ def _chr_split_train_test_val(
                 f"{gene}_{tissue}"
                 for gene in genes
                 if genes[gene] not in test_chrs + val_chrs
-                for tissue in TISSUE_KEYS
+                for tissue in TISSUES
             ],
             "test": [
                 f"{gene}_{tissue}"
                 for gene in genes
                 if genes[gene] in test_chrs
-                for tissue in TISSUE_KEYS
+                for tissue in TISSUES
             ],
             "validation": [
                 f"{gene}_{tissue}"
                 for gene in genes
                 if genes[gene] in val_chrs
-                for tissue in TISSUE_KEYS
+                for tissue in TISSUES
             ],
         }
     else:

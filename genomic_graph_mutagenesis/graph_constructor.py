@@ -55,9 +55,10 @@ class GraphConstructor:
         self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
         dir_check_make(self.graph_dir)
 
-        self.genes = self._filtered_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
+        self.genes = self._read_genes(f"{self.tissue_dir}/tpm_filtered_genes.bed")
+        self.all_genes = self._read_genes(params["resources"]["gencode_attr"])
 
-    def _filtered_genes(self, gencode_ref: str) -> List[str]:
+    def _read_genes(self, gencode_ref: str) -> List[str]:
         """Get genes from gencode ref that pass TPM filter"""
         a = pybedtools.BedTool(gencode_ref)
         return [tup[3] for tup in a]
@@ -105,8 +106,7 @@ class GraphConstructor:
 
     @time_decorator(print_args=False)
     def _prepare_reference_attributes(self) -> Dict[str, Dict[str, Any]]:
-        """Add polyadenylation to gencode ref dict used to fill in attributes.
-        Base_node attr are hard coded in as the first type to load. There are
+        """Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
         they'll overrwrite without issue.
 
@@ -123,7 +123,7 @@ class GraphConstructor:
             ref.update(ref_for_concat)
 
         for key in ref:
-            if key in self.genes:
+            if key in self.all_genes:
                 ref[key]["is_gene"] = 1
                 ref[key]["is_tf"] = 0
             elif "_tf" in key:
@@ -154,7 +154,10 @@ class GraphConstructor:
                         [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                     ),
                     "node_feat": np.array(
-                        [[val for val in graph.nodes[node].values()] for node in nodes]
+                        [
+                            [float(val) for val in graph.nodes[node].values()]
+                            for node in nodes
+                        ]
                     ),
                     "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
                     "num_nodes": graph.number_of_nodes(),
@@ -196,6 +199,10 @@ class GraphConstructor:
         for g in [base_graph, graph]:
             nx.set_node_attributes(g, ref)
 
+        # save graphs as np arrays
+        self._nx_to_tensors(graph=graph, save_str="full_graph")
+        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
+
         # save graphs as gml
         nx.write_gml(base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.gml")
         nx.write_gml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.gml")
@@ -212,10 +219,6 @@ class GraphConstructor:
                 {node: idx for idx, node in enumerate(sorted(graph.nodes))},
                 output,
             )
-
-        # save graphs as np arrays
-        self._nx_to_tensors(graph=graph, save_str="full_graph")
-        self._nx_to_tensors(graph=base_graph, save_str="base_graph")
 
 
 def main() -> None:
