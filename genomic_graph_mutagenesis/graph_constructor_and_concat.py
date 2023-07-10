@@ -35,7 +35,7 @@ class GraphConstructor:
     """Object to construct tensor based graphs from parsed edges
 
     Args:
-        params: configuration vals from xwxwyaml
+        params: configuration vals from yaml
 
     Methods
     ----------
@@ -171,7 +171,7 @@ class GraphConstructor:
 
 
 @time_decorator(print_args=True)
-def _nx_to_tensors(graph_dir: str, graph: nx.Graph, save_str: str) -> None:
+def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels
 
@@ -182,7 +182,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, save_str: str) -> None:
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open(f"{graph_dir}/all_tissues_{save_str}.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{graph_type}_.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": np.array(
@@ -200,7 +200,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, save_str: str) -> None:
         )
 
 
-def main(config_dir: str, graph_dir: str) -> None:
+def main(config_dir: str, graph_dir: str, graph_type: str) -> None:
     """Pipeline to generate individual graphs"""
     # instantiate objects and process graphs in parallel
     object_list = [
@@ -214,12 +214,20 @@ def main(config_dir: str, graph_dir: str) -> None:
     # concat all
     graph = nx.compose_all(graphs)
 
+    # save indexes before renaming to integers
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl", "wb") as output:
+        pickle.dump(
+            {node: idx for idx, node in enumerate(sorted(graph.nodes))},
+            output,
+        )
+
     # save idxs and write to tensors
-    _nx_to_tensors(graph_dir=graph_dir, graph=graph, save_str="full_graph")
+    _nx_to_tensors(graph_dir=graph_dir, graph=graph, graph_type="full")
 
 
 if __name__ == "__main__":
     main(
         config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
         graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
+        graph_type="full",
     )
