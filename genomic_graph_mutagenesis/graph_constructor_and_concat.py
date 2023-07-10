@@ -14,6 +14,7 @@ base node. Attributes are then added for each node.
 
 import argparse
 import csv
+from multiprocessing import Pool
 import pickle
 from typing import Any, Dict, List
 
@@ -26,6 +27,7 @@ from utils import NODES
 from utils import ONEHOT_EDGETYPE
 from utils import parse_yaml
 from utils import time_decorator
+from utils import TISSUES
 
 
 class GraphConstructor:
@@ -200,9 +202,11 @@ class GraphConstructor:
         self._nx_to_tensors(graph=graph, save_str="full_graph")
         self._nx_to_tensors(graph=base_graph, save_str="base_graph")
 
-        # save graphs as gexf
-        nx.write_gexf(base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.graphml")
-        nx.write_gexf(graph, f"{self.graph_dir}/{self.tissue}_full_graph.graphml")
+        # save graphs as graphml
+        nx.write_graphml(
+            base_graph, f"{self.graph_dir}/{self.tissue}_base_graph.graphml"
+        )
+        nx.write_graphml(graph, f"{self.graph_dir}/{self.tissue}_full_graph.graphml")
 
         # save dictionary of node to integer labels
         with open(f"{self.graph_dir}/{self.tissue}_base_gene_idxs.pkl", "wb") as output:
