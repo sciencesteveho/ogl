@@ -33,6 +33,9 @@ _histone_bigwig_to_peak \
     /ocean/projects/bio210019p/stevesho/resources \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universal_genome/bigwigs \
     $1  # name of file without .bigWig extension
+    
+
+bedtools shift -i <(awk -vOFS='\t' '{print $1,$2,$3}' TADMap_scaffold_hs.bed) -s 0 -g ../../../../resources/hg38.chrom.sizes.txt > tmp && mv tmp TADMap_scaffold_hs.bed 
 
 # run main_func function! 
 #    - 

@@ -116,8 +116,7 @@ class UniversalGenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
-        cmd = f"sed 's/ /\t/g' {self.data_dir}/{bed} \
-            | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.data_dir}/{bed} \
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
