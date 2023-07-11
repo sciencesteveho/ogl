@@ -996,19 +996,16 @@ class LocalContextParser:
                 set_dict[attribute] = set(lines)
             for line in set_dict[attribute]:
                 if attribute == "gc":
-                    try:
-                        attr_dict[f"{line[3]}_{self.tissue}"] = {
-                            "chr": line[0].replace("chr", ""),
+                    attr_dict[f"{line[3]}_{self.tissue}"] = {
+                        "chr": line[0].replace("chr", ""),
+                    }
+                    for dictionary in [attr_dict, attr_dict_nochr]:
+                        dictionary[f"{line[3]}_{self.tissue}"] = {
+                            "start": float(line[1]),
+                            "end": float(line[2]),
+                            "size": float(line[4]),
+                            "gc": float(line[5]),
                         }
-                        for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[f"{line[3]}_{self.tissue}"] = {
-                                "start": float(line[1]),
-                                "end": float(line[2]),
-                                "size": float(line[4]),
-                                "gc": float(line[5]),
-                            }
-                    except ValueError:
-                        print(f"error with {node} {attribute}")
                 else:
                     try:
                         for dictionary in [attr_dict, attr_dict_nochr]:
@@ -1018,8 +1015,6 @@ class LocalContextParser:
                     except KeyError:
                         for dictionary in [attr_dict, attr_dict_nochr]:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
-                    except ValueError:
-                        print(f"error with {node} {attribute}")
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
