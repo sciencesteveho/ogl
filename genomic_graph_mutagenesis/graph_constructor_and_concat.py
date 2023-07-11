@@ -13,8 +13,6 @@ base node. Attributes are then added for each node.
 """
 
 import csv
-from itertools import repeat
-from multiprocessing import Pool
 import pickle
 from typing import Any, Dict, List
 
@@ -23,7 +21,6 @@ import numpy as np
 
 from utils import dir_check_make
 from utils import NODES
-from utils import ONEHOT_EDGETYPE
 from utils import time_decorator
 from utils import TISSUES
 
@@ -189,18 +186,12 @@ def main(root_dir: str, graph_type: str) -> None:
     """Pipeline to generate individual graphs"""
     graph_dir = f"{root_dir}/graphs"
 
-    # instantiate objects and process graphs in parallel
-    pool = Pool(processes=CORES)
-    graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
-    pool.close()
+    # instantiate objects and process graphs
     graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
 
     # tmp save so we dont have to do this again
-    # with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
-    #     pickle.dump(graphs, output)
-
-    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "rb") as file:
-        graphs = pickle.load(file)
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
+        pickle.dump(graphs, output)
 
     # concat all
     graph = nx.compose_all(graphs)

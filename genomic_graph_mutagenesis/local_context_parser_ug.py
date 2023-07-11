@@ -933,12 +933,15 @@ class LocalContextParser:
                     save_file
                 )
             else:
-                ref_file.intersect(
-                    f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
-                    wao=True,
-                    sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
-
+                try:
+                    ref_file.intersect(
+                        f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
+                        wao=True,
+                        sorted=True,
+                    ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
+                except pybedtools.helpers.BEDToolsError:
+                    print(f"broken {attribute} for {node_type}")
+                    
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
         """Unix concatenate and sort each edge file"""
