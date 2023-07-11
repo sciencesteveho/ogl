@@ -59,7 +59,7 @@ def graph_constructor(
         """Create a graph from list of edges"""
         G = nx.Graph()
         for tup in edges:
-            G.add_edges_from([(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})])
+            G.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
         return G
 
     @time_decorator(print_args=True)
@@ -145,7 +145,7 @@ def graph_constructor(
 
     # add local context edges to full graph
     for tup in local_context_edges:
-        graph.add_edges_from([(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})])
+        graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
 
     # add attributes
     for g in [base_graph, graph]:
@@ -175,7 +175,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
                 "node_feat": np.array(
                     [[val for val in graph.nodes[node].values()] for node in nodes]
                 ),
-                "edge_feat": np.array([edge[2]["edge_type"] for edge in edges]),
+                "edge_feat": [edge[2]["edge_type"] for edge in edges],
                 "num_nodes": graph.number_of_nodes(),
                 "num_edges": graph.number_of_edges(),
                 "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),

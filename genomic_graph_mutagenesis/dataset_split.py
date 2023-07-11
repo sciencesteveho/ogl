@@ -109,6 +109,8 @@ def _protein_std_dev_and_mean(protein_abundance_medians: str) -> pd.DataFrame:
         "Lung",
         "Muscle Skeletal",
         "Pancreas",
+        "Skin - Not Sun Exposed (Suprapubic)",
+        "Small Intestine - Terminal Ileum",
     ]
     df = pd.read_csv(
         protein_abundance_medians,
