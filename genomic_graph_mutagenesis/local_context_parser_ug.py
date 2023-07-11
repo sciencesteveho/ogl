@@ -996,16 +996,19 @@ class LocalContextParser:
                 set_dict[attribute] = set(lines)
             for line in set_dict[attribute]:
                 if attribute == "gc":
-                    attr_dict[f"{line[3]}_{self.tissue}"] = {
-                        "chr": line[0].replace("chr", ""),
-                    }
-                    for dictionary in [attr_dict, attr_dict_nochr]:
-                        dictionary[f"{line[3]}_{self.tissue}"] = {
-                            "start": float(line[1]),
-                            "end": float(line[2]),
-                            "size": float(line[4]),
-                            "gc": float(line[5]),
+                    try:
+                        attr_dict[f"{line[3]}_{self.tissue}"] = {
+                            "chr": line[0].replace("chr", ""),
                         }
+                        for dictionary in [attr_dict, attr_dict_nochr]:
+                            dictionary[f"{line[3]}_{self.tissue}"] = {
+                                "start": float(line[1]),
+                                "end": float(line[2]),
+                                "size": float(line[4]),
+                                "gc": float(line[5]),
+                            }
+                    except ValueError:
+                        print(f"error with {node} {attribute}")
                 else:
                     try:
                         for dictionary in [attr_dict, attr_dict_nochr]:
@@ -1015,6 +1018,8 @@ class LocalContextParser:
                     except KeyError:
                         for dictionary in [attr_dict, attr_dict_nochr]:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
+                    except ValueError:
+                        print(f"error with {node} {attribute}")
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
@@ -1039,56 +1044,56 @@ class LocalContextParser:
             c -- _description_
         """
 
-        @time_decorator(print_args=True)
-        def _save_intermediate(
-            bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
-        ) -> None:
-            """Save region specific bedfiles"""
-            for key in bed_dictionary:
-                file = f"{self.parse_dir}/intermediate/{folder}/{key}.bed"
-                if not os.path.exists(file):
-                    bed_dictionary[key].saveas(file)
+        # @time_decorator(print_args=True)
+        # def _save_intermediate(
+        #     bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
+        # ) -> None:
+        #     """Save region specific bedfiles"""
+        #     for key in bed_dictionary:
+        #         file = f"{self.parse_dir}/intermediate/{folder}/{key}.bed"
+        #         if not os.path.exists(file):
+        #             bed_dictionary[key].saveas(file)
 
-        @time_decorator(print_args=True)
-        def _pre_concatenate_all_files(all_files: str) -> None:
-            """Lorem Ipsum"""
-            if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
-                cat_cmd = ["cat"] + [
-                    f"{self.parse_dir}/intermediate/sorted/" + x + ".bed"
-                    for x in bedinstance_slopped
-                ]
-                sort_cmd = "sort -k1,1 -k2,2n"
-                concat = Popen(cat_cmd, stdout=PIPE)
-                with open(all_files, "w") as outfile:
-                    subprocess.run(
-                        sort_cmd, stdin=concat.stdout, stdout=outfile, shell=True
-                    )
-                outfile.close()
+        # @time_decorator(print_args=True)
+        # def _pre_concatenate_all_files(all_files: str) -> None:
+        #     """Lorem Ipsum"""
+        #     if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
+        #         cat_cmd = ["cat"] + [
+        #             f"{self.parse_dir}/intermediate/sorted/" + x + ".bed"
+        #             for x in bedinstance_slopped
+        #         ]
+        #         sort_cmd = "sort -k1,1 -k2,2n"
+        #         concat = Popen(cat_cmd, stdout=PIPE)
+        #         with open(all_files, "w") as outfile:
+        #             subprocess.run(
+        #                 sort_cmd, stdin=concat.stdout, stdout=outfile, shell=True
+        #             )
+        #         outfile.close()
 
-        # process windows and renaming
-        pool = Pool(processes=self.NODE_CORES)
-        bedinstance = pool.map(
-            self._region_specific_features_dict, [bed for bed in self.bedfiles]
-        )
-        pool.close()  # re-open and close pool after every multi-process
+        # # process windows and renaming
+        # pool = Pool(processes=self.NODE_CORES)
+        # bedinstance = pool.map(
+        #     self._region_specific_features_dict, [bed for bed in self.bedfiles]
+        # )
+        # pool.close()  # re-open and close pool after every multi-process
 
-        # convert back to dictionary
-        bedinstance = {
-            key.casefold(): value
-            for element in bedinstance
-            for key, value in element.items()
-        }
+        # # convert back to dictionary
+        # bedinstance = {
+        #     key.casefold(): value
+        #     for element in bedinstance
+        #     for key, value in element.items()
+        # }
 
-        # sort and extend windows according to FEAT_WINDOWS
-        bedinstance_sorted, bedinstance_slopped = self._slop_sort(
-            bedinstance=bedinstance,
-            chromfile=self.chromfile,
-            feat_window=2000,
-        )
+        # # sort and extend windows according to FEAT_WINDOWS
+        # bedinstance_sorted, bedinstance_slopped = self._slop_sort(
+        #     bedinstance=bedinstance,
+        #     chromfile=self.chromfile,
+        #     feat_window=2000,
+        # )
 
-        # save intermediate files
-        _save_intermediate(bedinstance_sorted, folder="sorted")
-        _save_intermediate(bedinstance_slopped, folder="slopped")
+        # # save intermediate files
+        # _save_intermediate(bedinstance_sorted, folder="sorted")
+        # _save_intermediate(bedinstance_slopped, folder="slopped")
 
         # pre-concatenate to save time
         # all_files = f"{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed"
