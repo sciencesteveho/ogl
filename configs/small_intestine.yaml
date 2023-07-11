@@ -50,8 +50,8 @@ resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
-  key_protein_abundance: small_intestine_terminal_ileum
-  key_tpm: small_intestine
+  key_protein_abundance: small_intestine
+  key_tpm: small_intestine_terminal_ileum
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name: Intestine
