@@ -49,7 +49,7 @@ def main(root_dir: str) -> None:
     with open(
         f"{out_dir}/all_tissue_{args.graph_type}_graph_scaled.pkl", "wb"
     ) as output:
-        pickle.dump(g, output)
+        pickle.dump(g, output, protocol=4)
 
 
 if __name__ == "__main__":

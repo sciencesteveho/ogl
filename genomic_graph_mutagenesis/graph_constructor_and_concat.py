@@ -13,52 +13,49 @@ base node. Attributes are then added for each node.
 """
 
 import csv
+from itertools import repeat
 from multiprocessing import Pool
 import pickle
 from typing import Any, Dict, List
 
 import networkx as nx
 import numpy as np
-import pybedtools
 
 from utils import dir_check_make
 from utils import NODES
 from utils import ONEHOT_EDGETYPE
-from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
 
 CORES = len(TISSUES) + 1  # one process per tissue
 
 
-class GraphConstructor:
-    """Object to construct tensor based graphs from parsed edges
+@time_decorator(print_args=True)
+def graph_constructor(
+    tissue: str,
+    root_dir: str,
+) -> nx.Graph:
+    """_summary_
 
     Args:
-        params: configuration vals from yaml
+        tissue (str): _description_
+        root_dir (str): _description_
+        graph_dir (str): _description_
+        interaction_dir (str): _description_
 
-    Methods
-    ----------
-    _genes_from_gencode:
-        Lorem
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        nx.Graph: _description_
     """
+    # housekeeping
+    interaction_dir = f"{root_dir}/{tissue}/interaction"
+    parse_dir = f"{root_dir}/{tissue}/parsing"
+    graph_dir = f"{root_dir}/graphs/{tissue}"
+    dir_check_make(graph_dir)
 
-    def __init__(
-        self,
-        params: str,
-    ):
-        """Initialize the class"""
-        params = parse_yaml(params)
-        self.tissue = params["resources"]["tissue"]
-
-        self.root_dir = params["dirs"]["root_dir"]
-        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
-        self.parse_dir = f"{self.tissue_dir}/parsing"
-        self.interaction_dir = f"{self.tissue_dir}/interaction"
-        self.graph_dir = f"{self.root_dir}/graphs/{self.tissue}"
-        dir_check_make(self.graph_dir)
-
-    def _base_graph(self, edges: List[str]):
+    def _base_graph(edges: List[str]):
         """Create a graph from list of edges"""
         G = nx.Graph()
         for tup in edges:
@@ -67,7 +64,6 @@ class GraphConstructor:
 
     @time_decorator(print_args=True)
     def _get_edges(
-        self,
         edge_file: str,
         edge_type: str,
         add_tissue: bool = False,
@@ -76,7 +72,7 @@ class GraphConstructor:
         if edge_type == "base":
             if add_tissue:
                 return [
-                    (f"{tup[0]}_{self.tissue}", f"{tup[1]}_{self.tissue}", tup[3])
+                    (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
@@ -87,7 +83,7 @@ class GraphConstructor:
         if edge_type == "local":
             if add_tissue:
                 return [
-                    (f"{tup[3]}_{self.tissue}", f"{tup[7]}_{self.tissue}", "local")
+                    (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
                     for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
                 ]
             else:
@@ -99,7 +95,7 @@ class GraphConstructor:
             raise ValueError("Edge type must be 'base' or 'local'")
 
     @time_decorator(print_args=False)
-    def _prepare_reference_attributes(self) -> Dict[str, Dict[str, Any]]:
+    def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
         """Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
         they'll overrwrite without issue.
@@ -107,12 +103,10 @@ class GraphConstructor:
         Returns:
             Dict[str, Dict[str, Any]]: nested dict of attributes for each node
         """
-        ref = pickle.load(
-            open(f"{self.parse_dir}/attributes/basenodes_reference.pkl", "rb")
-        )
+        ref = pickle.load(open(f"{parse_dir}/attributes/basenodes_reference.pkl", "rb"))
         for node in NODES:
             ref_for_concat = pickle.load(
-                open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "rb")
+                open(f"{parse_dir}/attributes/{node}_reference.pkl", "rb")
             )
             ref.update(ref_for_concat)
 
@@ -129,39 +123,35 @@ class GraphConstructor:
 
         return ref
 
-    def process_graphs(self) -> None:
-        """_summary_"""
-        # get edges
-        base_edges = self._get_edges(
-            edge_file=f"{self.interaction_dir}/interaction_edges.txt",
-            edge_type="base",
-            add_tissue=True,
-        )
+    # get edges
+    base_edges = _get_edges(
+        edge_file=f"{interaction_dir}/interaction_edges.txt",
+        edge_type="base",
+        add_tissue=True,
+    )
 
-        local_context_edges = self._get_edges(
-            edge_file=f"{self.parse_dir}/edges/all_concat_sorted.bed",
-            edge_type="local",
-            add_tissue=True,
-        )
+    local_context_edges = _get_edges(
+        edge_file=f"{parse_dir}/edges/all_concat_sorted.bed",
+        edge_type="local",
+        add_tissue=True,
+    )
 
-        # get attribute reference dictionary
-        ref = self._prepare_reference_attributes()
+    # get attribute reference dictionary
+    ref = _prepare_reference_attributes()
 
-        # create graphs
-        base_graph = self._base_graph(edges=base_edges)
-        graph = self._base_graph(edges=base_edges)
+    # create graphs
+    base_graph = _base_graph(edges=base_edges)
+    graph = _base_graph(edges=base_edges)
 
-        # add local context edges to full graph
-        for tup in local_context_edges:
-            graph.add_edges_from(
-                [(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})]
-            )
+    # add local context edges to full graph
+    for tup in local_context_edges:
+        graph.add_edges_from([(tup[0], tup[1], {"edge_type": ONEHOT_EDGETYPE[tup[2]]})])
 
-        # add attributes
-        for g in [base_graph, graph]:
-            nx.set_node_attributes(g, ref)
+    # add attributes
+    for g in [base_graph, graph]:
+        nx.set_node_attributes(g, ref)
 
-        return [g]
+    return g
 
 
 @time_decorator(print_args=True)
@@ -176,7 +166,7 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open(f"{graph_dir}/all_tissue_{graph_type}_.pkl", "wb") as output:
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graph.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": np.array(
@@ -191,19 +181,26 @@ def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
                 "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
             },
             output,
+            protocol=4,
         )
 
 
-def main(config_dir: str, graph_dir: str, graph_type: str) -> None:
+def main(root_dir: str, graph_type: str) -> None:
     """Pipeline to generate individual graphs"""
-    # instantiate objects and process graphs in parallel
-    object_list = [
-        GraphConstructor(params=f"{config_dir}/{tissue}.yaml") for tissue in TISSUES
-    ]
+    graph_dir = f"{root_dir}/graphs"
 
+    # instantiate objects and process graphs in parallel
     pool = Pool(processes=CORES)
-    graphs = pool.imap(GraphConstructor.process_graphs, object_list)
+    graphs = pool.starmap(graph_constructor, zip(TISSUES, repeat(root_dir)))
     pool.close()
+    graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
+
+    # tmp save so we dont have to do this again
+    # with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
+    #     pickle.dump(graphs, output)
+
+    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "rb") as file:
+        graphs = pickle.load(file)
 
     # concat all
     graph = nx.compose_all(graphs)
@@ -221,7 +218,6 @@ def main(config_dir: str, graph_dir: str, graph_type: str) -> None:
 
 if __name__ == "__main__":
     main(
-        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
-        graph_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
+        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
         graph_type="full",
     )
