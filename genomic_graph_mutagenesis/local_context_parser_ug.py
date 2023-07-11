@@ -1100,9 +1100,9 @@ class LocalContextParser:
         # pool.close()
 
         # # get size and all attributes - one process per nodetype
-        pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, ["basenodes"] + NODES)
-        pool.close()
+        # pool = Pool(processes=self.ATTRIBUTE_CORES)
+        # pool.map(self._aggregate_attributes, ["basenodes"] + NODES)
+        # pool.close()
 
         # parse edges into individual files
         # self._generate_edges()
