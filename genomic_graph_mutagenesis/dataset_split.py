@@ -245,8 +245,8 @@ def _get_target_values_for_tissues(
     for tissue in tissue_params:
         all_dict[tissue] = _get_dict_with_target_array(
             split_dict=split,
-            tpmkey=tissue_params[tissue][1],
-            prokey=tissue_params[tissue][0],
+            tpmkey=tissue_params[tissue][0],
+            prokey=tissue_params[tissue][1],
             tpm_median_and_fold_change_df=tpm_median_and_fold_change_df,
             protein_median_and_fold_change_df=protein_median_and_fold_change_df,
         )
@@ -340,6 +340,39 @@ def filtered_targets(
     return targets
 
 
+def filter_genes(
+    tissue_params,
+):
+    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
+    20% of samples
+
+    Args:
+        tissue_params (Dict[Tuple[str, str]]): _description_
+        targets (Dict[str, Dict[str, np.ndarray]]): _description_
+
+    Returns:
+        Dict[str, Dict[str, np.ndarray]]: _description_
+    """
+
+    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+        with open(tpm_filtered_genes, newline="") as file:
+            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+    for idx, tissue in enumerate(tissue_params):
+        if idx == 0:
+            genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+        else:
+            update_genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+            genes += update_genes
+
+    return genes
+    # for key in targets.keys():
+    #     targets[key] = {
+    #         gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
+    #     }
+    # return targets
+
+
 def main(
     config_dir: str,
     matrix_dir: str,
@@ -386,13 +419,47 @@ def main(
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
     )
 
-    parsed_targets = {}
-    parsed_targets["train"] = targets["train"]["mammary"]
-    parsed_targets["test"] = targets["test"]["mammary"]
-    parsed_targets["validation"] = targets["validation"]["mammary"]
+    # filter targets
+    filtered_split = dict.fromkeys(DATA_SPLITS)
+    filtered_genes = set(filter_genes(tissue_params=keys))
+    for data_split in ["train", "test", "validation"]:
+        print(data_split)
+        print(len(split[data_split]))
+        filtered_split[data_split] = [
+            x for x in split[data_split] if x in filtered_genes
+        ]
+        print(data_split)
+        print(len(filtered_split[data_split]))
 
+    # flatten nested dictionary
+    # right now the targets are messed up and every tissue has the every key. FIX!
+    flattened_targets = {}
+    flattened_targets["train"] = targets["train"]["mammary"]
+    flattened_targets["test"] = targets["test"]["mammary"]
+    flattened_targets["validation"] = targets["validation"]["mammary"]
+
+    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+        with open(tpm_filtered_genes, newline="") as file:
+            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+    for idx, tissue in enumerate(keys):
+        if idx == 0:
+            genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+        else:
+            update_genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+            genes += update_genes
+
+    genes = set(genes)
+
+    parsed_targets = {}
+    for key in flattened_targets.keys():
+        parsed_targets[key] = {
+            gene: flattened_targets[key][gene]
+            for gene in flattened_targets[key].keys()
+            if gene in genes
+        }
     # save targets
-    with open("graphs/target_dict_unfiltered.pkl", "wb") as output:
+    with open("graphs/training_targets.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
 
 
@@ -422,3 +489,13 @@ expression_median_matrix = (
 protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
 protein_abundance_medians = "protein_relative_abundance_median_gtex.csv"
 save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
+
+
+"""In [83]: len(parsed_targets['train'])
+Out[83]: 130087
+
+In [84]: len(parsed_targets['test'])
+Out[84]: 11420
+
+In [85]: len(parsed_targets['validation'])
+Out[85]: 10505"""

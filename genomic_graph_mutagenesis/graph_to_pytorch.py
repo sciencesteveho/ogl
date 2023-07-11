@@ -117,7 +117,7 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/target_dict_unfiltered.pkl"
+    targets = f"{graph_dir}/target_targets.pkl"
 
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
