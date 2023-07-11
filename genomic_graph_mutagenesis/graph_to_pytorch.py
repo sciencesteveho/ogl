@@ -20,7 +20,7 @@ import torch
 from torch_geometric.data import Data
 
 from dataset_split import _chr_split_train_test_val
-from dataset_split import genes_from_gff
+from dataset_split import _genes_from_gff
 
 
 def _get_mask_idxs(
@@ -126,7 +126,7 @@ def graph_to_pytorch(
     val_chrs = ["chr7", "chr13"]
 
     split = _chr_split_train_test_val(
-        genes=genes_from_gff(gene_gtf),
+        genes=_genes_from_gff(gene_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         tissue_append=True,
