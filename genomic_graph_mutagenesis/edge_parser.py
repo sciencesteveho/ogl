@@ -138,7 +138,9 @@ class EdgeParser:
 
     @time_decorator(print_args=True)
     def _mirna_targets(
-        self, target_list: str, tissue_active_mirnas: str
+        self,
+        target_list: str,
+        tissue_active_mirnas: str,
     ) -> List[Tuple[str, str]]:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.

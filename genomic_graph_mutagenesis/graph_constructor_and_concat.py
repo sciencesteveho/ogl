@@ -152,7 +152,11 @@ def graph_constructor(
 
 
 @time_decorator(print_args=True)
-def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
+def _nx_to_tensors(
+    graph_dir: str,
+    graph: nx.Graph,
+    graph_type: str,
+) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels
 

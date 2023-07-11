@@ -19,7 +19,8 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from dataset_split import _chr_split_train_test_val, genes_from_gff
+from dataset_split import _chr_split_train_test_val
+from dataset_split import genes_from_gff
 
 
 def _get_mask_idxs(
@@ -103,7 +104,7 @@ def _get_masked_tensor(num_nodes: int):
 def graph_to_pytorch(
     root_dir: str,
     graph_type: str,
-    ):
+):
     """_summary_
 
     Args:

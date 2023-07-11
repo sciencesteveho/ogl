@@ -103,7 +103,10 @@ class LocalContextParser:
         self._make_directories()
 
     def _prepare_tpm_filtered_genes(
-        self, genes: str, gene_windows: str, base_nodes: str
+        self,
+        genes: str,
+        gene_windows: str,
+        base_nodes: str,
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes = _tpm_filter_gene_windows(
@@ -135,7 +138,8 @@ class LocalContextParser:
 
     @time_decorator(print_args=True)
     def _region_specific_features_dict(
-        self, bed: str
+        self,
+        bed: str,
     ) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
         """
         Creates a dict of local context datatypes and their bedtools objects.
@@ -176,7 +180,10 @@ class LocalContextParser:
 
     @time_decorator(print_args=True)
     def _slop_sort(
-        self, bedinstance: Dict[str, str], chromfile: str, feat_window: int = 2000
+        self,
+        bedinstance: Dict[str, str],
+        chromfile: str,
+        feat_window: int = 2000,
     ) -> Tuple[
         Dict[str, pybedtools.bedtool.BedTool], Dict[str, pybedtools.bedtool.BedTool]
     ]:
@@ -350,7 +357,10 @@ class LocalContextParser:
             )
 
     @time_decorator(print_args=True)
-    def _save_node_attributes(self, node: str) -> None:
+    def _save_node_attributes(
+        self,
+        node: str,
+    ) -> None:
         """
         Save attributes for all node entries. Used during graph construction for
         gene_nodes that fall outside of the gene window and for some gene_nodes
