@@ -31,6 +31,7 @@ from utils import parse_yaml
 from utils import time_decorator
 
 ATTRIBUTES = [
+    "gc",
     "cnv",
     "cpgislands",
     "indels",
@@ -915,7 +916,8 @@ class LocalContextParser:
             ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
         )
 
-        for attribute in ATTRIBUTES:
+        # for attribute in ATTRIBUTES:
+        for attribute in ["gc"]:
             save_file = (
                 f"{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage"
             )
@@ -938,10 +940,12 @@ class LocalContextParser:
                         f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
                         wao=True,
                         sorted=True,
-                    ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
+                    ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(
+                        save_file
+                    )
                 except pybedtools.helpers.BEDToolsError:
                     print(f"broken {attribute} for {node_type}")
-                    
+
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
         """Unix concatenate and sort each edge file"""
@@ -1083,25 +1087,25 @@ class LocalContextParser:
         )
 
         # save intermediate files
-        _save_intermediate(bedinstance_sorted, folder="sorted")
-        _save_intermediate(bedinstance_slopped, folder="slopped")
+        # _save_intermediate(bedinstance_sorted, folder="sorted")
+        # _save_intermediate(bedinstance_slopped, folder="slopped")
 
         # pre-concatenate to save time
-        all_files = f"{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed"
-        _pre_concatenate_all_files(all_files)
+        # all_files = f"{self.parse_dir}/intermediate/sorted/all_files_concatenated.bed"
+        # _pre_concatenate_all_files(all_files)
 
-        # perform intersects across all feature types - one process per nodetype
-        pool = Pool(processes=self.NODE_CORES)
-        pool.starmap(self._bed_intersect, zip(NODES, repeat(all_files)))
-        pool.close()
+        # # perform intersects across all feature types - one process per nodetype
+        # pool = Pool(processes=self.NODE_CORES)
+        # pool.starmap(self._bed_intersect, zip(NODES, repeat(all_files)))
+        # pool.close()
 
-        # get size and all attributes - one process per nodetype
+        # # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
         pool.map(self._aggregate_attributes, ["basenodes"] + NODES)
         pool.close()
 
         # parse edges into individual files
-        self._generate_edges()
+        # self._generate_edges()
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)

@@ -10,12 +10,13 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
-from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborSampler, RandomNodeLoader
+from torch_geometric.loader import NeighborSampler
+from torch_geometric.loader import RandomNodeLoader
 from torch_geometric.nn import SAGEConv
+from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
 
@@ -44,7 +45,6 @@ class GraphSAGE(torch.nn.Module):
         self.conv9.aggr = "max"
         self.conv10 = SAGEConv(embedding_size, embedding_size)
         self.conv10.aggr = "mean"
-
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
@@ -80,14 +80,16 @@ def train(model, device, optimizer, train_loader, epoch):
     model.train()
 
     pbar = tqdm(total=len(train_loader))
-    pbar.set_description(f'Training epoch: {epoch:04d}')
+    pbar.set_description(f"Training epoch: {epoch:04d}")
 
     total_loss = total_examples = 0
     for data in train_loader:
         optimizer.zero_grad()
         data = data.to(device)
         out = model(data.x, data.edge_index)
-        loss = F.mse_loss(out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze())
+        loss = F.mse_loss(
+            out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze()
+        )
         loss.backward()
         optimizer.step()
 
@@ -106,7 +108,7 @@ def test(model, device, test_loader, epoch):
     model.eval()
 
     pbar = tqdm(total=len(test_loader))
-    pbar.set_description(f'Evaluating epoch: {epoch:04d}')
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     for data in test_loader:
         data = data.to(device)
@@ -115,9 +117,7 @@ def test(model, device, test_loader, epoch):
     train_acc = F.mse_loss(
         out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze()
     )
-    val_acc = F.mse_loss(
-        out[data.val_mask].squeeze(), data.y[data.val_mask].squeeze()
-    )
+    val_acc = F.mse_loss(out[data.val_mask].squeeze(), data.y[data.val_mask].squeeze())
     test_acc = F.mse_loss(
         out[data.test_mask].squeeze(), data.y[data.test_mask].squeeze()
     )
@@ -179,11 +179,9 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GraphSAGE(
-        in_size=data.x.shape[1], 
-        embedding_size=512,
-        out_channels=4
-    ).to(device)
+    model = GraphSAGE(in_size=data.x.shape[1], embedding_size=512, out_channels=4).to(
+        device
+    )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     # criterion = torch.nn.MSELoss()
@@ -193,7 +191,7 @@ def main() -> None:
         loss = train(
             model=model,
             device=device,
-            optimizer=optimizer, 
+            optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
         )
@@ -201,9 +199,7 @@ def main() -> None:
         # print(
         #     f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
         # )
-        print(
-            f"Epoch: {epoch:03d}, Loss: {loss}"
-        )
+        print(f"Epoch: {epoch:03d}, Loss: {loss}")
 
 
 if __name__ == "__main__":
