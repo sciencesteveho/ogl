@@ -1012,7 +1012,7 @@ class LocalContextParser:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(
                                 line[5]
                             )
-                        except KeyError:
+                        except ValueError:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
