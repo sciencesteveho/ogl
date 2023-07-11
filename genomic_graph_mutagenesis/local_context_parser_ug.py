@@ -1007,13 +1007,12 @@ class LocalContextParser:
                             "gc": float(line[5]),
                         }
                 else:
-                    try:
-                        for dictionary in [attr_dict, attr_dict_nochr]:
+                    for dictionary in [attr_dict, attr_dict_nochr]:
+                        try:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(
                                 line[5]
                             )
-                    except KeyError:
-                        for dictionary in [attr_dict, attr_dict_nochr]:
+                        except KeyError:
                             dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
