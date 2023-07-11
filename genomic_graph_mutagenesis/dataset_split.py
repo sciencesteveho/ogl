@@ -220,6 +220,7 @@ def tissue_targets_for_training(
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
+    tissues: bool = True,
 ):
     """ """
     # load expression values
