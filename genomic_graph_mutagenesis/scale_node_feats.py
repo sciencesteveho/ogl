@@ -36,7 +36,7 @@ def main(root_dir: str) -> None:
 
     # load all tissue graph
     with open(f"{root_dir}/graphs/all_tissue_{args.graph_type}_graph.pkl", "rb") as f:
-        g = pickle.load(f, protocol=4)
+        g = pickle.load(f)
 
     node_feat = g["node_feat"]
     if type(node_feat) == list:
