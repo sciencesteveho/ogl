@@ -212,7 +212,7 @@ def main() -> None:
     #     ),
     # )
 
-    epochs = 200
+    epochs = 50
     for epoch in range(0, epochs):
         loss = train(
             model=model,
