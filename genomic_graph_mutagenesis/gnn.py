@@ -10,6 +10,7 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
+import sys
 
 import torch
 import torch.nn as nn
@@ -258,7 +259,7 @@ def main() -> None:
             input_nodes=data.val_mask,
         )
 
-    # choose your weapon
+    # CHOOSE YOUR WEAPON
     if args.model == "GraphSAGE":
         model = GraphSAGE(
             in_size=data.x.shape[1],
@@ -286,7 +287,7 @@ def main() -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     epochs = 100
-    for epoch in range(0, epochs):
+    for epoch in range(0, epochs) + 1:
         loss = train(
             model=model,
             device=device,
@@ -307,9 +308,11 @@ def main() -> None:
         model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
     )
 
+    # # GNN Explainer!
+    # explain_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/explainer"
     # explainer = Explainer(
     #     model=model,
-    #     alorigthm=GNNExplainer(epochs=200),
+    #     alorigthm=GNNExplainer(epochs=100),
     #     explanation_type="model",
     #     node_mask_type="attributes",
     #     edge_mask_type="object",
@@ -318,17 +321,18 @@ def main() -> None:
     #     ),
     # )
 
-    # node_index = 10
-    # explanation = explainer(data.x, data.edge_index, index=node_index)
-    # print(f"Generated explanations in {explanation.available_explanations}")
+    # for index in range(0, 1000):
+    #     explanation = explainer(data.x, data.edge_index, index=index)
 
-    # path = "feature_importance.png"
-    # explanation.visualize_feature_importance(path, top_k=10)
-    # print(f"Feature importance plot has been saved to '{path}'")
+    #     print(f"Generated explanations in {explanation.available_explanations}")
 
-    # path = "subgraph.pdf"
-    # explanation.visualize_graph(path)
-    # print(f"Subgraph visualization plot has been saved to '{path}'")
+    #     path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}.png"
+    #     explanation.visualize_feature_importance(path, top_k=10)
+    #     print(f"Feature importance plot has been saved to '{path}'")
+
+    #     path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pdf"
+    #     explanation.visualize_graph(path)
+    #     print(f"Subgraph visualization plot has been saved to '{path}'")
 
 
 if __name__ == "__main__":
