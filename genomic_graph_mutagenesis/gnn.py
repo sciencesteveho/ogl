@@ -12,6 +12,7 @@
 import argparse
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborSampler
 from torch_geometric.loader import RandomNodeLoader
@@ -70,9 +71,9 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv10(x, edge_index)
-        x = F.linear(x, 4)
+        x = nn.Linear(x.shape[1], 512)
         x = F.relu(x)
-        x = F.linear(x, 4)
+        x = nn.Linear(x.shape[1], 4)
         return x
 
 

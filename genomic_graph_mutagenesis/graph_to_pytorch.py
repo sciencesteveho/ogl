@@ -171,11 +171,11 @@ def graph_to_pytorch(
         ]
 
     with open(graph, "rb") as file:
-        data = pickle.load(file)
+        graph_data = pickle.load(file)
 
     # convert np arrays to torch tensors
-    edge_index = torch.tensor(data["edge_index"], dtype=torch.long)
-    x = torch.tensor(data["node_feat"], dtype=torch.float)
+    edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
+    x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
     graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)
