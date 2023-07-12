@@ -264,10 +264,10 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GraphSAGE(in_size=data.x.shape[1], embedding_size=600, out_channels=4).to(
-        device
-    )
-    # model = GCN(in_size=data.x.shape[1], embedding_size=600, out_channels=4).to(device)
+    # model = GraphSAGE(in_size=data.x.shape[1], embedding_size=600, out_channels=4).to(
+    #     device
+    # )
+    model = GCN(in_size=data.x.shape[1], embedding_size=600, out_channels=4).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     criterion = torch.nn.MSELoss()
@@ -301,7 +301,7 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Loss: {loss}")
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}")
 
-    torch.save(model, f"GraphSage_layers_{loss}.pt")
+    torch.save(model, f"GCNlayers_{loss}.pt")
 
 
 if __name__ == "__main__":
