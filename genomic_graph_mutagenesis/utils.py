@@ -460,3 +460,33 @@ def filter_target_split(
             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
         }
     return targets
+
+
+def _convert_coessential_to_gencode(
+    coessential: str,
+    genesymbol_to_gencode: Dict[str, str],
+):
+    """_summary_
+
+    Args:
+        dir (str): _description_
+        coessential (str): _description_
+        gencode_ref (str): _description_
+    """
+    return [
+        (genesymbol_to_gencode[line[0]], genesymbol_to_gencode[line[1]], line[2])
+        for line in csv.reader(
+            open(coessential, newline="", encoding="utf-8-sig"), delimiter="\t"
+        )
+        if line[0] in genesymbol_to_gencode.keys()
+        and line[1] in genesymbol_to_gencode.keys()
+    ]
+
+
+# gencode_ref = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+# gencode_ref = pybedtools.BedTool(gencode_ref)
+# genesymbol_to_gencode = genes_from_gencode(gencode_ref)
+# co = _convert_coessential_to_gencode(
+#     coessential="coessential_pairs.txt",
+#     genesymbol_to_gencode=genesymbol_to_gencode,
+# )

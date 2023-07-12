@@ -10,7 +10,7 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
-import sys
+import logging
 
 import torch
 import torch.nn as nn
@@ -25,6 +25,7 @@ from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
+from utils import dir_check_make
 
 
 # Define/Instantiate GNN model
@@ -111,16 +112,16 @@ def train(model, device, optimizer, train_loader, epoch):
         optimizer.zero_grad()
         data = data.to(device)
         out = model(data.x, data.edge_index)
-        # loss = F.mse_loss(
-        #     out[data.train_mask].squeeze(), data.y[data.train_mask].squeeze()
-        # )
 
-        # only calculate on values that are not -1
-        target_mask = data.train_mask != -1
-        out_data = out[data.train_mask]
-        truth = data.y[data.train_mask]
-        loss = F.mse_loss(out_data[target_mask].squeeze(), truth[target_mask].squeeze())
+        # get indices to mask -1 values
+        indices = data.y[data.train_mask] != -1
 
+        # get correpsonding predictions and labels
+        masked_predictions = out[data.train_mask][indices]
+        masked_labels = data.y[data.train_mask][indices]
+
+        # calculate loss
+        loss = F.mse_loss(masked_predictions, masked_labels)
         loss.backward()
         optimizer.step()
 
@@ -130,7 +131,8 @@ def train(model, device, optimizer, train_loader, epoch):
         pbar.update(1)
 
     pbar.close()
-
+    # loss = F.mse_loss( out[data.train_mask].squeeze(),
+    #     data.y[data.train_mask].squeeze() )
     return total_loss / total_examples
 
 
@@ -146,26 +148,25 @@ def test(model, device, test_loader, epoch):
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        # only calculate on values that are not -1
-        target_mask = data.val_mask != -1
-        out_vals = out[data.val_mask]
-        truth = data.y[data.val_mask]
-        val_acc = F.mse_loss(
-            out_vals[target_mask].squeeze(), truth[target_mask].squeeze()
-        )
+        # get indices to mask -1 values
+        val_indices = data.y[data.val_mask] != -1
+        masked_prediction_val = out[data.val_mask][val_indices]
+        masked_labels_val = data.y[data.val_mask][val_indices]
 
-        target_mask = data.test_mask != -1
-        out_test = out[data.test_mask]
-        truth = data.y[data.test_mask]
-        test_acc = F.mse_loss(
-            out_test[target_mask].squeeze(), truth[target_mask].squeeze()
-        )
-        # total_test_acc += float(test_acc) * int(data.test_mask.sum())
-        # total_val_acc += float(val_acc) * int(data.val_mask.sum())
+        test_indices = data.y[data.test_mask] != -1
+        masked_prediction_test = out[data.test_mask][test_indices]
+        masked_labels_test = data.y[data.test_mask][test_indices]
+
+        # calculate loss
+        val_acc = F.mse_loss(masked_prediction_val, masked_labels_val)
+        test_acc = F.mse_loss(masked_prediction_test, masked_labels_test)
     pbar.close()
     return float(torch.cat(val_mse, dim=0).mean()), float(
         torch.cat(test_mse, dim=0).mean()
     )
+
+    # total_test_acc += float(test_acc) * int(data.test_mask.sum())
+    # total_val_acc += float(val_acc) * int(data.val_mask.sum())
 
 
 def main() -> None:
@@ -217,6 +218,13 @@ def main() -> None:
         default="full",
     )
     args = parser.parse_args()
+
+    # make directories and set up training logs
+    dir_check_make("models/logs")
+    logging.basicConfig(
+        filename=f"{args.root}/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.log",
+        level=logging.DEBUG,
+    )
 
     # check for GPU
     if torch.cuda.is_available():
@@ -303,6 +311,10 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Loss: {loss}")
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
+        logging.info(
+            f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
+        )
 
     torch.save(
         model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
