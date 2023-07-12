@@ -48,6 +48,8 @@ class GraphSAGE(torch.nn.Module):
         self.conv9.aggr = "max"
         self.conv10 = SAGEConv(embedding_size, embedding_size)
         self.conv10.aggr = "mean"
+        self.lin1 = nn.Linear(embedding_size, 512)
+        self.lin2 = nn.Linear(512, out_channels)
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
@@ -73,8 +75,9 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, p=0.1, training=self.training)
         x = self.conv10(x, edge_index)
-        x = F.relu(nn.Linear(x.shape[1], 512))
-        x = nn.Linear(x.shape[1], 4)
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
         return x
 
 
