@@ -195,7 +195,7 @@ def main() -> None:
     parser.add_argument(
         "--loader",
         type=str,
-        defualt="random",
+        default="random",
         help="'neighbor' or 'random' node loader (default: 'random')",
     )
     parser.add_argument(
@@ -259,7 +259,7 @@ def main() -> None:
         )
 
     # choose your weapon
-    if args.model == "GraphSage":
+    if args.model == "GraphSAGE":
         model = GraphSAGE(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
