@@ -18,6 +18,7 @@ from torch_geometric.explain import Explainer
 from torch_geometric.explain import GNNExplainer
 from torch_geometric.loader import NeighborSampler
 from torch_geometric.loader import RandomNodeLoader
+from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
@@ -47,6 +48,62 @@ class GraphSAGE(torch.nn.Module):
         self.conv9 = SAGEConv(embedding_size, embedding_size)
         self.conv9.aggr = "max"
         self.conv10 = SAGEConv(embedding_size, embedding_size)
+        self.conv10.aggr = "mean"
+        self.lin1 = nn.Linear(embedding_size, 512)
+        self.lin2 = nn.Linear(512, out_channels)
+
+    def forward(self, x, edge_index):
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        x = self.conv3(x, edge_index)
+        x = F.relu(x)
+        x = self.conv4(x, edge_index)
+        x = F.relu(x)
+        x = self.conv5(x, edge_index)
+        x = F.relu(x)
+        x = self.conv6(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv7(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv8(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv9(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = self.conv10(x, edge_index)
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
+        return x
+
+
+class GCN(torch.nn.Module):
+    def __init__(self, in_size, embedding_size, out_channels):
+        super(GCN, self).__init__()
+        self.conv1 = GCNConv(in_size, embedding_size)  # GCNConv, SAGEConv
+        self.conv1.aggr = "sum"
+        self.conv2 = GCNConv(embedding_size, embedding_size)
+        self.conv2.aggr = "mean"
+        self.conv3 = GCNConv(embedding_size, embedding_size)
+        self.conv3.aggr = "max"
+        self.conv4 = GCNConv(embedding_size, embedding_size)
+        self.conv4.aggr = "sum"
+        self.conv5 = GCNConv(embedding_size, embedding_size)
+        self.conv5.aggr = "mean"
+        self.conv6 = GCNConv(embedding_size, embedding_size)
+        self.conv6.aggr = "max"
+        self.conv7 = GCNConv(embedding_size, embedding_size)
+        self.conv7.aggr = "sum"
+        self.conv8 = GCNConv(embedding_size, embedding_size)
+        self.conv8.aggr = "mean"
+        self.conv9 = GCNConv(embedding_size, embedding_size)
+        self.conv9.aggr = "max"
+        self.conv10 = GCNConv(embedding_size, embedding_size)
         self.conv10.aggr = "mean"
         self.lin1 = nn.Linear(embedding_size, 512)
         self.lin2 = nn.Linear(512, out_channels)
@@ -184,12 +241,24 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    model = GraphSAGE(in_size=data.x.shape[1], embedding_size=512, out_channels=4).to(
-        device
-    )
+    # model = GraphSAGE(in_size=data.x.shape[1], embedding_size=512, out_channels=4).to(
+    #     device
+    # )
+    model = GCN(in_size=data.x.shape[1], embedding_size=512, out_channels=4).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    # criterion = torch.nn.MSELoss()
+    criterion = torch.nn.MSELoss()
+
+    # explainer = Explainer(
+    #     model=model,
+    #     alorigthm=GNNExplainer(epochs=200),
+    #     explanation_type="model",
+    #     node_mask_type="attributes",
+    #     edge_mask_type="object",
+    #     model_config=dict(
+    #         mode="regression", task_level="node", return_type="log_probs"
+    #     ),
+    # )
 
     epochs = 200
     for epoch in range(0, epochs):
@@ -200,11 +269,11 @@ def main() -> None:
             train_loader=train_loader,
             epoch=epoch,
         )
-        # train_acc, val_acc, test_acc = test(model, data)
-        # print(
-        #     f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
-        # )
-        print(f"Epoch: {epoch:03d}, Loss: {loss}")
+        train_acc, val_acc, test_acc = test(model, data)
+        print(
+            f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
+        )
+        # print(f"Epoch: {epoch:03d}, Loss: {loss}")
 
 
 if __name__ == "__main__":
