@@ -425,3 +425,38 @@ def _n_ego_graph(
         )
 
     return n_ego_graph
+
+
+def filter_target_split(
+    root_dir,
+    tissues,
+    targets,
+):
+    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
+    20% of samples
+
+    Args:
+        tissues (Dict[Tuple[str, str]]): _description_
+        targets (Dict[str, Dict[str, np.ndarray]]): _description_
+
+    Returns:
+        Dict[str, Dict[str, np.ndarray]]: _description_
+    """
+
+    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+        with open(tpm_filtered_genes, newline="") as file:
+            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+    for idx, tissue in enumerate(tissues):
+        if idx == 0:
+            genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+        else:
+            update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+            genes += update_genes
+
+    genes = set(genes)
+    for key in targets.keys():
+        targets[key] = {
+            gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
+        }
+    return targets

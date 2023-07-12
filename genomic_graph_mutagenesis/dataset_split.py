@@ -18,6 +18,7 @@ from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
 import pandas as pd
 
+from utils import filter_target_split
 from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
@@ -338,39 +339,6 @@ def filtered_targets(
             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
         }
     return targets
-
-
-def filter_genes(
-    tissue_params,
-):
-    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
-    20% of samples
-
-    Args:
-        tissue_params (Dict[Tuple[str, str]]): _description_
-        targets (Dict[str, Dict[str, np.ndarray]]): _description_
-
-    Returns:
-        Dict[str, Dict[str, np.ndarray]]: _description_
-    """
-
-    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
-
-    for idx, tissue in enumerate(tissue_params):
-        if idx == 0:
-            genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
-        else:
-            update_genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
-            genes += update_genes
-
-    return genes
-    # for key in targets.keys():
-    #     targets[key] = {
-    #         gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
-    #     }
-    # return targets
 
 
 def main(

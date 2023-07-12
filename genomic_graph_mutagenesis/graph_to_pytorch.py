@@ -21,6 +21,36 @@ from torch_geometric.data import Data
 
 from dataset_split import _chr_split_train_test_val
 from dataset_split import _genes_from_gff
+from utils import TISSUES
+
+
+def filter_genes(
+    root_dir,
+    tissues,
+):
+    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
+    20% of samples
+
+    Args:
+        tissues (Dict[Tuple[str, str]]): _description_
+        targets (Dict[str, Dict[str, np.ndarray]]): _description_
+
+    Returns:
+        Dict[str, Dict[str, np.ndarray]]: _description_
+    """
+
+    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+        with open(tpm_filtered_genes, newline="") as file:
+            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+    for idx, tissue in enumerate(tissues):
+        if idx == 0:
+            genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+        else:
+            update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+            genes += update_genes
+
+    return set(genes)
 
 
 def _get_mask_idxs(
@@ -117,7 +147,7 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/target_targets.pkl"
+    targets = f"{graph_dir}/training_targets.pkl"
 
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
@@ -132,6 +162,13 @@ def graph_to_pytorch(
         tissue_append=True,
     )
 
+    filtered_genes = filter_genes(root_dir=root_dir, tissues=TISSUES)
+    filtered_split = dict.fromkeys(["train", "test", "validation"])
+    for data_split in ["train", "test", "validation"]:
+        filtered_split[data_split] = [
+            x for x in split[data_split] if x in filtered_genes
+        ]
+
     with open(graph, "rb") as file:
         data = pickle.load(file)
 
@@ -140,7 +177,7 @@ def graph_to_pytorch(
     x = torch.tensor(data["node_feat"], dtype=torch.float)
 
     # get mask indexes
-    graph_index, train, test, val = _get_mask_idxs(index=index, split=split)
+    graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)
 
     # set up pytorch geometric Data object
     data = Data(x=x, edge_index=edge_index)
