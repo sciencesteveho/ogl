@@ -12,6 +12,7 @@ numbers, saved as a pytorch geometric Data object, and a mask is applied to only
 consider the nodes that pass the TPM filter.
 """
 
+import csv
 import pickle
 from typing import Any, Dict, List, Tuple
 
