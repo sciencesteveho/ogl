@@ -182,7 +182,7 @@ def main() -> None:
 
     test_loader = RandomNodeLoader(
         data,
-        num_parts=5,
+        num_parts=50,
         num_workers=5,
     )
 
