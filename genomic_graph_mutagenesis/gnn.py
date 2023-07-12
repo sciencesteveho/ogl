@@ -307,28 +307,28 @@ def main() -> None:
         model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
     )
 
-    explainer = Explainer(
-        model=model,
-        alorigthm=GNNExplainer(epochs=200),
-        explanation_type="model",
-        node_mask_type="attributes",
-        edge_mask_type="object",
-        model_config=dict(
-            mode="regression", task_level="node", return_type="log_probs"
-        ),
-    )
+    # explainer = Explainer(
+    #     model=model,
+    #     alorigthm=GNNExplainer(epochs=200),
+    #     explanation_type="model",
+    #     node_mask_type="attributes",
+    #     edge_mask_type="object",
+    #     model_config=dict(
+    #         mode="regression", task_level="node", return_type="log_probs"
+    #     ),
+    # )
 
-    node_index = 10
-    explanation = explainer(data.x, data.edge_index, index=node_index)
-    print(f"Generated explanations in {explanation.available_explanations}")
+    # node_index = 10
+    # explanation = explainer(data.x, data.edge_index, index=node_index)
+    # print(f"Generated explanations in {explanation.available_explanations}")
 
-    path = "feature_importance.png"
-    explanation.visualize_feature_importance(path, top_k=10)
-    print(f"Feature importance plot has been saved to '{path}'")
+    # path = "feature_importance.png"
+    # explanation.visualize_feature_importance(path, top_k=10)
+    # print(f"Feature importance plot has been saved to '{path}'")
 
-    path = "subgraph.pdf"
-    explanation.visualize_graph(path)
-    print(f"Subgraph visualization plot has been saved to '{path}'")
+    # path = "subgraph.pdf"
+    # explanation.visualize_graph(path)
+    # print(f"Subgraph visualization plot has been saved to '{path}'")
 
 
 if __name__ == "__main__":
