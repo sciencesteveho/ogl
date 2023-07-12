@@ -269,7 +269,7 @@ def main() -> None:
             train_loader=train_loader,
             epoch=epoch,
         )
-        train_acc, val_acc, test_acc = test(model, data)
+        train_acc, val_acc, test_acc = test(test_loader=test_loader, epoch=epoch)
         print(
             f"Epoch: {epoch:03d}, Loss: {loss}, Train: {train_acc:.4f}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
         )
