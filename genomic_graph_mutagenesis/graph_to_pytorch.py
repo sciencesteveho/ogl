@@ -132,6 +132,7 @@ def _get_masked_tensor(num_nodes: int):
 def graph_to_pytorch(
     root_dir: str,
     graph_type: str,
+    node_pertubration: str = None,
 ):
     """_summary_
 
@@ -172,7 +173,10 @@ def graph_to_pytorch(
 
     # convert np arrays to torch tensors
     edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
-    x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
+
+    # add optional node perturbation
+    if node_pertubration:
+        x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
     graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)

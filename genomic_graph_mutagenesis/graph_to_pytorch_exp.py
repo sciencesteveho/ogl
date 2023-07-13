@@ -193,9 +193,7 @@ def graph_to_pytorch(
     # get target values. shape should be [num_nodes, 4]
     target_values = _get_target_values_for_mask(targets=targets)
 
-    first, second, third, fourth = (
-        _get_masked_tensor(data.num_nodes),
-        _get_masked_tensor(data.num_nodes),
+    first, second = (
         _get_masked_tensor(data.num_nodes),
         _get_masked_tensor(data.num_nodes),
     )
@@ -212,13 +210,9 @@ def graph_to_pytorch(
                 first[key] = value[idx]
             elif idx == 1:
                 second[key] = value[idx]
-            elif idx == 2:
-                third[key] = value[idx]
-            elif idx == 3:
-                fourth[key] = value[idx]
 
     y = torch.cat(
-        (first.view(1, -1), second.view(1, -1), third.view(1, -1), fourth.view(1, -1)),
+        (first.view(1, -1), second.view(1, -1)),
         dim=0,
     )
 
