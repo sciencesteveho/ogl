@@ -173,7 +173,7 @@ def test(model, device, data_loader, epoch, mask):
         pbar.update(1)
         
     pbar.close()
-    return float(torch.cat(mse).mean())
+    return float(torch.cat(mse.reshape(1)).mean())
 
 
 def main() -> None:
