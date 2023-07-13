@@ -45,6 +45,7 @@ class GraphSAGE(torch.nn.Module):
     def forward(self, x, edge_index):
         for conv in enumerate(self.convs):
             x = conv(x, edge_index)
+            x = x.relu()
             
         x = F.dropout(x, p=0.1, training=self.training)
         x = F.relu(x)
@@ -70,6 +71,7 @@ class GCN(torch.nn.Module):
     def forward(self, x, edge_index):
         for conv in enumerate(self.convs):
             x = conv(x, edge_index)
+            x = x.relu()
 
         x = F.dropout(x, p=0.1, training=self.training)
         x = F.relu(x)
@@ -98,6 +100,7 @@ class GATv2(torch.nn.Module):
     def forward(self, x, edge_index):
         for conv in enumerate(self.convs):
             x = conv(x, edge_index)
+            x = x.relu()
             
         x = F.dropout(x, p=0.1, training=self.training)
         x = F.relu(x)
