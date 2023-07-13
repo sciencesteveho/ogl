@@ -43,7 +43,7 @@ class GraphSAGE(torch.nn.Module):
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in enumerate(self.convs):
+        for conv in self.convs:
             x = conv(x, edge_index)
             x = x.relu()
             
@@ -69,7 +69,7 @@ class GCN(torch.nn.Module):
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in enumerate(self.convs):
+        for conv in self.convs:
             x = conv(x, edge_index)
             x = x.relu()
 
@@ -98,7 +98,7 @@ class GATv2(torch.nn.Module):
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in enumerate(self.convs):
+        for conv in self.convs:
             x = conv(x, edge_index)
             x = x.relu()
             
