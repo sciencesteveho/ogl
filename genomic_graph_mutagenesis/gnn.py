@@ -17,6 +17,7 @@ from torch_geometric.explain import Explainer
 from torch_geometric.explain import GNNExplainer
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.loader import RandomNodeLoader
+from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
@@ -39,19 +40,21 @@ class GraphSAGE(torch.nn.Module):
         self.num_layers = num_layers
 
         self.convs = torch.nn.ModuleList()
+        self.batch_norms = torch.nn.ModuleList()
+
         self.convs.append(SAGEConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(SAGEConv(embedding_size, embedding_size))
+            self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in self.convs:
-            x = conv(x, edge_index)
-            x = x.relu()
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
@@ -71,19 +74,21 @@ class GCN(torch.nn.Module):
         self.num_layers = num_layers
 
         self.convs = torch.nn.ModuleList()
+        self.batch_norms = torch.nn.ModuleList()
+
         self.convs.append(GCNConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(embedding_size, embedding_size))
+            self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in self.convs:
-            x = conv(x, edge_index)
-            x = x.relu()
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
@@ -104,22 +109,26 @@ class GATv2(torch.nn.Module):
         self.num_layers = num_layers
 
         self.convs = torch.nn.ModuleList()
+        self.batch_norms = torch.nn.ModuleList()
+
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
         for _ in range(num_layers - 2):
             self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
+            self.batch_norms.append(BatchNorm(embedding_size))
+
         self.convs.append(
             GATv2Conv(heads * embedding_size, embedding_size, heads, concat=False)
         )
+        self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for conv in self.convs:
-            x = conv(x, edge_index)
-            x = x.relu()
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
@@ -353,7 +362,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     epochs = 100
     for epoch in range(0, epochs + 1):
