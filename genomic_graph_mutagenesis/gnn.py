@@ -359,8 +359,8 @@ def main() -> None:
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    if model == "MLP":
-        epochs = 10
+    if args.model == "MLP":
+        epochs = 20
     else:
         epochs = 100
     for epoch in range(0, epochs + 1):
@@ -371,8 +371,8 @@ def main() -> None:
             train_loader=train_loader,
             epoch=epoch,
         )
-        print(f"Epoch: {epoch:03d}, Loss: {loss}")
-        logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
+        print(f"Epoch: {epoch:03d}, Train: {loss}")
+        logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         if args.loader == "random":
             val_acc = test(
