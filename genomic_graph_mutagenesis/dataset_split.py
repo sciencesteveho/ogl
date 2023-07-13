@@ -387,17 +387,17 @@ def main(
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
     )
 
-    # filter targets
-    filtered_split = dict.fromkeys(DATA_SPLITS)
-    filtered_genes = set(filter_genes(tissue_params=keys))
-    for data_split in ["train", "test", "validation"]:
-        print(data_split)
-        print(len(split[data_split]))
-        filtered_split[data_split] = [
-            x for x in split[data_split] if x in filtered_genes
-        ]
-        print(data_split)
-        print(len(filtered_split[data_split]))
+    # # filter targets
+    # filtered_split = dict.fromkeys(DATA_SPLITS)
+    # filtered_genes = set(filter_genes(tissue_params=keys))
+    # for data_split in ["train", "test", "validation"]:
+    #     print(data_split)
+    #     print(len(split[data_split]))
+    #     filtered_split[data_split] = [
+    #         x for x in split[data_split] if x in filtered_genes
+    #     ]
+    #     print(data_split)
+    #     print(len(filtered_split[data_split]))
 
     # flatten nested dictionary
     # right now the targets are messed up and every tissue has the every key. FIX!
