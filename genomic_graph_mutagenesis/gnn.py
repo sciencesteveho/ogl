@@ -33,12 +33,12 @@ class GraphSAGE(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers):
         super().__init__()
         self.num_layers = num_layers
-        
+
         self.convs = torch.nn.ModuleList()
         self.convs.append(SAGEConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(SAGEConv(embedding_size, embedding_size))
-        
+
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
@@ -46,7 +46,7 @@ class GraphSAGE(torch.nn.Module):
         for conv in self.convs:
             x = conv(x, edge_index)
             x = x.relu()
-            
+
         x = F.dropout(x, p=0.1, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
@@ -59,12 +59,12 @@ class GCN(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers):
         super().__init__()
         self.num_layers = num_layers
-        
+
         self.convs = torch.nn.ModuleList()
         self.convs.append(GCNConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(embedding_size, embedding_size))
-            
+
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
@@ -85,7 +85,7 @@ class GATv2(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers, heads):
         super().__init__()
         self.num_layers = num_layers
-        
+
         self.convs = torch.nn.ModuleList()
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
         for _ in range(num_layers - 2):
@@ -93,7 +93,7 @@ class GATv2(torch.nn.Module):
         self.convs.append(
             GATv2Conv(heads * embedding_size, out_channels, heads, concat=False)
         )
-        
+
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
@@ -101,7 +101,7 @@ class GATv2(torch.nn.Module):
         for conv in self.convs:
             x = conv(x, edge_index)
             x = x.relu()
-            
+
         x = F.dropout(x, p=0.1, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
@@ -142,7 +142,7 @@ def train(model, device, optimizer, train_loader, epoch):
     pbar.close()
     # loss = F.mse_loss( out[data.train_mask].squeeze(),
     #     data.y[data.train_mask].squeeze() )
-    return model, total_loss / total_examples
+    return total_loss / total_examples
 
 
 @torch.no_grad()
@@ -169,9 +169,9 @@ def test(model, device, data_loader, epoch, mask):
 
         # calculate loss
         mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
-        
+
         pbar.update(1)
-        
+
     pbar.close()
     return float(torch.stack(mse).mean())
 
@@ -309,7 +309,7 @@ def main() -> None:
 
     epochs = 100
     for epoch in range(0, epochs + 1):
-        model, loss = train(
+        loss = train(
             model=model,
             device=device,
             optimizer=optimizer,
@@ -318,7 +318,7 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Loss: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
-        
+
         if args.loader == "random":
             val_acc = test(
                 model=model,
@@ -327,7 +327,7 @@ def main() -> None:
                 epoch=epoch,
                 mask="val",
             )
-        if args.loader == 'neighbor':
+        if args.loader == "neighbor":
             val_acc = test(
                 model=model,
                 device=device,
@@ -335,10 +335,10 @@ def main() -> None:
                 epoch=epoch,
                 mask="val",
             )
-            
+
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
-        
+
         test_acc = test(
             model=model,
             device=device,
