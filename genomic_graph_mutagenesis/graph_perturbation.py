@@ -29,7 +29,7 @@ from gnn import GAT
 from gnn import GCN
 from gnn import GraphSAGE
 from utils import TISSUES
-
+from graph_to_pytorch import graph_to_pytorch
 
 def _edge_perturbation():
     """_summary_ of function"""
@@ -67,12 +67,13 @@ def _get_idxs_for_coessential_pairs(
     pos_coessn_idxs = {key: [] for key in pos_keys}  # init dict
     for tissue in TISSUES:
         for tup in pos_pairs:
-            try:
-                pos_coessn_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
-                    graph_idxs[f"{tup[1]}_{tissue}"]
-                )
-            except KeyError:
-                pass
+            if graph_idxs[f"{tup[1]}_{tissue}"] < graph_idxs[f"{tup[0]}_{tissue}"]:
+                try:
+                    pos_coessn_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
+                        graph_idxs[f"{tup[1]}_{tissue}"]
+                    )
+                except KeyError:
+                    pass
     return pos_coessn_idxs
 
 
@@ -167,18 +168,31 @@ def main(
         coessential_idxs=coessential_idxs,
         graph_idxs=graph_idxs,
     )
+    
+    # prepare data
+    h3k27ac_data = graph_to_pytorch(
+        root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess',
+        graph_type='full',
+        node_perturbation='h3k27ac',
+    )
+    
+    h3k4me1_data = graph_to_pytorch(
+        root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess',
+        graph_type='full',
+        node_perturbation='h3k4me1',
+    )
 
-    # # load model
-    # model = GraphSAGE(
-    #     in_size=data.x.shape[1],
-    #     embedding_size=600,
-    #     out_channels=4,
-    #     layers=args.layers,
-    # ).to(device)
+    # load model
+    model = GraphSAGE(
+        in_size=h3k27ac_data.x.shape[1],
+        embedding_size=300,
+        out_channels=4,
+        layers=args.layers,
+    ).to(device)
 
-    # checkpoint = torch.load(checkpoint_file, map_location=map_location)
-    # model.load_state_dict(checkpoint["model_state_dict"], strict=False)
-    # model.to(device)
+    checkpoint = torch.load(checkpoint_file, map_location=map_location)
+    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+    model.to(device)
 
     # ### evaluate on test set
     # test_loader = GraphDataLoader(dataset=testset, batch_size=2, collate_fn=collate_dgl)
@@ -197,6 +211,9 @@ if __name__ == "__main__":
         graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
     )
 
+model="/ocean/projects/bio210019p/shared/model_checkpoint.pt"
+graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
+graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
 
 # pos_idxs, neg_idxs = {}, {}
 # for tissue in TISSUES:

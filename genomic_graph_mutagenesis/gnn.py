@@ -257,7 +257,7 @@ def main() -> None:
     parser.add_argument(
         "--lr",
         type=float,
-        default="0.0001",
+        default=1e-4,
     )
     parser.add_argument(
         "--device",
