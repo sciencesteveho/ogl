@@ -362,7 +362,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     if model == "MLP":
         epochs = 10
