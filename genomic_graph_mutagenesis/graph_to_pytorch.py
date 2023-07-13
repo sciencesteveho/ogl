@@ -56,7 +56,7 @@ def filter_genes(
 
 def _get_mask_idxs(
     index: str,
-    split,
+    split: Dict[str, List[str]]
 ) -> np.ndarray:
     """_summary_
 
@@ -82,7 +82,11 @@ def _get_mask_idxs(
             dtype=torch.long,
         ),
         torch.tensor(
-            [graph_index[gene] for gene in split["test"] if gene in graph_index.keys()],
+            [
+                graph_index[gene]
+                for gene in split["test"]
+                if gene in graph_index.keys()
+            ],
             dtype=torch.long,
         ),
         torch.tensor(
