@@ -31,54 +31,59 @@ from utils import dir_check_make
 # Define/Instantiate GNN model
 class GraphSAGE(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers):
-        super(GraphSAGE, self).__init__()
+        super().__init__()
         self.num_layers = num_layers
+        
         self.convs = torch.nn.ModuleList()
         self.convs.append(SAGEConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(SAGEConv(embedding_size, embedding_size))
+        
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for idx, conv in enumerate(self.convs):
+        for conv in enumerate(self.convs):
             x = conv(x, edge_index)
-            if idx != len(self.convs) - 1:
-                x = F.dropout(x, p=0.1, training=self.training)
-                x = F.relu(x)
-                x = self.lin1(x)
-                x = F.relu(x)
-                x = self.lin2(x)
+            
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.relu(x)
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
         return x
 
 
 class GCN(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers):
-        super(GCN, self).__init__()
+        super().__init__()
         self.num_layers = num_layers
+        
         self.convs = torch.nn.ModuleList()
         self.convs.append(GCNConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(embedding_size, embedding_size))
+            
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for idx, conv in enumerate(self.convs):
+        for conv in enumerate(self.convs):
             x = conv(x, edge_index)
-            if idx != len(self.convs) - 1:
-                x = F.dropout(x, p=0.1, training=self.training)
-                x = F.relu(x)
-                x = self.lin1(x)
-                x = F.relu(x)
-                x = self.lin2(x)
+
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.relu(x)
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
         return x
 
 
 class GATv2(torch.nn.Module):
     def __init__(self, in_size, embedding_size, out_channels, num_layers, heads):
-        super(GATv2, self).__init__()
+        super().__init__()
         self.num_layers = num_layers
+        
         self.convs = torch.nn.ModuleList()
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
         for _ in range(num_layers - 2):
@@ -86,18 +91,19 @@ class GATv2(torch.nn.Module):
         self.convs.append(
             GATv2Conv(heads * embedding_size, out_channels, heads, concat=False)
         )
+        
         self.lin1 = nn.Linear(embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
-        for idx, conv in enumerate(self.convs):
+        for conv in enumerate(self.convs):
             x = conv(x, edge_index)
-            if idx != len(self.convs) - 1:
-                x = F.dropout(x, p=0.1, training=self.training)
-                x = F.relu(x)
-                x = self.lin1(x)
-                x = F.relu(x)
-                x = self.lin2(x)
+            
+        x = F.dropout(x, p=0.1, training=self.training)
+        x = F.relu(x)
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
         return x
 
 
