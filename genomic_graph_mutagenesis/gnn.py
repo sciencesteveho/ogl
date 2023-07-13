@@ -168,7 +168,7 @@ def test(model, device, test_loader, epoch, mask):
             masked_labels = data.y[data.test_mask][indices]
 
         # calculate loss
-        mse.append(F.mse_loss(masked_prediction, masked_labels))
+        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
         
     pbar.close()
     return float(torch.cat(mse, dim=0).mean())
@@ -250,13 +250,13 @@ def main() -> None:
     if args.loader == "random":
         train_loader = RandomNodeLoader(
             data,
-            num_parts=125,
+            num_parts=150,
             shuffle=True,
             num_workers=5,
         )
         test_loader = RandomNodeLoader(
             data,
-            num_parts=125,
+            num_parts=150,
             num_workers=5,
         )
 
