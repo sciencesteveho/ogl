@@ -146,35 +146,32 @@ def train(model, device, optimizer, train_loader, epoch):
 
 
 @torch.no_grad()
-def test(model, device, test_loader, epoch):
+def test(model, device, test_loader, epoch, mask):
     model.eval()
 
     pbar = tqdm(total=len(test_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    val_mse, test_mse = [], []
+    mse = []
     for data in test_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
         # get indices to mask -1 values
-        val_indices = data.y[data.val_mask] != -1
-        masked_prediction_val = out[data.val_mask][val_indices]
-        masked_labels_val = data.y[data.val_mask][val_indices]
-
-        test_indices = data.y[data.test_mask] != -1
-        masked_prediction_test = out[data.test_mask][test_indices]
-        masked_labels_test = data.y[data.test_mask][test_indices]
+        if mask == "val":
+            indices = data.y[data.val_mask] != -1
+            masked_prediction = out[data.val_mask][indices]
+            masked_labels = data.y[data.val_mask][indices]
+        if mask == "test":
+            indices = data.y[data.test_mask] != -1
+            masked_prediction = out[data.test_mask][indices]
+            masked_labels = data.y[data.test_mask][indices]
 
         # calculate loss
-        val_mse.append(F.mse_loss(masked_prediction_val, masked_labels_val))
-        test_mse.append(F.mse_loss(masked_prediction_test, masked_labels_test))
+        mse.append(F.mse_loss(masked_prediction, masked_labels))
         
     pbar.close()
-    return float(torch.cat(val_mse, dim=0).mean()), float(
-        torch.cat(test_mse, dim=0).mean()
-    )
-
+    return float(torch.cat(mse, dim=0).mean())
     # total_test_acc += float(test_acc) * int(data.test_mask.sum())
     # total_val_acc += float(val_acc) * int(data.val_mask.sum())
 
@@ -253,13 +250,13 @@ def main() -> None:
     if args.loader == "random":
         train_loader = RandomNodeLoader(
             data,
-            num_parts=100,
+            num_parts=125,
             shuffle=True,
             num_workers=5,
         )
         test_loader = RandomNodeLoader(
             data,
-            num_parts=100,
+            num_parts=125,
             num_workers=5,
         )
 
@@ -313,19 +310,29 @@ def main() -> None:
             train_loader=train_loader,
             epoch=epoch,
         )
-        val_acc, test_acc = test(
+        print(f"Epoch: {epoch:03d}, Loss: {loss}")
+        logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
+        
+        val_acc = test(
             model=model,
             device=device,
             test_loader=test_loader,
             epoch=epoch,
+            mask="val",
         )
-        print(f"Epoch: {epoch:03d}, Loss: {loss}")
-        print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
-        logging.info(
-            f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}, Test: {test_acc:.4f}"
+        print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        
+        test_acc = test(
+            model=model,
+            device=device,
+            test_loader=test_loader,
+            epoch=epoch,
+            mask="test",
         )
-
+        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        
     torch.save(
         model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
     )
