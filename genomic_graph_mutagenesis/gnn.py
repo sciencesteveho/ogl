@@ -142,18 +142,18 @@ def train(model, device, optimizer, train_loader, epoch):
     pbar.close()
     # loss = F.mse_loss( out[data.train_mask].squeeze(),
     #     data.y[data.train_mask].squeeze() )
-    return total_loss / total_examples
+    return model, total_loss / total_examples
 
 
 @torch.no_grad()
-def test(model, device, test_loader, epoch, mask):
+def test(model, device, data_loader, epoch, mask):
     model.eval()
 
-    pbar = tqdm(total=len(test_loader))
+    pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     mse = []
-    for data in test_loader:
+    for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
@@ -170,10 +170,10 @@ def test(model, device, test_loader, epoch, mask):
         # calculate loss
         mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
         
+        pbar.update(1)
+        
     pbar.close()
     return float(torch.cat(mse, dim=0).mean())
-    # total_test_acc += float(test_acc) * int(data.test_mask.sum())
-    # total_val_acc += float(val_acc) * int(data.val_mask.sum())
 
 
 def main() -> None:
@@ -309,7 +309,7 @@ def main() -> None:
 
     epochs = 100
     for epoch in range(0, epochs + 1):
-        loss = train(
+        model, loss = train(
             model=model,
             device=device,
             optimizer=optimizer,
@@ -323,7 +323,7 @@ def main() -> None:
             val_acc = test(
                 model=model,
                 device=device,
-                test_loader=test_loader,
+                data_loader=test_loader,
                 epoch=epoch,
                 mask="val",
             )
@@ -331,7 +331,7 @@ def main() -> None:
             val_acc = test(
                 model=model,
                 device=device,
-                test_loader=val_loader,
+                data_loader=val_loader,
                 epoch=epoch,
                 mask="val",
             )
@@ -342,7 +342,7 @@ def main() -> None:
         test_acc = test(
             model=model,
             device=device,
-            test_loader=test_loader,
+            data_loader=test_loader,
             epoch=epoch,
             mask="test",
         )
