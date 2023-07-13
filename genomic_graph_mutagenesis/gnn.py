@@ -231,7 +231,7 @@ def main() -> None:
     # make directories and set up training logs
     dir_check_make("models/logs")
     logging.basicConfig(
-        filename=f"{args.root}/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.log",
+        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.log",
         level=logging.DEBUG,
     )
 
