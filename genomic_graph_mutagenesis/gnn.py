@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] fix layer sizes
-# - [ ] add option for different architectures
-# - [ ] add hyperparamters as parser args that output to a log
 # - [ ] implement tensorboard
+# - [ ] add dropout as arg
 
 """Code to train GNNs on the graph data!"""
 
@@ -30,7 +28,13 @@ from utils import dir_check_make
 
 # Define/Instantiate GNN model
 class GraphSAGE(torch.nn.Module):
-    def __init__(self, in_size, embedding_size, out_channels, num_layers):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        out_channels,
+        num_layers,
+    ):
         super().__init__()
         self.num_layers = num_layers
 
@@ -56,7 +60,13 @@ class GraphSAGE(torch.nn.Module):
 
 
 class GCN(torch.nn.Module):
-    def __init__(self, in_size, embedding_size, out_channels, num_layers):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        out_channels,
+        num_layers,
+    ):
         super().__init__()
         self.num_layers = num_layers
 
@@ -82,7 +92,14 @@ class GCN(torch.nn.Module):
 
 
 class GATv2(torch.nn.Module):
-    def __init__(self, in_size, embedding_size, out_channels, num_layers, heads):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        out_channels,
+        num_layers,
+        heads,
+    ):
         super().__init__()
         self.num_layers = num_layers
 
@@ -107,6 +124,29 @@ class GATv2(torch.nn.Module):
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
+        return x
+
+
+### baseline MLP
+class MLP(torch.nn.Module):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        out_channels,
+    ):
+        super().__init__()
+
+        self.lin1 = nn.Linear(in_size, embedding_size)
+        self.lin2 = nn.Linear(embedding_size, embedding_size)
+        self.lin3 = nn.Linear(embedding_size, out_channels)
+
+    def forward(self, x, edge_index):
+        x = self.lin1(x)
+        x = F.relu(x)
+        x = self.lin2(x)
+        x = F.relu(x)
+        x = self.lin3(x)
         return x
 
 
@@ -304,6 +344,12 @@ def main() -> None:
             out_channels=4,
             num_layers=args.layers,
             heads=2,
+        ).to(device)
+    if args.model == "MLP":
+        model = MLP(
+            in_size=data.x.shape[1],
+            embedding_size=args.dimensions,
+            out_channels=4,
         ).to(device)
 
     # set gradient descent optimizer

@@ -30,20 +30,6 @@ from gnn import GCN
 from gnn import GraphSAGE
 from utils import TISSUES
 
-# pos_idxs, neg_idxs = {}, {}
-# for tissue in TISSUES:
-#     for tup in pos_pairs:
-#         pos_idxs[graph_idxs[f"{tup[0]}_{tissue}"]] = graph_idxs[f"{tup[1]}_{tissue}"]
-#     pos_idxs[]
-#     pos_idxs.extend(
-#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in pos_pairs
-#     )
-#     neg_idxs.extend(
-#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in neg_pairs
-#     )
-
 
 def _edge_perturbation():
     """_summary_ of function"""
@@ -101,6 +87,11 @@ def _random_gene_pairs(
         coessential_idxs[key] = random.sample((random_pool), num_elements)
 
     return coessential_idxs
+
+
+def _remove_node_features():
+    """_summary_ of function"""
+    pass
 
 
 @torch.no_grad()
@@ -205,3 +196,18 @@ if __name__ == "__main__":
         graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl",
         graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
     )
+
+
+# pos_idxs, neg_idxs = {}, {}
+# for tissue in TISSUES:
+#     for tup in pos_pairs:
+#         pos_idxs[graph_idxs[f"{tup[0]}_{tissue}"]] = graph_idxs[f"{tup[1]}_{tissue}"]
+#     pos_idxs[]
+#     pos_idxs.extend(
+#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
+#         for tup in pos_pairs
+#     )
+#     neg_idxs.extend(
+#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
+#         for tup in neg_pairs
+#     )
