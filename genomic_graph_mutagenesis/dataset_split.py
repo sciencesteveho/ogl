@@ -199,7 +199,7 @@ def _calculate_fold_change_from_medians(
 
         # convert tpms to log2 (+0.25 to avoid negative infinity)
         df[f"{tissue_rename}"] = np.log2(df[f"{tissue_rename}"] + 0.25)
-        df[f"{tissue_rename}_foldchange"] = df[f"{tissue_rename}"] - df["all_tissues"]
+        df[f"{tissue_rename}_foldchange"] = df["all_tissues"] - df[f"{tissue_rename}"]
     return df
 
 
