@@ -267,11 +267,17 @@ def main() -> None:
             batch_size=128,
             input_nodes=data.train_mask,
         )
-        test_loader = NeighborLoader(
+        val_loader = NeighborLoader(
             data,
             num_neighbors=[30] * 2,
             batch_size=128,
             input_nodes=data.val_mask,
+        )
+        test_loader = NeighborLoader(
+            data,
+            num_neighbors=[30] * 2,
+            batch_size=128,
+            input_nodes=data.test_mask,
         )
 
     # CHOOSE YOUR WEAPON
@@ -313,13 +319,23 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Loss: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Loss: {loss}")
         
-        val_acc = test(
-            model=model,
-            device=device,
-            test_loader=test_loader,
-            epoch=epoch,
-            mask="val",
-        )
+        if args.loader == "random":
+            val_acc = test(
+                model=model,
+                device=device,
+                test_loader=test_loader,
+                epoch=epoch,
+                mask="val",
+            )
+        if args.loader == 'neighbor':
+            val_acc = test(
+                model=model,
+                device=device,
+                test_loader=val_loader,
+                epoch=epoch,
+                mask="val",
+            )
+            
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         
@@ -332,7 +348,6 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        
     torch.save(
         model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
     )
