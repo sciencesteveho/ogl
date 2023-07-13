@@ -91,7 +91,7 @@ class GATv2(torch.nn.Module):
         for _ in range(num_layers - 2):
             self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
         self.convs.append(
-            GATv2Conv(heads * embedding_size, out_channels, heads, concat=False)
+            GATv2Conv(heads * embedding_size, embedding_size, heads, concat=False)
         )
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
@@ -152,28 +152,30 @@ def test(model, device, data_loader, epoch, mask):
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    mse = []
+    # mse = []
+    mse = 0
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
         # get indices to mask -1 values
         if mask == "val":
-            indices = data.y[data.val_mask] != -1
-            masked_prediction = out[data.val_mask][indices]
-            masked_labels = data.y[data.val_mask][indices]
+            mask = data.val_mask
         if mask == "test":
-            indices = data.y[data.test_mask] != -1
-            masked_prediction = out[data.test_mask][indices]
-            masked_labels = data.y[data.test_mask][indices]
+            mask = data.test_mask
+        indices = data.y[mask] != -1
+        masked_prediction = out[mask][indices]
+        masked_labels = data.y[mask][indices]
 
         # calculate loss
-        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+        loss = F.mse_loss(masked_prediction, masked_labels).cpu()
+        mse += float(loss) * int(mask.sum())
+        examples += int(mask.sum())
 
         pbar.update(1)
 
     pbar.close()
-    return float(torch.stack(mse).mean())
+    return mse / examples
 
 
 def main() -> None:
