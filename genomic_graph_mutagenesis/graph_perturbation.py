@@ -91,7 +91,7 @@ def _random_gene_pairs(
 
 def _remove_node_features():
     """_summary_ of function"""
-    pass
+    
 
 
 @torch.no_grad()

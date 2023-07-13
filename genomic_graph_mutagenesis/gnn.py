@@ -9,6 +9,7 @@
 
 import argparse
 import logging
+import pickle
 
 import torch
 import torch.nn as nn
@@ -250,8 +251,13 @@ def main() -> None:
     parser.add_argument(
         "--loader",
         type=str,
-        default="random",
+        default="neighbor",
         help="'neighbor' or 'random' node loader (default: 'random')",
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default="0.0001",
     )
     parser.add_argument(
         "--device",
@@ -275,7 +281,7 @@ def main() -> None:
     # make directories and set up training logs
     dir_check_make("models/logs")
     logging.basicConfig(
-        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.log",
+        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.log",
         level=logging.DEBUG,
     )
 
@@ -357,7 +363,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr={args.lr})
 
     if args.model == "MLP":
         epochs = 20
@@ -404,33 +410,37 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
     torch.save(
-        model, f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pt"
+        model,
+        f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.pt",
     )
 
     # GNN Explainer!
     if args.model != "MLP":
+        with open(
+            "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/explainer_node_ids.pkl",
+            "rb",
+        ) as file:
+            ids = pickle.load(file)
         explain_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/explainer"
         explainer = Explainer(
             model=model,
-            algorithm=GNNExplainer(epochs=100),
+            algorithm=GNNExplainer(epochs=200),
             explanation_type="model",
             node_mask_type="attributes",
             edge_mask_type="object",
-            model_config=dict(
-                mode="regression", task_level="node", return_type="log_probs"
-            ),
+            model_config=dict(mode="regression", task_level="node", return_type="raw"),
         )
 
-        for index in range(0, 1000):
+        for index in ids:
             explanation = explainer(data.x, data.edge_index, index=index)
 
             print(f"Generated explanations in {explanation.available_explanations}")
 
-            path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}.png"
+            path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.png"
             explanation.visualize_feature_importance(path, top_k=10)
             print(f"Feature importance plot has been saved to '{path}'")
 
-            path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}.pdf"
+            path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.pdf"
             explanation.visualize_graph(path)
             print(f"Subgraph visualization plot has been saved to '{path}'")
 

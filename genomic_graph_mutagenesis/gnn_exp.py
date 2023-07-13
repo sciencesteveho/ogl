@@ -254,6 +254,11 @@ def main() -> None:
         help="'neighbor' or 'random' node loader (default: 'random')",
     )
     parser.add_argument(
+        "--lr",
+        type=float,
+        default="0.0001",
+    )
+    parser.add_argument(
         "--device",
         type=int,
         default=0,
@@ -275,7 +280,7 @@ def main() -> None:
     # make directories and set up training logs
     dir_check_make("models/logs")
     logging.basicConfig(
-        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.loader}_exp.log",
+        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_exp.log",
         level=logging.DEBUG,
     )
 
@@ -357,7 +362,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr={args.lr})
 
     if args.model == "MLP":
         epochs = 20
@@ -405,7 +410,7 @@ def main() -> None:
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
     torch.save(
         model,
-        f"models/{args.model}_{args.layers}_{args.dimensions}_{args.loader}_exp.pt",
+        f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_exp.pt",
     )
 
     # GNN Explainer!
@@ -427,11 +432,11 @@ def main() -> None:
 
             print(f"Generated explanations in {explanation.available_explanations}")
 
-            path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}_exp.png"
+            path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_exp.png"
             explanation.visualize_feature_importance(path, top_k=10)
             print(f"Feature importance plot has been saved to '{path}'")
 
-            path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.loader}_exp.pdf"
+            path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_exp.pdf"
             explanation.visualize_graph(path)
             print(f"Subgraph visualization plot has been saved to '{path}'")
 
