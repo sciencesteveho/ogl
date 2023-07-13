@@ -408,7 +408,7 @@ def main() -> None:
     )
 
     # GNN Explainer!
-    if model != "MLP":
+    if args.model != "MLP":
         explain_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/explainer"
         explainer = Explainer(
             model=model,
