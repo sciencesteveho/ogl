@@ -364,7 +364,10 @@ def main() -> None:
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    epochs = 100
+    if model == "MLP":
+        epochs = 10
+    else:
+        epochs = 100
     for epoch in range(0, epochs + 1):
         loss = train(
             model=model,
