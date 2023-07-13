@@ -167,8 +167,9 @@ def test(model, device, test_loader, epoch):
         masked_labels_test = data.y[data.test_mask][test_indices]
 
         # calculate loss
-        val_acc = F.mse_loss(masked_prediction_val, masked_labels_val)
-        test_acc = F.mse_loss(masked_prediction_test, masked_labels_test)
+        val_mse.append(F.mse_loss(masked_prediction_val, masked_labels_val))
+        test_mse.append(F.mse_loss(masked_prediction_test, masked_labels_test))
+        
     pbar.close()
     return float(torch.cat(val_mse, dim=0).mean()), float(
         torch.cat(test_mse, dim=0).mean()
