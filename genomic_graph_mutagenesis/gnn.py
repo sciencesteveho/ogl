@@ -153,7 +153,7 @@ def test(model, device, data_loader, epoch, mask):
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     # mse = []
-    mse = 0
+    mse = examples = 0
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
