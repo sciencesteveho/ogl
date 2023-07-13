@@ -114,7 +114,7 @@ class GATv2(torch.nn.Module):
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
         for _ in range(num_layers - 1):
             self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
-            self.batch_norms.append(BatchNorm(embedding_size))
+            self.batch_norms.append(BatchNorm(heads * embedding_size))
 
         self.lin1 = nn.Linear(heads * embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
