@@ -160,17 +160,17 @@ def test(model, device, data_loader, epoch, mask):
 
         # get indices to mask -1 values
         if mask == "val":
-            mask = data.val_mask
+            idx_mask = data.val_mask
         if mask == "test":
-            mask = data.test_mask
-        indices = data.y[mask] != -1
-        masked_prediction = out[mask][indices]
-        masked_labels = data.y[mask][indices]
+            idx_mask = data.test_mask
+        indices = data.y[idx_mask] != -1
+        masked_prediction = out[idx_mask][indices]
+        masked_labels = data.y[idx_mask][indices]
 
         # calculate loss
         loss = F.mse_loss(masked_prediction, masked_labels).cpu()
-        mse += float(loss) * int(mask.sum())
-        examples += int(mask.sum())
+        mse += float(loss) * int(idx_mask.sum())
+        examples += int(idx_mask.sum())
 
         pbar.update(1)
 
