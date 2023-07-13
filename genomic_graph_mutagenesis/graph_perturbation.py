@@ -28,8 +28,9 @@ from tqdm import tqdm
 from gnn import GAT
 from gnn import GCN
 from gnn import GraphSAGE
-from utils import TISSUES
 from graph_to_pytorch import graph_to_pytorch
+from utils import TISSUES
+
 
 def _edge_perturbation():
     """_summary_ of function"""
@@ -92,7 +93,6 @@ def _random_gene_pairs(
 
 def _remove_node_features():
     """_summary_ of function"""
-    
 
 
 @torch.no_grad()
@@ -154,32 +154,24 @@ def main(
         graph_idxs=graph_idxs,
     )
 
-    for key in coessential_idxs.keys():
-        testers = random.sample(coessential_idxs[key], 100)
-        
-    for key in testers:
-        eval_key = key
-        for subkey in coessential_idxs[key]:
-            
-        subset = torch.tensor([coessential_idxs[key]].extend(eval_key))
-        sub_graph = subgraph(subset, graph.edge_index)
+    test_genes = random.sample(list(coessential_idxs.keys()), 100)
 
     random_co_idxs = _random_gene_pairs(
         coessential_idxs=coessential_idxs,
         graph_idxs=graph_idxs,
     )
-    
+
     # prepare data
     h3k27ac_data = graph_to_pytorch(
-        root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess',
-        graph_type='full',
-        node_perturbation='h3k27ac',
+        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+        graph_type="full",
+        node_perturbation="h3k27ac",
     )
-    
+
     h3k4me1_data = graph_to_pytorch(
-        root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess',
-        graph_type='full',
-        node_perturbation='h3k4me1',
+        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+        graph_type="full",
+        node_perturbation="h3k4me1",
     )
 
     # load model
@@ -211,9 +203,9 @@ if __name__ == "__main__":
         graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
     )
 
-model="/ocean/projects/bio210019p/shared/model_checkpoint.pt"
-graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
-graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
+model = "/ocean/projects/bio210019p/shared/model_checkpoint.pt"
+graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
+graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
 
 # pos_idxs, neg_idxs = {}, {}
 # for tissue in TISSUES:

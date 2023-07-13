@@ -133,6 +133,8 @@ def graph_to_pytorch(
     root_dir: str,
     graph_type: str,
     node_perturbation: str = None,
+    single_gene_test: str = None,
+    coessential_deletion: Tuple[str, str] = None,
 ):
     """_summary_
 

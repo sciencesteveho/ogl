@@ -363,7 +363,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr={args.lr})
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     if args.model == "MLP":
         epochs = 20
