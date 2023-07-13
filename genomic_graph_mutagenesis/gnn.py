@@ -295,7 +295,7 @@ def main() -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     epochs = 100
-    for epoch in range(0, epochs) + 1:
+    for epoch in range(0, epochs + 1):
         loss = train(
             model=model,
             device=device,
