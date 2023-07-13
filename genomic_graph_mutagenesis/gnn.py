@@ -152,7 +152,7 @@ def test(model, device, test_loader, epoch):
     pbar = tqdm(total=len(test_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    val_mse, test_mse = []
+    val_mse, test_mse = [], []
     for data in test_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
