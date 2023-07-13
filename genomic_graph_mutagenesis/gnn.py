@@ -168,14 +168,12 @@ def test(model, device, data_loader, epoch, mask):
             masked_labels = data.y[data.test_mask][indices]
 
         # calculate loss
-        calc_mse = F.mse_loss(masked_prediction, masked_labels).cpu()
-        print(calc_mse)
-        mse.append(calc_mse)
+        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
         
         pbar.update(1)
         
     pbar.close()
-    return float(torch.cat(mse.reshape(1)).mean())
+    return float(torch.stack(mse).mean())
 
 
 def main() -> None:
