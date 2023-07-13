@@ -168,7 +168,9 @@ def test(model, device, data_loader, epoch, mask):
             masked_labels = data.y[data.test_mask][indices]
 
         # calculate loss
-        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+        calc_mse = F.mse_loss(masked_prediction, masked_labels).cpu()
+        print(calc_mse)
+        mse.append(calc_mse)
         
         pbar.update(1)
         
