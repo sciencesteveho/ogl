@@ -356,7 +356,7 @@ def main() -> None:
     explain_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/explainer"
     explainer = Explainer(
         model=model,
-        alorigthm=GNNExplainer(epochs=100),
+        algorithm=GNNExplainer(epochs=100),
         explanation_type="model",
         node_mask_type="attributes",
         edge_mask_type="object",
