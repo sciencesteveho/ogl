@@ -273,21 +273,21 @@ def main() -> None:
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
             out_channels=4,
-            layers=args.layers,
+            num_layers=args.layers,
         ).to(device)
     if args.model == "GCN":
         model = GCN(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
             out_channels=4,
-            layers=args.layers,
+            num_layers=args.layers,
         ).to(device)
     if args.model == "GAT":
         model = GATv2(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
             out_channels=4,
-            layers=args.layers,
+            num_layers=args.layers,
             heads=2,
         ).to(device)
 
