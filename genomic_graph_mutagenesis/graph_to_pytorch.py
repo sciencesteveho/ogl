@@ -133,8 +133,8 @@ def graph_to_pytorch(
     root_dir: str,
     graph_type: str,
     node_perturbation: str = None,
-    single_gene_test: str = None,
-    coessential_deletion: Tuple[str, str] = None,
+    single_gene: str = None,
+    node_remove_edges: str = None,
 ):
     """_summary_
 
@@ -174,7 +174,19 @@ def graph_to_pytorch(
         graph_data = pickle.load(file)
 
     # convert np arrays to torch tensors
-    edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
+    # delete edges if perturbing
+    if node_remove_edges:
+        edge_index = torch.tensor(
+            np.array(
+                [
+                    np.delete(graph_data["edge_index"][0], node_remove_edges),
+                    np.delete(graph_data["edge_index"][1], node_remove_edges),
+                ]
+            ),
+            dtype=torch.long,
+        )
+    else:
+        edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
 
     # add optional node perturbation
     if node_perturbation == "h3k27ac":
@@ -188,6 +200,12 @@ def graph_to_pytorch(
 
     # get mask indexes
     graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)
+
+    # get individual if querying for single gene
+    if single_gene:
+        gene_idx = torch.tensor([graph_index[single_gene]], dtype=torch.long)
+        gene_mask = torch.zeroes(data.num_nodes, dtype=torch.bool)
+        gene_mask[gene_idx] = True
 
     # set up pytorch geometric Data object
     data = Data(x=x, edge_index=edge_index)
@@ -236,7 +254,10 @@ def graph_to_pytorch(
 
     # add mask and target values to data object
     data.train_mask = train_mask
-    data.test_mask = test_mask
+    if single_gene:
+        data.test_mask = gene_mask
+    else:
+        data.test_mask = test_mask
     data.val_mask = val_mask
     data.y = y.T
 

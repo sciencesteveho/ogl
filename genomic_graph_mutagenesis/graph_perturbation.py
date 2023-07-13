@@ -148,18 +148,20 @@ def main(
     with open(graph_idxs, "rb") as file:
         graph_idxs = pickle.load(file)
 
+    # prepare IDXs for different perturbations
     coessential_idxs = _get_idxs_for_coessential_pairs(
         coessential_pos="/ocean/projects/bio210019p/stevesho/data/preprocess/comparisons/coessential_gencode_named_pos.txt",
         coessential_neg="/ocean/projects/bio210019p/stevesho/data/preprocess/comparisons/coessential_gencode_named_neg.txt",
         graph_idxs=graph_idxs,
     )
 
-    test_genes = random.sample(list(coessential_idxs.keys()), 100)
-
     random_co_idxs = _random_gene_pairs(
         coessential_idxs=coessential_idxs,
         graph_idxs=graph_idxs,
     )
+
+    test_genes = random.sample(list(coessential_idxs.keys()), 100)
+    test_random = random.sample(list(random_co_idxs.keys()), 100)
 
     # prepare data
     h3k27ac_data = graph_to_pytorch(
@@ -174,26 +176,40 @@ def main(
         node_perturbation="h3k4me1",
     )
 
-    # load model
+    # initialize model model
     model = GraphSAGE(
         in_size=h3k27ac_data.x.shape[1],
         embedding_size=300,
         out_channels=4,
-        layers=args.layers,
+        layers=2,
     ).to(device)
 
+    # load checkpoint
     checkpoint = torch.load(checkpoint_file, map_location=map_location)
     model.load_state_dict(checkpoint["model_state_dict"], strict=False)
     model.to(device)
 
     # ### evaluate on test set
-    # test_loader = GraphDataLoader(dataset=testset, batch_size=2, collate_fn=collate_dgl)
-
-    # truth_vals = [sample[1] for sample in testset]
-    # test_vals, pred_vals, rmse = eval_model_test(device, model, test_loader, truth_vals)
-
-    # save_pickle("truth.pt", test_vals)
-    # save_pickle("pred.pt", pred_vals)
+    # coessentiality
+    # get baseline expression
+    baselines = []
+    changes = []
+    for gene in coessential_idxs.keys():
+        changed = []
+        baseline_data = graph_to_pytorch(
+            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+            graph_type="full",
+            single_gene=gene,
+        )
+        loader = NeighborLoader(baseline_data, input_nodes=[0], batch_size=1)
+        # baseline_measure
+        for co_gene in coessential_idxs[gene]:
+            perturbed_graph = graph_to_pytorch(
+                root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+                graph_type="full",
+                single_gene=gene,
+                node_remove_edges=co_gene,
+            )
 
 
 if __name__ == "__main__":

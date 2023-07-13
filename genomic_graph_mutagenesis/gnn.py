@@ -366,7 +366,7 @@ def main() -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     if args.model == "MLP":
-        epochs = 20
+        epochs = 50
     else:
         epochs = 100
     for epoch in range(0, epochs + 1):
