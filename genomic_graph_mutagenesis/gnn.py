@@ -11,7 +11,6 @@ import argparse
 import logging
 import pickle
 
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
