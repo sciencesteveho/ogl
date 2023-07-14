@@ -319,13 +319,13 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[30] * 3,
+            num_neighbors=[25] * 4,
             batch_size=256,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[30] * 3,
+            num_neighbors=[25] * 4,
             batch_size=256,
         )
 
@@ -362,11 +362,7 @@ def main() -> None:
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    if args.model == "MLP":
-        epochs = 50
-    else:
-        epochs = 100
-
+    epochs = 100
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         loss = train(
