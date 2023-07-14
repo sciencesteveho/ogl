@@ -318,14 +318,14 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[25] * 4,
-            batch_size=256,
+            num_neighbors=[50] * 4,
+            batch_size=1024,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[25] * 4,
-            batch_size=256,
+            num_neighbors=[50] * 4,
+            batch_size=1024,
         )
 
     # CHOOSE YOUR WEAPON
