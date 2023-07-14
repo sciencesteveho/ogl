@@ -302,13 +302,13 @@ def main() -> None:
     if args.loader == "random":
         train_loader = RandomNodeLoader(
             data,
-            num_parts=150,
+            num_parts=250,
             shuffle=True,
             num_workers=5,
         )
         test_loader = RandomNodeLoader(
             data,
-            num_parts=150,
+            num_parts=250,
             num_workers=5,
         )
 
