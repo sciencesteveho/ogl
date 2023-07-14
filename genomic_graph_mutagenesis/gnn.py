@@ -185,8 +185,6 @@ def train(model, device, optimizer, train_loader, epoch):
         pbar.update(1)
 
     pbar.close()
-    # loss = F.mse_loss( out[data.train_mask].squeeze(),
-    #     data.y[data.train_mask].squeeze() )
     return total_loss / total_examples
 
 
@@ -214,6 +212,7 @@ def test(model, device, data_loader, epoch, mask):
 
         # calculate loss
         loss = F.mse_loss(masked_prediction, masked_labels).cpu()
+        print(loss)
         mse += float(loss) * int(idx_mask.sum())
         examples += int(idx_mask.sum())
 
