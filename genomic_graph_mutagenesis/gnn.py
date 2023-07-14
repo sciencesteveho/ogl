@@ -9,6 +9,7 @@
 
 import argparse
 import logging
+import math
 import pickle
 
 import torch
@@ -175,7 +176,7 @@ def train(model, device, optimizer, train_loader, epoch):
         masked_labels = data.y[data.train_mask][indices]
 
         # calculate loss
-        loss = F.mse_loss(masked_predictions, masked_labels)
+        loss = torch.sqrt(F.mse_loss(masked_predictions, masked_labels))
         # loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
@@ -223,7 +224,7 @@ def test(model, device, data_loader, epoch, mask):
         pbar.update(1)
 
     pbar.close()
-    return float(loss.mean())
+    return math.sqrt(float(loss.mean()))
 
 
 def main() -> None:
