@@ -318,13 +318,13 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[100] * 4,
+            num_neighbors=[15, 10, 5],
             batch_size=1024,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[100] * 4,
+            num_neighbors=[15, 10, 5],
             batch_size=1024,
         )
 
@@ -388,7 +388,7 @@ def main() -> None:
         if best_validation == val_acc:
             torch.save(
                 model,
-                f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}.pt",
+                f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}_mse_{best_validation}.pt",
             )
             stop_counter += 1
 
