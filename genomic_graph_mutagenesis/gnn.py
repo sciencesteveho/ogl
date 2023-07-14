@@ -289,7 +289,7 @@ def main() -> None:
         default=1e-4,
     )
     parser.add_argument(
-        "--idxs",
+        "--idx",
         type=bool,
         default=False,
     )
@@ -314,8 +314,16 @@ def main() -> None:
 
     # make directories and set up training logs
     dir_check_make("models/logs")
+    if args.idx:
+        savestr = (
+            f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_idx"
+        )
+    else:
+        savestr = (
+            f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}"
+        )
     logging.basicConfig(
-        filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.log",
+        filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
     )
 
@@ -358,7 +366,7 @@ def main() -> None:
             num_neighbors=[20, 15, 10],
             batch_size=1024,
         )
-        if args.idxs:
+        if args.idx:
             train_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
@@ -464,7 +472,7 @@ def main() -> None:
             if val_acc < best_validation:
                 torch.save(
                     model,
-                    f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}_mse_{best_validation}.pt",
+                    f"models/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
                 )
                 stop_counter += 1
 
@@ -478,7 +486,7 @@ def main() -> None:
 
     torch.save(
         model,
-        f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.pt",
+        f"models/{savestr}_mse_{best_validation}.pt",
     )
 
     # GNN Explainer!
@@ -503,11 +511,11 @@ def main() -> None:
 
             print(f"Generated explanations in {explanation.available_explanations}")
 
-            path = f"{explain_path}/feature_importance_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.png"
+            path = f"{explain_path}/feature_importance_{savestr}_{best_validation}.png"
             explanation.visualize_feature_importance(path, top_k=10)
             print(f"Feature importance plot has been saved to '{path}'")
 
-            path = f"{explain_path}/subgraph_{index}_{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.pdf"
+            path = f"{explain_path}/subgraph_{savestr}_{best_validation}.pdf"
             explanation.visualize_graph(path)
             print(f"Subgraph visualization plot has been saved to '{path}'")
 
