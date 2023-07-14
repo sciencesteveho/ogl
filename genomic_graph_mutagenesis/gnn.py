@@ -373,20 +373,20 @@ def main() -> None:
         if args.idx:
             train_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[25, 20, 15],
                 batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[25, 20, 15],
                 batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[25, 20, 15],
                 batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
@@ -474,6 +474,7 @@ def main() -> None:
             best_validation = val_acc
         else:
             if val_acc < best_validation:
+                stop_counter = 0
                 best_validation = val_acc
                 torch.save(
                     model,
@@ -512,6 +513,7 @@ def main() -> None:
             model_config=dict(mode="regression", task_level="node", return_type="raw"),
         )
 
+        data = data.to_device()
         for index in ids:
             explanation = explainer(data.x, data.edge_index, index=index)
 
