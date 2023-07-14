@@ -23,6 +23,7 @@ from typing import Dict, List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.loader import RandomNodeLoader
 from tqdm import tqdm
 
 from gnn import GAT
@@ -30,11 +31,6 @@ from gnn import GCN
 from gnn import GraphSAGE
 from graph_to_pytorch import graph_to_pytorch
 from utils import TISSUES
-
-
-def _edge_perturbation():
-    """_summary_ of function"""
-    pass
 
 
 def _get_idxs_for_coessential_pairs(
@@ -96,41 +92,38 @@ def _remove_node_features():
 
 
 @torch.no_grad()
-def test(model, device, test_loader, epoch):
+def test(model, device, data_loader, epoch):
     model.eval()
 
-    pbar = tqdm(total=len(test_loader))
+    pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    val_mse, test_mse = []
-    for data in test_loader:
+    mse = []
+    for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        # get indices to mask -1 values
-        val_indices = data.y[data.val_mask] != -1
-        masked_prediction_val = out[data.val_mask][val_indices]
-        masked_labels_val = data.y[data.val_mask][val_indices]
-
-        test_indices = data.y[data.test_mask] != -1
-        masked_prediction_test = out[data.test_mask][test_indices]
-        masked_labels_test = data.y[data.test_mask][test_indices]
-
-        # calculate loss
-        val_acc = F.mse_loss(masked_prediction_val, masked_labels_val)
-        test_acc = F.mse_loss(masked_prediction_test, masked_labels_test)
     pbar.close()
-    return float(torch.cat(val_mse, dim=0).mean()), float(
-        torch.cat(test_mse, dim=0).mean()
-    )
+    return out
 
 
 def main(
     mode: str,
     graph: str,
     graph_idxs: str,
+    feat_perturbation: bool = False,
+    coessentiality: bool = False,
 ) -> None:
     """Main function"""
+
+    def _perturb_loader(data):
+        return RandomNodeLoader(
+            data=data,
+            num_parts=250,
+            shuffle=False,
+            num_workers=5,
+        )
+
     # check for device
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
@@ -163,22 +156,9 @@ def main(
     test_genes = random.sample(list(coessential_idxs.keys()), 100)
     test_random = random.sample(list(random_co_idxs.keys()), 100)
 
-    # prepare data
-    h3k27ac_data = graph_to_pytorch(
-        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-        graph_type="full",
-        node_perturbation="h3k27ac",
-    )
-
-    h3k4me1_data = graph_to_pytorch(
-        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-        graph_type="full",
-        node_perturbation="h3k4me1",
-    )
-
     # initialize model model
     model = GraphSAGE(
-        in_size=h3k27ac_data.x.shape[1],
+        in_size=data.x.shape[1],
         embedding_size=300,
         out_channels=4,
         layers=2,
@@ -189,27 +169,55 @@ def main(
     model.load_state_dict(checkpoint["model_state_dict"], strict=False)
     model.to(device)
 
-    # ### evaluate on test set
-    # coessentiality
-    # get baseline expression
-    baselines = []
-    changes = []
-    for gene in coessential_idxs.keys():
-        changed = []
-        baseline_data = graph_to_pytorch(
+    # prepare feature perturbation data
+    if feat_perturbation:
+        perturbed_data = graph_to_pytorch(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
             graph_type="full",
-            single_gene=gene,
+            node_perturbation="h3k27ac",
         )
-        loader = NeighborLoader(baseline_data, input_nodes=[0], batch_size=1)
-        # baseline_measure
-        for co_gene in coessential_idxs[gene]:
-            perturbed_graph = graph_to_pytorch(
+        loader = _perturb_loader(perturbed_data)
+        inference = test(
+            model=model,
+            device=device,
+            data_loader=loader,
+            epoch=0,
+        )
+
+        perturbed_data = graph_to_pytorch(
+            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+            graph_type="full",
+            node_perturbation="h3k4me1",
+        )
+        loader = _perturb_loader(perturbed_data)
+        inference = test(
+            model=model,
+            device=device,
+            data_loader=loader,
+            epoch=0,
+        )
+
+    # coessentiality
+    # get baseline expression
+    if coessentiality:
+        baselines = []
+        changes = []
+        for gene in coessential_idxs.keys():
+            changed = []
+            baseline_data = graph_to_pytorch(
                 root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
                 graph_type="full",
                 single_gene=gene,
-                node_remove_edges=co_gene,
             )
+            loader = _perturb_loader(baseline_data)
+            # baseline_measure
+            for co_gene in coessential_idxs[gene]:
+                perturbed_graph = graph_to_pytorch(
+                    root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+                    graph_type="full",
+                    single_gene=gene,
+                    node_remove_edges=co_gene,
+                )
 
 
 if __name__ == "__main__":

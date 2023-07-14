@@ -55,7 +55,7 @@ class GraphSAGE(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
@@ -89,7 +89,7 @@ class GCN(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
@@ -124,7 +124,7 @@ class GATv2(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = F.relu(x)
         x = self.lin1(x)
         x = F.relu(x)
