@@ -195,8 +195,7 @@ def test(model, device, data_loader, epoch, mask):
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    # mse = []
-    mse = examples = 0
+    mse = []
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
@@ -211,15 +210,13 @@ def test(model, device, data_loader, epoch, mask):
         masked_labels = data.y[idx_mask][indices]
 
         # calculate loss
-        loss = F.mse_loss(masked_prediction, masked_labels).cpu()
-        print(loss)
-        mse += float(loss) * int(idx_mask.sum())
-        examples += int(idx_mask.sum())
-
+        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+        loss = torch.stack(mse)
+        loss = loss[~torch.isnan(loss)]
         pbar.update(1)
 
     pbar.close()
-    return mse / examples
+    return float(loss.mean())
 
 
 def main() -> None:
