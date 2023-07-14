@@ -167,15 +167,16 @@ def train(model, device, optimizer, train_loader, epoch):
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        # get indices to mask -1 values
-        indices = data.y[data.train_mask] != -1
+        # # get indices to mask -1 values
+        # indices = data.y[data.train_mask] != -1
 
-        # get correpsonding predictions and labels
-        masked_predictions = out[data.train_mask][indices]
-        masked_labels = data.y[data.train_mask][indices]
+        # # get correpsonding predictions and labels
+        # masked_predictions = out[data.train_mask][indices]
+        # masked_labels = data.y[data.train_mask][indices]
 
-        # calculate loss
-        loss = F.mse_loss(masked_predictions, masked_labels)
+        # # calculate loss
+        # loss = F.mse_loss(masked_predictions, masked_labels)
+        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
 
@@ -200,17 +201,23 @@ def test(model, device, data_loader, epoch, mask):
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        # get indices to mask -1 values
+        # # get indices to mask -1 values
+        # if mask == "val":
+        #     idx_mask = data.val_mask
+        # if mask == "test":
+        #     idx_mask = data.test_mask
+        # indices = data.y[idx_mask] != -1
+        # masked_prediction = out[idx_mask][indices]
+        # masked_labels = data.y[idx_mask][indices]
+
+        # # calculate loss
+        # mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+
         if mask == "val":
             idx_mask = data.val_mask
         if mask == "test":
             idx_mask = data.test_mask
-        indices = data.y[idx_mask] != -1
-        masked_prediction = out[idx_mask][indices]
-        masked_labels = data.y[idx_mask][indices]
-
-        # calculate loss
-        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
         loss = torch.stack(mse)
         loss = loss[~torch.isnan(loss)]
         pbar.update(1)

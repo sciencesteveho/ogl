@@ -111,6 +111,7 @@ def main(
     mode: str,
     graph: str,
     graph_idxs: str,
+    need_baseline: bool = False,
     feat_perturbation: bool = False,
     coessentiality: bool = False,
 ) -> None:
@@ -169,6 +170,22 @@ def main(
     model.load_state_dict(checkpoint["model_state_dict"], strict=False)
     model.to(device)
 
+    if need_baseline:
+        # get baseline expression
+        baseline_data = graph_to_pytorch(
+            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+            graph_type="full",
+        )
+        loader = _perturb_loader(baseline_data)
+        inference = test(
+            model=model,
+            device=device,
+            data_loader=loader,
+            epoch=0,
+        )
+        with open("baseline_expression.pkl", "wb") as f:
+            pickle.dump(inference, f)
+
     # prepare feature perturbation data
     if feat_perturbation:
         perturbed_data = graph_to_pytorch(
@@ -183,6 +200,8 @@ def main(
             data_loader=loader,
             epoch=0,
         )
+        with open("h3k27ac_expression.pkl", "wb") as f:
+            pickle.dump(inference, f)
 
         perturbed_data = graph_to_pytorch(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
@@ -196,20 +215,28 @@ def main(
             data_loader=loader,
             epoch=0,
         )
+        with open("h3k4me1_expression.pkl", "wb") as f:
+            pickle.dump(inference, f)
 
     # coessentiality
     # get baseline expression
     if coessentiality:
-        baselines = []
-        changes = []
+        baselines = {}
         for gene in coessential_idxs.keys():
-            changed = []
+            baselines[gene] = []
             baseline_data = graph_to_pytorch(
                 root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
                 graph_type="full",
                 single_gene=gene,
             )
             loader = _perturb_loader(baseline_data)
+            baseline = test(
+                model=model,
+                device=device,
+                data_loader=loader,
+                epoch=0,
+            )
+            baselines.append(baseline)
             # baseline_measure
             for co_gene in coessential_idxs[gene]:
                 perturbed_graph = graph_to_pytorch(
@@ -218,14 +245,26 @@ def main(
                     single_gene=gene,
                     node_remove_edges=co_gene,
                 )
+                loader = _perturb_loader(perturbed_graph)
+                inference = test(
+                    model=model,
+                    device=device,
+                    data_loader=loader,
+                    epoch=0,
+                )
+                baselines[gene].append(inference)
+
+        with open("coessentiality.pkl", "wb") as f:
+            pickle.dump(baselines, f)
 
 
 if __name__ == "__main__":
-    main(
-        model="/ocean/projects/bio210019p/shared/model_checkpoint.pt",
-        graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl",
-        graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
-    )
+    main()
+    # main(
+    #     model="/ocean/projects/bio210019p/shared/model_checkpoint.pt",
+    #     graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl",
+    #     graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
+    # )
 
 model = "/ocean/projects/bio210019p/shared/model_checkpoint.pt"
 graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
