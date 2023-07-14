@@ -198,6 +198,8 @@ def test(model, device, data_loader, epoch, mask):
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
+        print(out)
+        print(data.y)
 
         # get indices to mask -1 values
         if mask == "val":
@@ -327,7 +329,7 @@ def main() -> None:
         level=logging.DEBUG,
     )
     dir_check_make("models/logs")
-    dir_check_make("models/{savestr}")
+    dir_check_make(f"models/{savestr}")
 
     # check for GPU
     if torch.cuda.is_available():
