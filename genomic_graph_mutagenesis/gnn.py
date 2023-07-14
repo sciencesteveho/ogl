@@ -284,6 +284,11 @@ def main() -> None:
         help="'neighbor' or 'random' node loader (default: 'random')",
     )
     parser.add_argument(
+        "--batch",
+        type=float,
+        default=1024,
+    )
+    parser.add_argument(
         "--lr",
         type=float,
         default=1e-4,
@@ -313,19 +318,16 @@ def main() -> None:
     args = parser.parse_args()
 
     # make directories and set up training logs
-    dir_check_make("models/logs")
     if args.idx:
-        savestr = (
-            f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_idx"
-        )
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_idx"
     else:
-        savestr = (
-            f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}"
-        )
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}"
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
     )
+    dir_check_make("models/logs")
+    dir_check_make("models/{savestr}")
 
     # check for GPU
     if torch.cuda.is_available():
@@ -358,32 +360,32 @@ def main() -> None:
         train_loader = NeighborLoader(
             data,
             num_neighbors=[20, 15, 10],
-            batch_size=1024,
+            batch_size=args.batch,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
             num_neighbors=[20, 15, 10],
-            batch_size=1024,
+            batch_size=args.batch,
         )
         if args.idx:
             train_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
-                batch_size=1024,
+                batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
-                batch_size=1024,
+                batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
-                batch_size=1024,
+                batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
 
@@ -470,10 +472,12 @@ def main() -> None:
             best_validation = val_acc
         else:
             if val_acc < best_validation:
+                best_validation = val_acc
                 torch.save(
                     model,
-                    f"models/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
+                    f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
                 )
+            if best_validation < val_acc:
                 stop_counter += 1
 
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
@@ -486,7 +490,7 @@ def main() -> None:
 
     torch.save(
         model,
-        f"models/{savestr}_mse_{best_validation}.pt",
+        f"models/{savestr}/{savestr}_mse_{best_validation}.pt",
     )
 
     # GNN Explainer!
