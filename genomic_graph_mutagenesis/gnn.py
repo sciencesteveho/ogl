@@ -227,6 +227,34 @@ def test(model, device, data_loader, epoch, mask):
     return math.sqrt(float(loss.mean()))
 
 
+@torch.no_grad()
+def test_with_idxs(model, device, data_loader, epoch, mask):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+    mse = []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # get indices to mask -1 values
+        if mask == "val":
+            idx_mask = data.val_mask
+        if mask == "test":
+            idx_mask = data.test_mask
+        indices = data.y[idx_mask] != -1
+        masked_prediction = out[idx_mask][indices]
+        masked_labels = data.y[idx_mask][indices]
+
+        # calculate loss
+        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
+        loss = torch.stack(mse)
+
+    pbar.close()
+    return math.sqrt(float(loss.mean()))
+
+
 def main() -> None:
     """_summary_"""
     # Parse training settings
@@ -262,6 +290,11 @@ def main() -> None:
         "--lr",
         type=float,
         default=1e-4,
+    )
+    parser.add_argument(
+        "--idxs",
+        type=bool,
+        default=False,
     )
     parser.add_argument(
         "--device",
@@ -319,15 +352,35 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[15, 10, 5],
+            num_neighbors=[20, 15, 10],
             batch_size=1024,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[15, 10, 5],
+            num_neighbors=[20, 15, 10],
             batch_size=1024,
         )
+        if args.idxs:
+            train_loader = NeighborLoader(
+                data,
+                num_neighbors=[20, 15, 10],
+                batch_size=1024,
+                input=data.train_mask,
+                shuffle=True,
+            )
+            test_loader = NeighborLoader(
+                data,
+                num_neighbors=[20, 15, 10],
+                batch_size=1024,
+                input=data.test_mask,
+            )
+            val_loader = NeighborLoader(
+                data,
+                num_neighbors=[20, 15, 10],
+                batch_size=1024,
+                input=data.val_mask,
+            )
 
     # CHOOSE YOUR WEAPON
     if args.model == "GraphSAGE":
@@ -375,31 +428,52 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
-        val_acc = test(
-            model=model,
-            device=device,
-            data_loader=test_loader,
-            epoch=epoch,
-            mask="val",
-        )
+        if args.idx:
+            val_acc = test_with_idxs(
+                model=model,
+                device=device,
+                data_loader=val_loader,
+                epoch=epoch,
+                mask="val",
+            )
+
+            test_acc = test_with_idxs(
+                model=model,
+                device=device,
+                data_loader=test_loader,
+                epoch=epoch,
+                mask="test",
+            )
+        else:
+            val_acc = test(
+                model=model,
+                device=device,
+                data_loader=test_loader,
+                epoch=epoch,
+                mask="val",
+            )
+
+            test_acc = test(
+                model=model,
+                device=device,
+                data_loader=test_loader,
+                epoch=epoch,
+                mask="test",
+            )
+
+        if epoch == 0:
+            best_validation = val_acc
+        else:
+            if val_acc < best_validation:
+                torch.save(
+                    model,
+                    f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}_mse_{best_validation}.pt",
+                )
+                stop_counter += 1
+
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
 
-        best_validation = min(best_validation, val_acc)
-        if best_validation == val_acc:
-            torch.save(
-                model,
-                f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}_mse_{best_validation}.pt",
-            )
-            stop_counter += 1
-
-        test_acc = test(
-            model=model,
-            device=device,
-            data_loader=test_loader,
-            epoch=epoch,
-            mask="test",
-        )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         if stop_counter == 10:
