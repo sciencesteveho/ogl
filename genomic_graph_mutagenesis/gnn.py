@@ -285,7 +285,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--batch",
-        type=float,
+        type=int,
         default=1024,
     )
     parser.add_argument(
