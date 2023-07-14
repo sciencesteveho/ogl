@@ -11,6 +11,7 @@ import argparse
 import logging
 import pickle
 
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -318,21 +319,14 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[30] * 2,
-            batch_size=128,
-            input_nodes=data.train_mask,
-        )
-        val_loader = NeighborLoader(
-            data,
-            num_neighbors=[30] * 2,
-            batch_size=128,
-            input_nodes=data.val_mask,
+            num_neighbors=[30] * 3,
+            batch_size=256,
+            shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[30] * 2,
-            batch_size=128,
-            input_nodes=data.test_mask,
+            num_neighbors=[30] * 3,
+            batch_size=256,
         )
 
     # CHOOSE YOUR WEAPON
@@ -372,6 +366,8 @@ def main() -> None:
         epochs = 50
     else:
         epochs = 100
+
+    best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         loss = train(
             model=model,
@@ -383,25 +379,23 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
-        if args.loader == "random":
-            val_acc = test(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="val",
-            )
-        if args.loader == "neighbor":
-            val_acc = test(
-                model=model,
-                device=device,
-                data_loader=val_loader,
-                epoch=epoch,
-                mask="val",
-            )
-
+        val_acc = test(
+            model=model,
+            device=device,
+            data_loader=test_loader,
+            epoch=epoch,
+            mask="val",
+        )
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+
+        best_validation = min(best_validation, val_acc)
+        if best_validation == val_acc:
+            torch.save(
+                model,
+                f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_early_epoch_{epoch}.pt",
+            )
+            stop_counter += 1
 
         test_acc = test(
             model=model,
@@ -412,6 +406,9 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        if stop_counter == 10:
+            break
+
     torch.save(
         model,
         f"models/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}.pt",
