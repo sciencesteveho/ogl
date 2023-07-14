@@ -489,6 +489,7 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         if stop_counter == 10:
+            print("***********Early stopping!")
             break
 
     torch.save(
@@ -513,7 +514,7 @@ def main() -> None:
             model_config=dict(mode="regression", task_level="node", return_type="raw"),
         )
 
-        data = data.to_device()
+        data = data.to(device)
         for index in ids:
             explanation = explainer(data.x, data.edge_index, index=index)
 
