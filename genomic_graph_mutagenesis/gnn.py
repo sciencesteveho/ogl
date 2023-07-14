@@ -363,20 +363,20 @@ def main() -> None:
                 data,
                 num_neighbors=[20, 15, 10],
                 batch_size=1024,
-                input=data.train_mask,
+                input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
                 batch_size=1024,
-                input=data.test_mask,
+                input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
                 num_neighbors=[20, 15, 10],
                 batch_size=1024,
-                input=data.val_mask,
+                input_nodes=data.val_mask,
             )
 
     # CHOOSE YOUR WEAPON
