@@ -8,6 +8,7 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
+from datetime import datetime
 import logging
 import math
 import pickle
@@ -24,6 +25,7 @@ from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
+
 # from torchmetrics.regression import SpearmanCorrCoef
 from tqdm import tqdm
 
@@ -313,10 +315,13 @@ def main() -> None:
     args = parser.parse_args()
 
     # make directories and set up training logs
+    now = datetime.now()
+    dt = now.strftime("%d/%m/%Y_%H:%M:%S")
+
     if args.idx:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_idx"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{dt}_idx"
     else:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{dt}"
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
@@ -366,20 +371,20 @@ def main() -> None:
         if args.idx:
             train_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[5, 5, 5, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[5, 5, 5, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
-                num_neighbors=[20, 15, 10],
+                num_neighbors=[5, 5, 5, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
