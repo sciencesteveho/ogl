@@ -92,7 +92,7 @@ def main(
     s = y_pred.to_dict()
 
     with open(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/training_targets_exp.pkl",
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/training_targets.pkl",
         "rb",
     ) as f:
         targets = pickle.load(f)

@@ -53,9 +53,9 @@ class GraphSAGE(torch.nn.Module):
             self.convs.append(SAGEConv(embedding_size, embedding_size, aggr="sum"))
             self.batch_norms.append(BatchNorm(embedding_size))
 
-        self.lin1 = nn.Linear(embedding_size, out_channels)
-        # self.lin1 = nn.Linear(embedding_size, embedding_size)
-        # self.lin2 = nn.Linear(embedding_size, out_channels)
+        self.lin1 = nn.Linear(embedding_size, embedding_size)
+        self.lin2 = nn.Linear(embedding_size, embedding_size)
+        self.lin3 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
@@ -63,9 +63,12 @@ class GraphSAGE(torch.nn.Module):
 
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin1(x)
-        # x = F.relu(x)
-        # x = F.dropout(x, p=0.2, training=self.training)
-        # x = self.lin2(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.lin2(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.lin3(x)
         return x
 
 
