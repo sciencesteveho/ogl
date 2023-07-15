@@ -379,8 +379,8 @@ def _tpm_filter_gene_windows(
         pybedtools object with +/- <window> windows around that gene
     """
     tpm_filtered_genes = _filter_low_tpm_across_tissues(
-        tissue,
-        tpm_file,
+        file=tpm_file,
+        tissue=tissue,
         return_list=True,
     )
     genes = pybedtools.BedTool(gencode)
