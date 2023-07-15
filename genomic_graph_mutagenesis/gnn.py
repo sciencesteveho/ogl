@@ -23,7 +23,8 @@ from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
-from torchmetrics.regression import SpearmanCorrCoef
+
+# from torchmetrics.regression import SpearmanCorrCoef
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
@@ -210,7 +211,7 @@ def test(model, device, data_loader, epoch, mask):
 
 @torch.no_grad()
 def test_with_idxs(model, device, data_loader, epoch, mask):
-    spearman = SpearmanCorrCoef(num_outputs=2)
+    # spearman = SpearmanCorrCoef(num_outputs=2)
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
@@ -229,14 +230,14 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
         if mask == "test":
             idx_mask = data.test_mask
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
-        outs.extend(out[idx_mask])
-        labels.extend(data.y[idx_mask])
+        # outs.extend(out[idx_mask])
+        # labels.extend(data.y[idx_mask])
         loss = torch.stack(mse)
 
         pbar.update(1)
 
     pbar.close()
-    print(spearman(torch.stack(outs), torch.stack(labels)))
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
     return math.sqrt(float(loss.mean()))
 
 
