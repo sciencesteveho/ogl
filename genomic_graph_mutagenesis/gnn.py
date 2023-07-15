@@ -365,20 +365,20 @@ def main() -> None:
         if args.idx:
             train_loader = NeighborLoader(
                 data,
-                num_neighbors=[10, 10, 5, 5, 3],
+                num_neighbors=[20, 15, 10],
                 batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
-                num_neighbors=[10, 10, 5, 5, 3],
+                num_neighbors=[20, 15, 10],
                 batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
-                num_neighbors=[10, 10, 5, 5, 3],
+                num_neighbors=[20, 15, 10],
                 batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
