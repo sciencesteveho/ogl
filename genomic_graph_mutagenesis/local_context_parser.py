@@ -90,7 +90,7 @@ class LocalContextParser:
                 genes=genes,
                 gene_windows=gene_windows,
                 base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
-                gct=f"{self.shared_dir}/{params['interaction']['gct']}",
+                gct=f"{self.root_dir}/shared_data/{params['interaction']['gct']}",
             )
 
         # prepare references
