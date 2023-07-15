@@ -58,7 +58,7 @@ class GraphSAGE(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -91,7 +91,7 @@ class GCN(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -125,7 +125,7 @@ class GATv2(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -221,7 +221,9 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
+        print(f"\nout")
         print(out)
+        print(f"\ndata.y")
         print(data.y)
 
         # calculate loss
@@ -360,20 +362,20 @@ def main() -> None:
         if args.idx:
             train_loader = NeighborLoader(
                 data,
-                num_neighbors=[15, 10, 5, 5],
+                num_neighbors=[10, 10, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
-                num_neighbors=[15, 10, 5, 5],
+                num_neighbors=[10, 10, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
-                num_neighbors=[15, 10, 5, 5],
+                num_neighbors=[10, 10, 5, 5, 3],
                 batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
