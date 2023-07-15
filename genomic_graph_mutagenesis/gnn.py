@@ -61,13 +61,13 @@ class GraphSAGE(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin2(x)
         x = F.relu(x)
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin3(x)
         return x
 
@@ -468,27 +468,27 @@ def main() -> None:
                 mask="test",
             )
 
-        if epoch == 0:
-            best_validation = val_acc
-        else:
-            if val_acc < best_validation:
-                stop_counter = 0
-                best_validation = val_acc
-                torch.save(
-                    model.state_dict(),
-                    f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
-                )
-            if best_validation < val_acc:
-                stop_counter += 1
+        # if epoch == 0:
+        #     best_validation = val_acc
+        # else:
+        #     if val_acc < best_validation:
+        #         stop_counter = 0
+        #         best_validation = val_acc
+        #         torch.save(
+        #             model.state_dict(),
+        #             f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
+        #         )
+        #     if best_validation < val_acc:
+        #         stop_counter += 1
 
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
 
-        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        if stop_counter == 10:
-            print("***********Early stopping!")
-            break
+        # print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        # logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        # if stop_counter == 10:
+        #     print("***********Early stopping!")
+        #     break
 
     torch.save(
         model.state_dict(),

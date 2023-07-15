@@ -85,7 +85,7 @@ def main(
     with open("average_activity_before_transform.pkl", "wb") as f:
         pickle.dump(average_activity, f)
 
-    # with open("baseline_activity_gtex_expression.pkl", "rb") as f:
+    # with open("average_activity_before_transform.pkl", "rb") as f:
     #     average_activity = pickle.load(f)
 
     y_pred = np.log2(average_activity + 0.25)  # add 0.01 to avoid log(0)
