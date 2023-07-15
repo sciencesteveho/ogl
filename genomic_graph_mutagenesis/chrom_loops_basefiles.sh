@@ -120,7 +120,8 @@ main_func () {
             ${tissue} \
             ${tmp_dir} \
             ${resource_dir} \
-            15000
+            30000
+            # 15000
     done
 
     for key in ${!loop_files[@]};

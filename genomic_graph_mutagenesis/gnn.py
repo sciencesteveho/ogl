@@ -24,7 +24,6 @@ from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
-
 # from torchmetrics.regression import SpearmanCorrCoef
 from tqdm import tqdm
 
@@ -40,6 +39,7 @@ class GraphSAGE(torch.nn.Module):
         embedding_size,
         out_channels,
         num_layers,
+        lin_layers,
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -52,8 +52,9 @@ class GraphSAGE(torch.nn.Module):
             self.convs.append(SAGEConv(embedding_size, embedding_size, aggr="sum"))
             self.batch_norms.append(BatchNorm(embedding_size))
 
-        self.lin1 = nn.Linear(embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, out_channels)
+        self.lin1 = nn.Linear(embedding_size, out_channels)
+        # self.lin1 = nn.Linear(embedding_size, embedding_size)
+        # self.lin2 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
@@ -61,9 +62,9 @@ class GraphSAGE(torch.nn.Module):
 
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin1(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
-        x = self.lin2(x)
+        # x = F.relu(x)
+        # x = F.dropout(x, p=0.2, training=self.training)
+        # x = self.lin2(x)
         return x
 
 
