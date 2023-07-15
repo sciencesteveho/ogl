@@ -22,7 +22,9 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error
 
 
-def _tpm_all_tissue_median(expression_gct: str) -> np.ndarray:
+def _tpm_all_tissue_median(
+    expression_gct: str,
+) -> np.ndarray:
     """Get the average (not median!) expression for each gene in GTEx across all
     samples. Formally, the average activity is the summed expression at each
     gene across all samples, divided by the total number of samples.
@@ -54,15 +56,15 @@ def _avg_activity_baseline_predictions(labels, s):
     return [s["all_tissues"][label.split("_")[0]] for label in labels]
 
 
-def _nonzero_tpms(tpms: List(List(float))) -> np.ndarray:
-    """_summary_
+# def _nonzero_tpms(tpms: List(List(float))) -> np.ndarray:
+#     """_summary_
 
-    Args:
-        expression_gct (str): _description_
+#     Args:
+#         expression_gct (str): _description_
 
-    Returns:
-        np.ndarray: _description_
-    """
+#     Returns:
+#         np.ndarray: _description_
+#     """
 
 
 def main(
@@ -81,7 +83,7 @@ def main(
     s = y_pred.to_dict()
 
     with open(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/training_targets.pkl",
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/training_targets_exp.pkl",
         "rb",
     ) as f:
         targets = pickle.load(f)

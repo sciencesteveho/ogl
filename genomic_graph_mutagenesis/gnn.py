@@ -315,13 +315,11 @@ def main() -> None:
     args = parser.parse_args()
 
     # make directories and set up training logs
-    now = datetime.now()
-    dt = now.strftime("%d/%m/%Y_%H:%M:%S")
 
     if args.idx:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{dt}_idx"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_idx"
     else:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{dt}"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}"
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
