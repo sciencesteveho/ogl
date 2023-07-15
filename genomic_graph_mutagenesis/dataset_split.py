@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Tuple
 from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 from utils import filter_target_split
 from utils import parse_yaml
@@ -429,6 +430,10 @@ def main(
     # save targets
     with open("graphs/training_targets.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
+
+    # store targets from trainset to make standardscaler
+    medians = [parsed_targets["train"][target][0] for target in parsed_targets["train"]]
+    change = [parsed_targets["train"][target][1] for target in parsed_targets["train"]]
 
 
 if __name__ == "__main__":

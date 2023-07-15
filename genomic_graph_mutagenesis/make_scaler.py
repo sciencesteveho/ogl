@@ -12,6 +12,7 @@ import pickle
 import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 from dataset_split import _chr_split_train_test_val
 from dataset_split import _genes_from_gff
@@ -47,7 +48,8 @@ def main(
     )
     exclude = split["validation"] + split["test"]
 
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
+    scaler = StandardScaler()
     with open(f"{graph_dir}/all_tissue_full_graph_idxs.pkl", "rb") as file:
         idxs = pickle.load(file)
     with open(f"{graph_dir}/all_tissue_full_graph.pkl", "rb") as f:
