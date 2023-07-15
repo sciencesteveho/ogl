@@ -90,6 +90,7 @@ class LocalContextParser:
                 genes=genes,
                 gene_windows=gene_windows,
                 base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
+                gct=f"{self.shared_dir}/{params['interaction']['gct']}",
             )
 
         # prepare references
@@ -107,12 +108,13 @@ class LocalContextParser:
         genes: str,
         gene_windows: str,
         base_nodes: str,
+        gct: str,
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes = _tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
-            tpm_file=self.resources["tpm"],
+            tpm_file=gct,
             chromfile=self.chromfile,
             slop=False,
         )

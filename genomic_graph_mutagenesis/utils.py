@@ -332,8 +332,9 @@ def _filter_low_tpm(
 @time_decorator(print_args=True)
 def _filter_low_tpm_across_tissues(
     file: str,
+    tissue: str,
     return_list: False,
-    tpm: int = 1,
+    tpm: int = 0.5,
     tissues: List[str] = [
         "Brain - Hippocampus",
         "Breast - Mammary Tissue",
@@ -352,7 +353,12 @@ def _filter_low_tpm_across_tissues(
     """
     df = parse(file).data_df
     df = df[tissues]
-    return list(df.loc[df[df >= tpm].any(axis=1)].index)
+    if return_list == False:
+        return [
+            f"{gene}_{tissue}" for gene in list(df.loc[df[df >= tpm].any(axis=1)].index)
+        ]
+    else:
+        return [gene for gene in list(df.loc[df[df >= tpm].any(axis=1)].index)]
 
 
 @time_decorator(print_args=True)
@@ -372,7 +378,7 @@ def _tpm_filter_gene_windows(
     Returns:
         pybedtools object with +/- <window> windows around that gene
     """
-    tpm_filtered_genes = _filter_low_tpm(
+    tpm_filtered_genes = _filter_low_tpm_across_tissues(
         tissue,
         tpm_file,
         return_list=True,
