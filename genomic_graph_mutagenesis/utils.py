@@ -321,8 +321,8 @@ def _filter_low_tpm(
     """
     df = pd.read_table(file, index_col=0, header=[2])
     sample_n = len(df.columns)
-    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-    df["result"] = df["total"] >= (0.10 * sample_n)
+    df["total"] = df.select_dtypes(np.number).ge(0.5).sum(axis=1)
+    df["result"] = df["total"] >= (0.20 * sample_n)
     if return_list == False:
         return [f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)]
     else:
