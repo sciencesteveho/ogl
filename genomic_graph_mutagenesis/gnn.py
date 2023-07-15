@@ -11,6 +11,7 @@ import argparse
 import logging
 import math
 import pickle
+import random
 
 import torch
 import torch.nn as nn
@@ -468,7 +469,7 @@ def main() -> None:
                 stop_counter = 0
                 best_validation = val_acc
                 torch.save(
-                    model,
+                    model.state_dict(),
                     f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
                 )
             if best_validation < val_acc:
@@ -484,7 +485,7 @@ def main() -> None:
             break
 
     torch.save(
-        model,
+        model.state_dict(),
         f"models/{savestr}/{savestr}_mse_{best_validation}.pt",
     )
 
@@ -506,7 +507,7 @@ def main() -> None:
         )
 
         data = data.to(device)
-        for index in ids:
+        for index in random.sample(ids, 5):
             explanation = explainer(data.x, data.edge_index, index=index)
 
             print(f"Generated explanations in {explanation.available_explanations}")

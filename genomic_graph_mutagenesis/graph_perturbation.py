@@ -26,7 +26,7 @@ import torch.nn.functional as F
 from torch_geometric.loader import RandomNodeLoader
 from tqdm import tqdm
 
-from gnn import GAT
+from gnn import GATv2
 from gnn import GCN
 from gnn import GraphSAGE
 from graph_to_pytorch import graph_to_pytorch
@@ -125,6 +125,17 @@ def main(
             num_workers=5,
         )
 
+    # only using to check size for model init
+    # data = graph_to_pytorch(
+    #     root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+    #     graph_type="full",
+    # )
+    # data.x.shape[1]  # 41
+
+    # prepare stuff
+    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
+    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
+
     # check for device
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
@@ -159,13 +170,14 @@ def main(
 
     # initialize model model
     model = GraphSAGE(
-        in_size=data.x.shape[1],
-        embedding_size=300,
-        out_channels=4,
-        layers=2,
+        in_size=41,
+        embedding_size=250,
+        out_channels=2,
+        num_layers=2,
     ).to(device)
 
     # load checkpoint
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/models/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_mse_0.8027814122733354.pt"
     checkpoint = torch.load(checkpoint_file, map_location=map_location)
     model.load_state_dict(checkpoint["model_state_dict"], strict=False)
     model.to(device)
@@ -265,10 +277,6 @@ if __name__ == "__main__":
     #     graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl",
     #     graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
     # )
-
-model = "/ocean/projects/bio210019p/shared/model_checkpoint.pt"
-graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
-graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
 
 # pos_idxs, neg_idxs = {}, {}
 # for tissue in TISSUES:

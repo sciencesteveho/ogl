@@ -349,7 +349,7 @@ def _filter_low_tpm_across_tissues(
 ) -> List[str]:
     """
     Filter genes according to the following criteria: (B) Only keep genes that
-    express >= 2TPM in one of the samples in our tissues
+    express >= TPM in one of the samples in our tissues
     """
     df = parse(file).data_df
     df = df[tissues]
