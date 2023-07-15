@@ -58,7 +58,7 @@ class GraphSAGE(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.3, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -91,7 +91,7 @@ class GCN(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.3, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -125,7 +125,7 @@ class GATv2(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.3, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
         x = self.lin2(x)
@@ -217,7 +217,7 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    mse, outs, labels = []
+    mse = []
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
