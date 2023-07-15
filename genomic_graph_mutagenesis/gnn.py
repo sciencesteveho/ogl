@@ -41,7 +41,6 @@ class GraphSAGE(torch.nn.Module):
         embedding_size,
         out_channels,
         num_layers,
-        lin_layers,
     ):
         super().__init__()
         self.num_layers = num_layers

@@ -24,6 +24,7 @@ from sklearn.metrics import mean_squared_error
 
 def _tpm_all_tissue_median(
     expression_gct: str,
+    tissue: bool = False,
 ) -> np.ndarray:
     """Get the average (not median!) expression for each gene in GTEx across all
     samples. Formally, the average activity is the summed expression at each
@@ -35,11 +36,19 @@ def _tpm_all_tissue_median(
     Returns:
         np.ndarray: array with average activity for each gene
     """
-    df = parse(expression_gct).data_df
-    sample_count = df.astype(bool).sum(axis=1)
-    summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
-    summed_activity.to_pickle("baseline_activitiy_gtex_expression.pkl")
-    return summed_activity.div(sample_count, axis=0).fillna(0).values
+    if not tissue:
+        df = parse(expression_gct).data_df
+        sample_count = df.astype(bool).sum(axis=1)
+        summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
+        summed_activity.to_pickle("baseline_activitiy_gtex_expression.pkl")
+        return summed_activity.div(sample_count, axis=0).fillna(0).values
+    else:
+        df = parse(expression_gct).data_df
+        sample_count = df.astype(bool).sum(axis=1)
+        summed_activity = pd.Series(df.sum(axis=1), name="all_samples").to_frame()
+        summed_activity["average"] = (
+            summed_activity.div(sample_count, axis=0).fillna(0).values
+        )
 
 
 def _get_targets(
@@ -73,11 +82,11 @@ def main(
     """Main function"""
     # get predictions as the average tpm for that gene across all tissues
     average_activity = _tpm_all_tissue_median(expression_gct)
-    # with open('average_activity_before_transform.pkl', 'wb') as f:
-    #     pickle.dump(average_activity, f)
+    with open("average_activity_before_transform.pkl", "wb") as f:
+        pickle.dump(average_activity, f)
 
-    with open("baseline_activity_gtex_expression.pkl", "rb") as f:
-        average_activity = pickle.load(f)
+    # with open("baseline_activity_gtex_expression.pkl", "rb") as f:
+    #     average_activity = pickle.load(f)
 
     y_pred = np.log2(average_activity + 0.25)  # add 0.01 to avoid log(0)
     s = y_pred.to_dict()
