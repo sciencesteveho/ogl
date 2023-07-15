@@ -165,16 +165,8 @@ def train(model, device, optimizer, train_loader, epoch):
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        # get indices to mask -1 values
-        indices = data.y[data.train_mask] != -1
-
-        # get correpsonding predictions and labels
-        masked_predictions = out[data.train_mask][indices]
-        masked_labels = data.y[data.train_mask][indices]
-
         # calculate loss
-        loss = torch.sqrt(F.mse_loss(masked_predictions, masked_labels))
-        # loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
+        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
 
@@ -201,25 +193,14 @@ def test(model, device, data_loader, epoch, mask):
         print(out)
         print(data.y)
 
-        # get indices to mask -1 values
+        # calculate loss
         if mask == "val":
             idx_mask = data.val_mask
         if mask == "test":
             idx_mask = data.test_mask
-        indices = data.y[idx_mask] != -1
-        masked_prediction = out[idx_mask][indices]
-        masked_labels = data.y[idx_mask][indices]
-
-        # calculate loss
-        mse.append(F.mse_loss(masked_prediction, masked_labels).cpu())
-
-        # if mask == "val":
-        #     idx_mask = data.val_mask
-        # if mask == "test":
-        #     idx_mask = data.test_mask
-        # mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
+        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
         loss = torch.stack(mse)
-        loss = loss[~torch.isnan(loss)]
+
         pbar.update(1)
 
     pbar.close()
@@ -373,20 +354,20 @@ def main() -> None:
         if args.idx:
             train_loader = NeighborLoader(
                 data,
-                num_neighbors=[25, 20, 15],
+                num_neighbors=[15, 10, 5, 5],
                 batch_size=args.batch,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
-                num_neighbors=[25, 20, 15],
+                num_neighbors=[15, 10, 5, 5],
                 batch_size=args.batch,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
-                num_neighbors=[25, 20, 15],
+                num_neighbors=[15, 10, 5, 5],
                 batch_size=args.batch,
                 input_nodes=data.val_mask,
             )
@@ -396,21 +377,21 @@ def main() -> None:
         model = GraphSAGE(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=4,
+            out_channels=2,
             num_layers=args.layers,
         ).to(device)
     if args.model == "GCN":
         model = GCN(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=4,
+            out_channels=2,
             num_layers=args.layers,
         ).to(device)
     if args.model == "GAT":
         model = GATv2(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=4,
+            out_channels=2,
             num_layers=args.layers,
             heads=2,
         ).to(device)
@@ -418,7 +399,7 @@ def main() -> None:
         model = MLP(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=4,
+            out_channels=2,
         ).to(device)
 
     # set gradient descent optimizer

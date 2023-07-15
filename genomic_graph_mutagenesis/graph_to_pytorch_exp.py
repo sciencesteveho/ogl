@@ -204,7 +204,7 @@ def graph_to_pytorch(
         if target in graph_index:
             remapped[graph_index[target]] = target_values[target]
 
-    for idx in [0, 1, 2, 3]:
+    for idx in [0, 1]:
         for key, value in remapped.items():
             if idx == 0:
                 first[key] = value[idx]

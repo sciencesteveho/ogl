@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ]
-#
+# - [ ] NEEDS MAJOR CLEANING!!!
+# - [ ] Target dict is super redundant, clean it up so it doesn't hold so many
+#   copies of the same data
 
 """Get train / test / val splits for nodes in graphs and generate targets for
 training the network.
@@ -15,11 +16,11 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
+import joblib
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
-from utils import filter_target_split
 from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
@@ -427,13 +428,42 @@ def main(
             for gene in flattened_targets[key].keys()
             if gene in genes
         }
+
     # save targets
     with open("graphs/training_targets.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
 
+    # scale targets
+    with open("graphs/training_targets.pkl", "rb") as output:
+        parsed_targets = pickle.load(output)
+
     # store targets from trainset to make standardscaler
     medians = [parsed_targets["train"][target][0] for target in parsed_targets["train"]]
     change = [parsed_targets["train"][target][1] for target in parsed_targets["train"]]
+
+    scaler_medians, scaler_change = StandardScaler(), StandardScaler()
+    scaler_medians.fit(np.array(medians).reshape(-1, 1))
+    scaler_change.fit(np.array(change).reshape(-1, 1))
+
+    test = scaler_medians.transform(np.array(medians).reshape(-1, 1))
+
+    # scale targets
+    for split in parsed_targets:
+        for target in parsed_targets[split]:
+            parsed_targets[split][target][0] = scaler_medians.transform(
+                np.array(parsed_targets[split][target][0]).reshape(-1, 1)
+            )
+            parsed_targets[split][target][1] = scaler_change.transform(
+                np.array(parsed_targets[split][target][1]).reshape(-1, 1)
+            )
+
+    for split in parsed_targets:
+        for target in parsed_targets[split]:
+            parsed_targets[split][target] = parsed_targets[split][target][0:2]
+
+    # save targets
+    with open("graphs/training_targets_scaled.pkl", "wb") as output:
+        pickle.dump(parsed_targets, output)
 
 
 if __name__ == "__main__":
