@@ -97,9 +97,9 @@ def main(
     ) as f:
         targets = pickle.load(f)
 
+    train_labels, train_true = _get_targets("train", targets)
     test_labels, test_true = _get_targets("test", targets)
     val_labels, val_true = _get_targets("validation", targets)
-    train_labels, train_true = _get_targets("train", targets)
 
     train_preds = _avg_activity_baseline_predictions(train_labels, s)
     test_preds = _avg_activity_baseline_predictions(test_labels, s)
