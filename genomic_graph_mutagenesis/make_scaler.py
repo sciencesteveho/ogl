@@ -15,10 +15,6 @@ from sklearn.preprocessing import MinMaxScaler
 
 from dataset_split import _chr_split_train_test_val
 from dataset_split import _genes_from_gff
-from utils import TISSUES
-
-# root_dir='/ocean/projects/bio210019p/stevesho/data/preprocess'
-# genes = gene_list_from_graphs(root_dir=root_dir, tissue=args.tissue)
 
 
 def main(
@@ -52,18 +48,17 @@ def main(
     exclude = split["validation"] + split["test"]
 
     scaler = MinMaxScaler()
-    for tissue in TISSUES:
-        with open(f"{graph_dir}/{tissue}/{tissue}_gene_idxs.pkl", "rb") as file:
-            idxs = pickle.load(file)
-        with open(f"{graph_dir}/{tissue}/{tissue}_full_graph.pkl", "rb") as f:
-            g = pickle.load(f)
-        skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
-        node_feat = g["node_feat"]
-        for idx in skip_idxs:
-            node_feat = np.delete(
-                node_feat, idx, axis=0
-            )  # do not use test or val idxs for fitting scaler
-        scaler.partial_fit(node_feat[:, args.feat].reshape(-1, 1))
+    with open(f"{graph_dir}/all_tissue_full_graph_idxs.pkl", "rb") as file:
+        idxs = pickle.load(file)
+    with open(f"{graph_dir}/all_tissue_full_graph.pkl", "rb") as f:
+        g = pickle.load(f)
+    skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
+    node_feat = g["node_feat"]
+    for idx in skip_idxs:
+        node_feat = np.delete(
+            node_feat, idx, axis=0
+        )  # do not use test or val idxs for fitting scaler
+    scaler.fit(node_feat[:, args.feat].reshape(-1, 1))
 
     ### save
     joblib.dump(scaler, f"{output_dir}/feat_{args.feat}_scaler.pt")
