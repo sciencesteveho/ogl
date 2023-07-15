@@ -47,9 +47,9 @@ class GraphSAGE(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         self.batch_norms = torch.nn.ModuleList()
 
-        self.convs.append(SAGEConv(in_size, embedding_size))
+        self.convs.append(SAGEConv(in_size, embedding_size, aggr="sum"))
         for _ in range(num_layers - 1):
-            self.convs.append(SAGEConv(embedding_size, embedding_size))
+            self.convs.append(SAGEConv(embedding_size, embedding_size, aggr="sum"))
             self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
