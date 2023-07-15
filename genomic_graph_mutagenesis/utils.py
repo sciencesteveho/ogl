@@ -13,6 +13,7 @@ import random
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from cmapPy.pandasGEXpress.parse_gct import parse
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -314,15 +315,44 @@ def _filter_low_tpm(
     file: str,
     return_list: False,
 ) -> List[str]:
-    """Remove genes expressing less than 1 TPM across 20% of samples"""
+    """
+    Filter genes according to the following criteria: (A) Only keep genes
+    expressing >= 1 TPM across 20% of samples in that tissue
+    """
     df = pd.read_table(file, index_col=0, header=[2])
     sample_n = len(df.columns)
     df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-    df["result"] = df["total"] >= (0.20 * sample_n)
+    df["result"] = df["total"] >= (0.10 * sample_n)
     if return_list == False:
         return [f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)]
     else:
         return list(df.loc[df["result"] == True].index)
+
+
+@time_decorator(print_args=True)
+def _filter_low_tpm_across_tissues(
+    file: str,
+    return_list: False,
+    tpm: int = 1,
+    tissues: List[str] = [
+        "Brain - Hippocampus",
+        "Breast - Mammary Tissue",
+        "Heart - Left Ventricle",
+        "Liver",
+        "Lung",
+        "Pancreas",
+        "Muscle - Skeletal",
+        "Skin - Not Sun Exposed (Suprapubic)",
+        "Small Intestine - Terminal Ileum",
+    ],
+) -> List[str]:
+    """
+    Filter genes according to the following criteria: (B) Only keep genes that
+    express >= 2TPM in one of the samples in our tissues
+    """
+    df = parse(file).data_df
+    df = df[tissues]
+    return list(df.loc[df[df >= tpm].any(axis=1)].index)
 
 
 @time_decorator(print_args=True)
