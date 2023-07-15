@@ -13,6 +13,7 @@ distribution of expression activity across all tissues in GTEx. The second is
 based on the average activity of that specific gene across all samples adapted
 from Schrieber et al., Genome Biology, 2020."""
 
+import os
 import pickle
 from typing import List, Tuple
 
@@ -25,7 +26,7 @@ from sklearn.metrics import mean_squared_error
 def _tpm_all_tissue_median(
     expression_gct: str,
     tissue: bool = False,
-) -> np.ndarray:
+) -> pd.DataFrame:
     """Get the average (not median!) expression for each gene in GTEx across all
     samples. Formally, the average activity is the summed expression at each
     gene across all samples, divided by the total number of samples.
@@ -40,15 +41,18 @@ def _tpm_all_tissue_median(
         df = parse(expression_gct).data_df
         sample_count = df.astype(bool).sum(axis=1)
         summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
-        summed_activity.to_pickle("baseline_activitiy_gtex_expression.pkl")
-        return summed_activity.div(sample_count, axis=0).fillna(0).values
-    else:
-        df = parse(expression_gct).data_df
-        sample_count = df.astype(bool).sum(axis=1)
-        summed_activity = pd.Series(df.sum(axis=1), name="all_samples").to_frame()
         summed_activity["average"] = (
             summed_activity.div(sample_count, axis=0).fillna(0).values
         )
+        summed_activity.to_pickle("average_activity_df.pkl")
+        return summed_activity["average"]
+
+
+def _tpm_dataset_tissue_median(
+    tpm_dir: str,
+) -> pd.DataFrame:
+    for file in os.listdir(tpm_dir):
+        df = pd.read_table(file, index_col=0, header=[2])
 
 
 def _get_targets(
@@ -62,7 +66,7 @@ def _get_targets(
 
 
 def _avg_activity_baseline_predictions(labels, s):
-    return [s["all_tissues"][label.split("_")[0]] for label in labels]
+    return [s[label.split("_")[0]] for label in labels]
 
 
 # def _nonzero_tpms(tpms: List(List(float))) -> np.ndarray:
@@ -112,6 +116,12 @@ def main(
     print(f"Train error: {train_error}")
     print(f"Test error: {test_error}")
     print(f"Validation error: {val_error}")
+
+    with open("all_tissue_baseline_test_preds.pkl", "wb") as f:
+        pickle.dump(test_preds, f)
+
+    with open("all_tissue_baseline_test_labels.pkl", "wb") as f:
+        pickle.dump(test_true, f)
 
 
 if __name__ == "__main__":

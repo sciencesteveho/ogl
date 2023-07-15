@@ -54,8 +54,9 @@ class GraphSAGE(torch.nn.Module):
             self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, embedding_size)
-        self.lin3 = nn.Linear(embedding_size, out_channels)
+        self.lin2 = nn.Linear(embedding_size, out_channels)
+        # self.lin2 = nn.Linear(embedding_size, embedding_size)
+        # self.lin3 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
@@ -64,11 +65,10 @@ class GraphSAGE(torch.nn.Module):
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin2(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
-        x = self.lin3(x)
+        # x = F.relu(x)
+        # x = F.dropout(x, p=0.2, training=self.training)
+        # x = self.lin3(x)
         return x
 
 
@@ -484,8 +484,8 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
 
-        # print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        # logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         # if stop_counter == 10:
         #     print("***********Early stopping!")
         #     break
