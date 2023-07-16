@@ -150,7 +150,7 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/training_targets_scaled.pkl"
+    targets = f"{graph_dir}/training_targets_exp.pkl"
 
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
@@ -205,8 +205,8 @@ def graph_to_pytorch(
 
     # get individual if querying for single gene
     if single_gene:
-        gene_idx = torch.tensor([graph_index[single_gene]], dtype=torch.long)
-        gene_mask = torch.zeroes(data.num_nodes, dtype=torch.bool)
+        gene_idx = torch.tensor([single_gene], dtype=torch.long)
+        gene_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
         gene_mask[gene_idx] = True
 
     # set up pytorch geometric Data object
