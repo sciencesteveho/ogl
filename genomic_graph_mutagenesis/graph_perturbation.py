@@ -35,6 +35,10 @@ from graph_to_pytorch import graph_to_pytorch
 from utils import TISSUES
 
 
+def _tensor_out_to_array(tensor, idx):
+    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+
+
 def _get_idxs_for_coessential_pairs(
     coessential_pos: str,
     coessential_neg: str,
@@ -66,13 +70,13 @@ def _get_idxs_for_coessential_pairs(
     pos_coessn_idxs = {key: [] for key in pos_keys}  # init dict
     for tissue in TISSUES:
         for tup in pos_pairs:
-            if graph_idxs[f"{tup[1]}_{tissue}"] < graph_idxs[f"{tup[0]}_{tissue}"]:
-                try:
+            try:
+                if graph_idxs[f"{tup[1]}_{tissue}"] < graph_idxs[f"{tup[0]}_{tissue}"]:
                     pos_coessn_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
                         graph_idxs[f"{tup[1]}_{tissue}"]
                     )
-                except KeyError:
-                    pass
+            except KeyError:
+                pass
     return pos_coessn_idxs
 
 
@@ -190,11 +194,8 @@ def main(
         graph_idxs=graph_idxs,
     )
 
-    test_genes = random.sample(list(coessential_idxs.keys()), 100)
-    test_random = random.sample(list(random_co_idxs.keys()), 100)
-
-    def _tensor_out_to_array(tensor, idx):
-        return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+    test_genes = random.sample(list(coessential_idxs.keys()), 10)
+    test_random = random.sample(list(random_co_idxs.keys()), 10)
 
     if need_baseline:
         # get baseline expression
@@ -243,7 +244,7 @@ def main(
             data=perturbed_data,
             num_neighbors=[5, 5, 5, 5, 5, 3],
             batch_size=1024,
-            input_nodes=baseline_data.test_mask,
+            input_nodes=perturbed_data.test_mask,
         )
         rmse, outs, labels = test(
             model=model,
@@ -260,15 +261,21 @@ def main(
             graph_type="full",
             node_perturbation="h3k4me3",
         )
-        loader = _perturb_loader(perturbed_data)
-        inference = test(
+        loader = NeighborLoader(
+            data=perturbed_data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=1024,
+            input_nodes=perturbed_data.test_mask,
+        )
+        rmse, outs, labels = test(
             model=model,
             device=device,
             data_loader=loader,
             epoch=0,
         )
-        with open("h3k4me1_expression.pkl", "wb") as f:
-            pickle.dump(inference, f)
+        h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
+        with open("h3k4me3_perturbed_expression.pkl", "wb") as f:
+            pickle.dump(h3k4me3_perturbed, f)
 
     # coessentiality
     # get baseline expression
@@ -281,8 +288,13 @@ def main(
                 graph_type="full",
                 single_gene=gene,
             )
-            loader = _perturb_loader(baseline_data)
-            baseline = test(
+            loader = NeighborLoader(
+                data=baseline_data,
+                num_neighbors=[5, 5, 5, 5, 5, 3],
+                batch_size=1024,
+                input_nodes=baseline_data.test_mask,
+            )
+            mse, outs, labels = test(
                 model=model,
                 device=device,
                 data_loader=loader,
