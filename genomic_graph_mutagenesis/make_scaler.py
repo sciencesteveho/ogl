@@ -67,10 +67,9 @@ def main(
         g = pickle.load(f)
     skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
     node_feat = g["node_feat"]
-    for idx in skip_idxs:
-        node_feat = np.delete(
-            node_feat, idx, axis=0
-        )  # do not use test or val idxs for fitting scaler
+    node_feat = np.delete(
+        node_feat, skip_idxs, axis=0
+    )  # do not use test or val idxs for fitting scaler
     scaler.fit(node_feat[:, args.feat].reshape(-1, 1))
 
     ### save
