@@ -392,21 +392,21 @@ def main() -> None:
         model = GraphSAGE(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=2,
+            out_channels=1,
             num_layers=args.layers,
         ).to(device)
     if args.model == "GCN":
         model = GCN(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=2,
+            out_channels=1,
             num_layers=args.layers,
         ).to(device)
     if args.model == "GAT":
         model = GATv2(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=2,
+            out_channels=1,
             num_layers=args.layers,
             heads=2,
         ).to(device)
@@ -414,7 +414,7 @@ def main() -> None:
         model = MLP(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
-            out_channels=2,
+            out_channels=1,
         ).to(device)
 
     # set gradient descent optimizer
