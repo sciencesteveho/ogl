@@ -262,8 +262,7 @@ def graph_to_pytorch(
         for idx in [0]:
             for key, values in remapped.items():
                 first[key] = values
-        # y = first.view(1, -1)
-        y = first
+        y = first.view(1, -1)
     else:
         first, second = (
             _get_masked_tensor(data.num_nodes),
