@@ -316,9 +316,9 @@ def main() -> None:
     # make directories and set up training logs
 
     if args.idx:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_targetnoscale_idx"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
     else:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}"
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
