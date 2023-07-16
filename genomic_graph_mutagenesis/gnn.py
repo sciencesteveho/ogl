@@ -329,16 +329,11 @@ def main() -> None:
     args = parser.parse_args()
 
     # make directories and set up training logs
-
-    if args.idx:
-        if args.zero_node == True:
-            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_zeronode"
-        elif args.random_node == True:
-            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
-        else:
-            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+    if args.random_node == True:
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
     else:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}"
+        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
