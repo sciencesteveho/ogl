@@ -319,7 +319,7 @@ def main() -> None:
     parser.add_argument(
         "--random_node",
         type=bool,
-        default="False",
+        default="True",
     )
     parser.add_argument(
         "--early_stop",
@@ -331,9 +331,9 @@ def main() -> None:
     # make directories and set up training logs
 
     if args.idx:
-        if args.zero_node:
+        if args.zero_node == True:
             savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_zeronode"
-        elif args.random_node:
+        elif args.random_node == True:
             savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
         else:
             savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
