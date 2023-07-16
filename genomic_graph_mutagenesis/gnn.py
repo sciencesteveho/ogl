@@ -337,6 +337,7 @@ def main() -> None:
     data = graph_to_pytorch(
         root_dir=args.root,
         graph_type=args.graph_type,
+        only_expression_no_fold=True,
     )
 
     # data loaders

@@ -135,6 +135,7 @@ def graph_to_pytorch(
     node_perturbation: str = None,
     node_remove_edges: str = None,
     protein_targets: bool = False,
+    only_expression_no_fold: bool = False,
     single_gene: str = None,
 ):
     """_summary_
@@ -256,6 +257,12 @@ def graph_to_pytorch(
                 ),
                 dim=0,
             )
+    elif only_expression_no_fold:
+        first = _get_masked_tensor(data.num_nodes)
+        for idx in [0]:
+            for key, values in remapped.items():
+                first[key] = values[idx]
+        y = first.view(1, -1)
     else:
         first, second = (
             _get_masked_tensor(data.num_nodes),
