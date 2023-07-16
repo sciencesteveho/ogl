@@ -51,8 +51,13 @@ def _tpm_all_tissue_median(
 def _tpm_dataset_tissue_median(
     tpm_dir: str,
 ) -> pd.DataFrame:
-    for file in os.listdir(tpm_dir):
-        df = pd.read_table(file, index_col=0, header=[2])
+    dfs = [pd.read_table(file, index_col=0, header=[2]) for file in os.listdir(tpm_dir)]
+    df = pd.concat(dfs, axis=1)
+    samples = len(df.columns)
+    summed = df.sum(axis=1).to_frame()
+    summed["average"] = summed.div(samples)
+    summed.to_pickle("average_activity_tissues_df.pkl")
+    return summed["average"]
 
 
 def _get_targets(
@@ -92,8 +97,14 @@ def main(
     # with open("average_activity_before_transform.pkl", "rb") as f:
     #     average_activity = pickle.load(f)
 
-    y_pred = np.log2(average_activity + 0.25)  # add 0.01 to avoid log(0)
-    s = y_pred.to_dict()
+    tissue_average = _tpm_dataset_tissue_median(
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline"
+    )
+    tissue_pred = np.log2(tissue_average + 0.25)  # add 0.01 to avoid log(0)
+    tissue_pred_dict = tissue_pred.to_dict()
+
+    # y_pred = np.log2(average_activity + 0.25)  # add 0.01 to avoid log(0)
+    # s = y_pred.to_dict()
 
     with open(
         "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/training_targets.pkl",
@@ -105,23 +116,44 @@ def main(
     test_labels, test_true = _get_targets("test", targets)
     val_labels, val_true = _get_targets("validation", targets)
 
-    train_preds = _avg_activity_baseline_predictions(train_labels, s)
-    test_preds = _avg_activity_baseline_predictions(test_labels, s)
-    val_preds = _avg_activity_baseline_predictions(val_labels, s)
+    # train_preds = _avg_activity_baseline_predictions(train_labels, s)
+    # test_preds = _avg_activity_baseline_predictions(test_labels, s)
+    # val_preds = _avg_activity_baseline_predictions(val_labels, s)
 
-    train_error = mean_squared_error(train_true, train_preds, squared=False)
-    test_error = mean_squared_error(test_true, test_preds, squared=False)
-    val_error = mean_squared_error(val_true, val_preds, squared=False)
+    tissue_train_preds = _avg_activity_baseline_predictions(
+        train_labels, tissue_pred_dict
+    )
+    tissue_test_preds = _avg_activity_baseline_predictions(
+        test_labels, tissue_pred_dict
+    )
+    tissue_val_preds = _avg_activity_baseline_predictions(val_labels, tissue_pred_dict)
 
-    print(f"Train error: {train_error}")
-    print(f"Test error: {test_error}")
-    print(f"Validation error: {val_error}")
+    # train_error = mean_squared_error(train_true, train_preds, squared=False)
+    # test_error = mean_squared_error(test_true, test_preds, squared=False)
+    # val_error = mean_squared_error(val_true, val_preds, squared=False)
 
-    with open("all_tissue_baseline_test_preds.pkl", "wb") as f:
-        pickle.dump(test_preds, f)
+    tissue_train_error = mean_squared_error(
+        train_true, tissue_train_preds, squared=False
+    )
+    test_train_error = mean_squared_error(test_true, tissue_test_preds, squared=False)
+    val_train_error = mean_squared_error(val_true, tissue_val_preds, squared=False)
+
+    # print(f"Train error: {train_error}")
+    # print(f"Test error: {test_error}")
+    # print(f"Validation error: {val_error}")
+
+    print(f"Tissue train error: {tissue_train_error}")
+    print(f"Tissue test error: {test_train_error}")
+    print(f"Tissue validation error: {val_train_error}")
+
+    # with open("all_tissue_baseline_test_preds.pkl", "wb") as f:
+    #     pickle.dump(test_preds, f)
 
     with open("all_tissue_baseline_test_labels.pkl", "wb") as f:
         pickle.dump(test_true, f)
+
+    with open("dataset_tissue_baseline_test_preds.pkl", "wb") as f:
+        pickle.dump(tissue_test_preds, f)
 
 
 if __name__ == "__main__":

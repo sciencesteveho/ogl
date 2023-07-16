@@ -15,6 +15,7 @@
 """_summary_ of project"""
 
 import csv
+import math
 import os
 import pickle
 import random
@@ -23,7 +24,7 @@ from typing import Dict, List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.loader import RandomNodeLoader
+from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from gnn import GATv2
@@ -98,13 +99,22 @@ def test(model, device, data_loader, epoch):
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    mse = []
+    mse, outs, labels = [], [], []
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
+        # calculate loss
+        outs.extend(out[data.test_mask])
+        labels.extend(data.y[data.test_mask])
+        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
     pbar.close()
-    return out
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
 
 
 def main(
@@ -118,12 +128,21 @@ def main(
     """Main function"""
 
     def _perturb_loader(data):
-        return RandomNodeLoader(
-            data=data,
-            num_parts=250,
-            shuffle=False,
-            num_workers=5,
+        test_loader = NeighborLoader(
+            data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=1024,
+            input_nodes=data.test_mask,
         )
+
+    # check for device
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
+        device = torch.device("cuda:" + str(0))
+        map_location = torch.device("cuda:" + str(0))
+    else:
+        device = torch.device("cpu")
+        map_location = torch.device("cpu")
 
     # only using to check size for model init
     # data = graph_to_pytorch(
@@ -136,15 +155,6 @@ def main(
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
     graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
 
-    # check for device
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
-        device = torch.device("cuda:" + str(0))
-        map_location = torch.device("cuda:" + str(0))
-    else:
-        device = torch.device("cpu")
-        map_location = torch.device("cpu")
-
     # open graph
     with open(graph, "rb") as file:
         graph = pickle.load(file)
@@ -152,6 +162,20 @@ def main(
     # open idxs
     with open(graph_idxs, "rb") as file:
         graph_idxs = pickle.load(file)
+
+    # initialize model model
+    model = GraphSAGE(
+        in_size=41,
+        embedding_size=250,
+        out_channels=2,
+        num_layers=2,
+    ).to(device)
+
+    # load checkpoint
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_early_epoch_52_mse_0.8029395813403142.pt"
+    checkpoint = torch.load(checkpoint_file, map_location=map_location)
+    model.load_state_dict(checkpoint, strict=False)
+    model.to(device)
 
     # prepare IDXs for different perturbations
     coessential_idxs = _get_idxs_for_coessential_pairs(
@@ -168,19 +192,8 @@ def main(
     test_genes = random.sample(list(coessential_idxs.keys()), 100)
     test_random = random.sample(list(random_co_idxs.keys()), 100)
 
-    # initialize model model
-    model = GraphSAGE(
-        in_size=41,
-        embedding_size=250,
-        out_channels=2,
-        num_layers=2,
-    ).to(device)
-
-    # load checkpoint
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/models/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_mse_0.8027814122733354.pt"
-    checkpoint = torch.load(checkpoint_file, map_location=map_location)
-    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
-    model.to(device)
+    def _tensor_to_numpy(tensor):
+        return tensor.cpu().detach().numpy()
 
     if need_baseline:
         # get baseline expression
@@ -188,15 +201,23 @@ def main(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
             graph_type="full",
         )
-        loader = _perturb_loader(baseline_data)
-        inference = test(
+        loader = NeighborLoader(
+            data=baseline_data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=1024,
+            input_nodes=baseline_data.test_mask,
+        )
+        rmse, outs, labels = test(
             model=model,
             device=device,
             data_loader=loader,
             epoch=0,
         )
-        with open("baseline_expression.pkl", "wb") as f:
-            pickle.dump(inference, f)
+        with open("baseline_expression_pred.pkl", "wb") as f:
+            pickle.dump(outs, f)
+
+        with open("baseline_expression_labels.pkl", "wb") as f:
+            pickle.dump(labels, f)
 
     # prepare feature perturbation data
     if feat_perturbation:
