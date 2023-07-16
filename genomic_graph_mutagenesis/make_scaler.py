@@ -35,7 +35,18 @@ def main(
         val_chrs (list, optional): Chrs to withold for the validation set_. Defaults to ["chr7", "chr13"].
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--feat", type=int, required=True)
+    parser.add_argument(
+        "-f",
+        "--feat",
+        type=int,
+        required=True,
+    )
+    parser.add_argument(
+        "-g",
+        "--graph_type",
+        type=str,
+        required=True,
+    )
     args = parser.parse_args()
 
     genes = _genes_from_gff(gene_gtf)
@@ -48,11 +59,11 @@ def main(
     )
     exclude = split["validation"] + split["test"]
 
-    # scaler = MinMaxScaler()
-    scaler = StandardScaler()
-    with open(f"{graph_dir}/all_tissue_full_graph_idxs.pkl", "rb") as file:
+    scaler = MinMaxScaler()
+    # scaler = StandardScaler()
+    with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph_idxs.pkl", "rb") as file:
         idxs = pickle.load(file)
-    with open(f"{graph_dir}/all_tissue_full_graph.pkl", "rb") as f:
+    with open(f"{graph_dir}/all_tissue_{args.graph_type}_graph.pkl", "rb") as f:
         g = pickle.load(f)
     skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
     node_feat = g["node_feat"]
