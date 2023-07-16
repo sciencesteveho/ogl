@@ -137,6 +137,8 @@ def graph_to_pytorch(
     protein_targets: bool = False,
     only_expression_no_fold: bool = False,
     single_gene: str = None,
+    randomize_feats: bool = False,
+    zero_node_feats: bool = False,
 ):
     """_summary_
 
@@ -198,7 +200,12 @@ def graph_to_pytorch(
         graph_data["node_feat"][:, 14] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
     if not node_perturbation:
-        x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
+        if zero_node_feats:
+            x = torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
+        elif randomize_feats:
+            x = torch.rand(graph_data["node_feat"].shape, dtype=torch.float)
+        else:
+            x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
     graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)

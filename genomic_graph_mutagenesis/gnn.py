@@ -311,12 +311,32 @@ def main() -> None:
         type=str,
         default="full",
     )
+    parser.add_argument(
+        "--zero_node",
+        type=bool,
+        default="False",
+    )
+    parser.add_argument(
+        "--random_node",
+        type=bool,
+        default="False",
+    )
+    parser.add_argument(
+        "--early_stop",
+        type=bool,
+        default="True",
+    )
     args = parser.parse_args()
 
     # make directories and set up training logs
 
     if args.idx:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+        if args.zero_node:
+            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_zeronode"
+        elif args.random_node:
+            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
+        else:
+            savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
     else:
         savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}"
     logging.basicConfig(
@@ -334,11 +354,26 @@ def main() -> None:
         device = torch.device("cpu")
 
     # prepare data
-    data = graph_to_pytorch(
-        root_dir=args.root,
-        graph_type=args.graph_type,
-        only_expression_no_fold=True,
-    )
+    if args.zero_node:
+        data = graph_to_pytorch(
+            root_dir=args.root,
+            graph_type=args.graph_type,
+            only_expression_no_fold=True,
+            zero_node_feats=True,
+        )
+    elif args.random_node:
+        data = graph_to_pytorch(
+            root_dir=args.root,
+            graph_type=args.graph_type,
+            only_expression_no_fold=True,
+            random_node_feats=True,
+        )
+    else:
+        data = graph_to_pytorch(
+            root_dir=args.root,
+            graph_type=args.graph_type,
+            only_expression_no_fold=True,
+        )
 
     # data loaders
     if args.loader == "random":
@@ -466,27 +501,28 @@ def main() -> None:
                 mask="test",
             )
 
-        if epoch == 0:
-            best_validation = val_acc
-        else:
-            if val_acc < best_validation:
-                stop_counter = 0
+        if args.early_stop:
+            if epoch == 0:
                 best_validation = val_acc
-                torch.save(
-                    model.state_dict(),
-                    f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
-                )
-            if best_validation < val_acc:
-                stop_counter += 1
+            else:
+                if val_acc < best_validation:
+                    stop_counter = 0
+                    best_validation = val_acc
+                    torch.save(
+                        model.state_dict(),
+                        f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
+                    )
+                if best_validation < val_acc:
+                    stop_counter += 1
+            if stop_counter == 10:
+                print("***********Early stopping!")
+                break
 
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
 
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        if stop_counter == 10:
-            print("***********Early stopping!")
-            break
 
     torch.save(
         model.state_dict(),
