@@ -12,6 +12,7 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
+import argparse
 import csv
 import pickle
 from typing import Any, Dict, List
@@ -31,6 +32,7 @@ CORES = len(TISSUES) + 1  # one process per tissue
 def graph_constructor(
     tissue: str,
     root_dir: str,
+    graph_type: str,
 ) -> nx.Graph:
     """_summary_
 
@@ -137,18 +139,17 @@ def graph_constructor(
     ref = _prepare_reference_attributes()
 
     # create graphs
-    base_graph = _base_graph(edges=base_edges)
-    graph = _base_graph(edges=base_edges)
+    if graph_type == "full":
+        graph = _base_graph(edges=base_edges)
+        for tup in local_context_edges:  # add local context edges to full graph
+            graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
 
-    # add local context edges to full graph
-    for tup in local_context_edges:
-        graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
-
-    # add attributes
-    for g in [base_graph, graph]:
-        nx.set_node_attributes(g, ref)
-
-    return g
+        nx.set_node_attributes(graph, ref)
+        return graph
+    else:
+        graph = _base_graph(edges=base_edges)
+        nx.set_node_attributes(graph, ref)
+        return graph
 
 
 @time_decorator(print_args=True)
@@ -188,31 +189,50 @@ def _nx_to_tensors(
 
 def main(root_dir: str, graph_type: str) -> None:
     """Pipeline to generate individual graphs"""
+    # parse argument
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--graph_type",
+        type=str,
+        default="full",
+    )
+    args = parser.parse_args()
+
     graph_dir = f"{root_dir}/graphs"
 
     # instantiate objects and process graphs
-    graphs = [graph_constructor(tissue=tissue, root_dir=root_dir) for tissue in TISSUES]
+    graphs = [
+        graph_constructor(
+            tissue=tissue,
+            root_dir=root_dir,
+            graph_type=args.graph_type,
+        )
+        for tissue in TISSUES
+    ]
 
     # tmp save so we dont have to do this again
-    with open(f"{graph_dir}/all_tissue_{graph_type}_graphs_raw.pkl", "wb") as output:
+    with open(
+        f"{graph_dir}/all_tissue_{args.graph_type}_graphs_raw.pkl", "wb"
+    ) as output:
         pickle.dump(graphs, output)
 
     # concat all
     graph = nx.compose_all(graphs)
 
     # save indexes before renaming to integers
-    with open(f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl", "wb") as output:
+    with open(
+        f"{graph_dir}/all_tissue_{args.graph_type}_graph_idxs.pkl", "wb"
+    ) as output:
         pickle.dump(
             {node: idx for idx, node in enumerate(sorted(graph.nodes))},
             output,
         )
 
     # save idxs and write to tensors
-    _nx_to_tensors(graph_dir=graph_dir, graph=graph, graph_type="full")
+    _nx_to_tensors(graph_dir=graph_dir, graph=graph, graph_type=args.graph_type)
 
 
 if __name__ == "__main__":
     main(
         root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-        graph_type="full",
     )
