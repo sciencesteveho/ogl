@@ -193,8 +193,8 @@ def graph_to_pytorch(
     if node_perturbation == "h3k27ac":
         graph_data["node_feat"][:, 9] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
-    if node_perturbation == "h3k4me1":
-        graph_data["node_feat"][:, 12] = 0
+    if node_perturbation == "h3k4me3":
+        graph_data["node_feat"][:, 14] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
     if not node_perturbation:
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)

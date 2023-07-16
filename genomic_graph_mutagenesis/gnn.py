@@ -229,10 +229,6 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
-        print(f"\nout")
-        print(out)
-        print(f"\ndata.y")
-        print(data.y)
 
         # calculate loss
         if mask == "val":

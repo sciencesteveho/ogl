@@ -21,6 +21,7 @@ import pickle
 import random
 from typing import Dict, List, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -166,13 +167,13 @@ def main(
     # initialize model model
     model = GraphSAGE(
         in_size=41,
-        embedding_size=250,
+        embedding_size=256,
         out_channels=2,
         num_layers=2,
     ).to(device)
 
     # load checkpoint
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_early_epoch_52_mse_0.8029395813403142.pt"
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_256_5e-05_batch1024_neighbor_idx_early_epoch_36_mse_0.8157282299909465.pt"
     checkpoint = torch.load(checkpoint_file, map_location=map_location)
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -192,8 +193,8 @@ def main(
     test_genes = random.sample(list(coessential_idxs.keys()), 100)
     test_random = random.sample(list(random_co_idxs.keys()), 100)
 
-    def _tensor_to_numpy(tensor):
-        return tensor.cpu().detach().numpy()
+    def _tensor_out_to_array(tensor, idx):
+        return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
     if need_baseline:
         # get baseline expression
@@ -213,11 +214,23 @@ def main(
             data_loader=loader,
             epoch=0,
         )
-        with open("baseline_expression_pred.pkl", "wb") as f:
-            pickle.dump(outs, f)
 
-        with open("baseline_expression_labels.pkl", "wb") as f:
-            pickle.dump(labels, f)
+        predictions_median = _tensor_out_to_array(outs, 0)
+        predictions_fold = _tensor_out_to_array(outs, 1)
+        labels_median = _tensor_out_to_array(labels, 0)
+        labels_fold = _tensor_out_to_array(labels, 1)
+
+        with open("predictions_median.pkl", "wb") as f:
+            pickle.dump(predictions_median, f)
+
+        with open("predictions_fold.pkl", "wb") as f:
+            pickle.dump(predictions_fold, f)
+
+        with open("labels_median.pkl", "wb") as f:
+            pickle.dump(labels_median, f)
+
+        with open("labels_fold.pkl", "wb") as f:
+            pickle.dump(labels_fold, f)
 
     # prepare feature perturbation data
     if feat_perturbation:
@@ -226,20 +239,26 @@ def main(
             graph_type="full",
             node_perturbation="h3k27ac",
         )
-        loader = _perturb_loader(perturbed_data)
-        inference = test(
+        loader = NeighborLoader(
+            data=perturbed_data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=1024,
+            input_nodes=baseline_data.test_mask,
+        )
+        rmse, outs, labels = test(
             model=model,
             device=device,
             data_loader=loader,
             epoch=0,
         )
-        with open("h3k27ac_expression.pkl", "wb") as f:
-            pickle.dump(inference, f)
+        h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
+        with open("h3k27ac_perturbed_expression.pkl", "wb") as f:
+            pickle.dump(h3k27ac_perturbed, f)
 
         perturbed_data = graph_to_pytorch(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
             graph_type="full",
-            node_perturbation="h3k4me1",
+            node_perturbation="h3k4me3",
         )
         loader = _perturb_loader(perturbed_data)
         inference = test(
