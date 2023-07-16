@@ -150,7 +150,7 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/training_targets_exp.pkl"
+    targets = f"{graph_dir}/training_targets_onlyexp.pkl"
 
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
@@ -261,8 +261,9 @@ def graph_to_pytorch(
         first = _get_masked_tensor(data.num_nodes)
         for idx in [0]:
             for key, values in remapped.items():
-                first[key] = values[idx]
-        y = first.view(1, -1)
+                first[key] = values
+        # y = first.view(1, -1)
+        y = first
     else:
         first, second = (
             _get_masked_tensor(data.num_nodes),
