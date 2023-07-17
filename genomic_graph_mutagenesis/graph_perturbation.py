@@ -172,12 +172,12 @@ def main(
     model = GraphSAGE(
         in_size=41,
         embedding_size=256,
-        out_channels=1,
+        out_channels=2,
         num_layers=2,
     ).to(device)
 
     # load checkpoint
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_256_0.0001_batch1024_neighbor_full_targetnoscale_idx_early_epoch_23_mse_1.8369831759700461.pt"
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_early_epoch_52_mse_0.8029395813403142.pt"
     checkpoint = torch.load(checkpoint_file, map_location=map_location)
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -199,40 +199,40 @@ def main(
 
     if need_baseline:
         # get baseline expression
-        baseline_data = graph_to_pytorch(
-            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-            graph_type="full",
-            only_expression_no_fold=True,
-        )
-        loader = NeighborLoader(
-            data=baseline_data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=1024,
-            input_nodes=baseline_data.test_mask,
-        )
-        rmse, outs, labels = test(
-            model=model,
-            device=device,
-            data_loader=loader,
-            epoch=0,
-        )
+        # baseline_data = graph_to_pytorch(
+        #     root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+        #     graph_type="full",
+        #     only_expression_no_fold=True,
+        # )
+        # loader = NeighborLoader(
+        #     data=baseline_data,
+        #     num_neighbors=[5, 5, 5, 5, 5, 3],
+        #     batch_size=1024,
+        #     input_nodes=baseline_data.test_mask,
+        # )
+        # rmse, outs, labels = test(
+        #     model=model,
+        #     device=device,
+        #     data_loader=loader,
+        #     epoch=0,
+        # )
 
-        predictions_median = _tensor_out_to_array(outs, 0)
-        predictions_fold = _tensor_out_to_array(outs, 1)
-        labels_median = _tensor_out_to_array(labels, 0)
-        labels_fold = _tensor_out_to_array(labels, 1)
+        # predictions_median = _tensor_out_to_array(outs, 0)
+        # # predictions_fold = _tensor_out_to_array(outs, 1)
+        # labels_median = _tensor_out_to_array(labels, 0)
+        # # labels_fold = _tensor_out_to_array(labels, 1)
 
-        with open("predictions_median.pkl", "wb") as f:
-            pickle.dump(predictions_median, f)
+        # with open("base_predictions_median.pkl", "wb") as f:
+        #     pickle.dump(predictions_median, f)
 
-        with open("predictions_fold.pkl", "wb") as f:
-            pickle.dump(predictions_fold, f)
+        # # with open("predictions_fold.pkl", "wb") as f:
+        # #     pickle.dump(predictions_fold, f)
 
-        with open("labels_median.pkl", "wb") as f:
-            pickle.dump(labels_median, f)
+        # with open("base_labels_median.pkl", "wb") as f:
+        #     pickle.dump(labels_median, f)
 
-        with open("labels_fold.pkl", "wb") as f:
-            pickle.dump(labels_fold, f)
+        # with open("labels_fold.pkl", "wb") as f:
+        #     pickle.dump(labels_fold, f)
 
     # prepare feature perturbation data
     if feat_perturbation:
@@ -274,10 +274,14 @@ def main(
             data_loader=loader,
             epoch=0,
         )
+        labels = _tensor_out_to_array(labels, 0)
         h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
         with open("h3k4me3_perturbed_expression.pkl", "wb") as f:
             pickle.dump(h3k4me3_perturbed, f)
-
+            
+        with open("h3k4me3_labels.pkl", "wb") as f:
+            pickle.dump(h3k4me3_perturbed, f)
+            
     # coessentiality
     # get baseline expression
     if coessentiality:
