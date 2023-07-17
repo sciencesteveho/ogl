@@ -172,12 +172,12 @@ def main(
     model = GraphSAGE(
         in_size=41,
         embedding_size=256,
-        out_channels=2,
+        out_channels=1,
         num_layers=2,
     ).to(device)
 
     # load checkpoint
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_256_5e-05_batch1024_neighbor_idx_early_epoch_36_mse_0.8157282299909465.pt"
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_256_0.0001_batch1024_neighbor_full_targetnoscale_idx_early_epoch_23_mse_1.8369831759700461.pt"
     checkpoint = torch.load(checkpoint_file, map_location=map_location)
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -202,6 +202,7 @@ def main(
         baseline_data = graph_to_pytorch(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
             graph_type="full",
+            only_expression_no_fold=True,
         )
         loader = NeighborLoader(
             data=baseline_data,
