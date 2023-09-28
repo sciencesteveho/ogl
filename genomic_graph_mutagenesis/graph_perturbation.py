@@ -171,7 +171,7 @@ def main(
     # initialize model model
     model = GraphSAGE(
         in_size=41,
-        embedding_size=256,
+        embedding_size=250,
         out_channels=2,
         num_layers=2,
     ).to(device)
@@ -253,9 +253,13 @@ def main(
             data_loader=loader,
             epoch=0,
         )
+        labels = _tensor_out_to_array(labels, 0)
         h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
         with open("h3k27ac_perturbed_expression.pkl", "wb") as f:
             pickle.dump(h3k27ac_perturbed, f)
+            
+        with open("h3k27ac_labels.pkl", "wb") as f:
+            pickle.dump(labels, f)
 
         perturbed_data = graph_to_pytorch(
             root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
@@ -280,7 +284,7 @@ def main(
             pickle.dump(h3k4me3_perturbed, f)
             
         with open("h3k4me3_labels.pkl", "wb") as f:
-            pickle.dump(h3k4me3_perturbed, f)
+            pickle.dump(labels, f)
             
     # coessentiality
     # get baseline expression

@@ -349,7 +349,20 @@ function _recombination () {
 # columns were cleaned up in excel first. We filter and only keep TF
 # interactions present in normal cells (not cancer cells).
 function _tf_marker () {
-    sed 's/ /_/g' $1 |  awk '$5 == "Normal_cell"' > $2/tf_marker.txt
+    sed 's/ /_/g' $1 | awk '$5 == "Normal_cell"' > $2/tf_marker.txt
+}
+
+# Concatenate tf binding locations to single file and annotate each binding
+# location with the tf name. Tf binding locations are from Meuleman et al.,
+# Nature, 2020. Each site corresponds to a DHS with an overlapping DNase
+# footprint and contains known binding motifs.
+function _tf_binding_dnase () {
+    # awk -v OFS="\t" '{print $0,FILENAME}' $1/* > $2/tf_binding_sites.bed
+    awk -v OFS="\t" '{n=split(FILENAME, array,"/"); print $0,array[n]}' $1/* \
+        | cut -f1,2,3,7 \
+        | sed 's/.bed//g' \
+        | sort -k1,1 -k2,2n \
+        > $2/tfbinding_footprints.bed
 }
 
 # Simple function to clean up intermediate files
@@ -435,6 +448,10 @@ function main() {
 
     _tf_marker \
         /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/tf_markers_col_filtered.txt \
+        /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction
+
+    _tf_binding_dnase \
+        /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/tf_binding/tfs \
         /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction
 
     _cleanup

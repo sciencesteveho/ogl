@@ -3,10 +3,13 @@
 # Scripts to process chromatin loops. Some of these initial steps are adjusted
 # per sample, so be warned that parts are hard coded and not intended for public
 # use. Base loops come from Salameh et al., 2020 and are ensembled. Lower
-# coverage tissue samples are ensembled with the top 15K pixels from deeploop,
+# coverage tissue samples are ensembled with the top pixels from deeploop,
 # which require liftover from hg19 to hg38. Higher coverage samples are
 # ensembled with calls from refHiC. Loops are not merged because graphs are not
 # directed, so overlap is not recounted.
+#
+# The scripts are designed to take different number of n top loops from deeploop
+# for concatenation to test which base configurations train the best.
 
 # Put loop calls from deeploop and refhic in the /supp folder. Put peakachu
 # calls in the base_dir. Combined loops will be put in loop_dir.
@@ -20,14 +23,13 @@
 # setting up variables - folders were the loops are stored
 SECONDS=0
 
+
 # liftover deeploop files
-# only keep top N interactions
 # Arguments:
 #   $1 - directory of deeploop files
 #   $2 - filename without extension
 #   $3 - tmp dir to process files
 #   $4 - directory of liftover and liftover chain
-#   $5 - number of interactions to keep
 function _liftover_deeploop_bedpe () {
     sed \
         -e 's/:/\t/g' \
@@ -48,7 +50,15 @@ function _liftover_deeploop_bedpe () {
         
         sort -k4,4 -o $3/$2.${file}.hg38 $3/$2.${file}.hg38
     done
+}
 
+# format loops and keep top N interactions
+# Arguments:
+#   $1 - directory of deeploop files
+#   $2 - filename without extension
+#   $3 - tmp dir to process files
+#   $4 - number of top N loops to keep
+function _format_deeploop_bedpe () {
     join \
         -j 4 \
         -o 1.1,1.2,1.3,2.1,2.2,2.3,2.4,2.5,2.6 \
@@ -56,19 +66,23 @@ function _liftover_deeploop_bedpe () {
         $3/$2.bedpe_2.hg38 \
         | sed 's/ /\t/g' \
         | sort -k8,8n \
-        | tail -n ${5} \
+        | tail -n $4 \
         | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6}' \
-        > $1/supp/$2.bedpe.hg38
-    
+        > $1/$2_$4_loops.bedpe.hg38
+}
+
+# cleanup files
+# Arguments:
+#   $2 - filename without extension
+#   $3 - tmp dir to process files
+function _cleanup_liftover () {
     # cleanup
-    for file in $2.bedpe $2.bedpe_1 $2.bedpe_1.hg38 $2.bedpe_1.unmapped $2.bedpe_2 $2.bedpe_2.hg38 $2.bedpe_2.unmapped;
+    for file in $1.bedpe $1.bedpe_1 $1.bedpe_1.hg38 $1.bedpe_1.unmapped $1.bedpe_2 $1.bedpe_2.hg38 $1.bedpe_2.unmapped;
     do
-        rm $3/$file
+        rm $2/$file
     done
 }
 
-# liftover deeploop files
-# only keep top N interactions
 # Arguments:
 #   $1 - first loop file
 #   $2 - second loop file
@@ -78,9 +92,8 @@ function _combine_chr_loops () {
     cat \
         <(sort -k1,1 -k2,2n $1) \
         <(sort -k1,1 -k2,2n $2) \
-        > $3/$4.hg38.combined_loops
+        > $3/${4}_${5}.hg38.combined_loops
 }
-
 
 # process chromatin loops
 # For low coverage, loops are lifted over from deeploop. We take the top 15K loop pixels from deeploop and add them to peakachu. For high coverage, we called loops from refhic. We combine any loops with 80% reciprocal overlap w/ peakachu and take the remaining union (we keep the refhic boundaries for the overlapping loops).
@@ -91,6 +104,8 @@ main_func () {
     base_dir=${loop_dir}/hg38_chromatin_loops_yue
     supp_dir=${loop_dir}/supp
     tmp_dir=${loop_dir}/tmp
+
+    n_loops=(10000 20000 30000 40000 50000)
 
     declare -A loop_files
     loop_files["Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"]="GSE167200_Hippocampus.top300K.bedpe.hg38"
@@ -120,22 +135,40 @@ main_func () {
             ${tissue} \
             ${tmp_dir} \
             ${resource_dir} \
-            30000
-            # 15000
+            ${num_loops}
+
+        for num_loops in ${n_loops[@]};
+        do
+            _format_deeploop_bedpe \
+                ${supp_dir} \
+                ${tissue} \
+                ${tmp_dir} \
+                ${num_loops}
+        done
+
+        _cleanup_liftover \
+            ${tissue} \
+            ${tmp_dir} 
     done
 
     for key in ${!loop_files[@]};
     do
         tissue=$(echo ${key} | cut -d'.' -f2)
-        _combine_chr_loops \
-            ${base_dir}/${key} \
-            ${supp_dir}/${loop_files[${key}]} \
-            ${loop_dir} \
-            ${tissue}
+        prefix=$(echo ${loop_files[${key}]} | cut -d'.' -f1)
+        for num_loops in ${n_loops[@]};
+        do
+            _combine_chr_loops \
+                ${base_dir}/${key} \
+                ${supp_dir}/${prefix}.top300K_${num_loops}_loops.bedpe.hg38 \
+                ${loop_dir} \
+                ${tissue} \
+                ${num_loops}
+        done
     done
 
     rm -r ${tmp_dir}
 }
+
 
 # run main_func function! 
 #    - 
@@ -160,3 +193,12 @@ echo "Finished! in time seconds."
 #         ${hic_dir}/${tissue}/${tissue}_loops.bedpe \
 #         ${loop_dir}/supp
 # done
+
+# download deeploop files
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FHippocampus%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FLeftVentricle%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FLiver%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FLung%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FPancreas%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FPsoas%5FMuscle%2Etop300K%2Etxt%2Egz
+# https://ftp.ncbi.nlm.nih.gov/geo/series/GSE167nnn/GSE167200/suppl/GSE167200%5FSmall%5FIntenstine%2Etop300K%2Etxt%2Egz

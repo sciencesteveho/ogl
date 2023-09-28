@@ -3,7 +3,7 @@
 #
 # // TO-DO //
 # - [ ] remove hardcoded files and add in the proper area, either the yaml or the processing fxn
-#
+# - [ ] add module to create local global nodes for genes
 
 """Create graphs from parsed edges
 
