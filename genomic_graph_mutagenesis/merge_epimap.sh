@@ -22,7 +22,7 @@ function _bigWig_to_peaks () {
     echo "calling peaks on ${3} with cutoff ${4}"
     macs2 bdgpeakcall \
         -i ${2}/tmp/${3}.bedGraph \
-        -o ${2}/tmp/${3}.narrow.${4}.bed \
+        -o ${2}/tmp/${3}.narrow.bed \
         -c ${4} \
         -l 73 \
         -g 100
