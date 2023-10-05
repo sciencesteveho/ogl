@@ -143,7 +143,7 @@ function main_func () {
             # liftover to hg38
             for peak in broad narrow;
             do
-                if [[ name== 'H3K9me3' ]]; then
+                if [[ name == 'H3K9me3' ]]; then
                     pval=4
                 else
                     pval=5
