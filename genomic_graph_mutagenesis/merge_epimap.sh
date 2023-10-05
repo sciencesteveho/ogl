@@ -99,7 +99,7 @@ function _merge_epimap_features () {
         #for peak in broad narrow;
         for peak in narrow;
         do
-            if [[ feature == 'H3K9me3' ]]; then
+            if [ $feature == 'H3K9me3' ]; then
                 num=4
             else
                 num=5
@@ -129,37 +129,39 @@ function main_func () {
     do
         if [ -f $file ]; then
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
-            case $name in
-                *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
-                    _bigWig_to_peaks \
-                        true \
-                        $3 \
-                        $1/$2 \
-                        $name
-                    ;;
-                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K9me3*)
-                    _bigWig_to_peaks \
-                        false \
-                        $3 \
-                        $1/$2 \
-                        $name
-                    ;;
-            esac
+            if [ ! -f $1/$2/peaks/${name}._lifted_hg38.bed ]; then
+                case $name in
+                    *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
+                        _bigWig_to_peaks \
+                            true \
+                            $3 \
+                            $1/$2 \
+                            $name
+                        ;;
+                    *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K9me3*)
+                        _bigWig_to_peaks \
+                            false \
+                            $3 \
+                            $1/$2 \
+                            $name
+                        ;;
+                esac
 
-            # liftover to hg38
-            #for peak in broad narrow;
-            for peak in narrow;
-            do
-                if [[ name == 'H3K9me3' ]]; then
-                    pval=4
-                else
-                    pval=5
-                fi
-                _liftover_19_to_38 \
-                    $3 \
-                    $1/$2 \
-                    $name.${peak}.${pval}
-            done
+                # liftover to hg38
+                #for peak in broad narrow;
+                for peak in narrow;
+                do
+                    if [ $name == 'H3K9me3' ]; then
+                        pval=4
+                    else
+                        pval=5
+                    fi
+                    _liftover_19_to_38 \
+                        $3 \
+                        $1/$2 \
+                        $name.${peak}.${pval}
+                done
+            fi
         fi
     done
 
