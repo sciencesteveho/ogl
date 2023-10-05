@@ -98,7 +98,6 @@ function _merge_epimap_features () {
             else
                 num=5
             fi
-            do
             files=$(ls $1 | grep ${feature} | grep "\.${num}\." | grep $peak)
             bedops -m $1/${files} | awk -vOFS='\t' -v feature=$feature '{print $1, $2, $3, feature}' > $2/${feature}_${peak}_${num}_merged.bed
         done
