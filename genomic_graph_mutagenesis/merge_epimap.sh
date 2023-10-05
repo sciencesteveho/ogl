@@ -95,7 +95,6 @@ function main_func () {
 
     # set up cutoff array
     declare -A cutoffs
-    # provided by C. Boix
 	cutoffs["DNase-seq"] = 1.9
 	cutoffs["H3K27ac"] = 2.2
 	cutoffs["H3K27me3"] = 1.2
@@ -106,7 +105,6 @@ function main_func () {
 	cutoffs["H3K79me2"] = 2.2
 	cutoffs["H3K9ac"] = 1.6
 	cutoffs["H3K9me3"] = 1.1
-    # default to 2
     cutoffs["ATAC-seq"] = 2
     cutoffs["CTCF"] = 2
     cutoffs["POLR2A"] = 2
