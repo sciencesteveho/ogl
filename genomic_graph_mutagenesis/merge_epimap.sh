@@ -19,7 +19,7 @@
 function _bigWig_to_peaks () {
     $1/bigWigToBedGraph ${2}/${3}.bigWig ${2}/tmp/${3}.bedGraph
 
-    echo "calling peaks on ${3} with cutoff ${2}"
+    echo "calling peaks on ${3} with cutoff ${4}"
     macs2 bdgpeakcall \
         -i ${2}/tmp/${3}.bedGraph \
         -o ${2}/tmp/${3}.narrow.${4}.bed \
