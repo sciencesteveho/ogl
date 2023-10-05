@@ -113,37 +113,30 @@ function main_func () {
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
             case $name in
                 *H3K9me3*)
+                    pval=4
                     _bigWig_to_peaks \
                         true \
                         $3 \
                         $1/$2 \
                         $name \
-                        4
+                        $pval
                     ;;
                 *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
+                    pval=5
                     _bigWig_to_peaks \
                         false \
                         $3 \
                         $1/$2 \
                         $name \
-                        5
+                        $pval
                     ;;
             esac
 
             # liftover to hg38
-            #for peak in broad narrow;
-            for peak in narrow;
-            do
-                if [ $name == 'H3K9me3' ]; then
-                    pval=4
-                else
-                    pval=5
-                fi
-                _liftover_19_to_38 \
-                    $3 \
-                    $1/$2 \
-                    $name.${peak}.${pval}
-            done
+            _liftover_19_to_38 \
+                $3 \
+                $1/$2 \
+                ${name}.narrow.${pval}
         fi
     done
 
