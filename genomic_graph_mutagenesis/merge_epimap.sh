@@ -33,7 +33,7 @@ SECONDS=0
 #             -l 73 \
 #             -g 100
 #     fi
-#     # cleanup 
+#     # cleanup
 #     tail -n +2 ${3}/tmp/${4}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.bed
 # }
 
@@ -42,13 +42,7 @@ function _bigWig_to_peaks () {
 
     for pval in 4 5;
     do
-        # $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
-        # macs2 bdgbroadcall \
-        #     -i ${3}/tmp/${4}.bedGraph \
-        #     -o ${3}/tmp/${4}.broad.${pval}.bed \
-        #     -c ${pval} \
-        #     -l 73 \
-        #     -g 100
+        $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
 
         macs2 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
@@ -57,18 +51,13 @@ function _bigWig_to_peaks () {
             -l 73 \
             -g 100
 
-        # for peak in broad narrow;
-        # do
-        #     tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
-        # done
-
         for peak in narrow;
         do
             tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
         done
     done
 
-    # cleanup 
+    # cleanup
 }
 
 
@@ -171,7 +160,7 @@ function main_func () {
         $1/$2/merged
 }
 
-# run main_func function! 
+# run main_func function!
 #   $1 - bigwig directory, one level before tissues
 #   $2 - name of tissue
 #   $3 - directory to liftover and bigwig conversion file
@@ -310,7 +299,7 @@ done
 for tissue in lung pancreas;
 do
     echo $tissue
-    ls /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/${tissue}/crms_processing | wc -l 
+    ls /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/${tissue}/crms_processing | wc -l
     for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
         echo $tissue $feature
