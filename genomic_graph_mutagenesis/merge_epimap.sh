@@ -42,13 +42,13 @@ function _bigWig_to_peaks () {
 
     for pval in 4 5;
     do
-        $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
-        macs2 bdgbroadcall \
-            -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.broad.${pval}.bed \
-            -c ${pval} \
-            -l 73 \
-            -g 100
+        # $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
+        # macs2 bdgbroadcall \
+        #     -i ${3}/tmp/${4}.bedGraph \
+        #     -o ${3}/tmp/${4}.broad.${pval}.bed \
+        #     -c ${pval} \
+        #     -l 73 \
+        #     -g 100
 
         macs2 bdgpeakcall \
             -i ${3}/tmp/${4}.bedGraph \
@@ -57,7 +57,12 @@ function _bigWig_to_peaks () {
             -l 73 \
             -g 100
 
-        for peak in broad narrow;
+        # for peak in broad narrow;
+        # do
+        #     tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
+        # done
+
+        for peak in narrow;
         do
             tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
         done
@@ -91,7 +96,8 @@ function _merge_epimap_features () {
     cd $1
     for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
-        for peak in broad narrow;
+        #for peak in broad narrow;
+        for peak in narrow;
         do
             if [[ feature == 'H3K9me3' ]]; then
                 num=4
@@ -141,7 +147,8 @@ function main_func () {
             esac
 
             # liftover to hg38
-            for peak in broad narrow;
+            #for peak in broad narrow;
+            for peak in narrow;
             do
                 if [[ name == 'H3K9me3' ]]; then
                     pval=4
