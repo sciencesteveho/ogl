@@ -95,21 +95,23 @@ function main_func () {
 
     # set up cutoff array
     declare -A cutoffs
-	cutoffs["DNase-seq"] = 1.9
-	cutoffs["H3K27ac"] = 2.2
-	cutoffs["H3K27me3"] = 1.2
-	cutoffs["H3K36me3"] = 1.7
-	cutoffs["H3K4me1"] = 1.7
-	cutoffs["H3K4me2"] = 2
-	cutoffs["H3K4me3"] = 1.7
-	cutoffs["H3K79me2"] = 2.2
-	cutoffs["H3K9ac"] = 1.6
-	cutoffs["H3K9me3"] = 1.1
-    cutoffs["ATAC-seq"] = 2
-    cutoffs["CTCF"] = 2
-    cutoffs["POLR2A"] = 2
-    cutoffs["RAD21"] = 2
-    cutoffs["SMC3"] = 2
+    # cutoffs provided by C. Boix
+	cutoffs["DNase-seq"]=1.9
+	cutoffs["H3K27ac"]=2.2
+	cutoffs["H3K27me3"]=1.2
+	cutoffs["H3K36me3"]=1.7
+	cutoffs["H3K4me1"]=1.7
+	cutoffs["H3K4me2"]=2
+	cutoffs["H3K4me3"]=1.7
+	cutoffs["H3K79me2"]=2.2
+	cutoffs["H3K9ac"]=1.6
+	cutoffs["H3K9me3"]=1.1
+    # these following cutoffs default to 2
+	cutoffs["ATAC-seq"]=2
+	cutoffs["CTCF"]=2
+	cutoffs["POLR2A"]=2
+	cutoffs["RAD21"]=2
+	cutoffs["SMC3"]=2
 
     # make directories if they don't exist
     for dir in merged peaks tmp crms;
