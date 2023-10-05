@@ -128,7 +128,7 @@ function main_func () {
         if [ -f $file ]; then
             # set variables
             prefix=$(echo $(basename ${file}) | cut -d'_' -f1)
-            histone=$(echo $(basename ${file}) | cut -d'_' -f3)
+            histone=$(echo $(basename ${file}) | cut -d'_' -f3 | sed 's/\.bigWig//g')
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
 
             # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
