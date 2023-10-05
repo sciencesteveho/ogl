@@ -132,7 +132,7 @@ function main_func () {
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
 
             # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
-            if [ $prefix == "impute"]; then
+            if [ $prefix == "impute" ]; then
                 pval=${cutoffs[$histone]}
             else
                 pval=5
