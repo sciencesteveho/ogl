@@ -235,6 +235,34 @@ class EdgeParser:
             if line[2] >= cutoff
         ]
 
+    @time_decorator(print_args=True)
+    def _tfbinding_footprints(
+        self,
+        tfbinding_file: str,
+        footprint_file: str,
+    ) -> List[Tuple[str, str, float, str]]:
+        """Create edges based on whether or not known TF binding from Meuleman
+        et al. overlap footprints from Vierstra et al.
+
+        Args:
+            tfbinding_file (str): shared tf binding locations from Meuleman
+            footprint_file (str): tissue-specific footprints from Vierstra
+
+        Returns:
+            List[Tuple[str, str, float, str]]
+        """
+        tf_binding = pybedtools.BedTool(tfbinding_file)
+        tf_edges = tf_binding.intersect(footprint_file, wb=True)
+        return [
+            (
+                f"{self.genesymbol_to_gencode[line[3]]}_tf",
+                f"tfbindingsites_{line[0]}_{line[1]}_{line[3]}",
+                -1,
+                "tf_binding_footprint",
+            )
+            for line in tf_edges
+        ]
+
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
 

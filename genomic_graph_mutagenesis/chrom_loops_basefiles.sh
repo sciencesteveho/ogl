@@ -23,7 +23,6 @@
 # setting up variables - folders were the loops are stored
 SECONDS=0
 
-
 # liftover deeploop files
 # Arguments:
 #   $1 - directory of deeploop files
@@ -88,16 +87,86 @@ function _cleanup_liftover () {
 #   $2 - second loop file
 #   $3 - directory to store combined loops
 #   $4 - name of tissue for combined loop file
+#   $5 - file prefix or num loops
 function _combine_chr_loops () {
     cat \
-        <(sort -k1,1 -k2,2n $1) \
-        <(sort -k1,1 -k2,2n $2) \
+        $1 \
+        $2 \
+        | sort -k1,1 -k2,2n \
         > $3/${4}_${5}.hg38.combined_loops
 }
 
+# Function to convert .bigInteract files from DeepAnchor over to .bedpe files.
+# Additionally liftovers the coordinates from hg19 to hg38
+# Arguments:
+#   $1 - working directory
+#   $2 - directory with .bigInteract loop calls
+#   $3 - prefix for .bigInteract file
+#   $4 - genome / chr size file
+#   $5 - resource directory
+#   $6 - final directory to place lifted and formatted calls
+#   $7 - tissue naming for final file
+function _format_deepanchor_loops () {
+    # make directory for processing
+    if [ ! -d $1 ]; then
+        mkdir $1
+    fi
+    
+    /ocean/projects/bio210019p/stevesho/resources/bigBedToBed \
+        $2/${3}.bigInteract \
+        $1/${3}.bedpe 
+
+    # Split bedpe and extend regions 10kb into each direction to match the
+    # resolution of peakachu, and to determine a cutoff for anchor overlap to create
+    # edges to regulatory elements. The first anchor is extended upstream, and the
+    # second anchor is extended downstream.
+    awk -v OFS='\t' '{print $9,$10,$11,NR}' $1/${3}.bedpe \
+        | bedtools slop \
+        -i stdin \
+        -g $4 \
+        -r 9981 \
+        -l 0 \
+        > $1/${3}.bedpe_1
+    
+    awk -v OFS='\t' '{print $14,$15,$16,NR}' $1/${3}.bedpe \
+        | bedtools slop \
+        -i stdin \
+        -g $4 \
+        -r 0 \
+        -l 9981 \
+        > $1/${3}.bedpe_2
+
+    # liftover hg19 to hg38
+    for file in bedpe_1 bedpe_2;
+    do
+        $5/liftOver \
+            $1/${3}.${file} \
+            $5/hg19ToHg38.over.chain.gz \
+            $1/${3}.${file}.hg38 \
+            $1/${3}.${file}.unmapped
+        
+        sort -k4,4 -o $1/${3}.${file}.hg38 $1/${3}.${file}.hg38
+    done
+
+    # join bedpe by matching anchor number
+    join \
+        -j 4 \
+        -o 1.1,1.2,1.3,2.1,2.2,2.3 \
+        ${1}/${3}.bedpe_1.hg38 \
+        ${1}/${3}.bedpe_2.hg38 \
+        | sed 's/ /\t/g' \
+        | sort -k8,8n \
+        > ${6}/${7}_deepanchor.bedpe.hg38
+}
+
+
 # process chromatin loops
-# For low coverage, loops are lifted over from deeploop. We take the top 15K loop pixels from deeploop and add them to peakachu. For high coverage, we called loops from refhic. We combine any loops with 80% reciprocal overlap w/ peakachu and take the remaining union (we keep the refhic boundaries for the overlapping loops).
-main_func () {
+# For low coverage, loops are lifted over from deeploop. We take the top 15K
+# loop pixels from deeploop and add them to peakachu. For high coverage, we
+# called loops from refhic. We combine any loops with 80% reciprocal overlap w/
+# peakachu and take the remaining union (we keep the refhic boundaries for the
+# overlapping loops).
+deeploop_processing_main () {
     # set vars
     loop_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops
     resource_dir=/ocean/projects/bio210019p/stevesho/resources
@@ -169,12 +238,64 @@ main_func () {
     rm -r ${tmp_dir}
 }
 
+# process deepanchor loops
+deepanchor_processing_main () {
+    deepanchor_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/deepanchor
+    final_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
 
-# run main_func function! 
-#    - 
-#    - 
-#    - 
-main_func 
+    declare -A loop_files
+    loop_files["ENCFF000CFW"]="hippocampus"
+    loop_files["ENCLB303UFA"]="left_ventricle"
+    loop_files["ENCFF002EXB"]="liver"
+    loop_files["ENCFF000RYN"]="lung"
+    loop_files["ENCFF001HPM"]="mammary"
+    loop_files["ENCLB993ADU"]="pancreas"
+    loop_files["ENCLB645ZVC"]="skeletal_muscle"
+    loop_files["ENCLB120LGG"]="skin"
+    loop_files["ENCLB020WHN"]="small_intestine"
+    loop_files["ENCLB432SKR"]="aorta"
+
+    declare -A combine_files
+    combine_files["hippocampus"]="Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
+    combine_files["left_ventricle"]="Leung_2015.VentricleLeft.hg38.peakachu-merged.loops"
+    combine_files["liver"]="Leung_2015.Liver.hg38.peakachu-merged.loops"
+    combine_files["lung"]="Schmitt_2016.Lung.hg38.peakachu-merged.loops"
+    combine_files["mammary"]="Rao_2014.HMEC.hg38.peakachu-merged.loops"
+    combine_files["pancreas"]="Schmitt_2016.Pancreas.hg38.peakachu-merged.loops"
+    combine_files["skeletal_muscle"]="Schmitt_2016.Psoas.hg38.peakachu-merged.loops"
+    combine_files["skin"]="Rao_2014.NHEK.hg38.peakachu-merged.loops"
+    combine_files["small_intestine"]="Schmitt_2016.Bowel_Small.hg38.peakachu-merged.loops"
+    combine_files["aorta"]="Leung_2015.Aorta.hg38.peakachu-merged.loops"
+
+    for file in ${!loop_files[@]};
+    do
+        _format_deepanchor_loops \
+            ${deepanchor_dir} \
+            /ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data/loops/ \
+            $file \
+            /ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt \
+            /ocean/projects/bio210019p/stevesho/resources \
+            ${final_dir} \
+            ${loop_files[${file}]}
+    done
+
+    for tissue in ${!combine_files[@]};
+    do
+        _combine_chr_loops \
+            ${final_dir}/${tissue}_deepanchor.bedpe.hg38 \
+            ${final_dir}/${combine_files[${tissue}]} \
+            ${final_dir} \
+            ${tissue} \
+            "peakachu_deepanchor"
+    done
+}
+
+
+# run main function for deeploop
+deeploop_processing_main
+
+# run main function for deep anchor
+deepanchor_processing_main
 
 
 end=`date +%s`
@@ -182,8 +303,8 @@ time=$((end-start))
 echo "Finished! in time seconds."
 
 
-# Extra code below are QOL scripts to help with processing. Be warned, they
-# are hard coded and not intended for public use.
+# Extra code below are QOL scripts to help with processing. Be warned, they are
+# hard coded and not intended for public use.
 
 # move files from processing dir to dir for combining
 # hic_dir=/ocean/projects/bio210019p/stevesho/hic

@@ -40,7 +40,7 @@ SECONDS=0
 function _bigWig_to_peaks () {
     local histone="${1:-false}"
 
-    for pval in 3 4 5;
+    for pval in 4 5;
     do
         $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
         macs2 bdgbroadcall \
@@ -93,11 +93,14 @@ function _merge_epimap_features () {
     do
         for peak in broad narrow;
         do
-            for num in 3 4 5;
+            if [[ feature == 'H3K9me3' ]]; then
+                num=4
+            else
+                num=5
+            fi
             do
-                files=$(ls $1 | grep ${feature} | grep "\.${num}\." | grep $peak)
-                bedops -m $1/${files} | awk -vOFS='\t' -v feature=$feature '{print $1, $2, $3, feature}' > $2/${feature}_${peak}_${num}_merged.bed
-            done
+            files=$(ls $1 | grep ${feature} | grep "\.${num}\." | grep $peak)
+            bedops -m $1/${files} | awk -vOFS='\t' -v feature=$feature '{print $1, $2, $3, feature}' > $2/${feature}_${peak}_${num}_merged.bed
         done
     done
 }
@@ -141,13 +144,15 @@ function main_func () {
             # liftover to hg38
             for peak in broad narrow;
             do
-                for pval in 3 4 5;
-                do
-                    _liftover_19_to_38 \
-                        $3 \
-                        $1/$2 \
-                        $name.${peak}.${pval}
-                done
+                if [[ name== 'H3K9me3' ]]; then
+                    pval=4
+                else
+                    pval=5
+                fi
+                _liftover_19_to_38 \
+                    $3 \
+                    $1/$2 \
+                    $name.${peak}.${pval}
             done
         fi
     done
@@ -179,7 +184,7 @@ working_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwig
 
 function _get_crms_from_epimap () {
     minsize=1
-    for file in ${1}/*narrow.5*;
+    for file in ${1}/*narrow*;
     do
         file_size=$(wc -l $file | cut -d' ' -f1)
         if [ $file_size -ge $minsize ]; then
@@ -194,7 +199,8 @@ function _get_crms_from_epimap () {
         ${3}
 }
 
-for tissue in hela hippocampus k562 left_ventricle liver lung mammary npc pancreas skeletal_muscle skin small_intestine;
+# for tissue in hela hippocampus k562 left_ventricle liver lung mammary npc pancreas skeletal_muscle skin small_intestine;
+for tissue in aorta;
 do
     _get_crms_from_epimap \
         ${working_dir}/${tissue}/peaks \
@@ -209,13 +215,13 @@ do
     # simple moving
     rawdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
     bigwigdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/
-    for file in ATAC-seq_narrow_5_merged.bed CTCF_narrow_5_merged.bed DNase-seq_narrow_5_merged.bed H3K27ac_narrow_5_merged.bed H3K27me3_narrow_5_merged.bed H3K36me3_narrow_5_merged.bed H3K4me1_narrow_5_merged.bed H3K4me2_narrow_5_merged.bed H3K4me3_narrow_5_merged.bed H3K79me2_narrow_5_merged.bed H3K9ac_narrow_5_merged.bed H3K9me3_narrow_5_merged.bed POLR2A_narrow_5_merged.bed RAD21_narrow_5_merged.bed SMC3_narrow_5_merged.bed;
+    for file in ATAC-seq_narrow_5_merged.bed CTCF_narrow_5_merged.bed DNase-seq_narrow_5_merged.bed H3K27ac_narrow_5_merged.bed H3K27me3_narrow_5_merged.bed H3K36me3_narrow_5_merged.bed H3K4me1_narrow_5_merged.bed H3K4me2_narrow_5_merged.bed H3K4me3_narrow_5_merged.bed H3K79me2_narrow_5_merged.bed H3K9ac_narrow_5_merged.bed H3K9me3_narrow_4_merged.bed POLR2A_narrow_5_merged.bed RAD21_narrow_5_merged.bed SMC3_narrow_5_merged.bed;
     do
         cp ${bigwigdir}/${tissue}/merged/${file} ${rawdir}/${tissue}/${file}
     done
 done
 
-
+"""
 # change H3K9me3 files from narrow -c 5 to narrow -c 4. Recall CRMs.
 bigwigdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs
 rawdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
@@ -243,7 +249,7 @@ do
 done
 
 
-"""
+
 cp impute_BSS01869_H3K36me3.narrow.4._lifted_hg38.bed ../crms_processing/impute_BSS01869_H3K36me3.narrow.4._lifted_hg38.bed
 bedops -m FINAL_H3K36me3_BSS00150.sub_VS_FINAL_WCE_BSS00150.pval.signal.bedgraph.gz.narrow.5._lifted_hg38.bed impute_BSS01869_H3K36me3.narrow.4._lifted_hg38.bed impute_BSS01871_H3K36me3.narrow.5._lifted_hg38.bed | awk -v FS='\t' '{print $1, $2, $3}' > ../merged/H3K36me3_narrow_5_merged.bed
 cp ../merged/H3K36me3_narrow_5_merged.bed ../../lung/H3K36me3_narrow_5_merged.bed

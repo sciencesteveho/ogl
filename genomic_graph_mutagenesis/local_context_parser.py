@@ -215,11 +215,18 @@ class LocalContextParser:
         return bedinstance_sorted, bedinstance_slopped
 
     @time_decorator(print_args=True)
-    def _bed_intersect(self, node_type: str, all_files: str) -> None:
+    def _bed_intersect(
+        self,
+        node_type: str,
+        all_files: str,
+    ) -> None:
         """Function to intersect a slopped bed entry with all other node types.
         Each bed is slopped then intersected twice. First, it is intersected
         with every other node type. Then, the intersected bed is filtered to
         only keep edges within the gene region.
+
+        Additionally, there is an option to insulate regions and only create
+        interactions if they exist within the same chromatin loop.
 
         Args:
             node_type // _description_
@@ -265,6 +272,10 @@ class LocalContextParser:
                 int(feature[2]), int(feature[5])
             )
             return feature
+
+        def _insulate_regions(deduped_edges: str, loopfile: str) -> None:
+            """Insulate regions by intersection with chr loops and making sure
+            both sides overlap"""
 
         if node_type in self.DIRECT:
             _unix_intersect(node_type, type="direct")
