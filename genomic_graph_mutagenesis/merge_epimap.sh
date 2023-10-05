@@ -40,23 +40,16 @@ SECONDS=0
 function _bigWig_to_peaks () {
     local histone="${1:-false}"
 
-    for pval in 4 5;
-    do
-        $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
+    $2/bigWigToBedGraph ${3}/${4}.bigWig ${3}/tmp/${4}.bedGraph
 
-        macs2 bdgpeakcall \
-            -i ${3}/tmp/${4}.bedGraph \
-            -o ${3}/tmp/${4}.narrow.${pval}.bed \
-            -c ${pval} \
-            -l 73 \
-            -g 100
+    macs2 bdgpeakcall \
+        -i ${3}/tmp/${4}.bedGraph \
+        -o ${3}/tmp/${4}.narrow.${5}.bed \
+        -c ${5} \
+        -l 73 \
+        -g 100
 
-        for peak in narrow;
-        do
-            tail -n +2 ${3}/tmp/${4}.${peak}.${pval}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.${peak}.${pval}.bed
-        done
-    done
-
+    tail -n +2 ${3}/tmp/${4}.narrow.${5}.bed > tmpfile && mv tmpfile ${3}/tmp/${4}.narrow.${5}.bed
     # cleanup
 }
 
@@ -118,39 +111,39 @@ function main_func () {
     do
         if [ -f $file ]; then
             name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
-            if [ ! -f $1/$2/peaks/${name}._lifted_hg38.bed ]; then
-                case $name in
-                    *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
-                        _bigWig_to_peaks \
-                            true \
-                            $3 \
-                            $1/$2 \
-                            $name
-                        ;;
-                    *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K9me3*)
-                        _bigWig_to_peaks \
-                            false \
-                            $3 \
-                            $1/$2 \
-                            $name
-                        ;;
-                esac
-
-                # liftover to hg38
-                #for peak in broad narrow;
-                for peak in narrow;
-                do
-                    if [ $name == 'H3K9me3' ]; then
-                        pval=4
-                    else
-                        pval=5
-                    fi
-                    _liftover_19_to_38 \
+            case $name in
+                *H3K9me3*)
+                    _bigWig_to_peaks \
+                        true \
                         $3 \
                         $1/$2 \
-                        $name.${peak}.${pval}
-                done
-            fi
+                        $name \
+                        4
+                    ;;
+                *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
+                    _bigWig_to_peaks \
+                        false \
+                        $3 \
+                        $1/$2 \
+                        $name \
+                        5
+                    ;;
+            esac
+
+            # liftover to hg38
+            #for peak in broad narrow;
+            for peak in narrow;
+            do
+                if [ $name == 'H3K9me3' ]; then
+                    pval=4
+                else
+                    pval=5
+                fi
+                _liftover_19_to_38 \
+                    $3 \
+                    $1/$2 \
+                    $name.${peak}.${pval}
+            done
         fi
     done
 
@@ -337,4 +330,63 @@ do
         ${working_dir}/${tissue}/crms/consensuses.bed \
         ${rawdir}/${tissue}/consensuses.bed
 done
+
+
+
+function main_func () {
+    # make directories if they don't exist
+    for dir in merged peaks tmp crms;
+    do
+        if [ ! -d $1/$2/$dir ]; then
+            mkdir $1/$2/$dir
+        fi
+    done
+
+    # loop through bigwigs and convert to peaks, based on which epi feature in
+    # filename
+    for file in $1/$2/*;
+    do
+        if [ -f $file ]; then
+            name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
+            if [ ! -f $1/$2/peaks/${name}._lifted_hg38.bed ]; then
+                case $name in
+                    *H3K27me3* | *H3K36me3* | *H3K4me1* | *H3K79me2*)
+                        _bigWig_to_peaks \
+                            true \
+                            $3 \
+                            $1/$2 \
+                            $name
+                        ;;
+                    *ATAC-seq* | *CTCF* | *DNase-seq* | *POLR2A* | *RAD21* | *SMC3* | *H3K27ac* | *H3K4me2* | *H3K4me3* | *H3K9ac* | *H3K9me3*)
+                        _bigWig_to_peaks \
+                            false \
+                            $3 \
+                            $1/$2 \
+                            $name
+                        ;;
+                esac
+
+                # liftover to hg38
+                #for peak in broad narrow;
+                for peak in narrow;
+                do
+                    if [ $name == 'H3K9me3' ]; then
+                        pval=4
+                    else
+                        pval=5
+                    fi
+                    _liftover_19_to_38 \
+                        $3 \
+                        $1/$2 \
+                        $name.${peak}.${pval}
+                done
+            fi
+        fi
+    done
+
+    # merge epimap features across 3 samples
+    _merge_epimap_features \
+        $1/$2/peaks \
+        $1/$2/merged
+}
 """
