@@ -73,6 +73,7 @@ NODES = [
     "tss",
 ]
 
+
 NODE_FEAT_IDXS = (
     {
         "start": 0,
@@ -117,7 +118,71 @@ NODE_FEAT_IDXS = (
     },
 )
 
+LOOPFILES = {
+    "deepanchor": {
+        "aorta": "aorta_deepanchor.bedpe.hg38",
+        "hippocampus": "hippocampus_deepanchor.bedpe.hg38",
+        "left_ventricle": "left_ventricle_deepanchor.bedpe.hg38",
+        "liver": "liver_deepanchor.bedpe.hg38",
+        "lung": "lung_deepanchor.bedpe.hg38",
+        "mammary": "mammary_deepanchor.bedpe.hg38",
+        "pancreas": "pancreas_deepanchor.bedpe.hg38",
+        "skeletal_muscle": "skeletal_muscle_deepanchor.bedpe.hg38",
+        "skin": "skin_deepanchor.bedpe.hg38",
+        "small_intestine": "small_intestine_deepanchor.bedpe.hg38",
+    },
+    "peakachu": {
+        "aorta": "Leung_2015.Aorta.hg38.peakachu-merged.loops",
+        "hippocampus": "Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops",
+        "left_ventricle": "Leung_2015.VentricleLeft.hg38.peakachu-merged.loops",
+        "liver": "Leung_2015.Liver.hg38.peakachu-merged.loops",
+        "lung": "Schmitt_2016.Lung.hg38.peakachu-merged.loops",
+        "mammary": "Rao_2014.HMEC.hg38.peakachu-merged.loops",
+        "pancreas": "Schmitt_2016.Pancreas.hg38.peakachu-merged.loops",
+        "skeletal_muscle": "Schmitt_2016.Psoas.hg38.peakachu-merged.loops",
+        "skin": "Rao_2014.NHEK.hg38.peakachu-merged.loops",
+        "small_intestine": "Schmitt_2016.Bowel_Small.hg38.peakachu-merged.loops",
+    },
+    "peakachu_deepanchor": {
+        "aorta": "aorta_peakachu_deepanchor.hg38.combined_loops",
+        "hippocampus": "hippocampus_peakachu_deepanchor.hg38.combined_loops",
+        "left_ventricle": "left_ventricle_peakachu_deepanchor.hg38.combined_loops",
+        "liver": "liver_peakachu_deepanchor.hg38.combined_loops",
+        "lung": "lung_peakachu_deepanchor.hg38.combined_loops",
+        "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
+        "pancreas": "pancreas_peakachu_deepanchor.hg38.combined_loops",
+        "skeletal_muscle": "skeletal_muscle_peakachu_deepanchor.hg38.combined_loops",
+        "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
+        "small_intestine": "small_intestine_peakachu_deepanchor.hg38.combined_loops",
+    },
+    # "peakachu_deeploop_10": {
+    #     "aorta": "Aorta_10000.hg38.combined_loops",
+    #     "hippocampus": "Hippocampus_10000.hg38.combined_loops",
+    #     "left_ventricle": "VentricleLeft_10000.hg38.combined_loops",
+    #     "liver": "Liver_10000.hg38.combined_loops",
+    #     "lung": "Lung_10000.hg38.combined_loops",
+    #     "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
+    #     "pancreas": "Pancreas_10000.hg38.combined_loops",
+    #     "skeletal_muscle": "Psoas_10000.hg38.combined_loops",
+    #     "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
+    #     "small_intestine": "Bowel_Small_10000.hg38.combined_loops",
+    # },
+    # "peakachu_deeploop_50": {
+    #     "aorta": "aorta_peakachu_deepanchor.hg38.combined_loops",
+    #     "hippocampus": "hippocampus_peakachu_deepanchor.hg38.combined_loops",
+    #     "left_ventricle": "left_ventricle_peakachu_deepanchor.hg38.combined_loops",
+    #     "liver": "liver_peakachu_deepanchor.hg38.combined_loops",
+    #     "lung": "lung_peakachu_deepanchor.hg38.combined_loops",
+    #     "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
+    #     "pancreas": "pancreas_peakachu_deepanchor.hg38.combined_loops",
+    #     "skeletal_muscle": "skeletal_muscle_peakachu_deepanchor.hg38.combined_loops",
+    #     "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
+    #     "small_intestine": "small_intestine_peakachu_deepanchor.hg38.combined_loops",
+    # },
+}
+
 TISSUES = [
+    "aorta",
     "hippocampus",
     "left_ventricle",
     "liver",

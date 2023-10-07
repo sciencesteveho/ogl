@@ -26,7 +26,6 @@ from utils import _tpm_filter_gene_windows
 from utils import ATTRIBUTES
 from utils import dir_check_make
 from utils import genes_from_gencode
-from utils import NODES
 from utils import parse_yaml
 from utils import time_decorator
 
@@ -48,7 +47,6 @@ class LocalContextParser:
     # Helpers
         ATTRIBUTES -- list of node attribute types
         DIRECT -- list of datatypes that only get direct overlaps, no slop
-        NODES -- list of nodetypes
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
     """
 
@@ -57,16 +55,27 @@ class LocalContextParser:
     NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
     # var helpers - for CPU cores
-    NODE_CORES = len(NODES) + 1  # 12
     ATTRIBUTE_CORES = 64
 
     def __init__(
         self,
+        experiment_name: str,
+        baseloop_directory: str,
+        interaction_types: List[str],
+        nodes: List[str],
+        working_directory: str,
         bedfiles: List[str],
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
         self.bedfiles = bedfiles
+        self.experiment_name = experiment_name
+        self.baseloop_directory = baseloop_directory
+        self.interaction_types = interaction_types
+        self.nodes = nodes
+        self.working_directory = working_directory
+        self.node_cores = len(nodes) + 1  # 12
+
         self.resources = params["resources"]
         self.tissue_specific = params["tissue_specific"]
         self.gencode = params["local"]["gencode"]
@@ -172,7 +181,7 @@ class LocalContextParser:
         ab = b.intersect(a, sorted=True, u=True)
 
         # take specific windows and format each file
-        if prefix in NODES and prefix != "gencode":
+        if prefix in self.nodes and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
             bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
@@ -296,7 +305,7 @@ class LocalContextParser:
         aggregate total nucleotides, gc content, and all other attributes
 
         Args:
-            node_type // node datatype in self.NODES
+            node_type // node datatype in self.nodes
         """
 
         def add_size(feature: str) -> str:
@@ -494,12 +503,12 @@ class LocalContextParser:
 
         # perform intersects across all feature types - one process per nodetype
         pool = Pool(processes=self.NODE_CORES)
-        pool.starmap(self._bed_intersect, zip(NODES, repeat(all_files)))
+        pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
         pool.close()
 
         # get size and all attributes - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._aggregate_attributes, ["basenodes"] + NODES)
+        pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
         pool.close()
 
         # parse edges into individual files
@@ -507,38 +516,38 @@ class LocalContextParser:
 
         # save node attributes as reference for later - one process per nodetype
         pool = Pool(processes=self.ATTRIBUTE_CORES)
-        pool.map(self._save_node_attributes, ["basenodes"] + NODES)
+        pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
         pool.close()
 
 
-def main() -> None:
-    """Pipeline to parse genomic data into edges"""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+# def main() -> None:
+#     """Pipeline to parse genomic data into edges"""
+#     parser = argparse.ArgumentParser(
+#         formatter_class=argparse.ArgumentDefaultsHelpFormatter
+#     )
 
-    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
+#     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
-    args = parser.parse_args()
-    params = parse_yaml(args.config)
+#     args = parser.parse_args()
+#     params = parse_yaml(args.config)
 
-    bedfiles = _listdir_isfile_wrapper(
-        dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
-    )
-    bedfiles = [x for x in bedfiles if "chromatinloops" not in x]
+#     bedfiles = _listdir_isfile_wrapper(
+#         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
+#     )
+#     bedfiles = [x for x in bedfiles if "chromatinloops" not in x]
 
-    # instantiate object
-    localparseObject = LocalContextParser(
-        bedfiles=bedfiles,
-        params=params,
-    )
+#     # instantiate object
+#     localparseObject = LocalContextParser(
+#         bedfiles=bedfiles,
+#         params=params,
+#     )
 
-    # run parallelized pipeline!
-    localparseObject.parse_context_data()
+#     # run parallelized pipeline!
+#     localparseObject.parse_context_data()
 
-    # cleanup temporary files
-    pybedtools.cleanup(remove_all=True)
+#     # cleanup temporary files
+#     pybedtools.cleanup(remove_all=True)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

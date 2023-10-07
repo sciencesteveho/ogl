@@ -174,7 +174,7 @@ deeploop_processing_main () {
     supp_dir=${loop_dir}/supp
     tmp_dir=${loop_dir}/tmp
 
-    n_loops=(10000 20000 30000 40000 50000)
+    n_loops=(10000 20000 25000 30000 40000 50000)
 
     declare -A loop_files
     loop_files["Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"]="GSE167200_Hippocampus.top300K.bedpe.hg38"
@@ -184,12 +184,13 @@ deeploop_processing_main () {
     loop_files["Schmitt_2016.Pancreas.hg38.peakachu-merged.loops"]="GSE167200_Pancreas.top300K.bedpe.hg38"
     loop_files["Schmitt_2016.Psoas.hg38.peakachu-merged.loops"]="GSE167200_Psoas_Muscle.top300K.bedpe.hg38"
     loop_files["Schmitt_2016.Bowel_Small.hg38.peakachu-merged.loops"]="GSE167200_Small_Intenstine.top300K.bedpe.hg38"
-    loop_files["peakachu.HeLa.-5kb-loops.0.99.bedpe"]="HeLa_loops.bedpe"
-    loop_files["Rao_2014.HMEC.hg38.peakachu-merged.loops"]="HMEC_loops.bedpe"
-    loop_files["Rao_2014.K562.hg38.peakachu-merged.loops"]="K562_loops.bedpe"
-    loop_files["Rao_2014.NHEK.hg38.peakachu-merged.loops"]="NHEK_loops.bedpe" 
+    # loop_files["peakachu.HeLa.-5kb-loops.0.99.bedpe"]="HeLa_loops.bedpe"
+    # loop_files["Rao_2014.HMEC.hg38.peakachu-merged.loops"]="HMEC_loops.bedpe"
+    # loop_files["Rao_2014.K562.hg38.peakachu-merged.loops"]="K562_loops.bedpe"
+    # loop_files["Rao_2014.NHEK.hg38.peakachu-merged.loops"]="NHEK_loops.bedpe" 
+    loop_files["Leung_2015.Aorta.hg38.peakachu-merged.loops"]="GSE167200_Aorta.top300K.txt.bedpe.hg38"
 
-    low_cov=("GSE167200_Liver.top300K" "GSE167200_Hippocampus.top300K" "GSE167200_LeftVentricle.top300K" "GSE167200_Lung.top300K" "GSE167200_Pancreas.top300K" "GSE167200_Psoas_Muscle.top300K" "GSE167200_Small_Intenstine.top300K")
+    low_cov=("GSE167200_Liver.top300K" "GSE167200_Hippocampus.top300K" "GSE167200_LeftVentricle.top300K" "GSE167200_Lung.top300K" "GSE167200_Pancreas.top300K" "GSE167200_Psoas_Muscle.top300K" "GSE167200_Small_Intenstine.top300K" "GSE167200_Aorta.top300K")
 
     # make directory for processing
     if [ ! -d ${loop_dir}/tmp ]; then
@@ -229,7 +230,7 @@ deeploop_processing_main () {
             _combine_chr_loops \
                 ${base_dir}/${key} \
                 ${supp_dir}/${prefix}.top300K_${num_loops}_loops.bedpe.hg38 \
-                ${loop_dir} \
+                ${loop_dir}/processed_loops \
                 ${tissue} \
                 ${num_loops}
         done

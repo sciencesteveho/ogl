@@ -1,0 +1,12 @@
+---
+baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deepanchor
+
+experiment_name: regulatoryonly_deepanchor
+
+interaction_types: null
+
+nodes: null
+
+working_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
+
+# Note: the following node types are always defaulted: dyadic, enhancers, gencode, promoters

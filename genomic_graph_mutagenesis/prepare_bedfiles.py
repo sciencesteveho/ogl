@@ -11,13 +11,15 @@
 import argparse
 import os
 import subprocess
-from typing import Dict
+from typing import Dict, List
 
 import requests
 
 from utils import dir_check_make
 from utils import parse_yaml
 from utils import time_decorator
+
+NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
 
 
 class GenomeDataPreprocessor:
@@ -46,19 +48,34 @@ class GenomeDataPreprocessor:
         main pipeline function
     """
 
-    def __init__(self, params: Dict[str, Dict[str, str]]) -> None:
+    def __init__(
+        self,
+        experiment_name: str,
+        interaction_types: List[str],
+        nodes: List[str],
+        working_directory: str,
+        params: Dict[str, Dict[str, str]],
+    ) -> None:
         """Initialize the class"""
+        self.experiment_name = experiment_name
+        self.interaction_types = interaction_types
+        self.nodes = nodes
+        self.working_directory = working_directory
+
         self.dirs = params["dirs"]
         self.interaction = params["interaction"]
-        self.options = params["options"]
+        self.methylation = params["options"]
         self.resources = params["resources"]
         self.shared = params["local"]
-        self.tissue_specific = params["tissue_specific"]
+        self.features = params["features"]
+        self.tissue_specific_nodes = params["tissue_specific_nodes"]
 
         self.tissue = self.resources["tissue"]
         self.root_dir = self.dirs["root_dir"]
         self.shared_data_dir = f"{self.root_dir}/shared_data"
-        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.tissue_dir = (
+            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
+        )
         self.data_dir = f"{self.root_dir}/raw_files/{self.tissue}"
 
         # make directories, link files, and download shared files if necessary
@@ -68,13 +85,10 @@ class GenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        dir_check_make(f"{self.root_dir}/shared_data")
+        dir_check_make(self.tissue_dir)
 
         for directory in ["local", "interaction", "unprocessed"]:
             dir_check_make(f"{self.tissue_dir}/{directory}")
-
-        for directory in ["local", "interaction"]:
-            dir_check_make(f"{self.root_dir}/shared_data/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -104,27 +118,31 @@ class GenomeDataPreprocessor:
                 boolean=True,
             )
 
-        # for file in ["enhancers_e_e", "enhancers_e_g"]:
-        #     check_and_symlink(
-        #         dst=f"{self.tissue_dir}/interaction/{self.tissue_specific[file]}",
-        #         src=f"{self.data_dir}/{self.tissue_specific[file]}",
-        #         boolean=False,
-        #     )
-
         interact_files = {
             "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
-            "mirdip": f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
-            "mirnatargets": f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
             "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
             "tf_marker": f"{self.shared_data_dir}/interaction/{self.interaction['tf_marker']}",
+            "tf_binding": f"{self.shared_data_dir}/interaction/{self.interaction['tf_binding']}",
         }
 
-        for file in interact_files:
-            check_and_symlink(
-                dst=f"{self.tissue_dir}/interaction/" + self.interaction[file],
-                src=interact_files[file],
-                boolean=False,
-            )
+        for datatype in self.interaction_types:
+            if datatype == "mirna":
+                check_and_symlink(
+                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
+                    src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+                    boolean=True,
+                )
+                check_and_symlink(
+                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
+                    src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
+                    boolean=True,
+                )
+            else:
+                check_and_symlink(
+                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
+                    src=interact_files[datatype],
+                    boolean=False,
+                )
 
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
@@ -142,6 +160,16 @@ class GenomeDataPreprocessor:
                     f"https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}",
                     f"{self.root_dir}/shared_data/local_feats/{file}",
                 )
+
+    def _symlink_crms(self, crm: str) -> None:
+        """Make symlinks crm is nodetype specified for experiment"""
+        try:
+            os.symlink(
+                f"{self.data_dir}/{crm}",
+                f"{self.tissue_dir}/unprocessed/{crm}",
+            )
+        except FileExistsError:
+            pass
 
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
@@ -162,7 +190,7 @@ class GenomeDataPreprocessor:
         self._run_cmd(cmd)
 
     @time_decorator(print_args=True)
-    def _tf_binding_clusters(self, bed: str) -> None:
+    def _tf_binding_sites(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites Vierstra et
         al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al.,
@@ -197,12 +225,15 @@ class GenomeDataPreprocessor:
             | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
             | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
             > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
-        self._run_cmd(cmd)
+        rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, tfbindingsite_$1_$2_$4}}' {self.tissue_dir}/unprocessed/tfbindingsites_{self.tissue}.bed \
+            > {self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
+        for cmds in [cmd, rename]:
+            self._run_cmd(cmds)
 
     @time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:
         """Merge individual CPGs with optional liftover"""
-        if self.options["cpg_liftover"] == True:
+        if self.methylation["cpg_liftover"] == True:
             liftover_sort = f"{self.resources['liftover']} \
                 {self.tissue_dir}/unprocessed/{bed} \
                 {self.resources['liftover_chain']} \
@@ -213,7 +244,7 @@ class GenomeDataPreprocessor:
                 && mv {self.tissue_dir}/unprocessed/{bed}_lifted_sorted {self.tissue_dir}/unprocessed/{bed}_lifted"
             self._run_cmd(liftover_sort)
 
-        if self.options["cpg_filetype"] == "ENCODE":
+        if self.methylation["cpg_filetype"] == "ENCODE":
             file = f"{self.tissue_dir}/unprocessed/{bed}_gt75"
             gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 70' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
@@ -235,70 +266,41 @@ class GenomeDataPreprocessor:
 
         ### Make symlinks for shared data files
         for file in self.shared.values():
-            src = f"{self.root_dir}/shared_data/local/{file}"
+            src = f"{self.shared_data_dir}/local/{file}"
             dst = f"{self.tissue_dir}/local/{file}"
-            try:
-                os.symlink(src, dst)
-            except FileExistsError:
-                pass
-
-        ### Make symlinks and rename files that do not need preprocessing
-        nochange = [
-            "ATAC",
-            "CTCF",
-            "DNase",
-            "H3K27ac",
-            "H3K27me3",
-            "H3K36me3",
-            "H3K4me1",
-            "H3K4me2",
-            "H3K4me3",
-            "H3K79me2",
-            "H3K9ac",
-            "H3K9me3",
-            "POLR2A",
-            "RAD21",
-            "SMC3",
-            "chromatinloops",
-            "crms",
-        ]
-        for datatype in nochange:
-            if self.tissue_specific[datatype]:
-                src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
-                dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+            if file in NODETYPES_LOCAL:
+                if file in self.nodes:
+                    try:
+                        os.symlink(src, dst)
+                    except FileExistsError:
+                        pass
+                else:
+                    pass
+            else:
                 try:
                     os.symlink(src, dst)
                 except FileExistsError:
                     pass
 
-        self._add_TAD_id(self.tissue_specific["tads"])
+        ### Make symlinks for histone marks
+        for datatype in self.features:
+            src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
+            dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
+            try:
+                os.symlink(src, dst)
+            except FileExistsError:
+                pass
 
-        self._superenhancers(self.tissue_specific["super_enhancer"])
+        if "crms" in self.nodes:
+            self._symlink_crms(self.tissue_specific_nodes["crms"])
 
-        self._tf_binding_clusters(self.tissue_specific["tf_binding"])
+        if "tads" in self.nodes:
+            self._add_TAD_id(self.tissue_specific["tads"])
 
-        self._merge_cpg(self.tissue_specific["cpg"])
+        if "superenhancers" in self.nodes:
+            self._superenhancers(self.tissue_specific["super_enhancer"])
 
+        if "tfbindingsites" in self.nodes:
+            self._tf_binding_sites(self.tissue_specific["tf_binding"])
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to .yaml file with filenames",
-    )
-
-    args = parser.parse_args()
-    params = parse_yaml(args.config)
-
-    preprocessObject = GenomeDataPreprocessor(params)
-    preprocessObject.prepare_data_files()
-
-    print("Preprocessing complete!")
-
-
-if __name__ == "__main__":
-    main()
+        self._merge_cpg(self.methylation["cpg"])

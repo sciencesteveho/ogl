@@ -123,39 +123,39 @@ function main_func () {
 
     # loop through bigwigs and convert to peaks, based on which epi feature in
     # filename
-    # for file in $1/$2/*;
-    # do
-    #     if [ -f $file ]; then
-    #         # set variables
-    #         prefix=$(echo $(basename ${file}) | cut -d'_' -f1)
-    #         histone=$(echo $(basename ${file}) | cut -d'_' -f3 | sed 's/\.bigWig//g')
-    #         name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
+    for file in $1/$2/*;
+    do
+        if [ -f $file ]; then
+            # set variables
+            prefix=$(echo $(basename ${file}) | cut -d'_' -f1)
+            histone=$(echo $(basename ${file}) | cut -d'_' -f3 | sed 's/\.bigWig//g')
+            name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
 
-    #         # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
-    #         if [ $prefix == "impute" ]; then
-    #             pval=${cutoffs[$histone]}
-    #         else
-    #             pval=5
-    #         fi
+            # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
+            if [ $prefix == "impute" ]; then
+                pval=${cutoffs[$histone]}
+            else
+                pval=5
+            fi
 
-    #         _bigWig_to_peaks \
-    #             $3 \
-    #             $1/$2 \
-    #             $name \
-    #             $pval
+            _bigWig_to_peaks \
+                $3 \
+                $1/$2 \
+                $name \
+                $pval
 
-    #         # liftover to hg38
-    #         _liftover_19_to_38 \
-    #             $3 \
-    #             $1/$2 \
-    #             ${name}.narrow
-    #     fi
-    # done
+            # liftover to hg38
+            _liftover_19_to_38 \
+                $3 \
+                $1/$2 \
+                ${name}.narrow
+        fi
+    done
 
-    # # merge epimap features across 3 samples
-    # _merge_epimap_features \
-    #     $1/$2/peaks \
-    #     $1/$2/merged
+    # merge epimap features across 3 samples
+    _merge_epimap_features \
+        $1/$2/peaks \
+        $1/$2/merged
 
     # call crms via remap method
     _get_crms_from_epimap \

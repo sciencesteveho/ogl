@@ -64,9 +64,22 @@ class EdgeParser:
 
     def __init__(
         self,
+        experiment_name: str,
+        baseloop_directory: str,
+        interaction_types: List[str],
+        nodes: List[str],
+        working_directory: str,
+        loop_file: str,
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
+        self.experiment_name = experiment_name
+        self.baseloop_directory = baseloop_directory
+        self.interaction_types = interaction_types
+        self.nodes = nodes
+        self.working_directory = working_directory
+        self.loop_file = loop_file
+
         self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
         self.tissue = params["resources"]["tissue"]
@@ -74,12 +87,13 @@ class EdgeParser:
         self.marker_name = params["resources"]["marker_name"]
         self.ppi_tissue = params["resources"]["ppi_tissue"]
         self.tss = params["resources"]["reftss_genes"]
-        self.tissue_specific = params["tissue_specific"]
         self.shared = params["local"]
 
         self.root_dir = params["dirs"]["root_dir"]
         self.shared_dir = f"{self.root_dir}/shared_data"
-        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.tissue_dir = (
+            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
+        )
         self.local_dir = f"{self.tissue_dir}/local"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.interaction_dir = f"{self.tissue_dir}/interaction"
@@ -94,6 +108,9 @@ class EdgeParser:
         self.se_ref = self._blind_read_file(params["resources"]["se_ref"])
         self.mirna_ref = self._blind_read_file(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
+        )
+        self.footprint_ref = self._blind_read_file(
+            f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         )
 
     def _blind_read_file(self, file: str) -> List[str]:
@@ -256,7 +273,7 @@ class EdgeParser:
         return [
             (
                 f"{self.genesymbol_to_gencode[line[3]]}_tf",
-                f"tfbindingsites_{line[0]}_{line[1]}_{line[3]}",
+                f"{line[0]}_{line[1]}_{line[3]}",
                 -1,
                 "tf_binding_footprint",
             )
@@ -471,7 +488,6 @@ class EdgeParser:
         Returns:
             A list of deduplicated nodes (separate lists for genes and for miRNAs)
         """
-        chromatin_loops = f"{self.tissue_dir}/local/chromatinloops_{self.tissue}.bed"
         tss = self._load_tss()
         distal_enhancers = (
             pybedtools.BedTool(f"{self.local_dir}/{self.shared['enhancers']}")
@@ -480,20 +496,29 @@ class EdgeParser:
         )
         promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
         dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
-        super_enhancers = pybedtools.BedTool(
-            f"{self.local_dir}/superenhancers_{self.tissue}.bed"
-        )
 
         chrom_loop_edges = []
-        for element in [
+        gene_overlaps = [
             (distal_enhancers, "g_e"),
             (promoters, "g_p"),
             (dyadic, "g_d"),
-            (super_enhancers, "g_se"),
-        ]:
+        ]
+        promoters_overlaps = [
+            (distal_enhancers, "p_e"),
+            (dyadic, "p_d"),
+        ]
+
+        if super_enhancers in self.interaction_types:
+            super_enhancers = pybedtools.BedTool(
+                f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+            )
+            gene_overlaps = gene_overlaps + [(super_enhancers, "g_se")]
+            promoter_overlaps = promoter_overlaps + [(super_enhancers, "p_se")]
+
+        for element in gene_overlaps:
             chrom_loop_edges.extend(
                 self.get_loop_edges(
-                    chromatin_loops=chromatin_loops,
+                    chromatin_loops=self.loop_file,
                     feat_1=element[0],
                     feat_2=tss,
                     tss=True,
@@ -501,14 +526,10 @@ class EdgeParser:
                 )
             )
 
-        for element in [
-            (distal_enhancers, "p_e"),
-            (dyadic, "p_d"),
-            (super_enhancers, "p_se"),
-        ]:
+        for element in promoters_overlaps:
             chrom_loop_edges.extend(
                 self.get_loop_edges(
-                    chromatin_loops=chromatin_loops,
+                    chromatin_loops=self.loop_file,
                     feat_1=element[0],
                     feat_2=promoters,
                     tss=False,
@@ -516,23 +537,47 @@ class EdgeParser:
                 )
             )
 
-        ppi_edges = self._iid_ppi(
-            interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-            tissue=self.ppi_tissue,
-        )
-        mirna_targets = self._mirna_targets(
-            target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
-            tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
-        )
-        tf_markers = self._tf_markers(
-            interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
-        )
-        circuit_edges = self._marbach_regulatory_circuits(
-            f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-            score_filter=30,
-        )
+        # only parse edges specified in experiment
+        if "ppis" in self.interaction_types:
+            ppi_edges = self._iid_ppi(
+                interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+                tissue=self.ppi_tissue,
+            )
+        else:
+            ppi_edges = []
 
-        self.interaction_edges = ppi_edges + mirna_targets + tf_markers + circuit_edges
+        if "mirna" in self.interaction_types:
+            mirna_targets = self._mirna_targets(
+                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
+            )
+        else:
+            mirna_targets = []
+
+        if "tf_marker" in self.interaction_types:
+            tf_markers = self._tf_markers(
+                interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
+            )
+        else:
+            tf_markers = []
+
+        if "circuits" in self.interaction_types:
+            circuit_edges = self._marbach_regulatory_circuits(
+                f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+                score_filter=30,
+            )
+        else:
+            circuit_edges = []
+
+        if "tfbinding" in self.interaction_types:
+            tfbinding_edges = self._tfbinding_footprints(
+                tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
+                footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
+            )
+
+        self.interaction_edges = (
+            ppi_edges + mirna_targets + tf_markers + circuit_edges + tfbinding_edges
+        )
         self.chrom_edges = list(set(chrom_loop_edges))
         self.all_edges = self.chrom_edges + self.interaction_edges
 
@@ -560,6 +605,7 @@ class EdgeParser:
             + [tup[1] for tup in circuit_edges]
             + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
             + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
+            + [tup[0] for tup in tfbinding_edges]
         )
 
         return (
@@ -567,6 +613,7 @@ class EdgeParser:
             set(chrom_loops_regulatory_nodes),
             set(chrom_loops_se_nodes),
             set([tup[0] for tup in mirna_targets]),
+            set(tup[1] for tup in tfbinding_edges),
         )
 
     @time_decorator(print_args=False)
@@ -588,20 +635,27 @@ class EdgeParser:
         """Constructs tissue-specific interaction base graph"""
 
         # retrieve interaction-based edges
-        gencode_nodes, regulatory_nodes, se_nodes, mirnas = self._process_graph_edges()
+        (
+            gencode_nodes,
+            regulatory_nodes,
+            se_nodes,
+            mirnas,
+            footprints,
+        ) = self._process_graph_edges()
 
         # add coordinates to nodes in parallel
-        pool = Pool(processes=4)
+        pool = Pool(processes=5)
         nodes_for_attr = pool.starmap(
             self._add_node_coordinates,
             list(
                 zip(
-                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas],
+                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
                     [
                         self.gencode_attr_ref,
                         self.regulatory_attr_ref,
                         self.se_ref,
                         self.mirna_ref,
+                        self.footprint_ref,
                     ],
                 )
             ),
@@ -635,27 +689,3 @@ class EdgeParser:
         # write edges with coordinates to file
         with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
             csv.writer(output, delimiter="\t").writerows(full_edges)
-
-
-def main() -> None:
-    """Pipeline to generate individual graphs"""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
-
-    args = parser.parse_args()
-    params = parse_yaml(args.config)
-
-    # instantiate object
-    edgeparserObject = EdgeParser(
-        params=params,
-    )
-
-    # run pipeline!
-    edgeparserObject.parse_edges()
-
-
-if __name__ == "__main__":
-    main()

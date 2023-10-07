@@ -1,7 +1,7 @@
 ---
 dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
-  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus
+  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/aorta
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 
 features:
@@ -22,14 +22,13 @@ features:
   SMC3: SMC3_narrow_merged.bed
 
 interaction:
-  circuits: hippocampus_adult.txt
+  circuits: endothelial_cells_-_aortic.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirdip: brain_mirdip
+  mirdip: aortic.endothelial.cell_mirdip
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
-  tf_binding: tfbinding_footprints.bed
   tf_marker: tf_marker.txt
 
 local:
@@ -61,30 +60,30 @@ local:
   tss: tss_parsed_hg38.bed
 
 methylation:
-  cpg: CpgMethly_hippocampus_GSE46644.bed
-  cpg_filetype: GEO
-  cpg_liftover: true
+  cpg: cpg_methyl_ENCFF689HVV.bed
+  cpg_filetype: ENCODE
+  cpg_liftover: false
 
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
-  key_protein_abundance: brain_cortex
-  key_tpm: brain_hippocampus
+  key_protein_abundance: aorta
+  key_tpm: aorta
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name: Brain
-  ppi_tissue: hippocampal formation
+  marker_name: Aorta
+  ppi_tissue: aorta
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
   reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
   se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: hippocampus
-  tissue_name: Brain - Hippocampus
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
+  tissue: aorta
+  tissue_name: Aorta
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/aorta.tpm.txt
 
 tissue_specific_nodes:
   crms: consensuses.bed
-  super_enhancer: SE_02_0351_SE_hg38.bed
-  tads: Hippocampus_Schmitt2016-raw_TADs.txt
-  tf_binding: interval.all.fps.0.0001.bed  # chromatinloops: Hippocampus.hg38.combined_loops
+  super_enhancer: SE_00_0004_SE_hg38.bed
+  tads: Aorta_STL002_Leung_2015-raw_TADs.txt
+  tf_binding: interval.all.fps.0.0001.bed

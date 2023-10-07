@@ -11,10 +11,12 @@
 import argparse
 from typing import Dict
 
+from utils import _listdir_isfile_wrapper
+from utils import parse_yaml
+
 from .edge_parser import EdgeParser
 from .graph_constructor import GraphConstructor
 from .local_context_parser import LocalContextParser
-from utils import _listdir_isfile_wrapper, parse_yaml
 
 
 class GGMProcessor:
@@ -33,17 +35,15 @@ class GGMProcessor:
         self.edge_parser = EdgeParser(params=params)
         self.graph_constructor = GraphConstructor(params=params)
         self.local_context_parser = LocalContextParser(
-            params=params,
-            bedfiles=self.bedfiles
+            params=params, bedfiles=self.bedfiles
         )
-        
+
     def process(self):
-        """_summary_
-        """
+        """_summary_"""
         self.edge_parser.parse_edges()
         self.local_context_parser.parse_context_data()
         self.graph_constructor.construct_graph()
-        
+
 
 def main() -> None:
     """Main function"""
@@ -55,7 +55,7 @@ def main() -> None:
 
     args = parser.parse_args()
     params = parse_yaml(args.config)
-    
+
     ogmprocessorObj = GGMProcessor(params=params)
     ogmprocessorObj.process()
 
