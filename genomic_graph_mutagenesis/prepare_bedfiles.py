@@ -225,7 +225,7 @@ class GenomeDataPreprocessor:
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"footprint\"}}' {self.tissue_dir}/unprocessed/{bed} \
             > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
         rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, $1\"_\"$2\"_footprint\"}}' {self.tissue_dir}/unprocessed/{bed} \
-            > {self.tissue_dir}/unprocessed/tfbindingsites_{self.tissue}.bed"
+            > {self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         for cmds in [cmd, rename]:
             self._run_cmd(cmds)
 
