@@ -64,7 +64,7 @@ class GenomeDataPreprocessor:
 
         self.dirs = params["dirs"]
         self.interaction = params["interaction"]
-        self.methylation = params["options"]
+        self.methylation = params["methylation"]
         self.resources = params["resources"]
         self.shared = params["local"]
         self.features = params["features"]
@@ -111,7 +111,7 @@ class GenomeDataPreprocessor:
             except FileExistsError:
                 pass
 
-        for file in self.tissue_specific.values():
+        for file in self.tissue_specific_nodes.values():
             check_and_symlink(
                 dst=f"{self.tissue_dir}/unprocessed/{file}",
                 src=f"{self.data_dir}/{file}",
@@ -162,7 +162,7 @@ class GenomeDataPreprocessor:
                 )
 
     def _symlink_crms(self, crm: str) -> None:
-        """Make symlinks crm is nodetype specified for experiment"""
+        """Make symlinks crm if nodetype specified for experiment"""
         try:
             os.symlink(
                 f"{self.data_dir}/{crm}",

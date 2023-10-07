@@ -331,6 +331,13 @@ def genes_from_gencode(gencode_ref) -> Dict[str, str]:
     }
 
 
+def _string_list(arg):
+    """Helper function to pass comma separated list of strings from argparse as
+    list
+    """
+    return arg.split(",")
+
+
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
     """Load yaml for parsing"""
     with open(config_file, "r") as stream:

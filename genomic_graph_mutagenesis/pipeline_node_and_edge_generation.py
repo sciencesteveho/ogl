@@ -30,13 +30,6 @@ NODES = [
 ]
 
 
-def _string_list(arg):
-    """Helper function to pass comma separated list of strings from argparse as
-    list
-    """
-    return arg.split(",")
-
-
 def main() -> None:
     """Pipeline to generate jobs for creating graphs"""
     # Parse arguments for type of graphs to produce
@@ -77,18 +70,25 @@ def main() -> None:
     parser.add_argument(
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(
+        [
+            "--experiment_config",
+            "configs/ablation_experiments/alldata_combinedloops.yaml",
+            "--tissue_config",
+            "configs/aorta.yaml",
+        ]
+    )
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
 
     # Create working directory for experimnet
     dir_check_make(
-        dir=f"{args.working_directory}/{args.experiment_name}",
+        dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 
     # Prepare bedfiles
-    print(f"Edges and nodes have been generated for {args.experiment_name}!")
-    print("Preprocessing complete!")
+    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
+    print("Bedfile preprocessing!")
     preprocessObject = GenomeDataPreprocessor(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
@@ -97,19 +97,19 @@ def main() -> None:
         params=tissue_params,
     )
     preprocessObject.prepare_data_files()
-    print("Preprocessing complete!")
+    print("Bedfile preprocessing complete!")
 
-    print("Preprocessing complete!")
-    edgeparserObject = EdgeParser(
-        experiment_name=experiment_params["experiment_name"],
-        interaction_types=experiment_params["interaction_types"],
-        nodes=experiment_params["nodes"],
-        working_directory=experiment_params["working_directory"],
-        loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[tissue_params['resources']['tissue']]}",
-        params=tissue_params,
-    )
-    edgeparserObject.parse_edges()
-    print("Preprocessing complete!")
+    # print("Preprocessing complete!")
+    # edgeparserObject = EdgeParser(
+    #     experiment_name=experiment_params["experiment_name"],
+    #     interaction_types=experiment_params["interaction_types"],
+    #     nodes=experiment_params["nodes"],
+    #     working_directory=experiment_params["working_directory"],
+    #     loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[tissue_params['resources']['tissue']]}",
+    #     params=tissue_params,
+    # )
+    # edgeparserObject.parse_edges()
+    # print("Preprocessing complete!")
 
     # print("Preprocessing complete!")
     # bedfiles = _listdir_isfile_wrapper(

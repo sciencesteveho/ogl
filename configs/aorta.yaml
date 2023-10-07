@@ -30,6 +30,7 @@ interaction:
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
   tf_marker: tf_marker.txt
+  tf_binding: tfbinding_footprints.bed
 
 local:
   cnv: cnv_hg38.bed
