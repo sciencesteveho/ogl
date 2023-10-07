@@ -287,29 +287,17 @@ class GenomeDataPreprocessor:
             src=src,
             dst=dst,
         )
-
-        try:
+        
+        if self.nodes is None:
+            pass
+        else:
             if "crms" in self.nodes:
                 self._symlink_crms(self.tissue_specific_nodes["crms"])
-        except TypeError:
-            pass
-
-        try:
             if "tads" in self.nodes:
                 self._add_TAD_id(self.tissue_specific_nodes["tads"])
-        except TypeError:
-            pass
-
-        try:
             if "superenhancers" in self.nodes:
                 self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
-        except TypeError:
-            pass
-
-        try:
             if "tfbindingsites" in self.nodes:
                 self._tf_binding_sites(self.tissue_specific_nodes["tf_binding"])
-        except TypeError:
-            pass
 
         self._merge_cpg(self.methylation["cpg"])

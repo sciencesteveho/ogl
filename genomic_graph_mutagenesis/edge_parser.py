@@ -9,7 +9,6 @@
 
 """Parse edges from interaction-type omics data"""
 
-import argparse
 import csv
 import itertools
 from multiprocessing import Pool
@@ -20,7 +19,6 @@ import pandas as pd
 import pybedtools
 
 from utils import genes_from_gencode
-from utils import parse_yaml
 from utils import time_decorator
 
 
@@ -117,7 +115,10 @@ class EdgeParser:
         """Blindly reads a file into csv reader and stores file as a list of
         lists
         """
-        return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
+        try:
+            return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
+        except FileNotFoundError:
+            return []
 
     @time_decorator(print_args=True)
     def _iid_ppi(
@@ -481,8 +482,8 @@ class EdgeParser:
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
-        """Retrieve all interaction edges and saves them to a text file.
-        Edges will be loaded from the text file for subsequent runs to save
+        """Retrieve all interaction edges and saves them to a text file. Edges
+        will be loaded from the text file for subsequent runs to save
         processing time.
 
         Returns:
@@ -538,42 +539,49 @@ class EdgeParser:
             )
 
         # only parse edges specified in experiment
-        if "ppis" in self.interaction_types:
-            ppi_edges = self._iid_ppi(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                tissue=self.ppi_tissue,
+        if self.interaction_types is None:
+            ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
+                [],
+                [],
+                [],
+                [],
+                [],
             )
         else:
-            ppi_edges = []
-
-        if "mirna" in self.interaction_types:
-            mirna_targets = self._mirna_targets(
-                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
-                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
-            )
-        else:
-            mirna_targets = []
-
-        if "tf_marker" in self.interaction_types:
-            tf_markers = self._tf_markers(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
-            )
-        else:
-            tf_markers = []
-
-        if "circuits" in self.interaction_types:
-            circuit_edges = self._marbach_regulatory_circuits(
-                f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-                score_filter=30,
-            )
-        else:
-            circuit_edges = []
-
-        if "tfbinding" in self.interaction_types:
-            tfbinding_edges = self._tfbinding_footprints(
-                tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
-                footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
-            )
+            if "ppis" in self.interaction_types:
+                ppi_edges = self._iid_ppi(
+                    interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+                    tissue=self.ppi_tissue,
+                )
+            else:
+                ppi_edges = []
+            if "mirna" in self.interaction_types:
+                mirna_targets = self._mirna_targets(
+                    target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+                    tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
+                )
+            else:
+                mirna_targets = []
+            if "tf_marker" in self.interaction_types:
+                tf_markers = self._tf_markers(
+                    interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
+                )
+            else:
+                tf_markers = []
+            if "circuits" in self.interaction_types:
+                circuit_edges = self._marbach_regulatory_circuits(
+                    f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+                    score_filter=30,
+                )
+            else:
+                circuit_edges = []
+            if "tfbinding" in self.interaction_types:
+                tfbinding_edges = self._tfbinding_footprints(
+                    tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
+                    footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
+                )
+            else:
+                tfbinding_edges = []
 
         self.interaction_edges = (
             ppi_edges + mirna_targets + tf_markers + circuit_edges + tfbinding_edges
@@ -628,7 +636,10 @@ class EdgeParser:
             nodes:
             node_ref:
         """
-        return [line[0:4] for line in node_ref if line[3] in set(nodes)]
+        if nodes is None:
+            return []
+        else:
+            return [line[0:4] for line in node_ref if line[3] in set(nodes)]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
