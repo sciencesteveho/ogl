@@ -11,8 +11,6 @@ perform part 1 of the pipeline. Takes config to tell the next 3 step which
 arguments to use."""
 
 import argparse
-import os
-import pickle
 from typing import Dict
 
 from edge_parser import EdgeParser
@@ -70,7 +68,7 @@ def main() -> None:
 
     # # Prepare bedfiles
     # print(f"Starting pipeline for {experiment_params['experiment_name']}!")
-    # print("Bedfile preprocessing!")
+    # print("Bedfile preprocessing for {experiment_params['experiment_name']}!")
     # preprocessObject = GenomeDataPreprocessor(
     #     experiment_name=experiment_params["experiment_name"],
     #     interaction_types=experiment_params["interaction_types"],
@@ -82,13 +80,12 @@ def main() -> None:
     # print("Bedfile preprocessing complete!")
 
     print(f"Parsing edges for {experiment_params['experiment_name']}!")
-    print("Preprocessing complete!")
     edgeparserObject = EdgeParser(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
         nodes=experiment_params["nodes"],
         working_directory=experiment_params["working_directory"],
-        loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[tissue_params['resources']['tissue']]}",
+        loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[experiment_params['baseloops']][tissue_params['resources']['tissue']]}",
         params=tissue_params,
     )
     edgeparserObject.parse_edges()

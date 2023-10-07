@@ -1,5 +1,7 @@
 ---
-baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/peakachu_deepanchor
+baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
+
+baseloops: peakachu_deepanchor
 
 experiment_name: regulatoryonly_combinedloops
 
