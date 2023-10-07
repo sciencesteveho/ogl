@@ -97,26 +97,29 @@ class EdgeParser:
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
-        self.gencode_attr_ref = self._blind_read_file(
+        self.gencode_attr_ref = self._create_reference_dict(
             params["resources"]["gencode_attr"]
         )
-        self.regulatory_attr_ref = self._blind_read_file(params["resources"]["reg_ref"])
-        self.se_ref = self._blind_read_file(params["resources"]["se_ref"])
-        self.mirna_ref = self._blind_read_file(
+        self.regulatory_attr_ref = self._create_reference_dict(
+            params["resources"]["reg_ref"]
+        )
+        self.se_ref = self._create_reference_dict(params["resources"]["se_ref"])
+        self.mirna_ref = self._create_reference_dict(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
-        self.footprint_ref = self._blind_read_file(
+        self.footprint_ref = self._create_reference_dict(
             f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         )
 
-    def _blind_read_file(self, file: str) -> List[str]:
-        """Blindly reads a file into csv reader and stores file as a list of
-        lists
-        """
+    def _create_reference_dict(self, file: str) -> List[str]:
+        """Reads a file and stores its lines in a dictionary"""
         try:
-            return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
+            return {
+                line[3]: line[0:4]
+                for line in csv.reader(open(file, newline=""), delimiter="\t")
+            }
         except FileNotFoundError:
-            return []
+            return {}
 
     @time_decorator(print_args=True)
     def _iid_ppi(
@@ -549,13 +552,13 @@ class EdgeParser:
                 [],
             )
         else:
-            if "ppis" in self.interaction_types:
-                #     ppi_edges = self._iid_ppi(
-                #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                #         tissue=self.ppi_tissue,
-                #     )
-                # else:
-                ppi_edges = []
+            # if "ppis" in self.interaction_types:
+            #     ppi_edges = self._iid_ppi(
+            #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+            #         tissue=self.ppi_tissue,
+            #     )
+            # else:
+            ppi_edges = []
             if "mirna" in self.interaction_types:
                 mirna_targets = self._mirna_targets(
                     target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
@@ -569,12 +572,12 @@ class EdgeParser:
                 )
             else:
                 tf_markers = []
-                # if "circuits" in self.interaction_types:
-                #     circuit_edges = self._marbach_regulatory_circuits(
-                #         f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-                #         score_filter=30,
-                #     )
-                # else:
+            if "circuits" in self.interaction_types:
+                circuit_edges = self._marbach_regulatory_circuits(
+                    f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+                    score_filter=30,
+                )
+            else:
                 circuit_edges = []
             if "tfbinding" in self.interaction_types:
                 tfbinding_edges = self._tfbinding_footprints(
@@ -637,10 +640,10 @@ class EdgeParser:
             nodes:
             node_ref:
         """
-        if nodes is None:
+        if len(nodes) == 0:
             return []
         else:
-            return [line[0:4] for line in node_ref if line[3] in set(nodes)]
+            return [node_ref[node] for node in nodes]
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
