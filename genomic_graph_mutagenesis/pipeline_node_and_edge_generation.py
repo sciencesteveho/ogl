@@ -6,8 +6,9 @@
 #   - [ ] nested TODO
 
 
-"""Metadata handler for graph creation. Takes config to tell the next 3 steps
-which arguments to use."""
+"""Metadata handler for graph creation, and inputs metadata into each step to
+perform part 1 of the pipeline. Takes config to tell the next 3 step which
+arguments to use."""
 
 import argparse
 import os

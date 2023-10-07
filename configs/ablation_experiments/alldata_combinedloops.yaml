@@ -7,7 +7,7 @@ interaction_types:
   - ppis
   - tf_marker
   - circuits
-  - tfbinding
+  - tf_binding
   - mirna
 
 nodes:
