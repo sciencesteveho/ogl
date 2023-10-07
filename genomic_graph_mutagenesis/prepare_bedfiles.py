@@ -8,15 +8,14 @@
 
 """Code to preprocess bedfiles before parsing into graph structures"""
 
-import argparse
 import os
 import subprocess
 from typing import Dict, List
 
 import requests
 
+from utils import check_and_symlink
 from utils import dir_check_make
-from utils import parse_yaml
 from utils import time_decorator
 
 NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
@@ -97,20 +96,6 @@ class GenomeDataPreprocessor:
 
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
-
-        def check_and_symlink(dst, src, boolean=False):
-            try:
-                if boolean == True:
-                    if (bool(file) and os.path.exists(src)) and (
-                        not os.path.exists(dst)
-                    ):
-                        os.symlink(src, dst)
-                else:
-                    if not os.path.exists(dst):
-                        os.symlink(src, dst)
-            except FileExistsError:
-                pass
-
         for file in self.tissue_specific_nodes.values():
             check_and_symlink(
                 dst=f"{self.tissue_dir}/unprocessed/{file}",
@@ -128,19 +113,20 @@ class GenomeDataPreprocessor:
         for datatype in self.interaction_types:
             if datatype == "mirna":
                 check_and_symlink(
-                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
                     src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+                    dst=f"{self.tissue_dir}/interaction/" + self.interaction["mirdip"],
                     boolean=True,
                 )
                 check_and_symlink(
-                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
                     src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
+                    dst=f"{self.tissue_dir}/interaction/"
+                    + self.interaction["mirnatargets"],
                     boolean=True,
                 )
             else:
                 check_and_symlink(
-                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
                     src=interact_files[datatype],
+                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
                     boolean=False,
                 )
 
@@ -225,7 +211,7 @@ class GenomeDataPreprocessor:
             | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
             | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
             > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
-        rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, tfbindingsite_$1_$2_$4}}' {self.tissue_dir}/unprocessed/tfbindingsites_{self.tissue}.bed \
+        rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, tfbindingsite_$1_$2_$4}}' {self.tissue_dir}/unprocessed/{bed} \
             > {self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         for cmds in [cmd, rename]:
             self._run_cmd(cmds)
@@ -270,37 +256,43 @@ class GenomeDataPreprocessor:
             dst = f"{self.tissue_dir}/local/{file}"
             if file in NODETYPES_LOCAL:
                 if file in self.nodes:
-                    try:
-                        os.symlink(src, dst)
-                    except FileExistsError:
-                        pass
+                    check_and_symlink(
+                        src=src,
+                        dst=dst,
+                    )
                 else:
                     pass
             else:
-                try:
-                    os.symlink(src, dst)
-                except FileExistsError:
-                    pass
+                check_and_symlink(
+                    src=src,
+                    dst=dst,
+                )
 
         ### Make symlinks for histone marks
         for datatype in self.features:
-            src = f"{self.data_dir}/{self.tissue_specific[datatype]}"
-            dst = f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed"
-            try:
-                os.symlink(src, dst)
-            except FileExistsError:
-                pass
+            check_and_symlink(
+                src=f"{self.data_dir}/{self.features[datatype]}",
+                dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
+            )
+
+        ### Make symlink for cpg
+        src = f"{self.data_dir}/{self.methylation['cpg']}"
+        dst = f"{self.tissue_dir}/unprocessed/{self.methylation['cpg']}"
+        check_and_symlink(
+            src=src,
+            dst=dst,
+        )
 
         if "crms" in self.nodes:
             self._symlink_crms(self.tissue_specific_nodes["crms"])
 
         if "tads" in self.nodes:
-            self._add_TAD_id(self.tissue_specific["tads"])
+            self._add_TAD_id(self.tissue_specific_nodes["tads"])
 
         if "superenhancers" in self.nodes:
-            self._superenhancers(self.tissue_specific["super_enhancer"])
+            self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
 
         if "tfbindingsites" in self.nodes:
-            self._tf_binding_sites(self.tissue_specific["tf_binding"])
+            self._tf_binding_sites(self.tissue_specific_nodes["tf_binding"])
 
         self._merge_cpg(self.methylation["cpg"])

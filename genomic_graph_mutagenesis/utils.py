@@ -271,6 +271,22 @@ TISSUE_TPM_KEYS = {
 }
 
 
+def check_and_symlink(
+    src: str,
+    dst: str,
+    boolean: bool = False,
+) -> None:
+    try:
+        if boolean == True:
+            if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
+                os.symlink(src, dst)
+        else:
+            if not os.path.exists(dst):
+                os.symlink(src, dst)
+    except FileExistsError:
+        pass
+
+
 def chunk_genes(
     genes: List[str],
     chunks: int,

@@ -33,36 +33,9 @@ NODES = [
 
 def main() -> None:
     """Pipeline to generate jobs for creating graphs"""
+
     # Parse arguments for type of graphs to produce
     parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     "--experiment_name",
-    #     "-e",
-    #     type=str,
-    # )
-    # parser.add_argument(
-    #     "--baseloop_directory",
-    #     "-b",
-    #     type=str,
-    # )
-    # parser.add_argument(
-    #     "--interaction_types",
-    #     "-i",
-    #     type=_string_list,
-    #     help="Comma separated list of interaction types to include, e.g. 'ppi,mirna'.",
-    # )
-    # parser.add_argument(
-    #     "--nodes",
-    #     "-n",
-    #     type=_string_list,
-    #     help="Comma separated list of nodes to include, e.g. 'cpgislands,superenhancers'.",
-    # )
-    # parser.add_argument(
-    #     "--working_directory",
-    #     "-w",
-    #     type=str,
-    #     help="Directory to create working folder.",
-    # )
     parser.add_argument(
         "--experiment_config",
         type=str,
@@ -79,6 +52,14 @@ def main() -> None:
             "configs/aorta.yaml",
         ]
     )
+    # args = parser.parse_args(
+    #     [
+    #         "--experiment_config",
+    #         "configs/ablation_experiments/regulatoryonly_combinedloops.yaml",
+    #         "--tissue_config",
+    #         "configs/aorta.yaml",
+    #     ]
+    # )
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
 
