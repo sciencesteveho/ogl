@@ -81,7 +81,7 @@ resources:
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: aorta
   tissue_name: Aorta
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/aorta.tpm.txt
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/artery_aorta.tpm.txt
 
 tissue_specific_nodes:
   crms: consensuses.bed

@@ -8,7 +8,6 @@
 
 """Parse local genomic data to nodes and attributes"""
 
-import argparse
 from itertools import repeat
 from multiprocessing import Pool
 import os
@@ -21,12 +20,10 @@ from typing import Dict, List, Optional, Tuple
 import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
-from utils import _listdir_isfile_wrapper
 from utils import _tpm_filter_gene_windows
 from utils import ATTRIBUTES
 from utils import dir_check_make
 from utils import genes_from_gencode
-from utils import parse_yaml
 from utils import time_decorator
 
 
@@ -55,12 +52,11 @@ class LocalContextParser:
     NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
     # var helpers - for CPU cores
-    ATTRIBUTE_CORES = 64
+    ATTRIBUTE_PROCESSES = 64
 
     def __init__(
         self,
         experiment_name: str,
-        baseloop_directory: str,
         interaction_types: List[str],
         nodes: List[str],
         working_directory: str,
@@ -70,14 +66,12 @@ class LocalContextParser:
         """Initialize the class"""
         self.bedfiles = bedfiles
         self.experiment_name = experiment_name
-        self.baseloop_directory = baseloop_directory
         self.interaction_types = interaction_types
         self.nodes = nodes
         self.working_directory = working_directory
         self.node_cores = len(nodes) + 1  # 12
 
         self.resources = params["resources"]
-        self.tissue_specific = params["tissue_specific"]
         self.gencode = params["local"]["gencode"]
 
         self.tissue = self.resources["tissue"]
@@ -85,7 +79,9 @@ class LocalContextParser:
         self.fasta = self.resources["fasta"]
 
         self.root_dir = params["dirs"]["root_dir"]
-        self.tissue_dir = f"{self.root_dir}/{self.tissue}"
+        self.tissue_dir = (
+            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
+        )
         self.local_dir = f"{self.tissue_dir}/local"
         self.parse_dir = f"{self.tissue_dir}/parsing"
         self.attribute_dir = f"{self.parse_dir}/attributes"
@@ -137,7 +133,7 @@ class LocalContextParser:
         dir_check_make(self.parse_dir)
 
         for directory in [
-            "edges/genes",
+            "edges",
             "attributes",
             "intermediate/slopped",
             "intermediate/sorted",
@@ -507,7 +503,7 @@ class LocalContextParser:
         pool.close()
 
         # get size and all attributes - one process per nodetype
-        pool = Pool(processes=self.ATTRIBUTE_CORES)
+        pool = Pool(processes=self.ATTRIBUTE_PROCESSES)
         pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
         pool.close()
 
@@ -515,39 +511,6 @@ class LocalContextParser:
         self._generate_edges()
 
         # save node attributes as reference for later - one process per nodetype
-        pool = Pool(processes=self.ATTRIBUTE_CORES)
+        pool = Pool(processes=self.ATTRIBUTE_PROCESSES)
         pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
         pool.close()
-
-
-# def main() -> None:
-#     """Pipeline to parse genomic data into edges"""
-#     parser = argparse.ArgumentParser(
-#         formatter_class=argparse.ArgumentDefaultsHelpFormatter
-#     )
-
-#     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
-
-#     args = parser.parse_args()
-#     params = parse_yaml(args.config)
-
-#     bedfiles = _listdir_isfile_wrapper(
-#         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
-#     )
-#     bedfiles = [x for x in bedfiles if "chromatinloops" not in x]
-
-#     # instantiate object
-#     localparseObject = LocalContextParser(
-#         bedfiles=bedfiles,
-#         params=params,
-#     )
-
-#     # run parallelized pipeline!
-#     localparseObject.parse_context_data()
-
-#     # cleanup temporary files
-#     pybedtools.cleanup(remove_all=True)
-
-
-# if __name__ == "__main__":
-#     main()

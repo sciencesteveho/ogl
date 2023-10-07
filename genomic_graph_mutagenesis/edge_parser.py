@@ -64,7 +64,6 @@ class EdgeParser:
         self,
         experiment_name: str,
         interaction_types: List[str],
-        nodes: List[str],
         working_directory: str,
         loop_file: str,
         params: Dict[str, Dict[str, str]],
@@ -72,7 +71,6 @@ class EdgeParser:
         """Initialize the class"""
         self.experiment_name = experiment_name
         self.interaction_types = interaction_types
-        self.nodes = nodes
         self.working_directory = working_directory
         self.loop_file = loop_file
 
