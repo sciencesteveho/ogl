@@ -4,6 +4,23 @@ dirs:
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/mammary
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 
+features:
+  ATAC: ATAC-seq_narrow_merged.bed
+  CTCF: CTCF_narrow_merged.bed
+  DNase: DNase-seq_narrow_merged.bed
+  H3K27ac: H3K27ac_narrow_merged.bed
+  H3K27me3: H3K27me3_narrow_merged.bed
+  H3K36me3: H3K36me3_narrow_merged.bed
+  H3K4me1: H3K4me1_narrow_merged.bed
+  H3K4me2: H3K4me2_narrow_merged.bed
+  H3K4me3: H3K4me3_narrow_merged.bed
+  H3K79me2: H3K79me2_narrow_merged.bed
+  H3K9ac: H3K9ac_narrow_merged.bed
+  H3K9me3: H3K9me3_narrow_merged.bed
+  POLR2A: POLR2A_narrow_merged.bed
+  RAD21: RAD21_narrow_merged.bed
+  SMC3: SMC3_narrow_merged.bed
+
 interaction:
   circuits: breast_adult.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
@@ -12,6 +29,7 @@ interaction:
   mirdip: breast_mirdip
   mirnatargets: mirtargets_filtered.txt
   ppis: IID_annotated_PPI.txt
+  tf_binding: tfbinding_footprints.bed
   tf_marker: tf_marker.txt
 
 local:
@@ -42,7 +60,8 @@ local:
   snp: snp_hg38.bed
   tss: tss_parsed_hg38.bed
 
-options:
+methylation:
+  cpg: ENCFF478RLX.bed
   cpg_filetype: ENCODE
   cpg_liftover: false
 
@@ -57,31 +76,14 @@ resources:
   marker_name: Breast
   ppi_tissue: mammary gland
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: mammary
   tissue_name: Breast - Mammary Tissue
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/breast_mammary_tissue.tpm.txt
 
-tissue_specific:
-  ATAC: ATAC-seq_narrow_5_merged.bed
-  CTCF: CTCF_narrow_5_merged.bed
-  DNase: DNase-seq_narrow_5_merged.bed
-  H3K27ac: H3K27ac_narrow_5_merged.bed
-  H3K27me3: H3K27me3_narrow_5_merged.bed
-  H3K36me3: H3K36me3_narrow_5_merged.bed
-  H3K4me1: H3K4me1_narrow_5_merged.bed
-  H3K4me2: H3K4me2_narrow_5_merged.bed
-  H3K4me3: H3K4me3_narrow_5_merged.bed
-  H3K79me2: H3K79me2_narrow_5_merged.bed
-  H3K9ac: H3K9ac_narrow_5_merged.bed
-  H3K9me3: H3K9me3_narrow_4_merged.bed
-  POLR2A: POLR2A_narrow_5_merged.bed
-  RAD21: RAD21_narrow_5_merged.bed
-  SMC3: SMC3_narrow_5_merged.bed
-  chromatinloops: HMEC.hg38.combined_loops
-  cpg: ENCFF478RLX.bed
+tissue_specific_nodes:
   crms: consensuses.bed
   super_enhancer: SE_01_0045_SE_hg38.bed
   tads: HMEC_Rao_2014-raw_TADs.txt

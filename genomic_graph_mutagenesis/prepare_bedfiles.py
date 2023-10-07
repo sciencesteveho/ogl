@@ -110,25 +110,30 @@ class GenomeDataPreprocessor:
             "tf_binding": f"{self.shared_data_dir}/interaction/{self.interaction['tf_binding']}",
         }
 
-        for datatype in self.interaction_types:
-            if datatype == "mirna":
-                check_and_symlink(
-                    src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
-                    dst=f"{self.tissue_dir}/interaction/" + self.interaction["mirdip"],
-                    boolean=True,
-                )
-                check_and_symlink(
-                    src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
-                    dst=f"{self.tissue_dir}/interaction/"
-                    + self.interaction["mirnatargets"],
-                    boolean=True,
-                )
-            else:
-                check_and_symlink(
-                    src=interact_files[datatype],
-                    dst=f"{self.tissue_dir}/interaction/" + self.interaction[datatype],
-                    boolean=False,
-                )
+        try:
+            for datatype in self.interaction_types:
+                if datatype == "mirna":
+                    check_and_symlink(
+                        src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
+                        dst=f"{self.tissue_dir}/interaction/"
+                        + self.interaction["mirdip"],
+                        boolean=True,
+                    )
+                    check_and_symlink(
+                        src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
+                        dst=f"{self.tissue_dir}/interaction/"
+                        + self.interaction["mirnatargets"],
+                        boolean=True,
+                    )
+                else:
+                    check_and_symlink(
+                        src=interact_files[datatype],
+                        dst=f"{self.tissue_dir}/interaction/"
+                        + self.interaction[datatype],
+                        boolean=False,
+                    )
+        except TypeError:
+            pass
 
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
@@ -283,16 +288,28 @@ class GenomeDataPreprocessor:
             dst=dst,
         )
 
-        if "crms" in self.nodes:
-            self._symlink_crms(self.tissue_specific_nodes["crms"])
+        try:
+            if "crms" in self.nodes:
+                self._symlink_crms(self.tissue_specific_nodes["crms"])
+        except TypeError:
+            pass
 
-        if "tads" in self.nodes:
-            self._add_TAD_id(self.tissue_specific_nodes["tads"])
+        try:
+            if "tads" in self.nodes:
+                self._add_TAD_id(self.tissue_specific_nodes["tads"])
+        except TypeError:
+            pass
 
-        if "superenhancers" in self.nodes:
-            self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
+        try:
+            if "superenhancers" in self.nodes:
+                self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
+        except TypeError:
+            pass
 
-        if "tfbindingsites" in self.nodes:
-            self._tf_binding_sites(self.tissue_specific_nodes["tf_binding"])
+        try:
+            if "tfbindingsites" in self.nodes:
+                self._tf_binding_sites(self.tissue_specific_nodes["tf_binding"])
+        except TypeError:
+            pass
 
         self._merge_cpg(self.methylation["cpg"])

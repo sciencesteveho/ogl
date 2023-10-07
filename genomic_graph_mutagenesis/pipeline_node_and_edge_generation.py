@@ -68,30 +68,31 @@ def main() -> None:
         dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 
-    # Prepare bedfiles
-    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
-    print("Bedfile preprocessing!")
-    preprocessObject = GenomeDataPreprocessor(
-        experiment_name=experiment_params["experiment_name"],
-        interaction_types=experiment_params["interaction_types"],
-        nodes=experiment_params["nodes"],
-        working_directory=experiment_params["working_directory"],
-        params=tissue_params,
-    )
-    preprocessObject.prepare_data_files()
-    print("Bedfile preprocessing complete!")
-
-    # print("Preprocessing complete!")
-    # edgeparserObject = EdgeParser(
+    # # Prepare bedfiles
+    # print(f"Starting pipeline for {experiment_params['experiment_name']}!")
+    # print("Bedfile preprocessing!")
+    # preprocessObject = GenomeDataPreprocessor(
     #     experiment_name=experiment_params["experiment_name"],
     #     interaction_types=experiment_params["interaction_types"],
     #     nodes=experiment_params["nodes"],
     #     working_directory=experiment_params["working_directory"],
-    #     loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[tissue_params['resources']['tissue']]}",
     #     params=tissue_params,
     # )
-    # edgeparserObject.parse_edges()
-    # print("Preprocessing complete!")
+    # preprocessObject.prepare_data_files()
+    # print("Bedfile preprocessing complete!")
+
+    print(f"Parsing edges for {experiment_params['experiment_name']}!")
+    print("Preprocessing complete!")
+    edgeparserObject = EdgeParser(
+        experiment_name=experiment_params["experiment_name"],
+        interaction_types=experiment_params["interaction_types"],
+        nodes=experiment_params["nodes"],
+        working_directory=experiment_params["working_directory"],
+        loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[tissue_params['resources']['tissue']]}",
+        params=tissue_params,
+    )
+    edgeparserObject.parse_edges()
+    print("Preprocessing complete!")
 
     # print("Preprocessing complete!")
     # bedfiles = _listdir_isfile_wrapper(
