@@ -106,7 +106,7 @@ class EdgeParser:
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
         )
         self.footprint_ref = self._blind_read_file(
-            f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
+            f"{self.tissue_dir}/unprocessed/tfbindingsites_{self.tissue}.bed"
         )
 
     def _blind_read_file(self, file: str) -> List[str]:

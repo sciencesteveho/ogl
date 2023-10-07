@@ -41,22 +41,22 @@ def main() -> None:
     parser.add_argument(
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
-    # args = parser.parse_args(
-    #     [
-    #         "--experiment_config",
-    #         "configs/ablation_experiments/alldata_combinedloops.yaml",
-    #         "--tissue_config",
-    #         "configs/aorta.yaml",
-    #     ]
-    # )
     args = parser.parse_args(
         [
             "--experiment_config",
-            "configs/ablation_experiments/regulatoryonly_combinedloops.yaml",
+            "configs/ablation_experiments/alldata_combinedloops.yaml",
             "--tissue_config",
             "configs/aorta.yaml",
         ]
     )
+    # args = parser.parse_args(
+    #     [
+    #         "--experiment_config",
+    #         "configs/ablation_experiments/regulatoryonly_combinedloops.yaml",
+    #         "--tissue_config",
+    #         "configs/aorta.yaml",
+    #     ]
+    # )
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
 
