@@ -63,7 +63,6 @@ class EdgeParser:
     def __init__(
         self,
         experiment_name: str,
-        baseloop_directory: str,
         interaction_types: List[str],
         nodes: List[str],
         working_directory: str,
@@ -72,7 +71,6 @@ class EdgeParser:
     ):
         """Initialize the class"""
         self.experiment_name = experiment_name
-        self.baseloop_directory = baseloop_directory
         self.interaction_types = interaction_types
         self.nodes = nodes
         self.working_directory = working_directory
@@ -274,7 +272,7 @@ class EdgeParser:
         return [
             (
                 f"{self.genesymbol_to_gencode[line[3]]}_tf",
-                f"{line[0]}_{line[1]}_{line[3]}",
+                f"{line[5]}_{line[6]}_{line[3]}",
                 -1,
                 "tf_binding_footprint",
             )
@@ -509,7 +507,7 @@ class EdgeParser:
             (dyadic, "p_d"),
         ]
 
-        if super_enhancers in self.interaction_types:
+        if "superenhancers" in self.interaction_types:
             super_enhancers = pybedtools.BedTool(
                 f"{self.local_dir}/superenhancers_{self.tissue}.bed"
             )
@@ -549,11 +547,11 @@ class EdgeParser:
             )
         else:
             if "ppis" in self.interaction_types:
-                ppi_edges = self._iid_ppi(
-                    interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                    tissue=self.ppi_tissue,
-                )
-            else:
+                #     ppi_edges = self._iid_ppi(
+                #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+                #         tissue=self.ppi_tissue,
+                #     )
+                # else:
                 ppi_edges = []
             if "mirna" in self.interaction_types:
                 mirna_targets = self._mirna_targets(
@@ -568,12 +566,12 @@ class EdgeParser:
                 )
             else:
                 tf_markers = []
-            if "circuits" in self.interaction_types:
-                circuit_edges = self._marbach_regulatory_circuits(
-                    f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-                    score_filter=30,
-                )
-            else:
+                # if "circuits" in self.interaction_types:
+                #     circuit_edges = self._marbach_regulatory_circuits(
+                #         f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+                #         score_filter=30,
+                #     )
+                # else:
                 circuit_edges = []
             if "tfbinding" in self.interaction_types:
                 tfbinding_edges = self._tfbinding_footprints(

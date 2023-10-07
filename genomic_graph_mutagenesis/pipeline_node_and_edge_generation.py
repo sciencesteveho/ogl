@@ -11,7 +11,6 @@ perform part 1 of the pipeline. Takes config to tell the next 3 step which
 arguments to use."""
 
 import argparse
-from typing import Dict
 
 from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
@@ -85,7 +84,7 @@ def main() -> None:
         interaction_types=experiment_params["interaction_types"],
         nodes=experiment_params["nodes"],
         working_directory=experiment_params["working_directory"],
-        loop_file=f"{experiment_params['baseloop_directory']}/{LOOPFILES[experiment_params['baseloops']][tissue_params['resources']['tissue']]}",
+        loop_file=f"{experiment_params['baseloop_directory']}/{experiment_params['baseloops']}/{LOOPFILES[experiment_params['baseloops']][tissue_params['resources']['tissue']]}",
         params=tissue_params,
     )
     edgeparserObject.parse_edges()
