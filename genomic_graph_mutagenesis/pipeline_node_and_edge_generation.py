@@ -41,22 +41,22 @@ def main() -> None:
     parser.add_argument(
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
-    args = parser.parse_args(
-        [
-            "--experiment_config",
-            "configs/ablation_experiments/alldata_combinedloops.yaml",
-            "--tissue_config",
-            "configs/aorta.yaml",
-        ]
-    )
     # args = parser.parse_args(
     #     [
     #         "--experiment_config",
-    #         "configs/ablation_experiments/regulatoryonly_combinedloops.yaml",
+    #         "configs/ablation_experiments/alldata_combinedloops.yaml",
     #         "--tissue_config",
     #         "configs/aorta.yaml",
     #     ]
     # )
+    args = parser.parse_args(
+        [
+            "--experiment_config",
+            "configs/ablation_experiments/regulatoryonly_combinedloops.yaml",
+            "--tissue_config",
+            "configs/aorta.yaml",
+        ]
+    )
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
 
@@ -65,18 +65,18 @@ def main() -> None:
         dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 
-    # # Prepare bedfiles
-    # print(f"Starting pipeline for {experiment_params['experiment_name']}!")
-    # print("Bedfile preprocessing for {experiment_params['experiment_name']}!")
-    # preprocessObject = GenomeDataPreprocessor(
-    #     experiment_name=experiment_params["experiment_name"],
-    #     interaction_types=experiment_params["interaction_types"],
-    #     nodes=experiment_params["nodes"],
-    #     working_directory=experiment_params["working_directory"],
-    #     params=tissue_params,
-    # )
-    # preprocessObject.prepare_data_files()
-    # print("Bedfile preprocessing complete!")
+    # Prepare bedfiles
+    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
+    print(f"Bedfile preprocessing for {experiment_params['experiment_name']}!")
+    preprocessObject = GenomeDataPreprocessor(
+        experiment_name=experiment_params["experiment_name"],
+        interaction_types=experiment_params["interaction_types"],
+        nodes=experiment_params["nodes"],
+        working_directory=experiment_params["working_directory"],
+        params=tissue_params,
+    )
+    preprocessObject.prepare_data_files()
+    print("Bedfile preprocessing complete!")
 
     print(f"Parsing edges for {experiment_params['experiment_name']}!")
     edgeparserObject = EdgeParser(

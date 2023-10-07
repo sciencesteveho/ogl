@@ -212,11 +212,17 @@ class GenomeDataPreprocessor:
         #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
         #     > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
 
+        # cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
+        #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
+        #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
+        #     > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
+
         cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-            | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
+            | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} \
             | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
             > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
-        rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tfbindingsite_\"$1\"_\"$2\"_\"$4}}' {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed \
+
+        rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, $1\"_\"$2\"_\"$4}}' {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed \
             > {self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         for cmds in [cmd, rename]:
             self._run_cmd(cmds)

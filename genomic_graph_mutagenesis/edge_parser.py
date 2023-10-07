@@ -507,12 +507,15 @@ class EdgeParser:
             (dyadic, "p_d"),
         ]
 
-        if "superenhancers" in self.interaction_types:
-            super_enhancers = pybedtools.BedTool(
-                f"{self.local_dir}/superenhancers_{self.tissue}.bed"
-            )
-            gene_overlaps = gene_overlaps + [(super_enhancers, "g_se")]
-            promoter_overlaps = promoter_overlaps + [(super_enhancers, "p_se")]
+        try:
+            if "superenhancers" in self.interaction_types:
+                super_enhancers = pybedtools.BedTool(
+                    f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+                )
+                gene_overlaps = gene_overlaps + [(super_enhancers, "g_se")]
+                promoter_overlaps = promoter_overlaps + [(super_enhancers, "p_se")]
+        except TypeError:
+            pass
 
         for element in gene_overlaps:
             chrom_loop_edges.extend(
