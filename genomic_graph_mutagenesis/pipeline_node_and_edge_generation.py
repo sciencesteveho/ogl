@@ -30,7 +30,6 @@ NODES = [
 
 def main() -> None:
     """Pipeline to generate jobs for creating graphs"""
-    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
     # Parse arguments for type of graphs to produce
     parser = argparse.ArgumentParser()
@@ -42,14 +41,14 @@ def main() -> None:
     parser.add_argument(
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
-    args = parser.parse_args(
-        [
-            "--experiment_config",
-            "configs/ablation_experiments/alldata_combinedloops.yaml",
-            "--tissue_config",
-            "configs/aorta.yaml",
-        ]
-    )
+    # args = parser.parse_args(
+    #     [
+    #         "--experiment_config",
+    #         "configs/ablation_experiments/alldata_combinedloops.yaml",
+    #         "--tissue_config",
+    #         "configs/aorta.yaml",
+    #     ]
+    # )
     # args = parser.parse_args(
     #     [
     #         "--experiment_config",
@@ -58,8 +57,10 @@ def main() -> None:
     #         "configs/aorta.yaml",
     #     ]
     # )
+    args = parser.parse_args()
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
+    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
     # set up variables for params to improve readability
     try:

@@ -69,7 +69,7 @@ class LocalContextParser:
         self.interaction_types = interaction_types
         self.nodes = nodes
         self.working_directory = working_directory
-        self.node_cores = len(nodes) + 1  # 12
+        self.node_processes = len(nodes) + 1  # 12
 
         self.resources = params["resources"]
         self.gencode = params["local"]["gencode"]
@@ -173,7 +173,7 @@ class LocalContextParser:
         bed_dict = {}
         prefix = bed.split("_")[0].lower()
         a = self.gene_windows
-        b = pybedtools.BedTool(f"{self.root_dir}/{self.tissue}/local/{bed}").sort()
+        b = pybedtools.BedTool(f"{self.tissue_dir}/local/{bed}").sort()
         ab = b.intersect(a, sorted=True, u=True)
 
         # take specific windows and format each file
@@ -469,7 +469,7 @@ class LocalContextParser:
                 outfile.close()
 
         # process windows and renaming
-        pool = Pool(processes=self.NODE_CORES)
+        pool = Pool(processes=self.node_processes)
         bedinstance = pool.map(
             self._region_specific_features_dict, [bed for bed in self.bedfiles]
         )
@@ -498,7 +498,7 @@ class LocalContextParser:
         _pre_concatenate_all_files(all_files)
 
         # perform intersects across all feature types - one process per nodetype
-        pool = Pool(processes=self.NODE_CORES)
+        pool = Pool(processes=self.node_processes)
         pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
         pool.close()
 
