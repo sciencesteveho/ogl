@@ -152,16 +152,6 @@ class GenomeDataPreprocessor:
                     f"{self.root_dir}/shared_data/local_feats/{file}",
                 )
 
-    def _symlink_crms(self, crm: str) -> None:
-        """Make symlinks crm if nodetype specified for experiment"""
-        try:
-            os.symlink(
-                f"{self.data_dir}/{crm}",
-                f"{self.tissue_dir}/unprocessed/{crm}",
-            )
-        except FileExistsError:
-            pass
-
     @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
@@ -300,7 +290,9 @@ class GenomeDataPreprocessor:
             pass
         else:
             if "crms" in self.nodes:
-                self._symlink_crms(self.tissue_specific_nodes["crms"])
+                check_and_symlink(
+                    src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
+                    dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",)
             if "tads" in self.nodes:
                 self._add_TAD_id(self.tissue_specific_nodes["tads"])
             if "superenhancers" in self.nodes:
