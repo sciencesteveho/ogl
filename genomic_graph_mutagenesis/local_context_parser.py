@@ -57,7 +57,6 @@ class LocalContextParser:
     def __init__(
         self,
         experiment_name: str,
-        interaction_types: List[str],
         nodes: List[str],
         working_directory: str,
         bedfiles: List[str],
@@ -66,7 +65,6 @@ class LocalContextParser:
         """Initialize the class"""
         self.bedfiles = bedfiles
         self.experiment_name = experiment_name
-        self.interaction_types = interaction_types
         self.nodes = nodes
         self.working_directory = working_directory
         self.node_processes = len(nodes) + 1  # 12

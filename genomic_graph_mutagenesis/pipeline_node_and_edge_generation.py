@@ -54,7 +54,17 @@ def preprocess_bedfiles(
     print("Bedfile preprocessing complete!")
 
 
-def parse_edges(experiment_params, tissue_params):
+def parse_edges(
+    experiment_params: Dict[str, Union[str, list]],
+    tissue_params: Dict[str, Union[str, list]],
+) -> None:
+    """Parse nodes and edges to create base graph and for local context
+    augmentation
+
+    Args:
+        experiment_params (Dict[str, Union[str, list]]): experiment config
+        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+    """
     baseloop_directory = experiment_params["baseloop_directory"]
     baseloops = experiment_params["baseloops"]
 
@@ -70,10 +80,19 @@ def parse_edges(experiment_params, tissue_params):
     print("Edges parsed!")
 
 
-def parse_local_context(experiment_params, tissue_params):
-    nodes = experiment_params.get("nodes", []) + NODES
+def parse_local_context(
+    experiment_params: Dict[str, Union[str, list]],
+    tissue_params: Dict[str, Union[str, list]],
+    nodes: List[str],
+) -> None:
+    """Add local context edges based on basenode input
+
+    Args:
+        experiment_params (Dict[str, Union[str, list]]): experiment config
+        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+        nodes (List[str]): nodes to include in graph
+    """
     experiment_name = experiment_params["experiment_name"]
-    interaction_types = experiment_params["interaction_types"]
     working_directory = experiment_params["working_directory"]
 
     remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
@@ -87,7 +106,6 @@ def parse_local_context(experiment_params, tissue_params):
 
     localparseObject = LocalContextParser(
         experiment_name=experiment_name,
-        interaction_types=interaction_types,
         nodes=nodes,
         working_directory=working_directory,
         bedfiles=adjusted_bedfiles,
@@ -117,13 +135,25 @@ def main() -> None:
     nodes = experiment_params.get("nodes", []) + NODES
     print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
+    # create working directory for experimnet
+    dir_check_make(
+        dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
+    )
+
     preprocess_bedfiles(
         experiment_params=experiment_params,
         tissue_params=tissue_params,
         nodes=nodes,
     )
-    parse_edges(experiment_params=experiment_params, tissue_params=tissue_params)
-    parse_local_context(experiment_params, tissue_params)
+    parse_edges(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
+    )
+    parse_local_context(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
+        nodes=nodes,
+    )
 
 
 if __name__ == "__main__":
