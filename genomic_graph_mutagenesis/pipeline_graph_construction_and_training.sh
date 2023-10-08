@@ -5,7 +5,8 @@
 experiment_yaml=$1
 experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatoryonly_combinedloops.yaml
 
-# create graphs and concat via EM partition
+# Create graphs and concat. Note that this is using the RM partition. The
+# submitted job name is then saved
 construct_id=$(
     sbatch \
     --parsable \

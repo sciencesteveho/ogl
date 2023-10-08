@@ -226,15 +226,46 @@ def main() -> None:
     dir_check_make(graph_dir)
 
     # instantiate objects and process graphs
-    graphs = [
-        graph_constructor(
-            tissue=tissue,
-            nodes=nodes,
-            root_dir=root_dir,
-            graph_type=args.graph_type,
-        )
-        for tissue in TISSUES
-    ]
+    for idx, tissue in enumerate(TISSUES):
+        if idx == 0:
+            graph = graph_constructor(
+                tissue=tissue,
+                nodes=nodes,
+                root_dir=root_dir,
+                graph_type=args.graph_type,
+            )
+        else:
+            graph = nx.compose(graph, graph_constructor(
+                tissue=tissue,
+                nodes=nodes,
+                root_dir=root_dir,
+                graph_type=args.graph_type,
+            ))
+    
+    # graphs = [
+    #     graph_constructor(
+    #         tissue=tissue,
+    #         nodes=nodes,
+    #         root_dir=root_dir,
+    #         graph_type=args.graph_type,
+    #     )
+    #     for tissue in TISSUES
+    # ]
+    
+    # graph = nx.compose_all(graph_construct_generator)
+    
+    # def graph_construct_generator():
+    #     for tissue in TISSUES:
+    #         yield graph_constructor(
+    #             tissue=tissue,
+    #             nodes=nodes,
+    #             root_dir=root_dir,
+    #             graph_type=args.graph_type,
+    #         )
+            
+    # first_graph = graph_construct_generator()
+    # graph = nx.compose(first_graph, graph_construct_generator(next))
+
 
     # # tmp save so we dont have to do this again
     # with open(
@@ -243,7 +274,7 @@ def main() -> None:
     #     pickle.dump(graphs, output)
 
     # concat all
-    graph = nx.compose_all(graphs)
+    # graph = nx.compose_all(graphs)
 
     # save indexes before renaming to integers
     with open(
