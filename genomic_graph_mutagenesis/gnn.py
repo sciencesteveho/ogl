@@ -321,7 +321,7 @@ def main() -> None:
         default="False",
     )
     parser.add_argument(
-        "--randomize_node_features",
+        "--randomize_node_feats",
         type=bool,
         default="True",
     )
@@ -357,6 +357,7 @@ def main() -> None:
     # prepare data
     if args.zero_node:
         data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
             root_dir=args.root,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
@@ -364,6 +365,7 @@ def main() -> None:
         )
     elif args.randomize_node_feats:
         data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
             root_dir=args.root,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
@@ -371,6 +373,7 @@ def main() -> None:
         )
     else:
         data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
             root_dir=args.root,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
