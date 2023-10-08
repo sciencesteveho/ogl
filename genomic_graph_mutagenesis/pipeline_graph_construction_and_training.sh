@@ -3,6 +3,7 @@
 # Submit jobs for graph construction, graph concatenation, scaler creation,
 # feature scaling, and gnn training.
 experiment_yaml=$1
+experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatoryonly_combinedloops.yaml
 
 # create graphs and concat via EM partition
 construct_id=$(
@@ -10,7 +11,7 @@ construct_id=$(
     --parsable \
     graph_constructor_and_concat.sh \
     full \
-    --experiment_config $experiment_yaml
+    ${experiment_yaml}
 )
 
 # create scaler after concat is finished

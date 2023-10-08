@@ -195,7 +195,7 @@ def _nx_to_tensors(
         )
 
 
-def main(root_dir: str) -> None:
+def main() -> None:
     """Pipeline to generate individual graphs"""
     # parse argument
     parser = argparse.ArgumentParser()
