@@ -154,7 +154,11 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
-    targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_exp.pkl"
+
+    if only_expression_no_fold:
+        targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl"
+    else:
+        targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_exp.pkl"
 
     test_chrs = ["chr8", "chr9"]
     val_chrs = ["chr7", "chr13"]
