@@ -97,27 +97,27 @@ def graph_constructor(
         if edge_type not in ("base", "local"):
             raise ValueError("Edge type must be 'base' or 'local'")
 
+    # @time_decorator(print_args=True)
     # def _get_edges(
     #     edge_file: str,
     #     edge_type: str,
     #     add_tissue: bool = False,
-    # ) -> Generator:
-    #     """Get edges from file as a generator."""
-    #     with open(edge_file, "r") as file:
-    #         reader = csv.reader(file, delimiter="\t")
-    #         for tup in reader:
-    #             if edge_type == "base":
-    #                 if add_tissue:
-    #                     yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
-    #                 else:
-    #                     yield (tup[0], tup[1], tup[3])
-    #             elif edge_type == "local":
-    #                 if add_tissue:
-    #                     yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
-    #                 else:
-    #                     yield (tup[3], tup[7], "local")
+    # ) -> List[str]:
+    #     """Get edges from file"""
+    #     reader = csv.reader(open(edge_file, "r"), delimiter="\t")
+    #     for tup in reader:
+    #         if edge_type == "base":
+    #             if add_tissue:
+    #                 yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
     #             else:
-    #                 raise ValueError("Edge type must be 'base' or 'local'")
+    #                 yield (tup[0], tup[1], tup[3])
+    #         elif edge_type == "local":
+    #             if add_tissue:
+    #                 yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
+    #             else:
+    #                 yield (tup[3], tup[7], "local")
+    #         else:
+    #             raise ValueError("Edge type must be 'base' or 'local'")
 
     @time_decorator(print_args=False)
     def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
