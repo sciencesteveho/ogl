@@ -11,6 +11,7 @@ perform part 1 of the pipeline. Takes config to tell the next 3 step which
 arguments to use."""
 
 import argparse
+from typing import Dict, List, Union
 
 from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
@@ -29,6 +30,74 @@ NODES = [
 ]
 
 
+def preprocess_bedfiles(
+    experiment_params: Dict[str, Union[str, list]],
+    tissue_params: Dict[str, Union[str, list]],
+    nodes: List[str],
+) -> None:
+    """Directory set-up, bedfile symlinking and preprocessing
+
+    Args:
+        experiment_params (Dict[str, Union[str, list]]): experiment config
+        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+        nodes (List[str]): nodes to include in graph
+    """
+    preprocessObject = GenomeDataPreprocessor(
+        experiment_name=experiment_params["experiment_name"],
+        interaction_types=experiment_params["interaction_types"],
+        nodes=nodes,
+        working_directory=experiment_params["working_directory"],
+        params=tissue_params,
+    )
+
+    preprocessObject.prepare_data_files()
+    print("Bedfile preprocessing complete!")
+
+
+def parse_edges(experiment_params, tissue_params):
+    baseloop_directory = experiment_params["baseloop_directory"]
+    baseloops = experiment_params["baseloops"]
+
+    edgeparserObject = EdgeParser(
+        experiment_name=experiment_params["experiment_name"],
+        interaction_types=experiment_params["interaction_types"],
+        working_directory=experiment_params["working_directory"],
+        loop_file=f"{baseloop_directory}/{baseloops}/{LOOPFILES[baseloops][tissue_params['resources']['tissue']]}",
+        params=tissue_params,
+    )
+
+    edgeparserObject.parse_edges()
+    print("Edges parsed!")
+
+
+def parse_local_context(experiment_params, tissue_params):
+    nodes = experiment_params.get("nodes", []) + NODES
+    experiment_name = experiment_params["experiment_name"]
+    interaction_types = experiment_params["interaction_types"]
+    working_directory = experiment_params["working_directory"]
+
+    remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
+
+    local_dir = f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local"
+    bedfiles = _listdir_isfile_wrapper(dir=local_dir)
+
+    adjusted_bedfiles = [
+        bed for bed in bedfiles if not any(node in bed for node in remove_nodes)
+    ]
+
+    localparseObject = LocalContextParser(
+        experiment_name=experiment_name,
+        interaction_types=interaction_types,
+        nodes=nodes,
+        working_directory=working_directory,
+        bedfiles=adjusted_bedfiles,
+        params=tissue_params,
+    )
+
+    localparseObject.parse_context_data()
+    print(f"Local context parser complete!")
+
+
 def main() -> None:
     """Pipeline to generate jobs for creating graphs"""
 
@@ -45,77 +114,16 @@ def main() -> None:
     args = parser.parse_args()
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
+    nodes = experiment_params.get("nodes", []) + NODES
     print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
-    # set up variables for params to improve readability
-    try:
-        nodes = experiment_params["nodes"] + NODES
-    except TypeError:
-        nodes = NODES
-    experiment_name = experiment_params["experiment_name"]
-    interaction_types = experiment_params["interaction_types"]
-    working_directory = experiment_params["working_directory"]
-    baseloop_directory = experiment_params["baseloop_directory"]
-    baseloops = experiment_params["baseloops"]
-
-    # create working directory for experimnet
-    dir_check_make(
-        dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
-    )
-
-    # prepare bedfiles
-    print(f"Bedfile preprocessing for {experiment_params['experiment_name']}!")
-
-    preprocessObject = GenomeDataPreprocessor(
-        experiment_name=experiment_name,
-        interaction_types=interaction_types,
+    preprocess_bedfiles(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
         nodes=nodes,
-        working_directory=working_directory,
-        params=tissue_params,
     )
-
-    preprocessObject.prepare_data_files()
-    print("Bedfile preprocessing complete!")
-
-    # parsing edges
-    print(f"Parsing edges for {experiment_params['experiment_name']}!")
-
-    edgeparserObject = EdgeParser(
-        experiment_name=experiment_name,
-        interaction_types=interaction_types,
-        working_directory=working_directory,
-        loop_file=f"{baseloop_directory}/{baseloops}/{LOOPFILES[baseloops][tissue_params['resources']['tissue']]}",
-        params=tissue_params,
-    )
-
-    edgeparserObject.parse_edges()
-    print("Edges parsed!")
-
-    # parsing local context
-    print(f"Beginning local context parser for {experiment_params['experiment_name']}!")
-
-    remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
-
-    bedfiles = _listdir_isfile_wrapper(
-        dir=f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local",
-    )
-
-    adjusted_bedfiles = [
-        bed for bed in bedfiles if not any(node in bed for node in remove_nodes)
-    ]
-
-    localparseObject = LocalContextParser(
-        experiment_name=experiment_name,
-        interaction_types=interaction_types,
-        nodes=nodes,
-        working_directory=working_directory,
-        bedfiles=adjusted_bedfiles,
-        params=tissue_params,
-    )
-
-    localparseObject.parse_context_data()
-
-    print(f"Local context parser complete!")
+    parse_edges(experiment_params=experiment_params, tissue_params=tissue_params)
+    parse_local_context(experiment_params, tissue_params)
 
 
 if __name__ == "__main__":

@@ -135,6 +135,7 @@ def graph_to_pytorch(
     root_dir: str,
     node_perturbation: str = None,
     node_remove_edges: str = None,
+    gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     protein_targets: bool = False,
     only_expression_no_fold: bool = False,
     single_gene: str = None,
@@ -155,9 +156,6 @@ def graph_to_pytorch(
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
     targets = f"{graph_dir}/training_targets_exp.pkl"
 
-    gene_gtf = (
-        f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-    )
     test_chrs = ["chr8", "chr9"]
     val_chrs = ["chr7", "chr13"]
 
