@@ -137,10 +137,10 @@ def graph_to_pytorch(
     node_remove_edges: str = None,
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     protein_targets: bool = False,
-    only_expression_no_fold: bool = False,
+    only_expression_no_fold: str = "false",
     single_gene: str = None,
-    randomize_feats: bool = False,
-    zero_node_feats: bool = False,
+    randomize_feats: str = "false",
+    zero_node_feats: str = "false",
 ):
     """_summary_
 
@@ -155,7 +155,7 @@ def graph_to_pytorch(
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
-    if only_expression_no_fold:
+    if only_expression_no_fold == "true":
         targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl"
     else:
         targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_exp.pkl"
@@ -203,9 +203,9 @@ def graph_to_pytorch(
         graph_data["node_feat"][:, 14] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
     if not node_perturbation:
-        if zero_node_feats:
+        if zero_node_feats == "true":
             x = torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
-        elif randomize_feats:
+        elif randomize_feats == "true":
             x = torch.rand(graph_data["node_feat"].shape, dtype=torch.float)
         else:
             x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
@@ -267,7 +267,7 @@ def graph_to_pytorch(
                 ),
                 dim=0,
             )
-    elif only_expression_no_fold:
+    elif only_expression_no_fold == "true":
         first = _get_masked_tensor(data.num_nodes)
         for idx in [0]:
             for key, values in remapped.items():

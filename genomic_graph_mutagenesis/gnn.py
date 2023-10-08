@@ -295,8 +295,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--idx",
-        type=bool,
-        default=False,
+        type=str,
+        default="true",
     )
     parser.add_argument(
         "--device",
@@ -311,23 +311,23 @@ def main() -> None:
     )
     parser.add_argument(
         "--zero_node",
-        type=bool,
-        default="False",
+        type=str,
+        default="false",
     )
     parser.add_argument(
         "--randomize_node_feats",
-        type=bool,
-        default="False",
+        type=str,
+        default="false",
     )
     parser.add_argument(
         "--early_stop",
-        type=bool,
-        default="True",
+        type=str,
+        default="true",
     )
     parser.add_argument(
         "--expression_only",
-        type=bool,
-        default="False",
+        type=str,
+        default="false",
     )
     args = parser.parse_args()
 
@@ -339,9 +339,9 @@ def main() -> None:
     savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
 
     # adjust log name
-    if args.randomize_node_feats == True:
+    if args.randomize_node_feats == "true":
         savestr = f"{savestr}_random_node_feats"
-    if args.expression_only == True:
+    if args.expression_only == "true":
         savestr = f"{savestr}_expression_only"
 
     # make directories and set up training log
@@ -361,7 +361,7 @@ def main() -> None:
         device = torch.device("cpu")
 
     # prepare data
-    if args.zero_node:
+    if args.zero_node == "true":
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
@@ -369,7 +369,7 @@ def main() -> None:
             only_expression_no_fold=args.expression_only,
             zero_node_feats=True,
         )
-    elif args.randomize_node_feats:
+    elif args.randomize_node_feats == "true":
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
@@ -411,7 +411,7 @@ def main() -> None:
             num_neighbors=[15, 10, 5],
             batch_size=args.batch_size,
         )
-        if args.idx:
+        if args.idx == "true":
             train_loader = NeighborLoader(
                 data,
                 num_neighbors=[5, 5, 5, 5, 5, 3],
@@ -478,7 +478,7 @@ def main() -> None:
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
-        if args.idx:
+        if args.idx == "true":
             val_acc = test_with_idxs(
                 model=model,
                 device=device,
@@ -511,7 +511,7 @@ def main() -> None:
                 mask="test",
             )
 
-        if args.early_stop:
+        if args.early_stop == "true":
             if epoch == 0:
                 best_validation = val_acc
             else:
