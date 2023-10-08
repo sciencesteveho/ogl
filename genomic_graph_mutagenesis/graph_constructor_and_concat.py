@@ -65,38 +65,6 @@ def graph_constructor(
             G.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
         return G
 
-    @time_decorator(print_args=True)
-    def _get_edges(
-        edge_file: str,
-        edge_type: str,
-        add_tissue: bool = False,
-    ) -> List[str]:
-        """Get edges from file"""
-        if edge_type == "base":
-            if add_tissue:
-                return [
-                    (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
-                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-                ]
-            else:
-                return [
-                    (tup[0], tup[1], tup[3])
-                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-                ]
-        if edge_type == "local":
-            if add_tissue:
-                return [
-                    (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
-                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-                ]
-            else:
-                return [
-                    (tup[3], tup[7], "local")
-                    for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
-                ]
-        if edge_type not in ("base", "local"):
-            raise ValueError("Edge type must be 'base' or 'local'")
-
     # @time_decorator(print_args=True)
     # def _get_edges(
     #     edge_file: str,
@@ -104,20 +72,52 @@ def graph_constructor(
     #     add_tissue: bool = False,
     # ) -> List[str]:
     #     """Get edges from file"""
-    #     reader = csv.reader(open(edge_file, "r"), delimiter="\t")
-    #     for tup in reader:
-    #         if edge_type == "base":
-    #             if add_tissue:
-    #                 yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
-    #             else:
-    #                 yield (tup[0], tup[1], tup[3])
-    #         elif edge_type == "local":
-    #             if add_tissue:
-    #                 yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
-    #             else:
-    #                 yield (tup[3], tup[7], "local")
+    #     if edge_type == "base":
+    #         if add_tissue:
+    #             return [
+    #                 (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
+    #                 for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+    #             ]
     #         else:
-    #             raise ValueError("Edge type must be 'base' or 'local'")
+    #             return [
+    #                 (tup[0], tup[1], tup[3])
+    #                 for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+    #             ]
+    #     if edge_type == "local":
+    #         if add_tissue:
+    #             return [
+    #                 (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
+    #                 for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+    #             ]
+    #         else:
+    #             return [
+    #                 (tup[3], tup[7], "local")
+    #                 for tup in csv.reader(open(edge_file, "r"), delimiter="\t")
+    #             ]
+    #     if edge_type not in ("base", "local"):
+    #         raise ValueError("Edge type must be 'base' or 'local'")
+
+    @time_decorator(print_args=True)
+    def _get_edges(
+        edge_file: str,
+        edge_type: str,
+        add_tissue: bool = False,
+    ) -> Generator[str, str, str]:
+        """Get edges from file"""
+        reader = csv.reader(open(edge_file, "r"), delimiter="\t")
+        for tup in reader:
+            if edge_type == "base":
+                if add_tissue:
+                    yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
+                else:
+                    yield (tup[0], tup[1], tup[3])
+            elif edge_type == "local":
+                if add_tissue:
+                    yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
+                else:
+                    yield (tup[3], tup[7], "local")
+            else:
+                raise ValueError("Edge type must be 'base' or 'local'")
 
     @time_decorator(print_args=False)
     def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
