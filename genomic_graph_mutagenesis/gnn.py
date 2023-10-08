@@ -11,8 +11,6 @@ import argparse
 from datetime import datetime
 import logging
 import math
-import pickle
-import random
 
 import torch
 import torch.nn as nn
@@ -25,12 +23,13 @@ from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import SAGEConv
-
-# from torchmetrics.regression import SpearmanCorrCoef
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
 from utils import dir_check_make
+from utils import parse_yaml
+
+# from torchmetrics.regression import SpearmanCorrCoef
 
 
 # Define/Instantiate GNN model
@@ -253,6 +252,11 @@ def main() -> None:
     # Parse training settings
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--experiment_config",
+        type=str,
+        help="Path to .yaml file with experimental conditions",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default="GCN",
@@ -280,12 +284,12 @@ def main() -> None:
         help="'neighbor' or 'random' node loader (default: 'random')",
     )
     parser.add_argument(
-        "--batch",
+        "--batch_size",
         type=int,
         default=1024,
     )
     parser.add_argument(
-        "--lr",
+        "--learning_rate",
         type=float,
         default=1e-4,
     )
@@ -317,7 +321,7 @@ def main() -> None:
         default="False",
     )
     parser.add_argument(
-        "--random_node",
+        "--randomize_node_feats",
         type=bool,
         default="True",
     )
@@ -328,18 +332,20 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    params = parse_yaml(args.experiment_config)
+
     # make directories and set up training logs
-    if args.random_node == True:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
+    if args.randomize_node_feats == True:
+        savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
     else:
-        savestr = f"{args.model}_{args.layers}_{args.dimensions}_{args.lr}_batch{args.batch}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+        savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
 
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{savestr}.log",
         level=logging.DEBUG,
     )
-    dir_check_make("models/logs")
-    dir_check_make(f"models/{savestr}")
+    dir_check_make(f"{args.root}/models/logs")
+    dir_check_make(f"{args.root}/models/{savestr}")
 
     # check for GPU
     if torch.cuda.is_available():
@@ -356,7 +362,7 @@ def main() -> None:
             only_expression_no_fold=True,
             zero_node_feats=True,
         )
-    elif args.random_node:
+    elif args.randomize_node_feats:
         data = graph_to_pytorch(
             root_dir=args.root,
             graph_type=args.graph_type,
@@ -387,33 +393,33 @@ def main() -> None:
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[20, 15, 10],
-            batch_size=args.batch,
+            num_neighbors=[15, 10, 5],
+            batch_size=args.batch_size,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[20, 15, 10],
-            batch_size=args.batch,
+            num_neighbors=[15, 10, 5],
+            batch_size=args.batch_size,
         )
         if args.idx:
             train_loader = NeighborLoader(
                 data,
                 num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch,
+                batch_size=args.batch_size,
                 input_nodes=data.train_mask,
                 shuffle=True,
             )
             test_loader = NeighborLoader(
                 data,
                 num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch,
+                batch_size=args.batch_size,
                 input_nodes=data.test_mask,
             )
             val_loader = NeighborLoader(
                 data,
                 num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch,
+                batch_size=args.batch_size,
                 input_nodes=data.val_mask,
             )
 
@@ -448,7 +454,7 @@ def main() -> None:
         ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     epochs = 100
     best_validation = stop_counter = 0
