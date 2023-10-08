@@ -375,11 +375,10 @@ class LocalContextParser:
             )
 
         # remove intermediate files
-        subprocess.run(
-            f"cd {self.parse_dir}/edges | grep -vx 'all_concat_sorted.bed' | xargs rm | cd -",
-            stdout=None,
-            shell=True,
-        )
+        retain = ["all_concat_sorted.bed"]
+        for item in os.listdir(f"{self.parse_dir}/edges"):
+            if item not in retain:
+                os.remove(f"{self.parse_dir}/edges/{item}")
 
     @time_decorator(print_args=True)
     def _save_node_attributes(
