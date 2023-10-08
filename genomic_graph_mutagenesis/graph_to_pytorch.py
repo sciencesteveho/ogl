@@ -154,7 +154,7 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/training_targets_exp.pkl"
+    targets = f"{root_dir}/training_targets_exp.pkl"
 
     test_chrs = ["chr8", "chr9"]
     val_chrs = ["chr7", "chr13"]
