@@ -328,17 +328,17 @@ def main() -> None:
 
     params = parse_yaml(args.experiment_config)
 
-    # make directories
+    # set up helper variables
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
-    dir_check_make(f"{working_directory}/models/logs")
-    dir_check_make(f"{working_directory}/models/{savestr}")
-
-    # set up training logs
     if args.randomize_node_feats == True:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
     else:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+
+    # make directories and set up training log
+    dir_check_make(f"{working_directory}/models/logs")
+    dir_check_make(f"{working_directory}/models/{savestr}")
 
     logging.basicConfig(
         filename=f"{working_directory}/models/logs/{savestr}.log",
