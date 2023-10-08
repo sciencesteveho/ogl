@@ -376,7 +376,7 @@ class LocalContextParser:
 
         # remove intermediate files
         subprocess.run(
-            f"ls {self.parse_dir}/edges | grep -vx 'all_concat_sorted.bed' | xargs rm",
+            f"cd {self.parse_dir}/edges | grep -vx 'all_concat_sorted.bed' | xargs rm | cd -",
             stdout=None,
             shell=True,
         )
