@@ -324,6 +324,11 @@ def main() -> None:
         type=bool,
         default="True",
     )
+    parser.add_argument(
+        "--expression_only",
+        type=bool,
+        default="False",
+    )
     args = parser.parse_args()
 
     params = parse_yaml(args.experiment_config)
@@ -335,6 +340,8 @@ def main() -> None:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
     else:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+    if args.expression_only == True:
+        savestr = f"{savestr}_expression_only"
 
     # make directories and set up training log
     dir_check_make(f"{working_directory}/models/logs")
@@ -358,7 +365,7 @@ def main() -> None:
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
             graph_type=args.graph_type,
-            only_expression_no_fold=True,
+            only_expression_no_fold=args.expression_only,
             zero_node_feats=True,
         )
     elif args.randomize_node_feats:
@@ -366,7 +373,7 @@ def main() -> None:
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
             graph_type=args.graph_type,
-            only_expression_no_fold=True,
+            only_expression_no_fold=args.expression_only,
             random_node_feats=True,
         )
     else:
@@ -374,7 +381,7 @@ def main() -> None:
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
             graph_type=args.graph_type,
-            only_expression_no_fold=True,
+            only_expression_no_fold=args.expression_only,
         )
 
     # data loaders
