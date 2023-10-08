@@ -25,8 +25,6 @@ from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
 
-CORES = len(TISSUES) + 1  # one process per tissue
-
 NODES = [
     "dyadic",
     "enhancers",
@@ -59,7 +57,6 @@ def graph_constructor(
     # housekeeping
     interaction_dir = f"{root_dir}/{tissue}/interaction"
     parse_dir = f"{root_dir}/{tissue}/parsing"
-    graph_dir = f"{root_dir}/graphs/{tissue}"
 
     def _base_graph(edges: List[str]):
         """Create a graph from list of edges"""
@@ -150,7 +147,6 @@ def graph_constructor(
         graph = _base_graph(edges=base_edges)
         for tup in local_context_edges:  # add local context edges to full graph
             graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
-
         nx.set_node_attributes(graph, ref)
         return graph
     else:
@@ -266,11 +262,11 @@ def main() -> None:
     # first_graph = graph_construct_generator()
     # graph = nx.compose(first_graph, graph_construct_generator(next))
 
-    # # tmp save so we dont have to do this again
-    # with open(
-    #     f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
-    # ) as output:
-    #     pickle.dump(graphs, output)
+    # tmp save so we dont have to do this again
+    with open(
+        f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
+    ) as output:
+        pickle.dump(graph, output)
 
     # concat all
     # graph = nx.compose_all(graphs)

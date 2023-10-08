@@ -25,7 +25,7 @@ for num in {0..1..1}; do
         make_scaler.sh \
         $num \
         full \
-        $experiment_yaml)
+        ${experiment_yaml})
     slurmids+=($ID)
 done
 
