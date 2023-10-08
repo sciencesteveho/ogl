@@ -321,7 +321,7 @@ def main() -> None:
         default="False",
     )
     parser.add_argument(
-        "--randomize_node_feats",
+        "--randomize_node_features",
         type=bool,
         default="True",
     )

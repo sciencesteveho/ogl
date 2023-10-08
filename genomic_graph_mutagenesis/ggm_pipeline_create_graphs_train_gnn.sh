@@ -103,8 +103,11 @@ parse_arguments() {
 # Call the function to parse command-line arguments
 parse_arguments "$@"
 
+# Set conda environment
+module load anaconda3/2020.11
+conda activate /ocean/projects/bio210019p/stevesho/gnn
+
 # Check if final graph is already made
-set_env
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_full_graph_scaled.pkl
