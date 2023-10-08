@@ -231,16 +231,15 @@ def main() -> None:
                 graph_type=args.graph_type,
             )
         else:
-            pass
-            # graph = nx.compose(
-            #     graph,
-            #     graph_constructor(
-            #         tissue=tissue,
-            #         nodes=nodes,
-            #         root_dir=root_dir,
-            #         graph_type=args.graph_type,
-            #     ),
-            # )
+            graph = nx.compose(
+                graph,
+                graph_constructor(
+                    tissue=tissue,
+                    nodes=nodes,
+                    root_dir=root_dir,
+                    graph_type=args.graph_type,
+                ),
+            )
 
     # save indexes before renaming to integers
     with open(
