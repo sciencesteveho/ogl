@@ -266,7 +266,6 @@ def main() -> None:
     # first_graph = graph_construct_generator()
     # graph = nx.compose(first_graph, graph_construct_generator(next))
 
-
     # # tmp save so we dont have to do this again
     # with open(
     #     f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
