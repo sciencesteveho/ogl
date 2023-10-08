@@ -310,7 +310,7 @@ def main() -> None:
         default="full",
     )
     parser.add_argument(
-        "--zero_node",
+        "--zero_nodes",
         type=str,
         default="false",
     )
@@ -361,7 +361,7 @@ def main() -> None:
         device = torch.device("cpu")
 
     # prepare data
-    if args.zero_node == "true":
+    if args.zero_nodes == "true":
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
             root_dir=root_dir,
