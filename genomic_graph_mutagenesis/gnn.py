@@ -336,10 +336,11 @@ def main() -> None:
     # set up helper variables
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
+    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+
+    # adjust log name
     if args.randomize_node_feats == True:
-        savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
-    else:
-        savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+        savestr = f"{savestr}_random_node_feats"
     if args.expression_only == True:
         savestr = f"{savestr}_expression_only"
 
