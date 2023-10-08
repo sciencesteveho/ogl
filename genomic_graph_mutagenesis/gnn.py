@@ -66,9 +66,9 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin2(x)
-        # x = F.relu(x)
-        # x = F.dropout(x, p=0.2, training=self.training)
-        # x = self.lin3(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.2, training=self.training)
+        x = self.lin3(x)
         return x
 
 
