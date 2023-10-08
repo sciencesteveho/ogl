@@ -5,21 +5,47 @@
 experiment_yaml=$1
 
 # create graphs and concat via EM partition
-sbatch graph_constructor_and_concat.sh \
+construct_id=$(
+    sbatch \
+    --parsable \
+    graph_constructor_and_concat.sh \
     full \
     --experiment_config $experiment_yaml
+)
 
 # create scaler after concat is finished
-# sbatch --dependency=afterok:$(echo ${slurmids[*]} | tr ' ' :) 
-for i in {0..38..1}; do
-    sbatch make_scaler.sh \
-        $i \
-        $experiment_yaml \
-        full
+slurmids=()
+for num in {0..38..1}; do
+    ID=$(sbatch \
+        --parsable \
+        --dependency=afterok:${construct_id} \
+        make_scaler.sh \
+        $num \
+        full \
+        $experiment_yaml)
+    slurmids+=($ID)
 done
 
 # scale node feats after every scaler job is finished
-# sbatch --dependency=afterok:$(echo ${slurmids[*]} | tr ' ' :) 
-sbatch scale_node_features.sh \
+scale_id=$(sbatch \
+    --parsable \
+    --dependency=afterok:$(echo ${slurmids[*]} | tr ' ' :) \
+    scale_node_feats.sh \
     full \
-    --experiment_config $experiment_yaml
+    --experiment_config $experiment_yaml)
+
+# create training targets
+sbatch dataset_split.py
+
+# train neural network
+sbatch \
+    run_gnn.sh \
+    GraphSage \
+    3 \
+    256 \
+    neighbor \
+    0.001 \
+    512 \
+    True \
+    full \ 
+    False 

@@ -11,9 +11,10 @@ import joblib
 import numpy as np
 
 from utils import dir_check_make
+from utils import parse_yaml
 
 
-def main(root_dir: str) -> None:
+def main() -> None:
     # parse args
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -23,19 +24,27 @@ def main(root_dir: str) -> None:
         default="full",
         help="Graph type to use (full or base)",
     )
+    parser.add_argument(
+        "--experiment_config",
+        type=str,
+        help="Path to .yaml file with experimental conditions",
+    )
     args = parser.parse_args()
+    params = parse_yaml(args.experiment_config)
 
-    # set up directories
-    graph_dir = f"{root_dir}/graphs"
-    out_dir = f"{graph_dir}/scaled"
-    scale_dir = f"{root_dir}/data_scaler"
-    dir_check_make(out_dir)
+    # set up variables for params to improve readability
+    experiment_name = params["experiment_name"]
+    working_directory = params["working_directory"]
+
+    # create directory for experiment specific scalers
+    graph_dir = f"{working_directory}/{experiment_name}/graphs"
+    scaler_dir = f"{working_directory}/{experiment_name}/data_scaler"
 
     # load scalers into dict
-    scalers = {i: joblib.load(f"{scale_dir}/feat_{i}_scaler.pt") for i in range(0, 39)}
+    scalers = {i: joblib.load(f"{scaler_dir}/feat_{i}_scaler.pt") for i in range(0, 39)}
 
     # load all tissue graph
-    with open(f"{root_dir}/graphs/all_tissue_{args.graph_type}_graph.pkl", "rb") as f:
+    with open(f"{graph_dir}/{experiment_name}_{args.graph_type}_graph.pkl", "rb") as f:
         g = pickle.load(f)
 
     node_feat = g["node_feat"]
@@ -47,10 +56,10 @@ def main(root_dir: str) -> None:
         )
     g["node_feat"] = node_feat
     with open(
-        f"{out_dir}/all_tissue_{args.graph_type}_graph_scaled.pkl", "wb"
+        f"{graph_dir}/{experiment_name}_{args.graph_type}_graph_scaled.pkl", "wb"
     ) as output:
         pickle.dump(g, output, protocol=4)
 
 
 if __name__ == "__main__":
-    main(root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess")
+    main()

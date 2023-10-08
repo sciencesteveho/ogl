@@ -161,6 +161,7 @@ def graph_constructor(
 
 @time_decorator(print_args=True)
 def _nx_to_tensors(
+    prefix: str,
     graph_dir: str,
     graph: nx.Graph,
     graph_type: str,
@@ -175,7 +176,7 @@ def _nx_to_tensors(
     edges = nx.to_edgelist(graph)
     nodes = sorted(graph.nodes)
 
-    with open(f"{graph_dir}/all_tissue_{graph_type}_graph.pkl", "wb") as output:
+    with open(f"{graph_dir}/{prefix}_{graph_type}_graph.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": np.array(
@@ -255,6 +256,7 @@ def main(root_dir: str) -> None:
 
     # save idxs and write to tensors
     _nx_to_tensors(
+        prefix=experiment_name,
         graph_dir=graph_dir,
         graph=graph,
         graph_type=args.graph_type,
