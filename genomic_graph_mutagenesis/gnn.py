@@ -360,30 +360,32 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    # prepare data
-    if args.zero_nodes == "true":
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            root_dir=root_dir,
-            graph_type=args.graph_type,
-            only_expression_no_fold=args.expression_only,
-            zero_node_feats=True,
-        )
-    elif args.randomize_node_feats == "true":
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            root_dir=root_dir,
-            graph_type=args.graph_type,
-            only_expression_no_fold=args.expression_only,
-            random_node_feats=True,
-        )
-    else:
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            root_dir=root_dir,
-            graph_type=args.graph_type,
-            only_expression_no_fold=args.expression_only,
-        )
+        # prepare data
+        # if args.zero_nodes == "true":
+        #     data = graph_to_pytorch(
+        #         experiment_name=params["experiment_name"],
+        #         root_dir=root_dir,
+        #         graph_type=args.graph_type,
+        #         only_expression_no_fold=args.expression_only,
+        #         zero_node_feats=,
+        #     )
+        # elif args.randomize_node_feats == "true":
+        #     data = graph_to_pytorch(
+        #         experiment_name=params["experiment_name"],
+        #         root_dir=root_dir,
+        #         graph_type=args.graph_type,
+        #         only_expression_no_fold=args.expression_only,
+        #         random_node_feats=True,
+        #     )
+        # else:
+    data = graph_to_pytorch(
+        experiment_name=params["experiment_name"],
+        root_dir=root_dir,
+        graph_type=args.graph_type,
+        only_expression_no_fold=args.expression_only,
+        randomize_feats=args.randomize_node_feats,
+        zero_node_feats=args.zero_nodes,
+    )
 
     # data loaders
     if args.loader == "random":

@@ -133,14 +133,14 @@ def graph_to_pytorch(
     experiment_name: str,
     graph_type: str,
     root_dir: str,
+    only_expression_no_fold: str = "false",
+    randomize_feats: str = "false",
+    zero_node_feats: str = "false",
     node_perturbation: str = None,
     node_remove_edges: str = None,
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     protein_targets: bool = False,
-    only_expression_no_fold: str = "false",
     single_gene: str = None,
-    randomize_feats: str = "false",
-    zero_node_feats: str = "false",
 ):
     """_summary_
 
