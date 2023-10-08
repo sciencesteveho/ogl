@@ -231,22 +231,15 @@ def main() -> None:
                 graph_type=args.graph_type,
             )
         else:
-            pass
-            # graph = nx.compose(
-            #     graph,
-            #     graph_constructor(
-            #         tissue=tissue,
-            #         nodes=nodes,
-            #         root_dir=root_dir,
-            #         graph_type=args.graph_type,
-            #     ),
-            # )
-
-    # tmp save so we dont have to do this again
-    with open(
-        f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
-    ) as output:
-        pickle.dump(graph, output)
+            graph = nx.compose(
+                graph,
+                graph_constructor(
+                    tissue=tissue,
+                    nodes=nodes,
+                    root_dir=root_dir,
+                    graph_type=args.graph_type,
+                ),
+            )
 
     # save indexes before renaming to integers
     with open(
