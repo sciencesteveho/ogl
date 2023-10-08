@@ -374,6 +374,13 @@ class LocalContextParser:
                 cmds[cmd][0] + cmds[cmd][1],
             )
 
+        # remove intermediate files
+        subprocess.run(
+            f"ls {self.parse_dir}/edges | grep -vx 'all_concat_sorted.bed' | xargs rm",
+            stdout=None,
+            shell=True,
+        )
+
     @time_decorator(print_args=True)
     def _save_node_attributes(
         self,

@@ -21,17 +21,25 @@ import networkx as nx
 import numpy as np
 
 from utils import dir_check_make
-from utils import NODES
+from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
 
 CORES = len(TISSUES) + 1  # one process per tissue
+
+NODES = [
+    "dyadic",
+    "enhancers",
+    "gencode",
+    "promoters",
+]
 
 
 @time_decorator(print_args=True)
 def graph_constructor(
     tissue: str,
     root_dir: str,
+    nodes: List[str],
     graph_type: str,
 ) -> nx.Graph:
     """_summary_
@@ -52,7 +60,6 @@ def graph_constructor(
     interaction_dir = f"{root_dir}/{tissue}/interaction"
     parse_dir = f"{root_dir}/{tissue}/parsing"
     graph_dir = f"{root_dir}/graphs/{tissue}"
-    dir_check_make(graph_dir)
 
     def _base_graph(edges: List[str]):
         """Create a graph from list of edges"""
@@ -103,7 +110,7 @@ def graph_constructor(
             Dict[str, Dict[str, Any]]: nested dict of attributes for each node
         """
         ref = pickle.load(open(f"{parse_dir}/attributes/basenodes_reference.pkl", "rb"))
-        for node in NODES:
+        for node in nodes:
             ref_for_concat = pickle.load(
                 open(f"{parse_dir}/attributes/{node}_reference.pkl", "rb")
             )
@@ -196,32 +203,50 @@ def main(root_dir: str) -> None:
         type=str,
         default="full",
     )
+    parser.add_argument(
+        "--experiment_config",
+        type=str,
+        help="Path to .yaml file with experimental conditions",
+    )
     args = parser.parse_args()
+    params = parse_yaml(args.experiment_config)
 
+    # set up variables for params to improve readability
+    try:
+        nodes = params["nodes"] + NODES
+    except TypeError:
+        nodes = NODES
+    experiment_name = params["experiment_name"]
+    working_directory = params["working_directory"]
+
+    # create primary graph directory
+    root_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{root_dir}/graphs"
+    dir_check_make(graph_dir)
 
     # instantiate objects and process graphs
     graphs = [
         graph_constructor(
             tissue=tissue,
+            nodes=nodes,
             root_dir=root_dir,
             graph_type=args.graph_type,
         )
         for tissue in TISSUES
     ]
 
-    # tmp save so we dont have to do this again
-    with open(
-        f"{graph_dir}/all_tissue_{args.graph_type}_graphs_raw.pkl", "wb"
-    ) as output:
-        pickle.dump(graphs, output)
+    # # tmp save so we dont have to do this again
+    # with open(
+    #     f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
+    # ) as output:
+    #     pickle.dump(graphs, output)
 
     # concat all
     graph = nx.compose_all(graphs)
 
     # save indexes before renaming to integers
     with open(
-        f"{graph_dir}/all_tissue_{args.graph_type}_graph_idxs.pkl", "wb"
+        f"{graph_dir}/{experiment_name}_{args.graph_type}_graph_idxs.pkl", "wb"
     ) as output:
         pickle.dump(
             {node: idx for idx, node in enumerate(sorted(graph.nodes))},
@@ -229,10 +254,12 @@ def main(root_dir: str) -> None:
         )
 
     # save idxs and write to tensors
-    _nx_to_tensors(graph_dir=graph_dir, graph=graph, graph_type=args.graph_type)
+    _nx_to_tensors(
+        graph_dir=graph_dir,
+        graph=graph,
+        graph_type=args.graph_type,
+    )
 
 
 if __name__ == "__main__":
-    main(
-        root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-    )
+    main()
