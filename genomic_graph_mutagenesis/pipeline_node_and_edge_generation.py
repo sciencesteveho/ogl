@@ -19,6 +19,7 @@ from utils import _listdir_isfile_wrapper
 from utils import dir_check_make
 from utils import LOOPFILES
 from utils import parse_yaml
+from utils import POSSIBLE_NODES
 
 NODES = [
     "dyadic",
@@ -109,16 +110,22 @@ def main() -> None:
     # parsing local context
     print(f"Beginning local context parser for {experiment_params['experiment_name']}!")
 
+    remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
+
     bedfiles = _listdir_isfile_wrapper(
         dir=f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local",
     )
+
+    adjusted_bedfiles = [
+        bed for bed in bedfiles if not any(node in bed for node in remove_nodes)
+    ]
 
     localparseObject = LocalContextParser(
         experiment_name=experiment_name,
         interaction_types=interaction_types,
         nodes=nodes,
         working_directory=working_directory,
-        bedfiles=bedfiles,
+        bedfiles=adjusted_bedfiles,
         params=tissue_params,
     )
 

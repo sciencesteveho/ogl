@@ -59,7 +59,7 @@ ATTRIBUTES = [
     "snp",
 ]
 
-NODES = [
+POSSIBLE_NODES = [
     "cpgislands",
     "crms",
     "ctcfccre",

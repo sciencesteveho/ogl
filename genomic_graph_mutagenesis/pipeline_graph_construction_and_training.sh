@@ -4,7 +4,7 @@
 # feature scaling, and gnn training.
 experiment_yaml=$1
 experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatoryonly_combinedloops.yaml
-# experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/alldata_combinedloops.yaml
+
 
 ### ADD AN IF LOOP TO TOGGLE EM PARTITION
 
@@ -14,6 +14,15 @@ construct_id=$(
     sbatch \
     --parsable \
     graph_constructor_and_concat.sh \
+    full \
+    ${experiment_yaml}
+)
+
+experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/alldata_combinedloops.yaml
+construct_id=$(
+    sbatch \
+    --parsable \
+    graph_constructor_and_concat_em.sh \
     full \
     ${experiment_yaml}
 )
