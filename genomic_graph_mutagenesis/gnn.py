@@ -305,12 +305,6 @@ def main() -> None:
         help="which gpu to use if any (default: 0)",
     )
     parser.add_argument(
-        "--root",
-        type=str,
-        help="Root directory of dataset storage.",
-        default="/ocean/projects/bio210019p/stevesho/data/preprocess",
-    )
-    parser.add_argument(
         "--graph_type",
         type=str,
         default="full",
@@ -335,17 +329,19 @@ def main() -> None:
     params = parse_yaml(args.experiment_config)
 
     # make directories and set up training logs
+    working_directory = params["working_directory"]
+    root_dir = f"{working_directory}/{params['experiment_name']}"
     if args.randomize_node_feats == True:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx_randomnode"
     else:
         savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
 
     logging.basicConfig(
-        filename=f"{args.root}/models/logs/{savestr}.log",
+        filename=f"{working_directory}/models/logs/{savestr}.log",
         level=logging.DEBUG,
     )
-    dir_check_make(f"{args.root}/models/logs")
-    dir_check_make(f"{args.root}/models/{savestr}")
+    dir_check_make(f"{working_directory}/models/logs")
+    dir_check_make(f"{working_directory}/models/{savestr}")
 
     # check for GPU
     if torch.cuda.is_available():
@@ -358,7 +354,7 @@ def main() -> None:
     if args.zero_node:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
-            root_dir=args.root,
+            root_dir=root_dir,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
             zero_node_feats=True,
@@ -366,7 +362,7 @@ def main() -> None:
     elif args.randomize_node_feats:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
-            root_dir=args.root,
+            root_dir=root_dir,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
             random_node_feats=True,
@@ -374,7 +370,7 @@ def main() -> None:
     else:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
-            root_dir=args.root,
+            root_dir=root_dir,
             graph_type=args.graph_type,
             only_expression_no_fold=True,
         )

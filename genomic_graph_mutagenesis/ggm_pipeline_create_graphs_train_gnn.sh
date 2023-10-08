@@ -104,7 +104,7 @@ parse_arguments() {
 parse_arguments "$@"
 
 # Set conda environment
-module load anaconda3/2020.11
+module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/gnn
 
 # Check if final graph is already made
