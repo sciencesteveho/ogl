@@ -317,7 +317,7 @@ def main() -> None:
     parser.add_argument(
         "--randomize_node_feats",
         type=bool,
-        default="True",
+        default="False",
     )
     parser.add_argument(
         "--early_stop",
@@ -519,7 +519,7 @@ def main() -> None:
                     best_validation = val_acc
                     torch.save(
                         model.state_dict(),
-                        f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
+                        f"{working_directory}/models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
                     )
                 if best_validation < val_acc:
                     stop_counter += 1
@@ -535,7 +535,7 @@ def main() -> None:
 
     torch.save(
         model.state_dict(),
-        f"models/{savestr}/{savestr}_mse_{best_validation}.pt",
+        f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
     )
 
     # # GNN Explainer!
