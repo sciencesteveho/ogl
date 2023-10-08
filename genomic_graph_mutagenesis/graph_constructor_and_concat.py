@@ -15,7 +15,7 @@ base node. Attributes are then added for each node.
 import argparse
 import csv
 import pickle
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator, List
 
 import networkx as nx
 import numpy as np
@@ -96,6 +96,28 @@ def graph_constructor(
                 ]
         if edge_type not in ("base", "local"):
             raise ValueError("Edge type must be 'base' or 'local'")
+
+    # def _get_edges(
+    #     edge_file: str,
+    #     edge_type: str,
+    #     add_tissue: bool = False,
+    # ) -> Generator:
+    #     """Get edges from file as a generator."""
+    #     with open(edge_file, "r") as file:
+    #         reader = csv.reader(file, delimiter="\t")
+    #         for tup in reader:
+    #             if edge_type == "base":
+    #                 if add_tissue:
+    #                     yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
+    #                 else:
+    #                     yield (tup[0], tup[1], tup[3])
+    #             elif edge_type == "local":
+    #                 if add_tissue:
+    #                     yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
+    #                 else:
+    #                     yield (tup[3], tup[7], "local")
+    #             else:
+    #                 raise ValueError("Edge type must be 'base' or 'local'")
 
     @time_decorator(print_args=False)
     def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
@@ -231,15 +253,13 @@ def main() -> None:
                 graph_type=args.graph_type,
             )
         else:
-            graph = nx.compose(
-                graph,
-                graph_constructor(
-                    tissue=tissue,
-                    nodes=nodes,
-                    root_dir=root_dir,
-                    graph_type=args.graph_type,
-                ),
+            current_graph = graph_constructor(
+                tissue=tissue,
+                nodes=nodes,
+                root_dir=root_dir,
+                graph_type=args.graph_type,
             )
+            graph = nx.compose(graph, current_graph)
 
     # save indexes before renaming to integers
     with open(
