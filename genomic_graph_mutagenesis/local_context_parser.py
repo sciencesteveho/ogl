@@ -374,12 +374,6 @@ class LocalContextParser:
                 cmds[cmd][0] + cmds[cmd][1],
             )
 
-        # remove intermediate files
-        retain = ["all_concat_sorted.bed"]
-        for item in os.listdir(f"{self.parse_dir}/edges"):
-            if item not in retain:
-                os.remove(f"{self.parse_dir}/edges/{item}")
-
     @time_decorator(print_args=True)
     def _save_node_attributes(
         self,
@@ -520,3 +514,9 @@ class LocalContextParser:
         pool = Pool(processes=self.ATTRIBUTE_PROCESSES)
         pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
         pool.close()
+
+        # cleanup: remove intermediate files
+        retain = ["all_concat_sorted.bed"]
+        for item in os.listdir(f"{self.parse_dir}/edges"):
+            if item not in retain:
+                os.remove(f"{self.parse_dir}/edges/{item}")
