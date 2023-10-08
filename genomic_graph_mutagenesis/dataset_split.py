@@ -10,6 +10,7 @@
 training the network.
 """
 
+import argparse
 import csv
 import os
 import pickle
@@ -151,6 +152,7 @@ def _get_protein_adundance_tissue_matrix(
     """
     if graph == "tissue":
         tissues = [
+            "Artery Aorta",
             "Heart Ventricle",
             "Brain Cortex",
             "Breast",
@@ -316,31 +318,31 @@ def tissue_targets_for_training(
     return targets
 
 
-def filtered_targets(
-    tissue_params,
-    targets,
-):
-    """Filters a dict of every possible target (all 56200 genes)
-    Takes the pre-tpm filtered list of genes in each directory and concats into
-    a list Keeps targets if they exist within this concatenated list.
-    """
+# def filtered_targets(
+#     tissue_params,
+#     targets,
+# ):
+#     """Filters a dict of every possible target (all 56200 genes)
+#     Takes the pre-tpm filtered list of genes in each directory and concats into
+#     a list Keeps targets if they exist within this concatenated list.
+#     """
 
-    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+#         with open(tpm_filtered_genes, newline="") as file:
+#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
 
-    for idx, tissue in enumerate(tissue_params):
-        if idx == 0:
-            genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
-        else:
-            update_genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
-            genes += update_genes
+#     for idx, tissue in enumerate(tissue_params):
+#         if idx == 0:
+#             genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
+#         else:
+#             update_genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
+#             genes += update_genes
 
-    for key in targets.keys():
-        targets[key] = {
-            gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
-        }
-    return targets
+#     for key in targets.keys():
+#         targets[key] = {
+#             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
+#         }
+#     return targets
 
 
 def main(
@@ -353,9 +355,24 @@ def main(
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
-    save_dir: str,
 ) -> None:
     """Pipeline to generate dataset split and target values"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--experiment_config",
+        type=str,
+        help="Path to .yaml file with experimental conditions",
+    )
+    args = parser.parse_args()
+    params = parse_yaml(args.experiment_config)
+
+    # set up variables for params to improve readability
+    experiment_name = params["experiment_name"]
+    working_directory = params["working_directory"]
+
+    # create directory for experiment specific scalers
+    graph_dir = f"{working_directory}/{experiment_name}/graphs"
+
     # prepare keys for extracting info from dataframes
     keys = {}
     for tissue in TISSUES:
@@ -366,7 +383,7 @@ def main(
         )
 
     # split genes based on chromosome
-    chr_split_dictionary = f"{save_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
+    chr_split_dictionary = f"{graph_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
     split = _chr_split_train_test_val(
         genes=_genes_from_gff(gencode_gtf),
         test_chrs=test_chrs,
@@ -374,7 +391,7 @@ def main(
         tissue_append=True,
     )
 
-    # save if it doesnt exist
+    # save if it does not exist
     if not os.path.exists(chr_split_dictionary):
         with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
@@ -413,14 +430,16 @@ def main(
             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
 
     for idx, tissue in enumerate(keys):
+        tpm_filtered_file = (
+            f"{working_directory}/{experiment_name}/{tissue}/tpm_filtered_genes.bed"
+        )
         if idx == 0:
-            genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+            genes = filtered_genes(tpm_filtered_genes=tpm_filtered_file)
         else:
-            update_genes = filtered_genes(f"{tissue}/tpm_filtered_genes.bed")
+            update_genes = filtered_genes(tpm_filtered_genes=tpm_filtered_file)
             genes += update_genes
 
     genes = set(genes)
-
     parsed_targets = {}
     for key in flattened_targets.keys():
         parsed_targets[key] = {
@@ -430,12 +449,12 @@ def main(
         }
 
     # save targets
-    with open("graphs/training_targets.pkl", "wb") as output:
+    with open(f"{graph_dir}/training_targets.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
 
-    # scale targets
-    with open("graphs/training_targets.pkl", "rb") as output:
-        parsed_targets = pickle.load(output)
+    # # scale targets
+    # with open(f"{graph_dir}/training_targets.pkl", "rb") as output:
+    #     parsed_targets = pickle.load(output)
 
     # store targets from trainset to make standardscaler
     medians = [parsed_targets["train"][target][0] for target in parsed_targets["train"]]
@@ -444,8 +463,6 @@ def main(
     scaler_medians, scaler_change = StandardScaler(), StandardScaler()
     scaler_medians.fit(np.array(medians).reshape(-1, 1))
     scaler_change.fit(np.array(change).reshape(-1, 1))
-
-    test = scaler_medians.transform(np.array(medians).reshape(-1, 1))
 
     # scale targets
     for split in parsed_targets:
@@ -462,7 +479,7 @@ def main(
             parsed_targets[split][target] = parsed_targets[split][target][0:2]
 
     # save targets
-    with open("graphs/training_targets_scaled.pkl", "wb") as output:
+    with open(f"{graph_dir}/training_targets_scaled.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
 
 
@@ -477,28 +494,27 @@ if __name__ == "__main__":
         expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
         protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
         protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
-        save_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs",
     )
 
-config_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
-matrix_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
-gencode_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-test_chrs = ["chr8", "chr9"]
-val_chrs = ["chr7", "chr13"]
-expression_median_across_all = "gtex_tpm_median_across_all_tissues.pkl"
-expression_median_matrix = (
-    "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
-)
-protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
-protein_abundance_medians = "protein_relative_abundance_median_gtex.csv"
-save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
+# config_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
+# matrix_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
+# gencode_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+# test_chrs = ["chr8", "chr9"]
+# val_chrs = ["chr7", "chr13"]
+# expression_median_across_all = "gtex_tpm_median_across_all_tissues.pkl"
+# expression_median_matrix = (
+#     "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
+# )
+# protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
+# protein_abundance_medians = "protein_relative_abundance_median_gtex.csv"
+# save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
 
 
-"""In [83]: len(parsed_targets['train'])
-Out[83]: 130087
+# """In [83]: len(parsed_targets['train'])
+# Out[83]: 130087
 
-In [84]: len(parsed_targets['test'])
-Out[84]: 11420
+# In [84]: len(parsed_targets['test'])
+# Out[84]: 11420
 
-In [85]: len(parsed_targets['validation'])
-Out[85]: 10505"""
+# In [85]: len(parsed_targets['validation'])
+# Out[85]: 10505"""

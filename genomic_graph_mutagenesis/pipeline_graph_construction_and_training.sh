@@ -17,7 +17,8 @@ construct_id=$(
 
 # create scaler after concat is finished
 slurmids=()
-for num in {0..38..1}; do
+# for num in {0..38..1}; do
+for num in {0..1..1}; do
     ID=$(sbatch \
         --parsable \
         --dependency=afterok:${construct_id} \
@@ -37,7 +38,7 @@ scale_id=$(sbatch \
     --experiment_config $experiment_yaml)
 
 # create training targets
-sbatch dataset_split.py
+# sbatch dataset_split.py
 
 # train neural network
 sbatch \

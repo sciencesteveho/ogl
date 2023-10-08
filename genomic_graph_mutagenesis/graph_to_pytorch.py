@@ -130,6 +130,8 @@ def _get_masked_tensor(num_nodes: int):
 
 
 def graph_to_pytorch(
+    experiment_name: str,
+    target_dir: str,
     graph_type: str,
     root_dir: str,
     node_perturbation: str = None,
@@ -150,9 +152,9 @@ def graph_to_pytorch(
         _type_: _description_
     """
     graph_dir = f"{root_dir}/graphs"
-    graph = f"{graph_dir}/scaled/all_tissue_{graph_type}_graph_scaled.pkl"
-    index = f"{graph_dir}/all_tissue_{graph_type}_graph_idxs.pkl"
-    targets = f"{graph_dir}/training_targets_onlyexp.pkl"
+    graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
+    index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
+    targets = f"{target_dir}/training_targets_onlyexp.pkl"
 
     gene_gtf = (
         f"{root_dir}/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
