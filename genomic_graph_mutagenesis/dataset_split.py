@@ -17,7 +17,6 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -383,7 +382,6 @@ def main(
         )
 
     # split genes based on chromosome
-    chr_split_dictionary = f"{graph_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
     split = _chr_split_train_test_val(
         genes=_genes_from_gff(gencode_gtf),
         test_chrs=test_chrs,
@@ -392,6 +390,7 @@ def main(
     )
 
     # save if it does not exist
+    chr_split_dictionary = f"{graph_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
     if not os.path.exists(chr_split_dictionary):
         with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
@@ -482,6 +481,17 @@ def main(
     with open(f"{graph_dir}/training_targets_scaled.pkl", "wb") as output:
         pickle.dump(parsed_targets, output)
 
+    # # get target subsets
+    # with open("training_targets_scaled.pkl", "rb") as f:
+    #     targets = pickle.load(f)
+
+    # for key in targets:
+    #     for gene in targets[key]:
+    #         targets[key][gene] = targets[key][gene][0]
+
+    # with open("training_targets_onlyexp_scaled.pkl", "wb") as f:
+    #     pickle.dump(targets, f)
+
 
 if __name__ == "__main__":
     main(
@@ -496,20 +506,20 @@ if __name__ == "__main__":
         protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
     )
 
-# config_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
-# matrix_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
-# gencode_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-# test_chrs = ["chr8", "chr9"]
-# val_chrs = ["chr7", "chr13"]
-# expression_median_across_all = "gtex_tpm_median_across_all_tissues.pkl"
-# expression_median_matrix = (
-#     "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
-# )
-# protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
-# protein_abundance_medians = "protein_relative_abundance_median_gtex.csv"
-# save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs"
 
-
+"""
+config_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
+matrix_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
+gencode_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+test_chrs = ["chr8", "chr9"]
+val_chrs = ["chr7", "chr13"]
+expression_median_across_all = "gtex_tpm_median_across_all_tissues.pkl"
+expression_median_matrix = (
+    "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
+)
+protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
+protein_abundance_medians = "protein_relative_abundance_median_gtex.csv"
+"""
 # """In [83]: len(parsed_targets['train'])
 # Out[83]: 130087
 

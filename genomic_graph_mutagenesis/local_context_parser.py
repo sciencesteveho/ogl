@@ -422,10 +422,10 @@ class LocalContextParser:
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
             pickle.dump(attr_dict, output)
 
-        with open(
-            f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb"
-        ) as output:
-            pickle.dump(attr_dict_nochr, output)
+        # with open(
+        #     f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb"
+        # ) as output:
+        #     pickle.dump(attr_dict_nochr, output)
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:

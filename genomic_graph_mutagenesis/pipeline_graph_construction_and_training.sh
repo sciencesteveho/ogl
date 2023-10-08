@@ -4,6 +4,9 @@
 # feature scaling, and gnn training.
 experiment_yaml=$1
 experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatoryonly_combinedloops.yaml
+# experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/alldata_combinedloops.yaml
+
+### ADD AN IF LOOP TO TOGGLE EM PARTITION
 
 # Create graphs and concat. Note that this is using the RM partition. The
 # submitted job name is then saved

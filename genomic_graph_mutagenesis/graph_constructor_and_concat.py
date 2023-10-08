@@ -123,7 +123,6 @@ def graph_constructor(
             else:
                 ref[key]["is_gene"] = 0
                 ref[key]["is_tf"] = 0
-
         return ref
 
     # get edges
@@ -179,7 +178,8 @@ def _nx_to_tensors(
                     [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                 ),
                 "node_feat": np.array(
-                    [[val for val in graph.nodes[node].values()] for node in nodes]
+                    [[val for val in graph.nodes[node].values()] for node in nodes],
+                    dtype=np.float64,
                 ),
                 "edge_feat": [edge[2]["edge_type"] for edge in edges],
                 "num_nodes": graph.number_of_nodes(),
@@ -209,9 +209,9 @@ def main() -> None:
     params = parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
-    try:
+    if params["nodes"] is not None:
         nodes = params["nodes"] + NODES
-    except TypeError:
+    else:
         nodes = NODES
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
@@ -231,45 +231,22 @@ def main() -> None:
                 graph_type=args.graph_type,
             )
         else:
-            graph = nx.compose(graph, graph_constructor(
-                tissue=tissue,
-                nodes=nodes,
-                root_dir=root_dir,
-                graph_type=args.graph_type,
-            ))
-    
-    # graphs = [
-    #     graph_constructor(
-    #         tissue=tissue,
-    #         nodes=nodes,
-    #         root_dir=root_dir,
-    #         graph_type=args.graph_type,
-    #     )
-    #     for tissue in TISSUES
-    # ]
-    
-    # graph = nx.compose_all(graph_construct_generator)
-    
-    # def graph_construct_generator():
-    #     for tissue in TISSUES:
-    #         yield graph_constructor(
-    #             tissue=tissue,
-    #             nodes=nodes,
-    #             root_dir=root_dir,
-    #             graph_type=args.graph_type,
-    #         )
-            
-    # first_graph = graph_construct_generator()
-    # graph = nx.compose(first_graph, graph_construct_generator(next))
+            pass
+            # graph = nx.compose(
+            #     graph,
+            #     graph_constructor(
+            #         tissue=tissue,
+            #         nodes=nodes,
+            #         root_dir=root_dir,
+            #         graph_type=args.graph_type,
+            #     ),
+            # )
 
     # tmp save so we dont have to do this again
     with open(
         f"{graph_dir}/{experiment_name}_{args.graph_type}_graphs_raw.pkl", "wb"
     ) as output:
         pickle.dump(graph, output)
-
-    # concat all
-    # graph = nx.compose_all(graphs)
 
     # save indexes before renaming to integers
     with open(
