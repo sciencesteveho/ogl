@@ -14,10 +14,13 @@ import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from cmapPy.pandasGEXpress.parse_gct import parse
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 import pybedtools
+from scipy import stats
+import seaborn as sns
 import yaml
 
 ATTRIBUTES = [
@@ -649,6 +652,48 @@ def _convert_coessential_to_gencode(
         if line[0] in genesymbol_to_gencode.keys()
         and line[1] in genesymbol_to_gencode.keys()
     ]
+
+
+def _set_matplotlib_publication_parameters() -> None:
+    plt.rcParams.update({"font.size": 7})  # set font size
+    plt.rcParams["font.family"] = "Helvetica"  # set font
+
+
+def plot_training_losses(
+    log: str,
+    experiment_name: str,
+    model: str,
+    layers: int,
+    width: int,
+    batch_size: int,
+    learning_rate: float,
+    outdir: str,
+) -> None:
+    losses = {"Train": [], "Test": [], "Validation": []}
+    with open(log, newline="") as file:
+        reader = csv.reader(file, delimiter=":")
+        for line in reader:
+            for substr in line:
+                for key in losses:
+                    if key in substr:
+                        losses[key].append(float(line[-1].split(" ")[-1]))
+
+    losses = pd.DataFrame(losses)
+    plt.figure(figsize=(3, 2.25))
+    sns.lineplot(data=losses)
+    plt.margins(x=0)
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE Loss")
+    plt.title(
+        f"Training loss for {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
+        wrap=True,
+    )
+    plt.tight_layout()
+    plt.savefig(
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_loss.png",
+        dpi=300,
+    )
+    plt.close()
 
 
 # gencode_ref = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"

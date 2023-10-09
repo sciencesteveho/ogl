@@ -28,6 +28,8 @@ def plot_training_losses(
     model: str,
     layers: int,
     width: int,
+    batch_size: int,
+    learning_rate: float,
 ) -> None:
     losses = {"Train": [], "Test": [], "Validation": []}
     with open(log, newline="") as file:
@@ -39,11 +41,21 @@ def plot_training_losses(
                         losses[key].append(float(line[-1].split(" ")[-1]))
 
     losses = pd.DataFrame(losses)
+    plt.figure(figsize=(3, 2.25))
     sns.lineplot(data=losses)
     plt.margins(x=0)
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
-    plt.title(f"Training loss for {model}, {layers} layers, {width} dimensions")
+    plt.title(
+        f"Training loss for {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
+        wrap=True,
+    )
+    plt.tight_layout()
+    plt.savefig(
+        f"{model}_{layers}_{width}_{batch_size}_{learning_rate}_loss.png",
+        dpi=300,
+    )
+    plt.close()
 
 
 def plot_predicted_versus_expected(expected, predicted, model, layers, width):
@@ -65,7 +77,7 @@ def main(plot_dir: str) -> None:
     model = "GraphSAGE"
     layers = 2
     width = 256
-    batch = 256
+    batch_size = 256
     learning_rate = 0.001
 
 

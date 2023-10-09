@@ -26,8 +26,10 @@ from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
+from utils import _set_matplotlib_publication_parameters
 from utils import dir_check_make
 from utils import parse_yaml
+from utils import plot_training_losses
 
 # from torchmetrics.regression import SpearmanCorrCoef
 
@@ -539,6 +541,20 @@ def main() -> None:
     torch.save(
         model.state_dict(),
         f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
+    )
+
+    # plot training losses
+    _set_matplotlib_publication_parameters()
+
+    plot_training_losses(
+        log=f"{working_directory}/models/logs/{savestr}.log",
+        experiment_name=params["experiment_name"],
+        model=args.model,
+        layers=args.layers,
+        width=args.dimensions,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        outdir=f"{working_directory}/models/plots",
     )
 
     # # GNN Explainer!

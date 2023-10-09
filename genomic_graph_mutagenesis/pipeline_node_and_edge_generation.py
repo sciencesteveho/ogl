@@ -132,7 +132,10 @@ def main() -> None:
     args = parser.parse_args()
     experiment_params = parse_yaml(args.experiment_config)
     tissue_params = parse_yaml(args.tissue_config)
-    nodes = experiment_params.get("nodes", []) + NODES
+    try:
+        nodes = experiment_params["nodes"] + NODES
+    except TypeError:
+        nodes = NODES
     print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
     # create working directory for experimnet
