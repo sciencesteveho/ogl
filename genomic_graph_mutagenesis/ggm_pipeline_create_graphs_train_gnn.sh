@@ -195,3 +195,19 @@ sbatch \
     ${randomize_node_feats} \
     ${early_stop} \
     ${expression_only}
+
+# sbatch \
+#     train_gnn.sh \
+#     ${experiment_yaml} \
+#     ${model} \
+#     ${layers} \
+#     ${dimensions} \
+#     ${loader} \
+#     ${learning_rate} \
+#     ${batch_size} \
+#     ${idx} \
+#     ${graph_type} \
+#     ${zero_nodes} \
+#     ${randomize_node_feats} \
+#     ${early_stop} \
+#     ${expression_only}
