@@ -197,7 +197,6 @@ else
     # Train graph neural network
 
     sbatch \
-        --dependency=afterok:${scale_id} \
         train_gnn.sh \
         ${experiment_yaml} \
         ${model} \

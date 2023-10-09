@@ -588,11 +588,17 @@ def main() -> None:
     predictions_median = _tensor_out_to_array(outs, 0)
     labels_median = _tensor_out_to_array(labels, 0)
 
+    experiment_name = params["experiment_name"]
+    if args.randomize_node_feats == "true":
+        experiment_name = f"{experiment_name}_random_node_feats"
+    if args.zero_nodes == "true":
+        experiment_name = f"{experiment_name}_zero_node_feats"
+
     # plot performance
     plot_predicted_versus_expected(
         expected=labels_median,
         predicted=predictions_median,
-        experiment_name=params["experiment_name"],
+        experiment_name=experiment_name,
         model=args.model,
         layers=args.layers,
         width=args.dimensions,
@@ -605,7 +611,7 @@ def main() -> None:
     # plot training losses
     plot_training_losses(
         log=f"{working_directory}/models/logs/{savestr}.log",
-        experiment_name=params["experiment_name"],
+        experiment_name=experiment_name,
         model=args.model,
         layers=args.layers,
         width=args.dimensions,
