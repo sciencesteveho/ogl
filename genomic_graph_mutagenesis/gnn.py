@@ -526,9 +526,9 @@ def main() -> None:
                     )
                 if best_validation < val_acc:
                     stop_counter += 1
-            if stop_counter == 10:
-                print("***********Early stopping!")
-                break
+                if stop_counter == 10:
+                    print("***********Early stopping!")
+                    break
 
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
