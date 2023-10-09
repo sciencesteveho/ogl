@@ -659,7 +659,8 @@ def _convert_coessential_to_gencode(
 
 def _set_matplotlib_publication_parameters() -> None:
     plt.rcParams.update({"font.size": 7})  # set font size
-    plt.rcParams["font.family"] = "Liberation Sans"  # set font
+    plt.rcParams.update({"axes.titlesize": "small"})
+    # plt.rcParams["font.family"] = "Liberation Sans"  # set font
 
 
 def plot_training_losses(
@@ -692,11 +693,12 @@ def plot_training_losses(
 
     sns.lineplot(data=losses)
     plt.margins(x=0)
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE Loss")
+    plt.xlabel("Epoch", fontsize=7)
+    plt.ylabel("MSE Loss", fontsize=7)
     plt.title(
         f"Training loss for {experiment_name}, {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
         wrap=True,
+        fontsize=7,
     )
     plt.tight_layout()
     plt.savefig(
@@ -723,11 +725,12 @@ def plot_predicted_versus_expected(
 
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
     plt.margins(x=0)
-    plt.xlabel("Expected Log2 TPM")
-    plt.ylabel("Predicted Log2 TPM")
+    plt.xlabel("Expected Log2 TPM", fontsize=7)
+    plt.ylabel("Predicted Log2 TPM",fontsize=7)
     plt.title(
         f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}",
         wrap=True,
+        fontsize=7,
     )
     plt.tight_layout()
     plt.savefig(
