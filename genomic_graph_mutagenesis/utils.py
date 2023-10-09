@@ -672,6 +672,7 @@ def plot_training_losses(
     learning_rate: float,
     outdir: str,
 ) -> None:
+    plt.figure(figsize=(3, 2.25))
     _set_matplotlib_publication_parameters()
 
     losses = {"Train": [], "Test": [], "Validation": []}
@@ -687,7 +688,6 @@ def plot_training_losses(
     losses["Train"] = losses["Train"][:-1]
 
     losses = pd.DataFrame(losses)
-    plt.figure(figsize=(3, 2.25))
     sns.lineplot(data=losses)
     plt.margins(x=0)
     plt.xlabel("Epoch")
@@ -716,6 +716,7 @@ def plot_predicted_versus_expected(
     learning_rate,
     rmse,
 ):
+    plt.figure(figsize=(3, 2.25))
     _set_matplotlib_publication_parameters()
 
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
