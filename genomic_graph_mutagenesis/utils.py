@@ -274,6 +274,10 @@ TISSUE_TPM_KEYS = {
 }
 
 
+def _tensor_out_to_array(tensor, idx):
+    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+
+
 def check_and_symlink(
     src: str,
     dst: str,
@@ -685,12 +689,40 @@ def plot_training_losses(
     plt.xlabel("Epoch")
     plt.ylabel("MSE Loss")
     plt.title(
-        f"Training loss for {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
+        f"Training loss for {experiment_name}, {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
         wrap=True,
     )
     plt.tight_layout()
     plt.savefig(
         f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_loss.png",
+        dpi=300,
+    )
+    plt.close()
+
+
+def plot_predicted_versus_expected(
+    expected,
+    predicted,
+    outdir,
+    experiment_name,
+    model,
+    layers,
+    width,
+    batch_size,
+    learning_rate,
+    rmse,
+):
+    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
+    plt.margins(x=0)
+    plt.xlabel("Expected Log2 TPM")
+    plt.ylabel("Predicted Log2 TPM")
+    plt.title(
+        f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}",
+        wrap=True,
+    )
+    plt.tight_layout()
+    plt.savefig(
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_performance.png",
         dpi=300,
     )
     plt.close()

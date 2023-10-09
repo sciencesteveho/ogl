@@ -65,7 +65,6 @@ def plot_predicted_versus_expected(expected, predicted, model, layers, width):
     plt.ylabel("Predcited Log2 TPM")
     # plt.title(f"{model}")
     plt.title(f"Remove H3K27ac features")
-
     res = stats.spearmanr(expected, predicted)
 
 

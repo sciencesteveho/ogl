@@ -199,40 +199,40 @@ def main(
 
     if need_baseline:
         # get baseline expression
-        # baseline_data = graph_to_pytorch(
-        #     root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-        #     graph_type="full",
-        #     only_expression_no_fold=True,
-        # )
-        # loader = NeighborLoader(
-        #     data=baseline_data,
-        #     num_neighbors=[5, 5, 5, 5, 5, 3],
-        #     batch_size=1024,
-        #     input_nodes=baseline_data.test_mask,
-        # )
-        # rmse, outs, labels = test(
-        #     model=model,
-        #     device=device,
-        #     data_loader=loader,
-        #     epoch=0,
-        # )
+        baseline_data = graph_to_pytorch(
+            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
+            graph_type="full",
+            only_expression_no_fold=True,
+        )
+        loader = NeighborLoader(
+            data=baseline_data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=1024,
+            input_nodes=baseline_data.test_mask,
+        )
+        rmse, outs, labels = test(
+            model=model,
+            device=device,
+            data_loader=loader,
+            epoch=0,
+        )
 
-        # predictions_median = _tensor_out_to_array(outs, 0)
-        # # predictions_fold = _tensor_out_to_array(outs, 1)
-        # labels_median = _tensor_out_to_array(labels, 0)
-        # # labels_fold = _tensor_out_to_array(labels, 1)
+        predictions_median = _tensor_out_to_array(outs, 0)
+        # predictions_fold = _tensor_out_to_array(outs, 1)
+        labels_median = _tensor_out_to_array(labels, 0)
+        # labels_fold = _tensor_out_to_array(labels, 1)
 
-        # with open("base_predictions_median.pkl", "wb") as f:
-        #     pickle.dump(predictions_median, f)
+        with open("base_predictions_median.pkl", "wb") as f:
+            pickle.dump(predictions_median, f)
 
-        # # with open("predictions_fold.pkl", "wb") as f:
-        # #     pickle.dump(predictions_fold, f)
+        # with open("predictions_fold.pkl", "wb") as f:
+        #     pickle.dump(predictions_fold, f)
 
-        # with open("base_labels_median.pkl", "wb") as f:
-        #     pickle.dump(labels_median, f)
+        with open("base_labels_median.pkl", "wb") as f:
+            pickle.dump(labels_median, f)
 
-        # with open("labels_fold.pkl", "wb") as f:
-        #     pickle.dump(labels_fold, f)
+        with open("labels_fold.pkl", "wb") as f:
+            pickle.dump(labels_fold, f)
 
     # prepare feature perturbation data
     if feat_perturbation:
@@ -257,7 +257,7 @@ def main(
         h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
         with open("h3k27ac_perturbed_expression.pkl", "wb") as f:
             pickle.dump(h3k27ac_perturbed, f)
-            
+
         with open("h3k27ac_labels.pkl", "wb") as f:
             pickle.dump(labels, f)
 
@@ -282,10 +282,10 @@ def main(
         h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
         with open("h3k4me3_perturbed_expression.pkl", "wb") as f:
             pickle.dump(h3k4me3_perturbed, f)
-            
+
         with open("h3k4me3_labels.pkl", "wb") as f:
             pickle.dump(labels, f)
-            
+
     # coessentiality
     # get baseline expression
     if coessentiality:

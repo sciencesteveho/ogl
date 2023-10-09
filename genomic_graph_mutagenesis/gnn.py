@@ -27,11 +27,11 @@ from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
 from utils import _set_matplotlib_publication_parameters
+from utils import _tensor_out_to_array
 from utils import dir_check_make
 from utils import parse_yaml
+from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
-
-# from torchmetrics.regression import SpearmanCorrCoef
 
 
 # Define/Instantiate GNN model
@@ -55,9 +55,9 @@ class GraphSAGE(torch.nn.Module):
             self.batch_norms.append(BatchNorm(embedding_size))
 
         self.lin1 = nn.Linear(embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, out_channels)
-        # self.lin2 = nn.Linear(embedding_size, embedding_size)
-        # self.lin3 = nn.Linear(embedding_size, out_channels)
+        # self.lin2 = nn.Linear(embedding_size, out_channels)  # if only using 2 linear layers
+        self.lin2 = nn.Linear(embedding_size, embedding_size)
+        self.lin3 = nn.Linear(embedding_size, out_channels)
 
     def forward(self, x, edge_index):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
@@ -247,6 +247,31 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
     pbar.close()
     # print(spearman(torch.stack(outs), torch.stack(labels)))
     return math.sqrt(float(loss.mean()))
+
+
+@torch.no_grad()
+def inference(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # calculate loss
+        outs.extend(out[data.test_mask])
+        labels.extend(data.y[data.test_mask])
+        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
 
 
 def main() -> None:
@@ -543,9 +568,27 @@ def main() -> None:
         f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
     )
 
-    # plot training losses
+    # set params for plotting
     _set_matplotlib_publication_parameters()
 
+    # calculate and plot spearmann rho, predictions vs. labels
+    # first, load checkpoints
+    checkpoint = torch.load(
+        f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
+        map_location=torch.device("cuda:" + str(0)),
+    )
+    model.load_state_dict(checkpoint, strict=False)
+    model.to(device)
+
+    # get predictions
+    rmse, outs, labels = inference(
+        model=model, device=device, data_loader=test_loader, epoch=0
+    )
+
+    predictions_median = _tensor_out_to_array(outs, 0)
+    labels_median = _tensor_out_to_array(labels, 0)
+
+    # plot training losses
     plot_training_losses(
         log=f"{working_directory}/models/logs/{savestr}.log",
         experiment_name=params["experiment_name"],
@@ -555,6 +598,20 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         outdir=f"{working_directory}/models/plots",
+    )
+
+    # plot performance
+    plot_predicted_versus_expected(
+        expected=labels_median,
+        predicted=predictions_median,
+        experiment_name=params["experiment_name"],
+        model=args.model,
+        layers=args.layers,
+        width=args.dimensions,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        outdir=f"{working_directory}/models/plots",
+        rmse=rmse,
     )
 
     # # GNN Explainer!
