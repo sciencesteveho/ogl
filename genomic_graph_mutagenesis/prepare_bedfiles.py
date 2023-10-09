@@ -292,7 +292,8 @@ class GenomeDataPreprocessor:
             if "crms" in self.nodes:
                 check_and_symlink(
                     src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
-                    dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",)
+                    dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
+                )
             if "tads" in self.nodes:
                 self._add_TAD_id(self.tissue_specific_nodes["tads"])
             if "superenhancers" in self.nodes:
