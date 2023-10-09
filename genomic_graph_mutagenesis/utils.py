@@ -659,7 +659,7 @@ def _convert_coessential_to_gencode(
 
 def _set_matplotlib_publication_parameters() -> None:
     plt.rcParams.update({"font.size": 7})  # set font size
-    plt.rcParams["font.family"] = "Helvetica"  # set font
+    plt.rcParams["font.family"] = "Liberation Sans"  # set font
 
 
 def plot_training_losses(
@@ -716,7 +716,7 @@ def plot_predicted_versus_expected(
     learning_rate,
     rmse,
 ):
-    plt.figure(figsize=(3, 2.25))
+    plt.figure(figsize=(3, 2.75))
     _set_matplotlib_publication_parameters()
 
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
