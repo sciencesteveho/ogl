@@ -685,9 +685,11 @@ def plot_training_losses(
                         losses[key].append(float(line[-1].split(" ")[-1]))
 
     # remove last item in train
-    losses["Train"] = losses["Train"][:-1]
+    try:
+        losses = pd.DataFrame(losses)
+    except ValueError:
+        losses["Train"] = losses["Train"][:-1]
 
-    losses = pd.DataFrame(losses)
     sns.lineplot(data=losses)
     plt.margins(x=0)
     plt.xlabel("Epoch")
