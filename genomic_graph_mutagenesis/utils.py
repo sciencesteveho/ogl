@@ -682,6 +682,9 @@ def plot_training_losses(
                     if key in substr:
                         losses[key].append(float(line[-1].split(" ")[-1]))
 
+    # remove last item in train
+    losses["Train"] = losses["Train"][:-1]
+
     losses = pd.DataFrame(losses)
     plt.figure(figsize=(3, 2.25))
     sns.lineplot(data=losses)
