@@ -588,18 +588,6 @@ def main() -> None:
     predictions_median = _tensor_out_to_array(outs, 0)
     labels_median = _tensor_out_to_array(labels, 0)
 
-    # plot training losses
-    plot_training_losses(
-        log=f"{working_directory}/models/logs/{savestr}.log",
-        experiment_name=params["experiment_name"],
-        model=args.model,
-        layers=args.layers,
-        width=args.dimensions,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        outdir=f"{working_directory}/models/plots",
-    )
-
     # plot performance
     plot_predicted_versus_expected(
         expected=labels_median,
@@ -612,6 +600,18 @@ def main() -> None:
         learning_rate=args.learning_rate,
         outdir=f"{working_directory}/models/plots",
         rmse=rmse,
+    )
+
+    # plot training losses
+    plot_training_losses(
+        log=f"{working_directory}/models/logs/{savestr}.log",
+        experiment_name=params["experiment_name"],
+        model=args.model,
+        layers=args.layers,
+        width=args.dimensions,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        outdir=f"{working_directory}/models/plots",
     )
 
     # # GNN Explainer!

@@ -644,9 +644,8 @@ def _convert_coessential_to_gencode(
     """_summary_
 
     Args:
-        dir (str): _description_
-        coessential (str): _description_
-        gencode_ref (str): _description_
+        dir (str): _description_ coessential (str): _description_ gencode_ref
+        (str): _description_
     """
     return [
         (genesymbol_to_gencode[line[0]], genesymbol_to_gencode[line[1]], line[2])

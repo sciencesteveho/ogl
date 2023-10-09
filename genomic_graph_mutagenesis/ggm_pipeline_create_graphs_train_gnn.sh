@@ -181,7 +181,6 @@ fi
 experiment_yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatoryonly_combinedloops.yaml
 partition=RM
 sbatch \
-    --dependency=afterok:${scale_id} \ 
     train_gnn.sh \
     ${experiment_yaml} \
     ${model} \
@@ -196,3 +195,5 @@ sbatch \
     ${randomize_node_feats} \
     ${early_stop} \
     ${expression_only}
+
+#     --dependency=afterok:${scale_id} \ 
