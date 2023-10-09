@@ -173,41 +173,43 @@ if ! [ -f ${final_graph} ]; then
 
     # Create training targets
     # sbatch dataset_split.py
+
+    # train GNN after scaler job is finished
+    sbatch \
+        --dependency=afterok:${scale_id} \
+        train_gnn.sh \
+        ${experiment_yaml} \
+        ${model} \
+        ${layers} \
+        ${dimensions} \
+        ${loader} \
+        ${learning_rate} \
+        ${batch_size} \
+        ${idx} \
+        ${graph_type} \
+        ${zero_nodes} \
+        ${randomize_node_feats} \
+        ${early_stop} \
+        ${expression_only}
+
 else
     echo "Final graph found. Going straight to GNN training."
     # Train graph neural network
+
+    sbatch \
+        --dependency=afterok:${scale_id} \
+        train_gnn.sh \
+        ${experiment_yaml} \
+        ${model} \
+        ${layers} \
+        ${dimensions} \
+        ${loader} \
+        ${learning_rate} \
+        ${batch_size} \
+        ${idx} \
+        ${graph_type} \
+        ${zero_nodes} \
+        ${randomize_node_feats} \
+        ${early_stop} \
+        ${expression_only}
 fi
-
-# Train graph neural network
-sbatch \
-    --dependency=afterok:${scale_id} \
-    train_gnn.sh \
-    ${experiment_yaml} \
-    ${model} \
-    ${layers} \
-    ${dimensions} \
-    ${loader} \
-    ${learning_rate} \
-    ${batch_size} \
-    ${idx} \
-    ${graph_type} \
-    ${zero_nodes} \
-    ${randomize_node_feats} \
-    ${early_stop} \
-    ${expression_only}
-
-# sbatch \
-#     train_gnn.sh \
-#     ${experiment_yaml} \
-#     ${model} \
-#     ${layers} \
-#     ${dimensions} \
-#     ${loader} \
-#     ${learning_rate} \
-#     ${batch_size} \
-#     ${idx} \
-#     ${graph_type} \
-#     ${zero_nodes} \
-#     ${randomize_node_feats} \
-#     ${early_stop} \
-#     ${expression_only}
