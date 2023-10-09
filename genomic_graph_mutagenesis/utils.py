@@ -672,6 +672,8 @@ def plot_training_losses(
     learning_rate: float,
     outdir: str,
 ) -> None:
+    _set_matplotlib_publication_parameters()
+
     losses = {"Train": [], "Test": [], "Validation": []}
     with open(log, newline="") as file:
         reader = csv.reader(file, delimiter=":")
@@ -714,6 +716,8 @@ def plot_predicted_versus_expected(
     learning_rate,
     rmse,
 ):
+    _set_matplotlib_publication_parameters()
+
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
     plt.margins(x=0)
     plt.xlabel("Expected Log2 TPM")
