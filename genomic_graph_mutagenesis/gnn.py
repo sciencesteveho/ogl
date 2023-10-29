@@ -407,9 +407,11 @@ def main() -> None:
         # else:
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        root_dir=root_dir,
         graph_type=args.graph_type,
-        only_expression_no_fold=args.expression_only,
+        root_dir=root_dir,
+        targets=params["targets"],
+        test_chrs=params["test_chrs"],
+        val_chrs=params["val_chrs"],
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
     )

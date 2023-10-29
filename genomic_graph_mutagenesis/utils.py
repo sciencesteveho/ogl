@@ -158,6 +158,16 @@ LOOPFILES = {
         "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
         "small_intestine": "small_intestine_peakachu_deepanchor.hg38.combined_loops",
     },
+    "deeploop_only": {
+        "aorta": "GSE167200_Aorta.top300K_300000_loops.bedpe.hg38",
+        "hippocampus": "GSE167200_Hippocampus.top300K_300000_loops.bedpe.hg38",
+        "left_ventricle": "GSE167200_LeftVentricle.top300K_300000_loops.bedpe.hg38",
+        "liver": "GSE167200_Liver.top300K_300000_loops.bedpe.hg38",
+        "lung": "GSE167200_Lung.top300K_300000_loops.bedpe.hg38",
+        "pancreas": "GSE167200_Pancreas.top300K_300000_loops.bedpe.hg38",
+        "skeletal_muscle": "GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38",
+        "small_intestine": "GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38",
+    },
     # "peakachu_deeploop_10": {
     #     "aorta": "Aorta_10000.hg38.combined_loops",
     #     "hippocampus": "Hippocampus_10000.hg38.combined_loops",

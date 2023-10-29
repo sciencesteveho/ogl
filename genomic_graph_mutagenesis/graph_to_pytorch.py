@@ -133,13 +133,15 @@ def graph_to_pytorch(
     experiment_name: str,
     graph_type: str,
     root_dir: str,
-    only_expression_no_fold: str = "false",
+    targets: str,
+    targets_types: str,
+    test_chrs: List[str],
+    val_chrs: List[str],
     randomize_feats: str = "false",
     zero_node_feats: str = "false",
     node_perturbation: str = None,
     node_remove_edges: str = None,
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
-    protein_targets: bool = False,
     single_gene: str = None,
 ):
     """_summary_
@@ -154,14 +156,6 @@ def graph_to_pytorch(
     graph_dir = f"{root_dir}/graphs"
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
-
-    if only_expression_no_fold == "true":
-        targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl"
-    else:
-        targets = f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_exp.pkl"
-
-    test_chrs = ["chr8", "chr9"]
-    val_chrs = ["chr7", "chr13"]
 
     split = _chr_split_train_test_val(
         genes=_genes_from_gff(gene_gtf),
@@ -241,43 +235,20 @@ def graph_to_pytorch(
         if target in graph_index:
             remapped[graph_index[target]] = target_values[target]
 
-    if protein_targets:
-        first, second, third, fourth = (
-            _get_masked_tensor(data.num_nodes),
-            _get_masked_tensor(data.num_nodes),
-            _get_masked_tensor(data.num_nodes),
-            _get_masked_tensor(data.num_nodes),
-        )
-        for idx in [0, 1, 2, 3]:
-            for key, value in remapped.items():
-                if idx == 0:
-                    first[key] = value[idx]
-                elif idx == 1:
-                    second[key] = value[idx]
-                elif idx == 2:
-                    third[key] = value[idx]
-                elif idx == 3:
-                    fourth[key] = value[idx]
-            y = torch.cat(
-                (
-                    first.view(1, -1),
-                    second.view(1, -1),
-                    third.view(1, -1),
-                    fourth.view(1, -1),
-                ),
-                dim=0,
-            )
-    elif only_expression_no_fold == "true":
-        first = _get_masked_tensor(data.num_nodes)
+    first, second, third, fourth, fifth = (
+        _get_masked_tensor(data.num_nodes),
+        _get_masked_tensor(data.num_nodes),
+        _get_masked_tensor(data.num_nodes),
+        _get_masked_tensor(data.num_nodes),
+        _get_masked_tensor(data.num_nodes),
+    )
+
+    if targets_types == "expression_median_only":
         for idx in [0]:
             for key, values in remapped.items():
-                first[key] = values
+                first[key] = values[idx]
         y = first.view(1, -1)
-    else:
-        first, second = (
-            _get_masked_tensor(data.num_nodes),
-            _get_masked_tensor(data.num_nodes),
-        )
+    elif targets_types == "expression_median_with_foldchange":
         for idx in [0, 1]:
             for key, value in remapped.items():
                 if idx == 0:
@@ -288,6 +259,44 @@ def graph_to_pytorch(
             (first.view(1, -1), second.view(1, -1)),
             dim=0,
         )
+    elif targets_types == "difference_from_average":
+        for idx in [2]:
+            for key, values in remapped.items():
+                third[key] = values[idx]
+            y = third.view(1, -1)
+    elif targets_types == "protein_targets":
+        pass
+    else:
+        raise ValueError(
+            "targets_types must be one of the following: expression_median_only, expression_median_with_foldchange, difference_from_average, protein_targets"
+        )
+
+    # if protein_targets:
+    #     first, second, third, fourth = (
+    #         _get_masked_tensor(data.num_nodes),
+    #         _get_masked_tensor(data.num_nodes),
+    #         _get_masked_tensor(data.num_nodes),
+    #         _get_masked_tensor(data.num_nodes),
+    #     )
+    #     for idx in [0, 1, 2, 3]:
+    #         for key, value in remapped.items():
+    #             if idx == 0:
+    #                 first[key] = value[idx]
+    #             elif idx == 1:
+    #                 second[key] = value[idx]
+    #             elif idx == 2:
+    #                 third[key] = value[idx]
+    #             elif idx == 3:
+    #                 fourth[key] = value[idx]
+    #         y = torch.cat(
+    #             (
+    #                 first.view(1, -1),
+    #                 second.view(1, -1),
+    #                 third.view(1, -1),
+    #                 fourth.view(1, -1),
+    #             ),
+    #             dim=0,
+    #         )
 
     # add mask and target values to data object
     data.train_mask = train_mask

@@ -174,7 +174,7 @@ deeploop_processing_main () {
     supp_dir=${loop_dir}/supp
     tmp_dir=${loop_dir}/tmp
 
-    n_loops=(10000 20000 25000 30000 40000 50000)
+    n_loops=(10000 20000 25000 30000 40000 50000 300000)
 
     declare -A loop_files
     loop_files["Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"]="GSE167200_Hippocampus.top300K.bedpe.hg38"

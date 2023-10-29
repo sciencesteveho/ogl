@@ -79,10 +79,11 @@ def _difference_from_average_activity_per_tissue(
             df = pd.read_table(file, index_col=0, header=[2])
             samples = len(df.columns)
             tissue_average = df.sum(axis=1).div(samples)
-            tissue_average.name = file.split("tpm.txt")[0]
-            
             difference = tissue_average.subtract(average_activity['average']).abs()
-            
+            difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
+            dfs.append(difference)
+    return pd.concat(dfs, axis=1)
+
             
 def _get_targets(
     split: str,
