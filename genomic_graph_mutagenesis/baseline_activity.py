@@ -23,7 +23,7 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error
 
 
-def _tpm_all_tissue_median(
+def _tpm_all_tissue_average(
     expression_gct: str,
     tissue: bool = False,
 ) -> pd.DataFrame:
@@ -48,10 +48,18 @@ def _tpm_all_tissue_median(
         return summed_activity["average"]
 
 
-def _tpm_dataset_tissue_median(
+def _tpm_dataset_specific_tissue_average(
     tpm_dir: str,
 ) -> pd.DataFrame:
-    dfs = [pd.read_table(file, index_col=0, header=[2]) for file in os.listdir(tpm_dir)]
+    """_summary_
+
+    Args:
+        tpm_dir (str): /path/to/ tissue split TPM tables 
+
+    Returns:
+        pd.DataFrame
+    """
+    dfs = [pd.read_table(file, index_col=0, header=[2]) for file in os.listdir(tpm_dir) if 'tpm.txt' in file]
     df = pd.concat(dfs, axis=1)
     samples = len(df.columns)
     summed = df.sum(axis=1).to_frame()
@@ -60,6 +68,22 @@ def _tpm_dataset_tissue_median(
     return summed["average"]
 
 
+def _difference_from_average_activity_per_tissue(
+    tpm_dir: str,
+    average_activity: pd.DataFrame,
+):
+    """Lorem"""
+    dfs = []
+    for file in os.listdir(tpm_dir):
+        if 'tpm.txt' in file:
+            df = pd.read_table(file, index_col=0, header=[2])
+            samples = len(df.columns)
+            tissue_average = df.sum(axis=1).div(samples)
+            tissue_average.name = file.split("tpm.txt")[0]
+            
+            difference = tissue_average.subtract(average_activity['average']).abs()
+            
+            
 def _get_targets(
     split: str,
     targets: dict,
@@ -74,30 +98,20 @@ def _avg_activity_baseline_predictions(labels, s):
     return [s[label.split("_")[0]] for label in labels]
 
 
-# def _nonzero_tpms(tpms: List(List(float))) -> np.ndarray:
-#     """_summary_
-
-#     Args:
-#         expression_gct (str): _description_
-
-#     Returns:
-#         np.ndarray: _description_
-#     """
-
-
 def main(
     expression_gct: str,
 ) -> None:
     """Main function"""
+    
     # get predictions as the average tpm for that gene across all tissues
-    average_activity = _tpm_all_tissue_median(expression_gct)
+    average_activity = _tpm_all_tissue_average(expression_gct)
     with open("average_activity_before_transform.pkl", "wb") as f:
         pickle.dump(average_activity, f)
 
     # with open("average_activity_before_transform.pkl", "rb") as f:
     #     average_activity = pickle.load(f)
 
-    tissue_average = _tpm_dataset_tissue_median(
+    tissue_average = _tpm_dataset_specific_tissue_average(
         "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline"
     )
     tissue_pred = np.log2(tissue_average + 0.25)  # add 0.01 to avoid log(0)
@@ -142,9 +156,11 @@ def main(
     # print(f"Test error: {test_error}")
     # print(f"Validation error: {val_error}")
 
-    print(f"Tissue train error: {tissue_train_error}")
-    print(f"Tissue test error: {test_train_error}")
-    print(f"Tissue validation error: {val_train_error}")
+    print(
+        f"Tissue train error: {tissue_train_error} 
+        \nTissue test error: {test_train_error} 
+        \nTissue validation error: {val_train_error}"
+    )
 
     # with open("all_tissue_baseline_test_preds.pkl", "wb") as f:
     #     pickle.dump(test_preds, f)

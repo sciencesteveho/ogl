@@ -334,7 +334,14 @@ def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
 
 
 def genes_from_gff(gff: str) -> List[str]:
-    """Get list of gtex genes from GFF file"""
+    """Get list of gtex genes from GFF file
+
+    Args:
+        gff (str): /path/to/genes.gtf
+
+    Returns:
+        List[str]: genes
+    """
     with open(gff, newline="") as file:
         return {
             line[3]: line[0]
@@ -726,7 +733,7 @@ def plot_predicted_versus_expected(
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
     plt.margins(x=0)
     plt.xlabel("Expected Log2 TPM", fontsize=7)
-    plt.ylabel("Predicted Log2 TPM",fontsize=7)
+    plt.ylabel("Predicted Log2 TPM", fontsize=7)
     plt.title(
         f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}",
         wrap=True,

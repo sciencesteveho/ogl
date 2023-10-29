@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] NEEDS MAJOR CLEANING!!!
 # - [ ] Target dict is super redundant, clean it up so it doesn't hold so many
 #   copies of the same data
 
@@ -14,6 +13,7 @@ import argparse
 import csv
 import os
 import pickle
+import random
 from typing import Any, Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
@@ -21,53 +21,59 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from utils import genes_from_gff
 from utils import parse_yaml
 from utils import time_decorator
 from utils import TISSUES
 
 DATA_SPLITS = ["train", "test", "validation"]
 
+PROTEIN_TISSUE_NAMES = [
+    "Artery Aorta",
+    "Heart Ventricle",
+    "Brain Cortex",
+    "Breast",
+    "Liver",
+    "Lung",
+    "Muscle Skeletal",
+    "Pancreas",
+    "Skin Unexpo",
+    "Small Intestine",
+]
 
-def _tpm_all_tissue_median(gct_file: str) -> None:
+
+def _tpm_median_across_all_tissues(
+    gct_file: str,
+    save_path: str,
+) -> None:
     """Get the median TPM per gene across ALL samples within GTEx V8 GCT and
     saves it. Because the file is large and requires a lot of memory, we ran
-    this separately from the main function.
+    this separately from the main function and is only run once.
 
     Args:
         gct_file (str): /path/to/gtex gct file
     """
-    df = parse(gct_file).data_df
-    median_series = pd.Series(df.median(axis=1), name="all_tissues").to_frame()
-    median_series.to_pickle("gtex_tpm_median_across_all_tissues.pkl")
-
-
-def _genes_from_gff(gff: str) -> List[str]:
-    """Get list of gtex genes from GFF file
-
-    Args:
-        gff (str): /path/to/genes.gtf
-
-    Returns:
-        List[str]: genes
-    """
-    with open(gff, newline="") as file:
-        return {
-            line[3]: line[0]
-            for line in csv.reader(file, delimiter="\t")
-            if line[0] not in ["chrX", "chrY", "chrM"]
-        }
+    savefile = f"{save_path}/gtex_tpm_median_across_all_tissues.pkl"
+    if os.path.exists(savefile):
+        pass
+    else:
+        df = parse(gct_file).data_df
+        median_series = pd.Series(df.median(axis=1), name="all_tissues").to_frame()
+        median_series.to_pickle(savefile)
 
 
 @time_decorator(print_args=False)
-def _chr_split_train_test_val(
-    genes,
-    test_chrs,
-    val_chrs,
+def _genes_train_test_val_split(
+    genes: Dict[str, str],
     tissue_append: bool = True,
+    test_chrs: List[int] = [],
+    val_chrs: List[int] = [],
 ) -> Dict[str, List[str]]:
     """Creates training, test, and validation splits for genes based on
     chromosome. Adds tissues to each label to differentiate targets between
-    graphs
+    graphs. If values are input for test and val chrs, then the genes are
+    assigned based on test or val chrs. Otherwise, the genes are assigned at
+    random.
 
     Args:
         genes (_type_): list of all genes in genome.
@@ -80,38 +86,53 @@ def _chr_split_train_test_val(
         Dict[str, List[str]]: dictionary of genes split into train, test, and
         validation.
     """
+    if test_chrs and val_chrs:
+        test_genes = [gene for gene in genes if genes[gene] in test_chrs]
+        val_genes = [gene for gene in genes if genes[gene] in val_chrs]
+        train_genes = [gene for gene in genes if gene not in test_genes + val_genes]
+    elif test_chrs and not val_chrs:
+        test_genes = [gene for gene in genes if genes[gene] in test_chrs]
+        genes_for_partitioning = [
+            gene for gene in genes if genes[gene] not in test_chrs
+        ]
+        random.shuffle(genes_for_partitioning)
+        train_genes, val_genes = np.split(
+            genes_for_partitioning, [int(len(genes_for_partitioning) * 0.9)]
+        )
+    elif val_chrs and not test_chrs:
+        val_genes = [gene for gene in genes if genes[gene] in val_chrs]
+        genes_for_partitioning = [gene for gene in genes if genes[gene] not in val_chrs]
+        random.shuffle(genes_for_partitioning)
+        train_genes, test_genes = np.split(
+            genes_for_partitioning, [int(len(genes_for_partitioning) * 0.9)]
+        )
+    else:
+        genes_for_partitioning = [gene for gene in genes]
+        train_genes, test_genes, val_genes = np.split(
+            genes_for_partitioning,
+            [
+                int(len(genes_for_partitioning) * 0.8),
+                int(len(genes_for_partitioning) * 0.9),
+            ],
+        )
+
     if tissue_append:
         return {
-            "train": [
-                f"{gene}_{tissue}"
-                for gene in genes
-                if genes[gene] not in test_chrs + val_chrs
-                for tissue in TISSUES
-            ],
-            "test": [
-                f"{gene}_{tissue}"
-                for gene in genes
-                if genes[gene] in test_chrs
-                for tissue in TISSUES
-            ],
+            "train": [f"{gene}_{tissue}" for gene in train_genes for tissue in TISSUES],
+            "test": [f"{gene}_{tissue}" for gene in test_genes for tissue in TISSUES],
             "validation": [
-                f"{gene}_{tissue}"
-                for gene in genes
-                if genes[gene] in val_chrs
-                for tissue in TISSUES
+                f"{gene}_{tissue}" for gene in val_genes for tissue in TISSUES
             ],
         }
     else:
         return {
-            "train": [
-                gene for gene in genes if genes[gene] not in test_chrs + val_chrs
-            ],
-            "test": [gene for gene in genes if genes[gene] in test_chrs],
-            "validation": [gene for gene in genes if genes[gene] in val_chrs],
+            "train": [gene for gene in genes if genes[gene] not in train_genes],
+            "test": [gene for gene in genes if genes[gene] in test_genes],
+            "validation": [gene for gene in genes if genes[gene] in val_genes],
         }
 
 
-def _get_protein_adbunance_median_across_all_tissues_samples(
+def _protein_adbunance_median_across_all_tissues(
     protein_abundance_matrix: str,
 ) -> pd.DataFrame:
     """Returns a pandas object with median protein abundance for each gene
@@ -129,44 +150,33 @@ def _get_protein_adbunance_median_across_all_tissues_samples(
         columns=["gene.id"]
     )
 
-    df = df.apply(np.exp2).fillna(0)  # relative abundances are log2
+    df = df.apply(np.exp2).fillna(
+        0
+    )  # relative abundances are log2, so we take the inverse using exponential
     return pd.Series(df.median(axis=1), name="all_tissues").to_frame()
 
 
 def _get_protein_adundance_tissue_matrix(
     protein_abundance_medians: str,
+    tissue_names: List[str],
     graph: str = "tissue",
 ) -> pd.DataFrame:
-    """Gets
+    """Returns a dataframe containing the protein abundance median for each gene
+    specified in the tissue list
 
     Args:
         protein_abundance_medians (str): _description_
         graph (str, optional): _description_. Defaults to "tissue".
 
     Raises:
-        ValueError: _description_
-
-    Returns:
-        pd.DataFrame: _description_
+        ValueError if graph type is not specified
     """
     if graph == "tissue":
-        tissues = [
-            "Artery Aorta",
-            "Heart Ventricle",
-            "Brain Cortex",
-            "Breast",
-            "Liver",
-            "Lung",
-            "Muscle Skeletal",
-            "Pancreas",
-            "Skin Unexpo",
-            "Small Intestine",
-        ]
         df = pd.read_csv(
             protein_abundance_medians,
             sep=",",
             index_col="gene.id.full",
-            usecols=["gene.id.full"] + tissues,
+            usecols=["gene.id.full"] + tissue_names,
         )
     elif graph == "universal":
         df = pd.read_csv(
@@ -177,7 +187,9 @@ def _get_protein_adundance_tissue_matrix(
     if graph not in ("tissue", "universal"):
         raise ValueError("Graph type must be either 'tissues' or 'universal'")
 
-    return df.apply(np.exp2).fillna(0)  # relative abundances are log2
+    return df.apply(np.exp2).fillna(
+        0
+    )  # relative abundances are log2, so we take the inverse using exponential
 
 
 @time_decorator(print_args=False)
@@ -264,6 +276,7 @@ def tissue_targets_for_training(
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
+    tissue_names: List[str],
     tissues: bool = True,
 ):
     """ """
@@ -277,14 +290,13 @@ def tissue_targets_for_training(
     # load protein abundance median matrix
     protein_abundance_tissue_matrix = _get_protein_adundance_tissue_matrix(
         protein_abundance_medians=protein_abundance_medians,
+        tissue_names=tissue_names,
         graph="tissue",
     )
 
     # load protein abundance median across all tissues and samples
-    protein_abundance_median_across_all = (
-        _get_protein_adbunance_median_across_all_tissues_samples(
-            protein_abundance_matrix=protein_abundance_matrix
-        )
+    protein_abundance_median_across_all = _protein_adbunance_median_across_all_tissues(
+        protein_abundance_matrix=protein_abundance_matrix
     )
 
     # create dataframes with target medians and fold change(median in tissue /
@@ -317,39 +329,10 @@ def tissue_targets_for_training(
     return targets
 
 
-# def filtered_targets(
-#     tissue_params,
-#     targets,
-# ):
-#     """Filters a dict of every possible target (all 56200 genes)
-#     Takes the pre-tpm filtered list of genes in each directory and concats into
-#     a list Keeps targets if they exist within this concatenated list.
-#     """
-
-#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-#         with open(tpm_filtered_genes, newline="") as file:
-#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
-
-#     for idx, tissue in enumerate(tissue_params):
-#         if idx == 0:
-#             genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
-#         else:
-#             update_genes = filtered_genes(f"{tissue}/gene_regions_tpm_filtered.bed")
-#             genes += update_genes
-
-#     for key in targets.keys():
-#         targets[key] = {
-#             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
-#         }
-#     return targets
-
-
 def main(
     config_dir: str,
     matrix_dir: str,
     gencode_gtf: str,
-    test_chrs: List[str],
-    val_chrs: List[str],
     expression_median_across_all: str,
     expression_median_matrix: str,
     protein_abundance_matrix: str,
@@ -368,9 +351,17 @@ def main(
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
+    test_chrs = params["test_chrs"]
+    val_chrs = params["val_chrs"]
 
     # create directory for experiment specific scalers
     graph_dir = f"{working_directory}/{experiment_name}/graphs"
+
+    # create median tpm file if needed
+    _tpm_median_across_all_tissues(
+        gct_file=f"{matrix_dir}/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct",
+        save_path=matrix_dir,
+    )
 
     # prepare keys for extracting info from dataframes
     keys = {}
@@ -382,8 +373,8 @@ def main(
         )
 
     # split genes based on chromosome
-    split = _chr_split_train_test_val(
-        genes=_genes_from_gff(gencode_gtf),
+    split = _genes_train_test_val_split(
+        genes=genes_from_gff(gencode_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         tissue_append=True,
@@ -403,6 +394,7 @@ def main(
         expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}",
         protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}",
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
+        tissue_names=PROTEIN_TISSUE_NAMES,
     )
 
     # # filter targets
@@ -498,8 +490,6 @@ if __name__ == "__main__":
         config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
         matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data",
         gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
-        test_chrs=["chr8", "chr9"],
-        val_chrs=["chr7", "chr13"],
         expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl",
         expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
         protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
