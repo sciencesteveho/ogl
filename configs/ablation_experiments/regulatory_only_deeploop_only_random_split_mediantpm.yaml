@@ -7,7 +7,7 @@ experiment_name: regulatory_only_deeploop_only_random_split_mediantpm
 
 interaction_types: null
 
-nodes: null()
+nodes: null
 
 targets: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl
 
