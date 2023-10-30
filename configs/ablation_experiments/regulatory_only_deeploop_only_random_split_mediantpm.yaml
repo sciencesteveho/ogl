@@ -3,7 +3,7 @@ baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_file
 
 baseloops: deeploop_only
 
-experiment_name: deeploop_only_random_split_mediantpm
+experiment_name: regulatory_only_deeploop_only_random_split_mediantpm
 
 interaction_types: null
 

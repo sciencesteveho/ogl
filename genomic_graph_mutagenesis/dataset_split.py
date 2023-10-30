@@ -408,7 +408,9 @@ def main(
     # args = parser.parse_args()
     # params = parse_yaml(args.experiment_config)
     args = parser.parse_args()
-    params = parse_yaml(args.experiment_config)
+    params = parse_yaml(
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_deeploop_only_random_split_mediantpm.yaml"
+    )
 
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
@@ -418,7 +420,8 @@ def main(
     tissues = params["tissues"]
 
     # create directory for experiment specific scalers
-    graph_dir = f"{working_directory}/{experiment_name}/graphs"
+    exp_dir = f"{working_directory}/{experiment_name}"
+    graph_dir = f"{exp_dir}/graphs"
 
     # open average activity dataframe
     with open(average_activity_df, "rb") as file:
@@ -566,17 +569,14 @@ if __name__ == "__main__":
 
 
 """
-config_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
-matrix_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
-gencode_gtf = "shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-test_chrs = ["chr1"]
-val_chrs = []
-expression_median_across_all = "gtex_tpm_median_across_all_tissues.pkl"
-expression_median_matrix = (
-    "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
-)
-protein_abundance_matrix = "protein_relative_abundance_all_gtex.csv"
-protein_abundance_medians = "protein_relative_abundance_median_gtex.csv")
+average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl"
+config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
+matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
+gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl"
+expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
+protein_abundance_matrix="protein_relative_abundance_all_gtex.csv"
+protein_abundance_medians="protein_relative_abundance_median_gtex.csv"
 
 
 split=split
@@ -587,11 +587,3 @@ protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}"
 protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}"
 tissue_names=PROTEIN_TISSUE_NAMES
 """
-# """In [83]: len(parsed_targets['train'])
-# Out[83]: 130087
-
-# In [84]: len(parsed_targets['test'])
-# Out[84]: 11420
-
-# In [85]: len(parsed_targets['validation'])
-# Out[85]: 10505"""
