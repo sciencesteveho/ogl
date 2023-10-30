@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
+# - [ ] Remove the file check in _tpmmedianacrossalltissues to the main function
 # - [ ] Target dict is super redundant, clean it up so it doesn't hold so many
-#   copies of the same data
+#
 
 """Get train / test / val splits for nodes in graphs and generate targets for
 training the network.
@@ -231,10 +232,10 @@ def _difference_from_average_activity_per_tissue(
     for file in os.listdir(tpm_dir):
         if "tpm.txt" in file:
             tissue = file.split(".tpm.txt")[0]
-            if tissue in tissues:
+            if tissue in [keyword for tup in tissues.values() for keyword in tup]:
                 average_remove_tissue = average_activity.drop(tissue, axis=1)
                 average_remove_tissue["average"] = average_remove_tissue.mean(axis=1)
-                df = pd.read_table(file, index_col=0, header=[2])
+                df = pd.read_table(f"{tpm_dir}/{file}", index_col=0, header=[2])
                 samples = len(df.columns)
                 tissue_average = df.sum(axis=1).div(samples)
                 difference = tissue_average.subtract(
@@ -242,6 +243,8 @@ def _difference_from_average_activity_per_tissue(
                 ).abs()
                 difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
                 dfs.append(difference)
+            else:
+                pass
     return pd.concat(dfs, axis=1)
 
 
@@ -293,12 +296,8 @@ def _get_target_values_for_tissues(
     all_dict = {}
     for tissue in tissue_params:
         all_dict[tissue] = _get_dict_with_target_array(
-            split_dict=split,
             tpmkey=tissue_params[tissue][0],
             prokey=tissue_params[tissue][1],
-            tpm_median_and_fold_change_df=tpm_median_and_fold_change_df,
-            diff_from_average_df=diff_from_average_df,
-            protein_median_and_fold_change_df=protein_median_and_fold_change_df,
         )
     return all_dict
 
@@ -309,7 +308,6 @@ def tissue_targets_for_training(
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
-    tissues: List[str],
     tissue_names: List[str],
     tissue_params: Dict[str, Tuple[str, str]],
     tpm_dir: str,
@@ -353,7 +351,7 @@ def tissue_targets_for_training(
     # the average expression in all tissues, and is an absolute value
     diff_from_average_df = _difference_from_average_activity_per_tissue(
         tpm_dir=tpm_dir,
-        tissues=tissues,
+        tissues=tissue_params,
         average_activity=average_activity,
     )
 
@@ -407,7 +405,6 @@ def main(
     )
     # args = parser.parse_args()
     # params = parse_yaml(args.experiment_config)
-    args = parser.parse_args()
     params = parse_yaml(
         "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_deeploop_only_random_split_mediantpm.yaml"
     )
@@ -422,6 +419,9 @@ def main(
     # create directory for experiment specific scalers
     exp_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{exp_dir}/graphs"
+    partition_dir = (
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing"
+    )
 
     # open average activity dataframe
     with open(average_activity_df, "rb") as file:
@@ -445,26 +445,40 @@ def main(
     # split genes based on chromosome
     split = _genes_train_test_val_split(
         genes=genes_from_gff(gencode_gtf),
+        tissues=tissues,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         tissue_append=True,
     )
 
-    # save if it does not exist
-    chr_split_dictionary = f"{graph_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
+    # save partitioning split
+    if test_chrs and val_chrs:
+        chr_split_dictionary = f"{partition_dir}/graph_partition_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}.pkl"
+    elif test_chrs and not val_chrs:
+        chr_split_dictionary = (
+            f"{partition_dir}/graph_partition_test_{('-').join(test_chrs)}.pkl"
+        )
+    elif val_chrs and not test_chrs:
+        chr_split_dictionary = (
+            f"{partition_dir}/graph_partition_val_{('-').join(val_chrs)}.pkl"
+        )
+    else:
+        chr_split_dictionary = f"{partition_dir}/graph_partition_random_assign.pkl"
     if not os.path.exists(chr_split_dictionary):
         with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
 
     # get targets!
     targets = tissue_targets_for_training(
-        split=split,
-        tissue_params=keys,
+        average_activity=average_activity,
         expression_median_across_all=f"{matrix_dir}/{expression_median_across_all}",
         expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}",
         protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}",
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
         tissue_names=PROTEIN_TISSUE_NAMES,
+        tissue_params=keys,
+        tpm_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline",
+        split=split,
     )
 
     # # filter targets
