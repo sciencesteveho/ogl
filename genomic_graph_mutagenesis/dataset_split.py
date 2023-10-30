@@ -24,7 +24,6 @@ from sklearn.preprocessing import StandardScaler
 from utils import genes_from_gff
 from utils import parse_yaml
 from utils import time_decorator
-from utils import TISSUES
 
 DATA_SPLITS = ["train", "test", "validation"]
 
@@ -65,6 +64,7 @@ def _tpm_median_across_all_tissues(
 @time_decorator(print_args=False)
 def _genes_train_test_val_split(
     genes: Dict[str, str],
+    tissues: List[str] = [],
     tissue_append: bool = True,
     test_chrs: List[int] = [],
     val_chrs: List[int] = [],
@@ -118,10 +118,10 @@ def _genes_train_test_val_split(
 
     if tissue_append:
         return {
-            "train": [f"{gene}_{tissue}" for gene in train_genes for tissue in TISSUES],
-            "test": [f"{gene}_{tissue}" for gene in test_genes for tissue in TISSUES],
+            "train": [f"{gene}_{tissue}" for gene in train_genes for tissue in tissues],
+            "test": [f"{gene}_{tissue}" for gene in test_genes for tissue in tissues],
             "validation": [
-                f"{gene}_{tissue}" for gene in val_genes for tissue in TISSUES
+                f"{gene}_{tissue}" for gene in val_genes for tissue in tissues
             ],
         }
     else:
@@ -221,18 +221,27 @@ def _calculate_fold_change_from_medians(
 @time_decorator(print_args=False)
 def _difference_from_average_activity_per_tissue(
     tpm_dir: str,
+    tissues: List[str],
     average_activity: pd.DataFrame,
 ) -> pd.DataFrame:
     """Lorem"""
+    # get average activity of all other tissues, but not the tissue of interest
+
     dfs = []
     for file in os.listdir(tpm_dir):
         if "tpm.txt" in file:
-            df = pd.read_table(file, index_col=0, header=[2])
-            samples = len(df.columns)
-            tissue_average = df.sum(axis=1).div(samples)
-            difference = tissue_average.subtract(average_activity["average"]).abs()
-            difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
-            dfs.append(difference)
+            tissue = file.split(".tpm.txt")[0]
+            if tissue in tissues:
+                average_remove_tissue = average_activity.drop(tissue, axis=1)
+                average_remove_tissue["average"] = average_remove_tissue.mean(axis=1)
+                df = pd.read_table(file, index_col=0, header=[2])
+                samples = len(df.columns)
+                tissue_average = df.sum(axis=1).div(samples)
+                difference = tissue_average.subtract(
+                    average_remove_tissue["average"]
+                ).abs()
+                difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
+                dfs.append(difference)
     return pd.concat(dfs, axis=1)
 
 
@@ -295,14 +304,16 @@ def _get_target_values_for_tissues(
 
 
 def tissue_targets_for_training(
-    split: Dict[str, List[str]],
-    tissue_params: Dict[str, Tuple[str, str]],
+    average_activity: pd.DataFrame,
     expression_median_across_all: str,
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
+    tissues: List[str],
     tissue_names: List[str],
-    tissues: bool = True,
+    tissue_params: Dict[str, Tuple[str, str]],
+    tpm_dir: str,
+    split: Dict[str, List[str]],
 ):
     """_summary_
 
@@ -340,7 +351,11 @@ def tissue_targets_for_training(
     # create dataframe with difference from average activity for each tissue
     # formally, this is defined as the average expression in the tissue minus
     # the average expression in all tissues, and is an absolute value
-    diff_from_average_df = _difference_from_average_activity_per_tissue()
+    diff_from_average_df = _difference_from_average_activity_per_tissue(
+        tpm_dir=tpm_dir,
+        tissues=tissues,
+        average_activity=average_activity,
+    )
 
     # create dataframes with target medians and fold change(median in tissue /
     # median across all tissues) for TPM
@@ -364,6 +379,7 @@ def tissue_targets_for_training(
             tissue_params=tissue_params,
             split=split[data_split],
             tpm_median_and_fold_change_df=tpm_median_and_fold_change_df,
+            diff_from_average_df=diff_from_average_df,
             protein_median_and_fold_change_df=protein_median_and_fold_change_df,
         )
         for data_split in DATA_SPLITS
@@ -373,6 +389,7 @@ def tissue_targets_for_training(
 
 
 def main(
+    average_activity_df: str,
     config_dir: str,
     matrix_dir: str,
     gencode_gtf: str,
@@ -388,6 +405,8 @@ def main(
         type=str,
         help="Path to .yaml file with experimental conditions",
     )
+    # args = parser.parse_args()
+    # params = parse_yaml(args.experiment_config)
     args = parser.parse_args()
     params = parse_yaml(args.experiment_config)
 
@@ -396,9 +415,14 @@ def main(
     working_directory = params["working_directory"]
     test_chrs = params["test_chrs"]
     val_chrs = params["val_chrs"]
+    tissues = params["tissues"]
 
     # create directory for experiment specific scalers
     graph_dir = f"{working_directory}/{experiment_name}/graphs"
+
+    # open average activity dataframe
+    with open(average_activity_df, "rb") as file:
+        average_activity = pickle.load(file)
 
     # create median tpm file if needed
     _tpm_median_across_all_tissues(
@@ -408,7 +432,7 @@ def main(
 
     # prepare keys for extracting info from dataframes
     keys = {}
-    for tissue in TISSUES:
+    for tissue in tissues:
         params = parse_yaml(f"{config_dir}/{tissue}.yaml")
         keys[tissue] = (
             params["resources"]["key_tpm"],
@@ -530,6 +554,7 @@ def main(
 
 if __name__ == "__main__":
     main(
+        average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl",
         config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
         matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data",
         gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",

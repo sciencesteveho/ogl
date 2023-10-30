@@ -116,13 +116,14 @@ conda activate /ocean/projects/bio210019p/stevesho/gnn
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_full_graph_scaled.pkl
+tissues=($(python -c "import yaml; print(yaml.safe_load(open(${experiment_yaml}))['tissues'])" | tr -d "[],'"))
 
 if ! [ -f ${final_graph} ]; then
     echo "Final graph not found. Submitting pipeline jobs."
 
     # Parse nodes and edges
     pipeline_a_ids=()
-    for tissue in aorta hippocampus left_ventricle mammary pancreas skeletal_muscle liver lung skin small_intestine; do
+    for tissue in ${tissues[@]}; do
         ID=$(sbatch \
             --parsable \
             pipeline_node_and_edge_generation.sh \

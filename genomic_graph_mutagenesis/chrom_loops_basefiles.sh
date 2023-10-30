@@ -168,8 +168,8 @@ function _format_deepanchor_loops () {
 # overlapping loops).
 deeploop_processing_main () {
     # set vars
-    loop_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops
-    resource_dir=/ocean/projects/bio210019p/stevesho/resources
+    loop_dir=$1
+    resource_dir=$2
     base_dir=${loop_dir}/hg38_chromatin_loops_yue
     supp_dir=${loop_dir}/supp
     tmp_dir=${loop_dir}/tmp
@@ -241,8 +241,8 @@ deeploop_processing_main () {
 
 # process deepanchor loops
 deepanchor_processing_main () {
-    deepanchor_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/deepanchor
-    final_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
+    deepanchor_dir=$1
+    final_dir=$2
 
     declare -A loop_files
     loop_files["ENCFF000CFW"]="hippocampus"
@@ -291,12 +291,45 @@ deepanchor_processing_main () {
     done
 }
 
+combine_deeploop_deepanchor_peakachu_loops () {
+    deepanchor_peakachu_dir=$1
+    deeploop_only_dir=$2
+    final_dir=$3
+
+    declare -A combine_files
+    combine_files["aorta_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Aorta.top300K_300000_loops.bedpe.hg38"
+    combine_files["hippocampus_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Hippocampus.top300K_300000_loops.bedpe.hg38"
+    combine_files["left_ventricle_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_LeftVentricle.top300K_300000_loops.bedpe.hg38"
+    combine_files["liver_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Liver.top300K_300000_loops.bedpe.hg38"
+    combine_files["lung_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Lung.top300K_300000_loops.bedpe.hg38"
+    combine_files["pancreas_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Pancreas.top300K_300000_loops.bedpe.hg38"
+    combine_files["skeletal_muscle_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38"
+    combine_files["small_intestine_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38"
+
+    for file in ${!combine_files[@]};
+    do
+        tissue=$(echo ${file} | sed 's/_peakachu_deepanchor.hg38.combined_loops//g')
+        cat ${deepanchor_peakachu_dir}/${file} ${deeploop_only_dir}/${combine_files[${file}]} \
+            | sort -k1,1 -k2,2n \
+            > ${final_dir}/${tissue}_alloops.bed
+    done
+}
 
 # run main function for deeploop
-deeploop_processing_main
+deeploop_processing_main \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops \
+    /ocean/projects/bio210019p/stevesho/resources
 
 # run main function for deep anchor
-deepanchor_processing_main
+deepanchor_processing_main \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/deepanchor \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
+
+# run main function to combine all loops
+combine_deeploop_deepanchor_peakachu_loops \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/peakachu_deepanchor \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_only \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_deepanchor_peakachu
 
 
 end=`date +%s`

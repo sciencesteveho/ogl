@@ -3,25 +3,18 @@ baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_file
 
 baseloops: deeploop_only
 
-experiment_name: deeploop_only_random_split_mediantpm
+experiment_name: mammary_only_gruberloops
 
 interaction_types: null
 
-nodes: null()
+nodes: null
 
 targets: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl
 
 targets_types: expression_median_only
 
 tissues:
-  - aorta
-  - hippocampus
-  - left_ventricle
-  - liver
-  - lung
-  - pancreas
-  - skeletal_muscle
-  - small_intestine
+  - mammary
 
 test_chrs: null
 

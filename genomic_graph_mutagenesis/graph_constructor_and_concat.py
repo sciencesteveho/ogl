@@ -23,7 +23,6 @@ import numpy as np
 from utils import dir_check_make
 from utils import parse_yaml
 from utils import time_decorator
-from utils import TISSUES
 
 NODES = [
     "dyadic",
@@ -244,7 +243,7 @@ def main() -> None:
     dir_check_make(graph_dir)
 
     # instantiate objects and process graphs
-    for idx, tissue in enumerate(TISSUES):
+    for idx, tissue in enumerate(params["tissues"]):
         if idx == 0:
             graph = graph_constructor(
                 tissue=tissue,
