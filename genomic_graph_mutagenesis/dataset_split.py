@@ -14,7 +14,7 @@ import argparse
 import csv
 import os
 import pickle
-import random
+from random import shuffle
 from typing import Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
@@ -77,45 +77,39 @@ def _genes_train_test_val_split(
     random.
 
     Args:
-        genes (_type_): list of all genes in genome.
-        test_chrs (_type_)
-        val_chrs (_type_)
+        genes (Dict[str, str]): Dictionary of all genes in the genome.
+        tissues (List[str], optional): List of tissue names. Defaults to an
+        empty list.
         tissue_append (bool, optional): Whether or not to append tissue name to
         ID. Defaults to True.
+        test_chrs (List[int], optional): List of chromosome numbers for test
+        genes. Defaults to an empty list.
+        val_chrs (List[int], optional): List of chromosome numbers for
+        validation genes. Defaults to an empty list.
 
     Returns:
-        Dict[str, List[str]]: dictionary of genes split into train, test, and
+        Dict[str, List[str]]: Dictionary of genes split into train, test, and
         validation.
     """
+    all_genes = list(genes.keys())
+    num_genes = len(all_genes)
+
     if test_chrs and val_chrs:
-        test_genes = [gene for gene in genes if genes[gene] in test_chrs]
-        val_genes = [gene for gene in genes if genes[gene] in val_chrs]
-        train_genes = [gene for gene in genes if gene not in test_genes + val_genes]
-    elif test_chrs and not val_chrs:
-        test_genes = [gene for gene in genes if genes[gene] in test_chrs]
-        genes_for_partitioning = [
-            gene for gene in genes if genes[gene] not in test_chrs
-        ]
-        random.shuffle(genes_for_partitioning)
-        train_genes, val_genes = np.split(
-            genes_for_partitioning, [int(len(genes_for_partitioning) * 0.9)]
-        )
-    elif val_chrs and not test_chrs:
-        val_genes = [gene for gene in genes if genes[gene] in val_chrs]
-        genes_for_partitioning = [gene for gene in genes if genes[gene] not in val_chrs]
-        random.shuffle(genes_for_partitioning)
-        train_genes, test_genes = np.split(
-            genes_for_partitioning, [int(len(genes_for_partitioning) * 0.9)]
-        )
+        test_genes = [gene for gene in all_genes if genes[gene] in test_chrs]
+        val_genes = [gene for gene in all_genes if genes[gene] in val_chrs]
+    elif test_chrs:
+        test_genes = [gene for gene in all_genes if genes[gene] in test_chrs]
+        val_genes = []
+    elif val_chrs:
+        val_genes = [gene for gene in all_genes if genes[gene] in val_chrs]
+        test_genes = []
     else:
-        genes_for_partitioning = [gene for gene in genes]
-        train_genes, test_genes, val_genes = np.split(
-            genes_for_partitioning,
-            [
-                int(len(genes_for_partitioning) * 0.8),
-                int(len(genes_for_partitioning) * 0.9),
-            ],
-        )
+        # If no test or val chromosomes are provided, assign randomly
+        shuffle(all_genes)
+        test_genes = all_genes[: num_genes // 10]
+        val_genes = all_genes[num_genes // 10 : 2 * (num_genes // 10)]
+
+    train_genes = [gene for gene in all_genes if gene not in test_genes + val_genes]
 
     if tissue_append:
         return {
@@ -127,9 +121,9 @@ def _genes_train_test_val_split(
         }
     else:
         return {
-            "train": [gene for gene in genes if genes[gene] not in train_genes],
-            "test": [gene for gene in genes if genes[gene] in test_genes],
-            "validation": [gene for gene in genes if genes[gene] in val_genes],
+            "train": train_genes,
+            "test": test_genes,
+            "validation": val_genes,
         }
 
 
@@ -170,7 +164,7 @@ def _get_protein_adundance_tissue_matrix(
         graph (str, optional): _description_. Defaults to "tissue".
 
     Raises:
-        ValueError if graph type is not specified
+        ValueError if graph data_type is not specified
     """
     if graph == "tissue":
         df = pd.read_csv(
@@ -186,34 +180,71 @@ def _get_protein_adundance_tissue_matrix(
             index_col="gene.id.full",
         )
     if graph not in ("tissue", "universal"):
-        raise ValueError("Graph type must be either 'tissues' or 'universal'")
+        raise ValueError("Graph data_type must be either 'tissues' or 'universal'")
 
     return df.apply(np.exp2).fillna(
         0
     )  # relative abundances are log2, so we take the inverse using exponential
 
 
+def _tissue_rename(
+    tissue: str,
+    data_type: str,
+) -> str:
+    """
+    Args:
+        tissue (str)
+        data_type (str)
+
+    Returns:
+        str: casefolded and renamed tissue
+    """
+    if data_type == "tpm":
+        regex = (("- ", ""), ("-", ""), ("(", ""), (")", ""), (" ", "_"))
+    else:
+        regex = ((" ", "_"), ("", ""))
+
+    tissue_rename = tissue.casefold()
+    for r in regex:
+        tissue_rename = tissue_rename.replace(*r)
+    return tissue_rename
+
+
+def _add_tpm_pseudocount_and_log2_transform(
+    df: pd.DataFrame,
+    pseudocount: float,
+) -> pd.DataFrame:
+    return np.log2(df + pseudocount)
+
+
 @time_decorator(print_args=False)
 def _calculate_fold_change_from_medians(
     median_matrix: pd.DataFrame,
     median_across_tissues: pd.DataFrame,
-    type: str = "tpm",
+    psuedocount: float,
+    data_type: str = "tpm",
 ) -> pd.DataFrame:
-    """_lorem"""
-    if type == "tpm":
-        regex = (("- ", ""), ("-", ""), ("(", ""), (")", ""), (" ", "_"))
-    else:
-        regex = ((" ", "_"), ("", ""))  # second added as placeholder so we can use *r
+    """_summary_
 
+    Args:
+        median_matrix (pd.DataFrame): _description_
+        median_across_tissues (pd.DataFrame): _description_
+        data_type (str, optional): _description_. Defaults to "tpm".
+
+    Returns:
+        pd.DataFrame: _description_
+    """
     df = pd.concat([median_matrix, median_across_tissues], axis=1)
-    df["all_tissues"] = np.log2(df["all_tissues"] + 0.25)
-    for tissue in list(df.columns)[:-1]:
-        tissue_rename = tissue.casefold()
-        for r in regex:
-            tissue_rename = tissue_rename.replace(*r)
-        df.rename(columns={f"{tissue}": f"{tissue_rename}"}, inplace=True)
-        df[f"{tissue_rename}"] = np.log2(
-            df[f"{tissue_rename}"] + 0.25
+    df["all_tissues"] = _add_tpm_pseudocount_and_log2_transform(
+        df=df["all_tissues"],
+        pseudocount=psuedocount,
+    )
+    for tissue in df.columns[:-1]:
+        tissue_rename = _tissue_rename(tissue=tissue, data_type=data_type)
+        df.rename(columns={tissue: tissue_rename}, inplace=True)
+        df[tissue_rename] = _add_tpm_pseudocount_and_log2_transform(
+            df=df[tissue_rename],
+            pseudocount=psuedocount,
         )  # convert tpms to log2 (+0.25 to avoid negative infinity)
         df[f"{tissue_rename}_foldchange"] = df["all_tissues"] - df[f"{tissue_rename}"]
     return df
@@ -225,26 +256,35 @@ def _difference_from_average_activity_per_tissue(
     tissues: List[str],
     average_activity: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Lorem"""
-    # get average activity of all other tissues, but not the tissue of interest
+    """_summary_
 
+    Args:
+        tpm_dir (str): _description_
+        tissues (List[str]): _description_
+        average_activity (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    # get average activity of all other tissues, but not the tissue of interest
     dfs = []
+
     for file in os.listdir(tpm_dir):
-        if "tpm.txt" in file:
+        if file.endswith(".tpm.txt"):
             tissue = file.split(".tpm.txt")[0]
-            if tissue in [keyword for tup in tissues.values() for keyword in tup]:
-                average_remove_tissue = average_activity.drop(tissue, axis=1)
+
+            if any(tissue in keywords for keywords in tissues):
+                average_remove_tissue = average_activity.drop(columns=[tissue])
                 average_remove_tissue["average"] = average_remove_tissue.mean(axis=1)
+
                 df = pd.read_table(f"{tpm_dir}/{file}", index_col=0, header=[2])
-                samples = len(df.columns)
-                tissue_average = df.sum(axis=1).div(samples)
+                tissue_average = df.mean(axis=1)
                 difference = tissue_average.subtract(
                     average_remove_tissue["average"]
                 ).abs()
                 difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
                 dfs.append(difference)
-            else:
-                pass
+
     return pd.concat(dfs, axis=1)
 
 
@@ -360,7 +400,8 @@ def tissue_targets_for_training(
     tpm_median_and_fold_change_df = _calculate_fold_change_from_medians(
         median_matrix=tpm_median_df,
         median_across_tissues=tpm_all_median,
-        type="tpm",
+        psuedocount=0.25,
+        data_type="tpm",
     )
 
     # create dataframes with target medians and fold change(median in tissue /
@@ -368,7 +409,8 @@ def tissue_targets_for_training(
     protein_median_and_fold_change_df = _calculate_fold_change_from_medians(
         median_matrix=protein_abundance_tissue_matrix,
         median_across_tissues=protein_abundance_median_across_all,
-        type="protein",
+        psuedocount=0.25,
+        data_type="protein",
     )
 
     # parse targets into a dictionary for each gene/tissue combination
@@ -400,7 +442,7 @@ def main(
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment_config",
-        type=str,
+        data_type=str,
         help="Path to .yaml file with experimental conditions",
     )
     # args = parser.parse_args()
