@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
+# - [X] Filter genes BEFORE dividing into train/test/val
+# - [ ] Fix name for saving
+#   - [ ] Make sure to save targets at experiment directory
+#   - [ ] Fix all the gross directories, and make them part of params
 # - [ ] Remove the file check in _tpmmedianacrossalltissues to the main function
 # - [ ] Target dict is super redundant, clean it up so it doesn't hold so many
 #
 
 """Get train / test / val splits for nodes in graphs and generate targets for
-training the network.
-"""
+training the network."""
 
 import argparse
 import csv
@@ -25,8 +28,6 @@ from sklearn.preprocessing import StandardScaler
 from utils import genes_from_gff
 from utils import parse_yaml
 from utils import time_decorator
-
-DATA_SPLITS = ["train", "test", "validation"]
 
 PROTEIN_TISSUE_NAMES = [
     "Artery Aorta",
@@ -46,22 +47,72 @@ def _get_tissue_keywords(
     tissues: List[str],
     config_dir: str,
 ) -> Dict[str, Tuple[str, str]]:
-    """_summary_
+    """Get tissue keywords from configuration files.
 
     Args:
-        tissues (List[str]): _description_
+        tissues (List[str]): A list of tissue names.
+        config_dir (str): The directory where tissue configuration files are
+        stored.
 
     Returns:
-        Dict[str, Tuple[str, str]]: _description_
+        Dict[str, Tuple[str, str]]: A dictionary mapping tissue names to their
+        keywords.
     """
     tissue_keywords = {}
+
     for tissue in tissues:
         params = parse_yaml(f"{config_dir}/{tissue}.yaml")
-        tissue_keywords[tissue] = (
-            params["resources"]["key_tpm"],
-            params["resources"]["key_protein_abundance"],
-        )
+
+        tpm_keyword = params["resources"]["key_tpm"]
+        protein_abundance_keyword = params["resources"]["key_protein_abundance"]
+
+        tissue_keywords[tissue] = (tpm_keyword, protein_abundance_keyword)
     return tissue_keywords
+
+
+def _filtered_genes(
+    tpm_filtered_genes: str,
+    tissue: str,
+) -> List[str]:
+    """Return a list of genes from a filtered gtex bedfile"""
+    with open(tpm_filtered_genes, newline="") as file:
+        return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+
+def _get_tpm_filtered_genes(
+    tissue_keywords: Dict[str, Tuple[str, str]],
+    working_directory: str,
+    experiment_name: str,
+) -> List[str]:
+    """Process tissue targets by filtering them based on tissue keywords and
+    genes.
+
+    Args:
+        tissue_keywords (Dict[str, Tuple[str, str]): A dictionary mapping tissue
+        names to keywords.
+        working_directory (str): The directory where the data is located.
+        experiment_name (str): The name of the experiment.
+        targets (Dict[str, Dict[str, np.ndarray]]): A dictionary of targets for
+        different tissues.
+
+    Returns:
+        List[str]: A list of filtered genes.
+    """
+    unique_genes = set()
+
+    # Gather unique genes from all tissues
+    for idx, tissue in enumerate(tissue_keywords):
+        tpm_filtered_file = (
+            f"{working_directory}/{experiment_name}/{tissue}/tpm_filtered_genes.bed"
+        )
+        tissue_genes = _filtered_genes(tpm_filtered_genes=tpm_filtered_file)
+
+        if idx == 0:
+            unique_genes = set(tissue_genes)
+        else:
+            unique_genes.update(tissue_genes)
+
+    return unique_genes
 
 
 def _save_partitioning_split(
@@ -70,6 +121,18 @@ def _save_partitioning_split(
     val_chrs: List[int],
     split: Dict[str, List[str]],
 ) -> None:
+    """Save the partitioning split to a file based on provided chromosome
+    information.
+
+    Args:
+        partition_dir (str): The directory where the split file will be saved.
+        test_chrs (List[int]): A list of test chromosomes.
+        val_chrs (List[int]): A list of validation chromosomes.
+        split (Dict[str, List[str]]): A dictionary containing the split data.
+
+    Returns:
+        None
+    """
     chrs = []
 
     if test_chrs and val_chrs:
@@ -111,6 +174,7 @@ def _tpm_median_across_all_tissues(
 @time_decorator(print_args=False)
 def _genes_train_test_val_split(
     genes: Dict[str, str],
+    target_genes: List[str],
     tissues: List[str] = [],
     tissue_append: bool = True,
     test_chrs: List[int] = [],
@@ -124,6 +188,7 @@ def _genes_train_test_val_split(
 
     Args:
         genes (Dict[str, str]): Dictionary of all genes in the genome.
+        target_genes (List[str]): List of genes passing tpm filter.
         tissues (List[str], optional): List of tissue names. Defaults to an
         empty list.
         tissue_append (bool, optional): Whether or not to append tissue name to
@@ -159,10 +224,23 @@ def _genes_train_test_val_split(
 
     if tissue_append:
         return {
-            "train": [f"{gene}_{tissue}" for gene in train_genes for tissue in tissues],
-            "test": [f"{gene}_{tissue}" for gene in test_genes for tissue in tissues],
+            "train": [
+                f"{gene}_{tissue}"
+                for gene in train_genes
+                for tissue in tissues
+                if f"{gene}_{tissue}" in target_genes
+            ],
+            "test": [
+                f"{gene}_{tissue}"
+                for gene in test_genes
+                for tissue in tissues
+                if f"{gene}_{tissue}" in target_genes
+            ],
             "validation": [
-                f"{gene}_{tissue}" for gene in val_genes for tissue in tissues
+                f"{gene}_{tissue}"
+                for gene in val_genes
+                for tissue in tissues
+                if f"{gene}_{tissue}" in target_genes
             ],
         }
     else:
@@ -237,13 +315,14 @@ def _tissue_rename(
     tissue: str,
     data_type: str,
 ) -> str:
-    """
+    """Rename a tissue string for a given data type (TPM or protein).
+
     Args:
-        tissue (str)
-        data_type (str)
+        tissue (str): The original tissue name to be renamed.
+        data_type (str): The type of data (e.g., 'tpm' or 'protein').
 
     Returns:
-        str: casefolded and renamed tissue
+        str: The renamed and standardized tissue name.
     """
     if data_type == "tpm":
         regex = (("- ", ""), ("-", ""), ("(", ""), (")", ""), (" ", "_"))
@@ -253,6 +332,7 @@ def _tissue_rename(
     tissue_rename = tissue.casefold()
     for r in regex:
         tissue_rename = tissue_rename.replace(*r)
+
     return tissue_rename
 
 
@@ -260,6 +340,9 @@ def _add_tpm_pseudocount_and_log2_transform(
     df: pd.DataFrame,
     pseudocount: float,
 ) -> pd.DataFrame:
+    """Add a pseudocount to values in a DataFrame and perform a log2
+    transformation.
+    """
     return np.log2(df + pseudocount)
 
 
@@ -336,20 +419,25 @@ def _difference_from_average_activity_per_tissue(
 
 @time_decorator(print_args=False)
 def _get_target_values_for_tissues(
-    tissue_params: dict,
-    split: dict,
-    tpm_median_and_foldchange_df: pd.DataFrame,
     diff_from_average_df: pd.DataFrame,
     protein_median_and_foldchange_df: pd.DataFrame,
+    split: Dict[str, List[str]],
+    split_dataset: str,
+    tissue_keywords: dict,
+    tpm_median_and_foldchange_df: pd.DataFrame,
 ) -> Dict[str, Dict[str, np.ndarray]]:
-    """_summary_
+    """Get target values for each tissue.
 
     Args:
-        tissue_params (dict): _description_
-        split (dict): _description_
-        tpm_median_and_foldchange_df (pd.DataFrame): _description_
-        diff_from_average_df (pd.DataFrame): _description_
-        protein_median_and_foldchange_df (pd.DataFrame): _description_
+        diff_from_average_df (pd.DataFrame): DataFrame with difference from
+        average data.
+        protein_median_and_foldchange_df (pd.DataFrame): DataFrame with protein
+        median and foldchange data.
+        split (Dict[str, List[str]]): Split data.
+        split_dataset (str): Dataset for splitting.
+        tissue_keywords (Dict[str, Tuple[str, str]]): Tissue keyword mapping.
+        tpm_median_and_foldchange_df (pd.DataFrame): DataFrame with TPM median
+        and foldchange data.
     """
 
     def _get_dict_with_target_array(
@@ -359,70 +447,74 @@ def _get_target_values_for_tissues(
     ) -> Dict[str, np.ndarray]:
         """Helper function to get the sub dictionary"""
         new = {}
-        for target in split:
-            gene, tissue_name = target.split("_")
+        for target in split[split_dataset]:
+            gene, tissue_name = target.split("_", 1)
             if tissue_name == tissue:
                 new[target] = np.array(
                     [
-                        tpm_median_and_foldchange_df[tpmkey].loc[
-                            gene
+                        tpm_median_and_foldchange_df.loc[
+                            gene, tpmkey
                         ],  # median tpm in the tissue
-                        tpm_median_and_foldchange_df[tpmkey + "_foldchange"].loc[
-                            gene
+                        tpm_median_and_foldchange_df.loc[
+                            gene, tpmkey + "_foldchange"
                         ],  # fold change
-                        diff_from_average_df[tpmkey + "_difference_from_average"].loc[
-                            gene
+                        diff_from_average_df.loc[
+                            gene, tpmkey + "_difference_from_average"
                         ],
-                        protein_median_and_foldchange_df[prokey].loc[gene]
+                        protein_median_and_foldchange_df.loc[gene, prokey]
                         if gene in protein_median_and_foldchange_df.index
                         else -1,
-                        protein_median_and_foldchange_df[prokey + "_foldchange"].loc[
-                            gene
+                        protein_median_and_foldchange_df.loc[
+                            gene, prokey + "_foldchange"
                         ]
                         if gene in protein_median_and_foldchange_df.index
                         else -1,
                     ]
                 )
-            return new
+        return new
 
     all_dict = {}
-    for tissue in tissue_params:
-        all_dict[tissue] = _get_dict_with_target_array(
-            tissue=tissue,
-            tpmkey=tissue_params[tissue][0],
-            prokey=tissue_params[tissue][1],
-        )
+    for tissue, (tpmkey, prokey) in tissue_keywords.items():
+        update_dict = _get_dict_with_target_array(tissue, tpmkey, prokey)
+        all_dict.update(update_dict)
+
     return all_dict
 
 
 def tissue_targets_for_training(
     average_activity: pd.DataFrame,
-    expression_median_across_all: str,
+    expression_median_across_all: pd.DataFrame,
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
     tissue_names: List[str],
-    tissue_params: Dict[str, Tuple[str, str]],
+    tissue_keywords: Dict[str, Tuple[str, str]],
     tpm_dir: str,
     split: Dict[str, List[str]],
-):
-    """_summary_
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Prepare target values for training by filling in a dictionary with
+    appropriate values from dataframes.
 
     Args:
-        split (Dict[str, List[str]]): _description_
-        tissue_params (_type_): _description_
-        expression_median_matrix (str): _description_
-        protein_abundance_matrix (str): _description_
-        protein_abundance_medians (str): _description_
-        tissue_names (List[str]): _description_
-        tissues (bool, optional): _description_. Defaults to True.
+        average_activity (pd.DataFrame): DataFrame with average activity data.
+        expression_median_across_all (str): Path to the file containing TPM
+        median across all tissues.
+        expression_median_matrix (str): Path to the file containing TPM median
+        matrix.
+        protein_abundance_matrix (str): Path to the file containing protein
+        abundance matrix.
+        protein_abundance_medians (str): Path to the file containing protein
+        abundance medians.
+        tissue_names (List[str]): List of tissue names.
+        tissue_keywords (Dict[str, Tuple[str, str]]): Dictionary mapping tissue
+        names to TPM and protein abundance keywords.
+        tpm_dir (str): Directory containing TPM data.
+        split (Dict[str, List[str]]): Split data.
 
     Returns:
-        _type_: _description_
+        A dictionary with the ["train", "test", "validation"] keys and target
+        arrays for each gene/tissue combination.
     """
-    # load tpm median across all tissues and samples
-    with open(expression_median_across_all, "rb") as file:
-        tpm_all_median = pickle.load(file)
 
     # load tpm median matrix
     tpm_median_df = parse(expression_median_matrix).data_df
@@ -441,10 +533,11 @@ def tissue_targets_for_training(
 
     # create dataframe with difference from average activity for each tissue
     # formally, this is defined as the average expression in the tissue minus
-    # the average expression in all tissues, and is an absolute value
+    # the average expression in all tissues, and is an absolute value. Uses the
+    # first name in the keynames tuple, which are gtex names
     diff_from_average_df = _difference_from_average_activity_per_tissue(
         tpm_dir=tpm_dir,
-        tissues=[tissue_names[0] for tissue_names in tissue_params.values()],
+        tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
         average_activity=average_activity,
     )
 
@@ -452,7 +545,7 @@ def tissue_targets_for_training(
     # median across all tissues) for TPM
     tpm_median_and_foldchange_df = _calculate_foldchange_from_medians(
         median_matrix=tpm_median_df,
-        median_across_tissues=tpm_all_median,
+        median_across_tissues=expression_median_across_all,
         psuedocount=0.25,
         data_type="tpm",
     )
@@ -468,14 +561,15 @@ def tissue_targets_for_training(
 
     # parse targets into a dictionary for each gene/tissue combination
     targets = {
-        data_split: _get_target_values_for_tissues(
-            tissue_params=tissue_params,
-            split=split[data_split],
+        dataset: _get_target_values_for_tissues(
+            tissue_keywords=tissue_keywords,
+            split=split,
+            split_dataset=dataset,
             tpm_median_and_foldchange_df=tpm_median_and_foldchange_df,
             diff_from_average_df=diff_from_average_df,
             protein_median_and_foldchange_df=protein_median_and_foldchange_df,
         )
-        for data_split in DATA_SPLITS
+        for dataset in split
     }
 
     return targets
@@ -528,12 +622,23 @@ def main(
         save_path=matrix_dir,
     )
 
+    # load tpm median across all tissues and samples
+    with open(expression_median_across_all, "rb") as file:
+        expression_median_across_all = pickle.load(file)
+
     # prepare tissue_keywords for extracting info from dataframes
     tissue_keywords = _get_tissue_keywords(tissues=tissues, config_dir=config_dir)
+
+    filtered_genes = _get_tpm_filtered_genes(
+        tissue_keywords=tissue_keywords,
+        working_directory=working_directory,
+        experiment_name=experiment_name,
+    )
 
     # split genes based on chromosome
     split = _genes_train_test_val_split(
         genes=genes_from_gff(gencode_gtf),
+        target_genes=filtered_genes,
         tissues=tissues,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
@@ -551,102 +656,51 @@ def main(
     # get targets!
     targets = tissue_targets_for_training(
         average_activity=average_activity,
-        expression_median_across_all=f"{matrix_dir}/{expression_median_across_all}",
+        expression_median_across_all=expression_median_across_all,
         expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}",
         protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}",
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
         tissue_names=PROTEIN_TISSUE_NAMES,
-        tissue_params=tissue_keywords,
+        tissue_keywords=tissue_keywords,
         tpm_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline",
         split=split,
     )
 
-    # # filter targets
-    # filtered_split = dict.fromkeys(DATA_SPLITS)
-    # filtered_genes = set(filter_genes(tissue_params=tissue_keywords))
-    # for data_split in ["train", "test", "validation"]:
-    #     print(data_split)
-    #     print(len(split[data_split]))
-    #     filtered_split[data_split] = [
-    #         x for x in split[data_split] if x in filtered_genes
-    #     ]
-    #     print(data_split)
-    #     print(len(filtered_split[data_split]))
+    # store targets from trainset to make standardscaler
+    medians = [targets["train"][target][0] for target in targets["train"]]
+    change = [targets["train"][target][1] for target in targets["train"]]
+    diff = [targets["train"][target][2] for target in targets["train"]]
 
-    # flatten nested dictionary
-    # right now the targets are messed up and every tissue has the every key. FIX!
-    flattened_targets = {}
-    flattened_targets["train"] = targets["train"]["mammary"]
-    flattened_targets["test"] = targets["test"]["mammary"]
-    flattened_targets["validation"] = targets["validation"]["mammary"]
+    scaler_medians, scaler_change, scaler_diff = (
+        StandardScaler(),
+        StandardScaler(),
+        StandardScaler(),
+    )
+    scaler_medians.fit(np.array(medians).reshape(-1, 1))
+    scaler_change.fit(np.array(change).reshape(-1, 1))
+    scaler_diff.fit(np.array(diff).reshape(-1, 1))
 
-    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+    # scale targets
+    for split in targets:
+        for target in targets[split]:
+            targets[split][target][0] = scaler_medians.transform(
+                np.array(targets[split][target][0]).reshape(-1, 1)
+            )
+            targets[split][target][1] = scaler_change.transform(
+                np.array(targets[split][target][1]).reshape(-1, 1)
+            )
 
-    for idx, tissue in enumerate(tissue_keywords):
-        tpm_filtered_file = (
-            f"{working_directory}/{experiment_name}/{tissue}/tpm_filtered_genes.bed"
-        )
-        if idx == 0:
-            genes = filtered_genes(tpm_filtered_genes=tpm_filtered_file)
-        else:
-            update_genes = filtered_genes(tpm_filtered_genes=tpm_filtered_file)
-            genes += update_genes
-
-    genes = set(genes)
-    parsed_targets = {}
-    for key in flattened_targets.tissue_keywords():
-        parsed_targets[key] = {
-            gene: flattened_targets[key][gene]
-            for gene in flattened_targets[key].tissue_keywords()
-            if gene in genes
-        }
+    for split in targets:
+        for target in targets[split]:
+            targets[split][target] = targets[split][target][0:2]
 
     # save targets
     with open(f"{graph_dir}/training_targets.pkl", "wb") as output:
-        pickle.dump(parsed_targets, output)
+        pickle.dump(targets, output)
 
-    # # scale targets
-    # with open(f"{graph_dir}/training_targets.pkl", "rb") as output:
-    #     parsed_targets = pickle.load(output)
-
-    # store targets from trainset to make standardscaler
-    medians = [parsed_targets["train"][target][0] for target in parsed_targets["train"]]
-    change = [parsed_targets["train"][target][1] for target in parsed_targets["train"]]
-
-    scaler_medians, scaler_change = StandardScaler(), StandardScaler()
-    scaler_medians.fit(np.array(medians).reshape(-1, 1))
-    scaler_change.fit(np.array(change).reshape(-1, 1))
-
-    # scale targets
-    for split in parsed_targets:
-        for target in parsed_targets[split]:
-            parsed_targets[split][target][0] = scaler_medians.transform(
-                np.array(parsed_targets[split][target][0]).reshape(-1, 1)
-            )
-            parsed_targets[split][target][1] = scaler_change.transform(
-                np.array(parsed_targets[split][target][1]).reshape(-1, 1)
-            )
-
-    for split in parsed_targets:
-        for target in parsed_targets[split]:
-            parsed_targets[split][target] = parsed_targets[split][target][0:2]
-
-    # save targets
+    # save scaled targets
     with open(f"{graph_dir}/training_targets_scaled.pkl", "wb") as output:
-        pickle.dump(parsed_targets, output)
-
-    # # get target subsets
-    # with open("training_targets_scaled.pkl", "rb") as f:
-    #     targets = pickle.load(f)
-
-    # for key in targets:
-    #     for gene in targets[key]:
-    #         targets[key][gene] = targets[key][gene][0]
-
-    # with open("training_targets_onlyexp_scaled.pkl", "wb") as f:
-    #     pickle.dump(targets, f)
+        pickle.dump(targets, output)
 
 
 if __name__ == "__main__":
@@ -671,13 +725,4 @@ expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl"
 expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
 protein_abundance_matrix="protein_relative_abundance_all_gtex.csv"
 protein_abundance_medians="protein_relative_abundance_median_gtex.csv"
-
-
-split=split
-tissue_params=tissue_keywords
-expression_median_across_all=f"{matrix_dir}/{expression_median_across_all}"
-expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}"
-protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}"
-protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}"
-tissue_names=PROTEIN_TISSUE_NAMES
 """

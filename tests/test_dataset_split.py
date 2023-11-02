@@ -1,18 +1,18 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
+# Testing for dataset_split.py
 
+"""Tests for dataset_split.py to ensure that training targets are split
+correctly (to avoid contamentation) and that the targets are accurate (to ensure
+proper training labels)."""
+
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.dataset_split import (
+    _genes_train_test_val_split,
+)
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.dataset_split import (
+    tissue_targets_for_training,
+)
+import numpy as np
+import pandas as pd
 import pytest
-
-from .test_dataset_split import _genes_train_test_val_split
-
-"""_summary_ of project"""
-
-import os
-import pickle
 
 
 class TestGenesTrainTestValSplit:
@@ -100,5 +100,72 @@ class TestGenesTrainTestValSplit:
         assert not test_set & validation_set
 
 
+# def test_tissue_targets_for_training():
+#     # Define test data and parameters
+#     average_activity = pd.DataFrame(
+#         {
+#             "Gene1": [1.0, 2.0, 3.0],
+#             "Gene2": [4.0, 5.0, 6.0],
+#         }
+#     )
+
+#     expression_median_across_all = "expression_median_across_all.csv"
+#     expression_median_matrix = "expression_median_matrix.csv"
+#     protein_abundance_matrix = "protein_abundance_matrix.csv"
+#     protein_abundance_medians = "protein_abundance_medians.csv"
+#     tissue_names = ["TissueA", "TissueB"]
+#     tissue_keywords = {
+#         "TissueA": ("tpm_keyword_A", "protein_keyword_A"),
+#         "TissueB": ("tpm_keyword_B", "protein_keyword_B"),
+#     }
+#     tpm_dir = "tpm_data_directory"
+#     split = {
+#         "train": ["Gene1", "Gene2"],
+#         "test": ["Gene3"],
+#         "validation": ["Gene4"],
+#     }
+
+#     # Call the function to get the targets
+#     targets = tissue_targets_for_training(
+#         average_activity,
+#         expression_median_across_all,
+#         expression_median_matrix,
+#         protein_abundance_matrix,
+#         protein_abundance_medians,
+#         tissue_names,
+#         tissue_keywords,
+#         tpm_dir,
+#         split,
+#     )
+
+#     # Define expected results based on the provided data and parameters
+#     expected_train = {
+#         "TissueA": np.array([1.0, 2.0, 3.0]),
+#         "TissueB": np.array([1.0, 2.0, 3.0]),
+#     }
+#     expected_test = {
+#         "TissueA": np.array([4.0]),
+#         "TissueB": np.array([4.0]),
+#     }
+#     expected_validation = {
+#         "TissueA": np.array([5.0]),
+#         "TissueB": np.array([5.0]),
+#     }
+
+#     # Assert the results for each dataset (train, test, validation)
+#     assert np.array_equal(targets["train"]["TissueA"], expected_train["TissueA"])
+#     assert np.array_equal(targets["train"]["TissueB"], expected_train["TissueB"])
+
+#     assert np.array_equal(targets["test"]["TissueA"], expected_test["TissueA"])
+#     assert np.array_equal(targets["test"]["TissueB"], expected_test["TissueB"])
+
+#     assert np.array_equal(
+#         targets["validation"]["TissueA"], expected_validation["TissueA"]
+#     )
+#     assert np.array_equal(
+#         targets["validation"]["TissueB"], expected_validation["TissueB"]
+#     )
+
+
 if __name__ == "__main__":
-    pytest.main()
+    pytest.main(["-v", "test_dataset_split.py"])
