@@ -3,7 +3,7 @@
 #
 # // TO-DO //
 # - [X] Filter genes BEFORE dividing into train/test/val
-# - [ ] Fix name for saving
+# - [ ] Fix names of saved targets
 #   - [ ] Make sure to save targets at experiment directory
 #   - [ ] Fix all the gross directories, and make them part of params
 # - [ ] Remove the file check in _tpmmedianacrossalltissues to the main function
@@ -575,6 +575,43 @@ def tissue_targets_for_training(
     return targets
 
 
+@time_decorator(print_args=False)
+def scale_targets(
+    targets: Dict[str, Dict[str, np.ndarray]]
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """
+    Scale targets using StandardScaler and return the scaled targets.
+
+    Args:
+        targets (dict): A dictionary of targets to be scaled.
+
+    Returns:
+        dict: A dictionary of scaled targets.
+    """
+    scaler_dict = {
+        0: StandardScaler(),
+        1: StandardScaler(),
+        2: StandardScaler(),
+        3: StandardScaler(),
+        4: StandardScaler(),
+    }
+
+    # Initialize separate scalers for each type of target data
+    for i in range(5):
+        data = [targets["train"][target][i] for target in targets["train"]]
+        scaler_dict[i].fit(np.array(data).reshape(-1, 1))
+
+    # Scale the targets in all splits
+    for split in targets:
+        for target in targets[split]:
+            for i in range(5):
+                targets[split][target][i] = scaler_dict[i].transform(
+                    np.array(targets[split][target][i]).reshape(-1, 1)
+                )
+
+    return targets
+
+
 def main(
     average_activity_df: str,
     config_dir: str,
@@ -666,33 +703,8 @@ def main(
         split=split,
     )
 
-    # store targets from trainset to make standardscaler
-    medians = [targets["train"][target][0] for target in targets["train"]]
-    change = [targets["train"][target][1] for target in targets["train"]]
-    diff = [targets["train"][target][2] for target in targets["train"]]
-
-    scaler_medians, scaler_change, scaler_diff = (
-        StandardScaler(),
-        StandardScaler(),
-        StandardScaler(),
-    )
-    scaler_medians.fit(np.array(medians).reshape(-1, 1))
-    scaler_change.fit(np.array(change).reshape(-1, 1))
-    scaler_diff.fit(np.array(diff).reshape(-1, 1))
-
     # scale targets
-    for split in targets:
-        for target in targets[split]:
-            targets[split][target][0] = scaler_medians.transform(
-                np.array(targets[split][target][0]).reshape(-1, 1)
-            )
-            targets[split][target][1] = scaler_change.transform(
-                np.array(targets[split][target][1]).reshape(-1, 1)
-            )
-
-    for split in targets:
-        for target in targets[split]:
-            targets[split][target] = targets[split][target][0:2]
+    scaled_targets = scale_targets(targets=targets)
 
     # save targets
     with open(f"{graph_dir}/training_targets.pkl", "wb") as output:
@@ -700,7 +712,7 @@ def main(
 
     # save scaled targets
     with open(f"{graph_dir}/training_targets_scaled.pkl", "wb") as output:
-        pickle.dump(targets, output)
+        pickle.dump(scaled_targets, output)
 
 
 if __name__ == "__main__":
