@@ -336,54 +336,44 @@ def _tissue_rename(
     return tissue_rename
 
 
-def _add_tpm_pseudocount_and_log2_transform(
-    df: pd.DataFrame,
-    pseudocount: float,
-) -> pd.DataFrame:
-    """Add a pseudocount to values in a DataFrame and perform a log2
-    transformation.
-    """
-    return np.log2(df + pseudocount)
-
-
 @time_decorator(print_args=False)
 def _calculate_foldchange_from_medians(
     median_matrix: pd.DataFrame,
     median_across_tissues: pd.DataFrame,
-    psuedocount: float,
+    pseudocount: float,
     data_type: str = "tpm",
 ) -> pd.DataFrame:
-    """_summary_
+    """Calculate fold change between median values and apply the log2
+    transformation. Formally, the fold change is calculated by dividing the
+    median value in a tissue by the median value across all tissues.
 
     Args:
-        median_matrix (pd.DataFrame): _description_
-        median_across_tissues (pd.DataFrame): _description_
-        data_type (str, optional): _description_. Defaults to "tpm".
+        median_matrix (pd.DataFrame): DataFrame containing median values.
+        median_across_tissues (pd.DataFrame): DataFrame containing median values
+        across tissues.
+        pseudocount (float): Pseudocount value added before log2 transformation.
+        data_type (str, optional): Type of data, e.g., "tpm". Defaults to "tpm".
 
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: DataFrame with fold change values.
     """
     df = pd.concat([median_matrix, median_across_tissues], axis=1)
-    df["all_tissues"] = _add_tpm_pseudocount_and_log2_transform(
-        df=df["all_tissues"],
-        pseudocount=psuedocount,
-    )
+
     for tissue in df.columns[:-1]:
         tissue_rename = _tissue_rename(tissue=tissue, data_type=data_type)
         df.rename(columns={tissue: tissue_rename}, inplace=True)
-        df[tissue_rename] = _add_tpm_pseudocount_and_log2_transform(
-            df=df[tissue_rename],
-            pseudocount=psuedocount,
-        )  # convert tpms to log2 (+0.25 to avoid negative infinity)
-        df[f"{tissue_rename}_foldchange"] = df["all_tissues"] - df[f"{tissue_rename}"]
-    return df
+        df = df + pseudocount  # add pseudocount to avoid negative infinity
+        df[f"{tissue_rename}_foldchange"] = df[f"{tissue_rename}"] / df["all_tissues"]
+
+    return np.log2(df.drop(columns=["all_tissues"]))
 
 
 @time_decorator(print_args=False)
 def _difference_from_average_activity_per_tissue(
-    tpm_dir: str,
-    tissues: List[str],
     average_activity: pd.DataFrame,
+    pseudocount: float,
+    tissues: List[str],
+    tpm_dir: str,
 ) -> pd.DataFrame:
     """_summary_
 
@@ -414,7 +404,8 @@ def _difference_from_average_activity_per_tissue(
                 difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
                 dfs.append(difference)
 
-    return pd.concat(dfs, axis=1)
+    all_tissues = pd.concat(dfs, axis=1)
+    return np.log2(all_tissues + pseudocount)
 
 
 @time_decorator(print_args=False)
@@ -487,6 +478,7 @@ def tissue_targets_for_training(
     expression_median_matrix: str,
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
+    pseudocount: float,
     tissue_names: List[str],
     tissue_keywords: Dict[str, Tuple[str, str]],
     tpm_dir: str,
@@ -536,9 +528,10 @@ def tissue_targets_for_training(
     # the average expression in all tissues, and is an absolute value. Uses the
     # first name in the keynames tuple, which are gtex names
     diff_from_average_df = _difference_from_average_activity_per_tissue(
-        tpm_dir=tpm_dir,
-        tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
         average_activity=average_activity,
+        pseudocount=pseudocount,
+        tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
+        tpm_dir=tpm_dir,
     )
 
     # create dataframes with target medians and fold change(median in tissue /
@@ -546,7 +539,7 @@ def tissue_targets_for_training(
     tpm_median_and_foldchange_df = _calculate_foldchange_from_medians(
         median_matrix=tpm_median_df,
         median_across_tissues=expression_median_across_all,
-        psuedocount=0.25,
+        pseudocount=pseudocount,
         data_type="tpm",
     )
 
@@ -555,7 +548,7 @@ def tissue_targets_for_training(
     protein_median_and_foldchange_df = _calculate_foldchange_from_medians(
         median_matrix=protein_abundance_tissue_matrix,
         median_across_tissues=protein_abundance_median_across_all,
-        psuedocount=0.25,
+        pseudocount=pseudocount,
         data_type="protein",
     )
 
@@ -632,7 +625,7 @@ def main(
     # args = parser.parse_args()
     # params = parse_yaml(args.experiment_config)
     params = parse_yaml(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_deeploop_only_random_split_mediantpm.yaml"
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_deeploop_only_chr1_test_mediantpm.yaml"
     )
 
     # set up variables for params to improve readability
@@ -660,7 +653,7 @@ def main(
     )
 
     # load tpm median across all tissues and samples
-    with open(expression_median_across_all, "rb") as file:
+    with open(f"{matrix_dir}/{expression_median_across_all}", "rb") as file:
         expression_median_across_all = pickle.load(file)
 
     # prepare tissue_keywords for extracting info from dataframes
@@ -697,6 +690,7 @@ def main(
         expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}",
         protein_abundance_matrix=f"{matrix_dir}/{protein_abundance_matrix}",
         protein_abundance_medians=f"{matrix_dir}/{protein_abundance_medians}",
+        pseudocount=0.25,
         tissue_names=PROTEIN_TISSUE_NAMES,
         tissue_keywords=tissue_keywords,
         tpm_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline",

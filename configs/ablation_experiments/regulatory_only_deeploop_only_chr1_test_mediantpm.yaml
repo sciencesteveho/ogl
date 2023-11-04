@@ -1,0 +1,33 @@
+---
+baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
+
+baseloops: deeploop_only
+
+experiment_name: regulatory_only_deeploop_only_chr1_test_mediantpm
+
+interaction_types: null
+
+nodes: null
+
+targets: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/training_targets_onlyexp.pkl
+
+targets_types: expression_median_only
+
+tissues:
+  - aorta
+  - hippocampus
+  - left_ventricle
+  - liver
+  - lung
+  - pancreas
+  - skeletal_muscle
+  - small_intestine
+
+test_chrs:
+  - chr1
+
+val_chrs: null
+
+working_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
+
+# Note: the following node types are always defaulted: dyadic, enhancers, gencode, promoters

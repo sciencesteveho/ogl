@@ -4,12 +4,8 @@
 correctly (to avoid contamentation) and that the targets are accurate (to ensure
 proper training labels)."""
 
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.dataset_split import (
-    _genes_train_test_val_split,
-)
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.dataset_split import (
-    tissue_targets_for_training,
-)
+from genomic_graph_mutagenesis.dataset_split import _genes_train_test_val_split
+from genomic_graph_mutagenesis.dataset_split import tissue_targets_for_training
 import numpy as np
 import pandas as pd
 import pytest

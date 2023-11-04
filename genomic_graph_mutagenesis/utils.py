@@ -433,17 +433,17 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
 
 @time_decorator(print_args=True)
 def _filter_low_tpm(
-    tissue: str,
     file: str,
-    return_list: False,
+    tissue: str,
+    return_list: bool = False,
 ) -> List[str]:
     """
     Filter genes according to the following criteria: (A) Only keep genes
-    expressing >= 1 TPM across 20% of samples in that tissue
+    expressing >= 0.1 TPM across 20% of samples in that tissue
     """
     df = pd.read_table(file, index_col=0, header=[2])
     sample_n = len(df.columns)
-    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
+    df["total"] = df.select_dtypes(np.number).ge(0.1).sum(axis=1)
     df["result"] = df["total"] >= (0.20 * sample_n)
     if return_list == False:
         return [f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)]
@@ -493,7 +493,7 @@ def _tpm_filter_gene_windows(
     window: Optional[int] = 0,
 ) -> Tuple[pybedtools.BedTool, List[str]]:
     """
-    Filter out genes in a GTEx tissue with less than 1 tpm across 20% of
+    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
     samples in that tissue. Additionally, we exclude analysis of sex
     chromosomes.
 
