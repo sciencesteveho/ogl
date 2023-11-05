@@ -383,7 +383,6 @@ def _calculate_foldchange_from_medians(
         df[f"{tissue_rename}_foldchange"] = df[f"{tissue_rename}"] / df["all_tissues"]
 
     return np.log2(df.drop(columns=["all_tissues"]))
-    # return df
 
 
 @time_decorator(print_args=False)
@@ -411,7 +410,8 @@ def _difference_from_average_activity_per_tissue(
             tissue = file.split(".tpm.txt")[0]
 
             if any(tissue in keywords for keywords in tissues):
-                average_remove_tissue = average_activity.drop(columns=[tissue])
+                average_remove_tissue = average_activity.copy()
+                average_remove_tissue = average_remove_tissue.drop(columns=[tissue])
                 average_remove_tissue["average"] = average_remove_tissue.mean(axis=1)
 
                 df = pd.read_table(f"{tpm_dir}/{file}", index_col=0, header=[2])
@@ -603,6 +603,7 @@ def scale_targets(
     Returns:
         dict: A dictionary of scaled targets.
     """
+    scaled_targets = targets.copy()
     scaler_dict = {
         0: StandardScaler(),
         1: StandardScaler(),
@@ -613,18 +614,20 @@ def scale_targets(
 
     # Initialize separate scalers for each type of target data
     for i in range(5):
-        data = [targets["train"][target][i] for target in targets["train"]]
+        data = [
+            scaled_targets["train"][target][i] for target in scaled_targets["train"]
+        ]
         scaler_dict[i].fit(np.array(data).reshape(-1, 1))
 
     # Scale the targets in all splits
-    for split in targets:
-        for target in targets[split]:
+    for split in scaled_targets:
+        for target in scaled_targets[split]:
             for i in range(5):
-                targets[split][target][i] = scaler_dict[i].transform(
-                    np.array(targets[split][target][i]).reshape(-1, 1)
+                scaled_targets[split][target][i] = scaler_dict[i].transform(
+                    np.array(scaled_targets[split][target][i]).reshape(-1, 1)
                 )
 
-    return targets
+    return scaled_targets
 
 
 def _check_if_targets_exist():
