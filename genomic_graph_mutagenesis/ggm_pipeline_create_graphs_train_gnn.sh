@@ -112,12 +112,13 @@ parse_arguments "$@"
 module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/gnn
 
-# Check if final graph is already made
+# Check if final graph is already made and set up variables
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
+tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
 final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_full_graph_scaled.pkl
-tissues=($(python -c "import yaml; print(yaml.safe_load(open(${experiment_yaml}))['tissues'])" | tr -d "[],'"))
 
+# start running pipeline!
 if ! [ -f ${final_graph} ]; then
     echo "Final graph not found. Submitting pipeline jobs."
 

@@ -647,6 +647,7 @@ class EdgeParser:
     def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
+        print("Parsing edges...")
         # retrieve interaction-based edges
         (
             gencode_nodes,
@@ -656,6 +657,8 @@ class EdgeParser:
             footprints,
         ) = self._process_graph_edges()
 
+        print("Parsing edges complete!")
+        print("Adding coordinates to nodes...")
         # add coordinates to nodes in parallel
         pool = Pool(processes=5)
         nodes_for_attr = pool.starmap(
@@ -676,10 +679,14 @@ class EdgeParser:
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
 
+        print("Adding coordinates to nodes complete!")
+        print("Writing nodes and edges to file...")
         # write nodes to file
         with open(f"{self.tissue_dir}/local/basenodes_hg38.txt", "w+") as output:
             csv.writer(output, delimiter="\t").writerows(nodes_for_attr)
 
+        print("Writing nodes to file complete!")
+        print("Writing edges to file...")
         # add coordinates to edges
         full_edges = []
         nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
