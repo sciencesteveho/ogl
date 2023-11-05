@@ -17,7 +17,7 @@ import argparse
 import csv
 import os
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
@@ -119,7 +119,7 @@ def _get_tpm_filtered_genes(
 
 
 def _save_partitioning_split(
-    partition_dir: str,
+    save_dir: str,
     test_chrs: List[int],
     val_chrs: List[int],
     split: Dict[str, List[str]],
@@ -128,7 +128,7 @@ def _save_partitioning_split(
     information.
 
     Args:
-        partition_dir (str): The directory where the split file will be saved.
+        save_dir (str): The directory where the split file will be saved.
         test_chrs (List[int]): A list of test chromosomes.
         val_chrs (List[int]): A list of validation chromosomes.
         split (Dict[str, List[str]]): A dictionary containing the split data.
@@ -147,13 +147,13 @@ def _save_partitioning_split(
     else:
         chrs.append("random_assign")
 
-    chr_split_dictionary = f"{partition_dir}/{('').join(chrs)}_training_split.pkl"
+    chr_split_dictionary = f"{save_dir}/{('').join(chrs)}_training_split.pkl"
 
     if not os.path.exists(chr_split_dictionary):
         with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
 
-    return f"{('').join(chrs)}"
+    # return f"{('').join(chrs)}"
 
 
 def _tpm_median_across_all_tissues(
@@ -630,15 +630,7 @@ def _scale_targets(
 
 
 def produce_training_targets(
-    params: Dict[str, Any],
-    average_activity_df: str,
-    config_dir: str,
-    matrix_dir: str,
-    gencode_gtf: str,
-    expression_median_across_all: str,
-    expression_median_matrix: str,
-    protein_abundance_matrix: str,
-    protein_abundance_medians: str,
+    experiment_params: Dict[str, Union[str, list]],
 ) -> None:
     """Pipeline to generate dataset split and target values"""
     parser = argparse.ArgumentParser()
@@ -653,16 +645,24 @@ def produce_training_targets(
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
-    test_chrs = params["test_chrs"]
-    val_chrs = params["val_chrs"]
     tissues = params["tissues"]
+
+    # set up variables specific for this function
+    target_params = params["training_targets"]
+    average_activity_df = target_params["average_activity_df"]
+    config_dir = target_params["config_dir"]
+    expression_median_across_all = target_params["expression_median_across_all"]
+    expression_median_matrix = target_params["expression_median_matrix"]
+    gencode_gtf = target_params["gencode_gtf"]
+    matrix_dir = target_params["matrix_dir"]
+    protein_abundance_matrix = target_params["protein_abundance_matrix"]
+    protein_abundance_medians = target_params["protein_abundance_medians"]
+    test_chrs = target_params["test_chrs"]
+    val_chrs = target_params["val_chrs"]
 
     # create directory for experiment specific scalers
     exp_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{exp_dir}/graphs"
-    partition_dir = (
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing"
-    )
 
     # open average activity dataframe
     with open(average_activity_df, "rb") as file:
@@ -698,8 +698,8 @@ def produce_training_targets(
     )
 
     # save partitioning split
-    savename = _save_partitioning_split(
-        partition_dir=partition_dir,
+    _save_partitioning_split(
+        partition_dir=exp_dir,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         split=split,
@@ -720,25 +720,12 @@ def produce_training_targets(
     )
 
     # save targets
-    with open(f"{graph_dir}/targets_{savename}.pkl", "wb") as output:
+    with open(f"{graph_dir}/targets.pkl", "wb") as output:
         pickle.dump(targets, output)
 
     # scale targets
     scaled_targets = _scale_targets(targets=targets)
 
     # save scaled targets
-    with open(f"{graph_dir}/targets_{savename}_scaled.pkl", "wb") as output:
+    with open(f"{graph_dir}/targets_scaled.pkl", "wb") as output:
         pickle.dump(scaled_targets, output)
-
-
-# if __name__ == "__main__":
-#     produce_training_targets(
-#         average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl",
-#         config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
-#         matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data",
-#         gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
-#         expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl",
-#         expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
-#         protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
-#         protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
-#     )

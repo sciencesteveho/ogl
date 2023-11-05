@@ -409,7 +409,6 @@ def main() -> None:
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
         root_dir=root_dir,
-        targets=params["targets"],
         targets_types=params["targets_types"],
         test_chrs=params["test_chrs"],
         val_chrs=params["val_chrs"],

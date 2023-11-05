@@ -29,7 +29,7 @@ def filter_genes(
     root_dir,
     tissues,
 ):
-    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
+    """Filters and only keeps targets that pass the TPM filter of >.1 TPM across
     20% of samples
 
     Args:
@@ -133,7 +133,6 @@ def graph_to_pytorch(
     experiment_name: str,
     graph_type: str,
     root_dir: str,
-    targets: str,
     targets_types: str,
     test_chrs: List[str],
     val_chrs: List[str],
@@ -227,7 +226,7 @@ def graph_to_pytorch(
     val_mask[val] = True
 
     # get target values. shape should be [num_nodes, 4]
-    target_values = _get_target_values_for_mask(targets=targets)
+    target_values = _get_target_values_for_mask(targets=f"{root_dir}/targets.pkl")
 
     # change the key in one dict to the value of another dict, which has its key as the index
     remapped = {}
@@ -248,7 +247,7 @@ def graph_to_pytorch(
             for key, values in remapped.items():
                 first[key] = values[idx]
         y = first.view(1, -1)
-    elif targets_types == "expression_median_with_foldchange":
+    elif targets_types == "expression_median_and_foldchange":
         for idx in [0, 1]:
             for key, value in remapped.items():
                 if idx == 0:
@@ -268,7 +267,7 @@ def graph_to_pytorch(
         pass
     else:
         raise ValueError(
-            "targets_types must be one of the following: expression_median_only, expression_median_with_foldchange, difference_from_average, protein_targets"
+            "targets_types must be one of the following: expression_median_only, expression_median_and_foldchange, difference_from_average, protein_targets"
         )
 
     # if protein_targets:
