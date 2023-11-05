@@ -6,7 +6,7 @@
 # - [ ] Fix names of saved targets
 #   - [ ] Make sure to save targets at experiment directory
 #   - [ ] Fix all the gross directories, and make them part of params
-# - [ ] Remove the file check in _tpmmedianacrossalltissues to the main function
+# - [ ] Remove the file check in _tpmmedianacrossalltissues to the produce_training_targets function
 # - [ ] Target dict is super redundant, clean it up so it doesn't hold so many
 #
 
@@ -17,8 +17,7 @@ import argparse
 import csv
 import os
 import pickle
-import random
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
@@ -163,7 +162,7 @@ def _tpm_median_across_all_tissues(
 ) -> None:
     """Get the median TPM per gene across ALL samples within GTEx V8 GCT and
     saves it. Because the file is large and requires a lot of memory, we ran
-    this separately from the main function and is only run once.
+    this separately from the produce_training_targets function and is only run once.
 
     Args:
         gct_file (str): /path/to/gtex gct file
@@ -494,7 +493,7 @@ def _get_target_values_for_tissues(
     return all_dict
 
 
-def tissue_targets_for_training(
+def _tissue_targets_for_training(
     average_activity: pd.DataFrame,
     expression_median_across_all: pd.DataFrame,
     expression_median_matrix: str,
@@ -591,7 +590,7 @@ def tissue_targets_for_training(
 
 
 @time_decorator(print_args=False)
-def scale_targets(
+def _scale_targets(
     targets: Dict[str, Dict[str, np.ndarray]]
 ) -> Dict[str, Dict[str, np.ndarray]]:
     """
@@ -630,12 +629,8 @@ def scale_targets(
     return scaled_targets
 
 
-def _check_if_targets_exist():
-    """_summary_"""
-    pass
-
-
-def main(
+def produce_training_targets(
+    params: Dict[str, Any],
     average_activity_df: str,
     config_dir: str,
     matrix_dir: str,
@@ -652,11 +647,8 @@ def main(
         type=str,
         help="Path to .yaml file with experimental conditions",
     )
-    # args = parser.parse_args()
-    # params = parse_yaml(args.experiment_config)
-    params = parse_yaml(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_deeploop_only_chr1_test_mediantpm.yaml"
-    )
+    args = parser.parse_args()
+    params = parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
@@ -714,7 +706,7 @@ def main(
     )
 
     # get targets!
-    targets = tissue_targets_for_training(
+    targets = _tissue_targets_for_training(
         average_activity=average_activity,
         expression_median_across_all=expression_median_across_all,
         expression_median_matrix=f"{matrix_dir}/{expression_median_matrix}",
@@ -727,38 +719,26 @@ def main(
         split=split,
     )
 
-    # scale targets
-    scaled_targets = scale_targets(targets=targets)
-
     # save targets
     with open(f"{graph_dir}/targets_{savename}.pkl", "wb") as output:
         pickle.dump(targets, output)
+
+    # scale targets
+    scaled_targets = _scale_targets(targets=targets)
 
     # save scaled targets
     with open(f"{graph_dir}/targets_{savename}_scaled.pkl", "wb") as output:
         pickle.dump(scaled_targets, output)
 
 
-if __name__ == "__main__":
-    main(
-        average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl",
-        config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
-        matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data",
-        gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
-        expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl",
-        expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
-        protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
-        protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
-    )
-
-
-"""
-average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl"
-config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs"
-matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data"
-gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl"
-expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
-protein_abundance_matrix="protein_relative_abundance_all_gtex.csv"
-protein_abundance_medians="protein_relative_abundance_median_gtex.csv"
-"""
+# if __name__ == "__main__":
+#     produce_training_targets(
+#         average_activity_df="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl",
+#         config_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs",
+#         matrix_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data",
+#         gencode_gtf="shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
+#         expression_median_across_all="gtex_tpm_median_across_all_tissues.pkl",
+#         expression_median_matrix="GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
+#         protein_abundance_matrix="protein_relative_abundance_all_gtex.csv",
+#         protein_abundance_medians="protein_relative_abundance_median_gtex.csv",
+#     )
