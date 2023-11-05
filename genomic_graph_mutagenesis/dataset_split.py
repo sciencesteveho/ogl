@@ -17,12 +17,13 @@ import argparse
 import csv
 import os
 import pickle
-from random import shuffle
+import random
 from typing import Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from utils import genes_from_gff
@@ -105,7 +106,10 @@ def _get_tpm_filtered_genes(
         tpm_filtered_file = (
             f"{working_directory}/{experiment_name}/{tissue}/tpm_filtered_genes.bed"
         )
-        tissue_genes = _filtered_genes(tpm_filtered_genes=tpm_filtered_file)
+        tissue_genes = _filtered_genes(
+            tpm_filtered_genes=tpm_filtered_file,
+            tissue=tissue,
+        )
 
         if idx == 0:
             unique_genes = set(tissue_genes)
@@ -144,11 +148,13 @@ def _save_partitioning_split(
     else:
         chrs.append("random_assign")
 
-    chr_split_dictionary = f"{partition_dir}/{chrs}_training_gets.pkl"
+    chr_split_dictionary = f"{partition_dir}/{('').join(chrs)}_training_split.pkl"
 
     if not os.path.exists(chr_split_dictionary):
         with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
+
+    return f"{('').join(chrs)}"
 
 
 def _tpm_median_across_all_tissues(
@@ -188,39 +194,49 @@ def _genes_train_test_val_split(
 
     Args:
         genes (Dict[str, str]): Dictionary of all genes in the genome.
-        target_genes (List[str]): List of genes passing tpm filter.
-        tissues (List[str], optional): List of tissue names. Defaults to an
-        empty list.
+        target_genes (List[str]): List of genes passing tpm filter. tissues
+        (List[str], optional): List of tissue names. Defaults to an empty list.
         tissue_append (bool, optional): Whether or not to append tissue name to
-        ID. Defaults to True.
-        test_chrs (List[int], optional): List of chromosome numbers for test
-        genes. Defaults to an empty list.
-        val_chrs (List[int], optional): List of chromosome numbers for
-        validation genes. Defaults to an empty list.
+        ID. Defaults to True. test_chrs (List[int], optional): List of
+        chromosome numbers for test genes. Defaults to an empty list. val_chrs
+        (List[int], optional): List of chromosome numbers for validation genes.
+        Defaults to an empty list.
 
     Returns:
         Dict[str, List[str]]: Dictionary of genes split into train, test, and
         validation.
     """
-    all_genes = list(genes.keys())
-    num_genes = len(all_genes)
+    # get only genes that are in the filtered genes list
+    target_genes_tissue_remove = [x.split("_")[0] for x in target_genes]
+    target_gene_dict = {gene: genes[gene] for gene in target_genes_tissue_remove}
+
+    # shuffle
+    all_genes = list(target_gene_dict.keys())
 
     if test_chrs and val_chrs:
         test_genes = [gene for gene in all_genes if genes[gene] in test_chrs]
         val_genes = [gene for gene in all_genes if genes[gene] in val_chrs]
+        train_genes = [gene for gene in all_genes if gene not in test_genes + val_genes]
     elif test_chrs:
         test_genes = [gene for gene in all_genes if genes[gene] in test_chrs]
-        val_genes = []
+        leftover = [gene for gene in all_genes if genes[gene] not in test_chrs]
+        train_genes, val_genes = train_test_split(
+            leftover, train_size=0.9, shuffle=True
+        )
     elif val_chrs:
         val_genes = [gene for gene in all_genes if genes[gene] in val_chrs]
-        test_genes = []
+        leftover = [gene for gene in all_genes if genes[gene] not in val_chrs]
+        train_genes, test_genes = train_test_split(
+            leftover, train_size=0.9, shuffle=True
+        )
     else:
         # If no test or val chromosomes are provided, assign randomly
-        shuffle(all_genes)
-        test_genes = all_genes[: num_genes // 10]
-        val_genes = all_genes[num_genes // 10 : 2 * (num_genes // 10)]
-
-    train_genes = [gene for gene in all_genes if gene not in test_genes + val_genes]
+        train_genes, pre_allocate = train_test_split(
+            all_genes, train_size=0.8, shuffle=True
+        )
+        test_genes, val_genes = train_test_split(
+            pre_allocate, train_size=0.5, shuffle=True
+        )
 
     if tissue_append:
         return {
@@ -358,14 +374,16 @@ def _calculate_foldchange_from_medians(
         pd.DataFrame: DataFrame with fold change values.
     """
     df = pd.concat([median_matrix, median_across_tissues], axis=1)
+    df["all_tissues"] = df["all_tissues"] + pseudocount
 
-    for tissue in df.columns[:-1]:
+    for tissue in median_matrix.columns:
         tissue_rename = _tissue_rename(tissue=tissue, data_type=data_type)
         df.rename(columns={tissue: tissue_rename}, inplace=True)
-        df = df + pseudocount  # add pseudocount to avoid negative infinity
+        df[f"{tissue_rename}"] = df[f"{tissue_rename}"] + pseudocount
         df[f"{tissue_rename}_foldchange"] = df[f"{tissue_rename}"] / df["all_tissues"]
 
     return np.log2(df.drop(columns=["all_tissues"]))
+    # return df
 
 
 @time_decorator(print_args=False)
@@ -466,7 +484,11 @@ def _get_target_values_for_tissues(
 
     all_dict = {}
     for tissue, (tpmkey, prokey) in tissue_keywords.items():
-        update_dict = _get_dict_with_target_array(tissue, tpmkey, prokey)
+        update_dict = _get_dict_with_target_array(
+            tissue=tissue,
+            tpmkey=tpmkey,
+            prokey=prokey,
+        )
         all_dict.update(update_dict)
 
     return all_dict
@@ -605,6 +627,11 @@ def scale_targets(
     return targets
 
 
+def _check_if_targets_exist():
+    """_summary_"""
+    pass
+
+
 def main(
     average_activity_df: str,
     config_dir: str,
@@ -676,7 +703,7 @@ def main(
     )
 
     # save partitioning split
-    _save_partitioning_split(
+    savename = _save_partitioning_split(
         partition_dir=partition_dir,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
@@ -701,11 +728,11 @@ def main(
     scaled_targets = scale_targets(targets=targets)
 
     # save targets
-    with open(f"{graph_dir}/training_targets.pkl", "wb") as output:
+    with open(f"{graph_dir}/targets_{savename}.pkl", "wb") as output:
         pickle.dump(targets, output)
 
     # save scaled targets
-    with open(f"{graph_dir}/training_targets_scaled.pkl", "wb") as output:
+    with open(f"{graph_dir}/targets_{savename}_scaled.pkl", "wb") as output:
         pickle.dump(scaled_targets, output)
 
 
