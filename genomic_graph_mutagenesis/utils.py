@@ -168,7 +168,7 @@ LOOPFILES = {
         "skeletal_muscle": "GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38",
         "small_intestine": "GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38",
     },
-    "deeploop_only": {
+    "deeploop_peakachu_deepanchor": {
         "aorta": "aorta_alloops.bed",
         "hippocampus": "hippocampus_alloops.bed",
         "left_ventricle": "left_ventricle_alloops.bed",
