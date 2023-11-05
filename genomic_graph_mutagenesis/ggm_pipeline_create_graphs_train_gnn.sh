@@ -166,15 +166,14 @@ if ! [ -f ${final_graph} ]; then
     done
 
     # Scale node feats after every scaler job is finished
+    # additionally, get training targets
     scale_id=$(sbatch \
         --parsable \
         --dependency=afterok:$(echo ${slurmids[*]} | tr ' ' :) \
-        scale_node_feats.sh \
+        scale_node_feats_and_get_training_targets.sh \
         full \
         ${experiment_yaml})
 
-    # Create training targets
-    # sbatch dataset_split.py
 
     # train GNN after scaler job is finished
     sbatch \

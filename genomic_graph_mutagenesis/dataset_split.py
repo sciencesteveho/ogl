@@ -630,7 +630,7 @@ def _scale_targets(
 
 
 def produce_training_targets(
-    experiment_params: Dict[str, Union[str, list]],
+    params: Dict[str, Union[str, list]],
 ) -> None:
     """Pipeline to generate dataset split and target values"""
     parser = argparse.ArgumentParser()

@@ -541,49 +541,39 @@ class EdgeParser:
             )
 
         # only parse edges specified in experiment
-        if self.interaction_types is None:
-            ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
-                [],
-                [],
-                [],
-                [],
-                [],
-            )
-        else:
+        ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+        if self.interaction_types is not None:
             # if "ppis" in self.interaction_types:
             #     ppi_edges = self._iid_ppi(
             #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
             #         tissue=self.ppi_tissue,
             #     )
             # else:
-            ppi_edges = []
             if "mirna" in self.interaction_types:
                 mirna_targets = self._mirna_targets(
                     target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
                     tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
                 )
-            else:
-                mirna_targets = []
             if "tf_marker" in self.interaction_types:
                 tf_markers = self._tf_markers(
                     interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
                 )
-            else:
-                tf_markers = []
             if "circuits" in self.interaction_types:
                 circuit_edges = self._marbach_regulatory_circuits(
                     f"{self.interaction_dir}/{self.interaction_files['circuits']}",
                     score_filter=30,
                 )
-            else:
-                circuit_edges = []
             if "tfbinding" in self.interaction_types:
                 tfbinding_edges = self._tfbinding_footprints(
                     tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
                     footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
                 )
-            else:
-                tfbinding_edges = []
 
         self.interaction_edges = (
             ppi_edges + mirna_targets + tf_markers + circuit_edges + tfbinding_edges

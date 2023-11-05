@@ -14,7 +14,6 @@ import argparse
 from typing import Dict, List, Union
 
 from edge_parser import EdgeParser
-from dataset_split import produce_training_targets
 from local_context_parser import LocalContextParser
 from prepare_bedfiles import GenomeDataPreprocessor
 from utils import _listdir_isfile_wrapper
@@ -157,10 +156,6 @@ def main() -> None:
         experiment_params=experiment_params,
         tissue_params=tissue_params,
         nodes=nodes,
-    )
-
-    produce_training_targets(
-        experiment_params=experiment_params,
     )
 
 
