@@ -495,29 +495,27 @@ class EdgeParser:
         except TypeError:
             pass
 
-        chrom_loop_edges = list(
-            chain(
-                (
-                    self.get_loop_edges(
-                        chromatin_loops=self.loop_file,
-                        feat_1=element[0],
-                        feat_2=tss,
-                        tss=True,
-                        edge_type=element[1],
-                    )
-                    for element in gene_overlaps
-                ),
-                (
-                    self.get_loop_edges(
-                        chromatin_loops=self.loop_file,
-                        feat_1=element[0],
-                        feat_2=promoters,
-                        tss=False,
-                        edge_type=element[1],
-                    )
-                    for element in promoters_overlaps
-                ),
-            )
+        chrom_loop_edges = chain(
+            (
+                self.get_loop_edges(
+                    chromatin_loops=self.loop_file,
+                    feat_1=element[0],
+                    feat_2=tss,
+                    tss=True,
+                    edge_type=element[1],
+                )
+                for element in gene_overlaps
+            ),
+            (
+                self.get_loop_edges(
+                    chromatin_loops=self.loop_file,
+                    feat_1=element[0],
+                    feat_2=promoters,
+                    tss=False,
+                    edge_type=element[1],
+                )
+                for element in promoters_overlaps
+            ),
         )
 
         # only parse edges specified in experiment
@@ -565,7 +563,9 @@ class EdgeParser:
                 (
                     (edge[0], edge[1])
                     for edge in self.chrom_edges
-                    if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+                    if isinstance(edge, tuple)
+                    and "ENSG" not in edge[0]
+                    and "superenhancer" not in edge[0]
                 )
             )
         )
@@ -575,7 +575,7 @@ class EdgeParser:
                 (
                     (edge[0], edge[1])
                     for edge in self.chrom_edges
-                    if "superenhancer" in edge[0]
+                    if isinstance(edge, tuple) and "superenhancer" in edge[0]
                 )
             )
         )
