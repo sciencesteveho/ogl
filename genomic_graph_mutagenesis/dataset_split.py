@@ -147,10 +147,11 @@ def _save_partitioning_split(
     else:
         chrs.append("random_assign")
 
-    chr_split_dictionary = f"{save_dir}/{('').join(chrs)}_training_split.pkl"
+    # chr_split_dictionary = f"{save_dir}/{('').join(chrs)}_training_split.pkl"
+    chr_split_dictionary = f"{save_dir}/training_targets_split.pkl"
 
     if not os.path.exists(chr_split_dictionary):
-        with open("training_targets_split.pkl", "wb") as output:
+        with open(chr_split_dictionary, "wb") as output:
             pickle.dump(split, output)
 
     # return f"{('').join(chrs)}"
