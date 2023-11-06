@@ -409,9 +409,9 @@ def main() -> None:
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
         root_dir=root_dir,
-        targets_types=params["targets_types"],
-        test_chrs=params["test_chrs"],
-        val_chrs=params["val_chrs"],
+        targets_types=params["training_targets"]["targets_types"],
+        test_chrs=params["training_targets"]["test_chrs"],
+        val_chrs=params["training_targets"]["val_chrs"],
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
     )
