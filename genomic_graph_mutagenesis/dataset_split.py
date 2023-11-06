@@ -633,9 +633,7 @@ def _scale_targets(
     return scaled_targets
 
 
-def main(
-    params: Dict[str, Union[str, list]],
-) -> None:
+def main() -> None:
     """Pipeline to generate dataset split and target values"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
