@@ -222,7 +222,7 @@ def graph_to_pytorch(
     val_mask[val] = True
 
     # get target values. shape should be [num_nodes, 4]
-    target_values = _get_target_values_for_mask(targets=f"{root_dir}/targets.pkl")
+    target_values = _get_target_values_for_mask(targets=f"{graph_dir}/targets.pkl")
 
     # change the key in one dict to the value of another dict, which has its key as the index
     remapped = {}
