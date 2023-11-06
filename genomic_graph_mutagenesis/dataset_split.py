@@ -701,7 +701,7 @@ def main() -> None:
 
     # save partitioning splits
     _save_partitioning_split(
-        partition_dir=graph_dir,
+        save_dir=graph_dir,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         split=split,
