@@ -13,8 +13,6 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-from dataset_split import _chr_split_train_test_val
-from dataset_split import _genes_from_gff
 from utils import dir_check_make
 from utils import parse_yaml
 
@@ -65,14 +63,10 @@ def main(
     scaler_dir = f"{working_directory}/{experiment_name}/data_scaler"
     dir_check_make(scaler_dir)
 
-    genes = _genes_from_gff(gene_gtf)
+    # load split
+    with open(f"{graph_dir}/training_split.pkl", "rb") as file:
+        split = pickle.load(file)
 
-    # split genes by chr holdouts
-    split = _chr_split_train_test_val(
-        genes=genes,
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-    )
     exclude = split["validation"] + split["test"]
 
     with open(

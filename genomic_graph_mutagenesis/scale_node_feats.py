@@ -10,7 +10,6 @@ import pickle
 import joblib
 import numpy as np
 
-from dataset_split import produce_training_targets
 from utils import dir_check_make
 from utils import parse_yaml
 
@@ -40,9 +39,6 @@ def main() -> None:
     # create directory for experiment specific scalers
     graph_dir = f"{working_directory}/{experiment_name}/graphs"
     scaler_dir = f"{working_directory}/{experiment_name}/data_scaler"
-
-    # get training targets!
-    produce_training_targets(params=params)
 
     # load scalers into dict
     scalers = {i: joblib.load(f"{scaler_dir}/feat_{i}_scaler.pt") for i in range(0, 39)}

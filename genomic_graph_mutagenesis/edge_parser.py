@@ -312,6 +312,26 @@ class EdgeParser:
             List[Tuple[str, str, float, str]]: _description_
         """
 
+        def _loop_direct_overlap(
+            loops: pybedtools.BedTool, features: pybedtools.BedTool
+        ) -> pybedtools.BedTool:
+            """Get features that directly overlap with loop anchor"""
+            return loops.intersect(features, wo=True)
+
+        def _loop_within_distance(
+            loops: pybedtools.BedTool,
+            features: pybedtools.BedTool,
+            distance: int,
+        ) -> pybedtools.BedTool:
+            """Get features 2kb within loop anchor
+
+            Args:
+                loops (pybedtools.BedTool): _description_
+                features (pybedtools.BedTool): _description_
+                distance (int): _description_
+            """
+            return loops.window(features, w=distance)
+
         def _split_chromatin_loops(
             chromatin_loops: str,
         ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
@@ -332,26 +352,6 @@ class EdgeParser:
             return first_anchor.cut([0, 1, 2, 3, 4, 5]), second_anchor.cut(
                 [0, 1, 2, 3, 4, 5]
             )
-
-        def _loop_direct_overlap(
-            loops: pybedtools.BedTool, features: pybedtools.BedTool
-        ) -> pybedtools.BedTool:
-            """Get features that directly overlap with loop anchor"""
-            return loops.intersect(features, wo=True)
-
-        def _loop_within_distance(
-            loops: pybedtools.BedTool,
-            features: pybedtools.BedTool,
-            distance: int,
-        ) -> pybedtools.BedTool:
-            """Get features 2kb within loop anchor
-
-            Args:
-                loops (pybedtools.BedTool): _description_
-                features (pybedtools.BedTool): _description_
-                distance (int): _description_
-            """
-            return loops.window(features, w=distance)
 
         def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
             """Creates a dict to store each anchor and its overlaps. Adds the feature by

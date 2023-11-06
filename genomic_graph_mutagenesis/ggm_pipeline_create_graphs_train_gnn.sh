@@ -151,13 +151,21 @@ if ! [ -f ${final_graph} ]; then
         ${experiment_yaml}
     )
 
+    # Get training targets by splitting dataset (genes)
+    split_id=$(sbatch \
+        --parsable \
+        --dependency=afterok:${construct_id} \
+        get_training_targets.sh \
+        ${experiment_yaml}
+    )
+
     # Create scalers after concat is finished. One scaler is made per node feature
     # and each scaler is made independently.
     slurmids=()
     for num in {0..38..1}; do
         ID=$(sbatch \
             --parsable \
-            --dependency=afterok:${construct_id} \
+            --dependency=afterok:${split_id} \
             make_scaler.sh \
             $num \
             full \
@@ -166,11 +174,10 @@ if ! [ -f ${final_graph} ]; then
     done
 
     # Scale node feats after every scaler job is finished
-    # additionally, get training targets
     scale_id=$(sbatch \
         --parsable \
         --dependency=afterok:$(echo ${slurmids[*]} | tr ' ' :) \
-        scale_node_feats_and_get_training_targets.sh \
+        scale_node_feats.sh \
         full \
         ${experiment_yaml})
 

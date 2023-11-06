@@ -257,6 +257,10 @@ def _genes_train_test_val_split(
                 for tissue in tissues
                 if f"{gene}_{tissue}" in target_genes
             ],
+        }, {
+            "train": train_genes,
+            "test": test_genes,
+            "validation": val_genes,
         }
     else:
         return {
@@ -629,7 +633,7 @@ def _scale_targets(
     return scaled_targets
 
 
-def produce_training_targets(
+def main(
     params: Dict[str, Union[str, list]],
 ) -> None:
     """Pipeline to generate dataset split and target values"""
@@ -688,7 +692,7 @@ def produce_training_targets(
     )
 
     # split genes based on chromosome
-    split = _genes_train_test_val_split(
+    split, barebones_split = _genes_train_test_val_split(
         genes=genes_from_gff(gencode_gtf),
         target_genes=filtered_genes,
         tissues=tissues,
@@ -697,13 +701,16 @@ def produce_training_targets(
         tissue_append=True,
     )
 
-    # save partitioning split
+    # save partitioning splits
     _save_partitioning_split(
-        partition_dir=exp_dir,
+        partition_dir=graph_dir,
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         split=split,
     )
+
+    with open(f"{graph_dir}/training_split.pkl", "wb") as output:
+        pickle.dump(barebones_split, output)
 
     # get targets!
     targets = _tissue_targets_for_training(
@@ -729,3 +736,7 @@ def produce_training_targets(
     # save scaled targets
     with open(f"{graph_dir}/targets_scaled.pkl", "wb") as output:
         pickle.dump(scaled_targets, output)
+
+
+if __name__ == "__main__":
+    main()
