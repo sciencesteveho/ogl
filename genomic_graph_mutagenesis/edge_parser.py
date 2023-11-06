@@ -475,7 +475,6 @@ class EdgeParser:
         promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
         dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
 
-        chrom_loop_edges = []
         gene_overlaps = [
             (distal_enhancers, "g_e"),
             (promoters, "g_p"),
@@ -565,7 +564,7 @@ class EdgeParser:
                     (edge[0], edge[1])
                     for edge in self.chrom_edges
                     if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
-                ),
+                )
             )
         )
 
@@ -575,7 +574,7 @@ class EdgeParser:
                     (edge[0], edge[1])
                     for edge in self.chrom_edges
                     if "superenhancer" in edge[0]
-                ),
+                )
             )
         )
 
