@@ -14,13 +14,13 @@ consider the nodes that pass the TPM filter.
 
 import csv
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from dataset_split import _chr_split_train_test_val
+from dataset_split import _genes_train_test_val_split
 from dataset_split import _genes_from_gff
 from utils import TISSUES
 
@@ -156,19 +156,19 @@ def graph_to_pytorch(
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
-    split = _chr_split_train_test_val(
+    split, _ = _genes_train_test_val_split(
         genes=_genes_from_gff(gene_gtf),
         test_chrs=test_chrs,
         val_chrs=val_chrs,
         tissue_append=True,
     )
 
-    filtered_genes = filter_genes(root_dir=root_dir, tissues=TISSUES)
-    filtered_split = dict.fromkeys(["train", "test", "validation"])
-    for data_split in ["train", "test", "validation"]:
-        filtered_split[data_split] = [
-            x for x in split[data_split] if x in filtered_genes
-        ]
+    # filtered_genes = filter_genes(root_dir=root_dir, tissues=TISSUES)
+    # filtered_split = dict.fromkeys(["train", "test", "validation"])
+    # for data_split in ["train", "test", "validation"]:
+    #     filtered_split[data_split] = [
+    #         x for x in split[data_split] if x in filtered_genes
+    #     ]
 
     with open(graph, "rb") as file:
         graph_data = pickle.load(file)
@@ -204,7 +204,7 @@ def graph_to_pytorch(
             x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
-    graph_index, train, test, val = _get_mask_idxs(index=index, split=filtered_split)
+    graph_index, train, test, val = _get_mask_idxs(index=index, split=split)
 
     # get individual if querying for single gene
     if single_gene:
