@@ -12,6 +12,7 @@
 from collections import defaultdict
 import csv
 import itertools
+from itertools import chain
 from multiprocessing import Pool
 from typing import Any, Dict, List, Tuple, Generator
 
@@ -358,11 +359,10 @@ class EdgeParser:
             """Creates a dict to store each anchor and its overlaps. Adds the feature by
             ignoring the first 7 columns of the bed file and adding whatever is left."""
             anchor = defaultdict(list)
-            for bed in beds:
-                for feature in bed:
-                    anchor["_".join(feature[:3])].append(
-                        "_".join([feature[6], feature[7], feature[9]])
-                    )
+            for feature in itertools.chain(*beds):
+                anchor["_".join(feature[:3])].append(
+                    "_".join([feature[6], feature[7], feature[9]])
+                )
             return anchor
 
         def _loop_edges(
@@ -376,11 +376,10 @@ class EdgeParser:
                 first_anchor = "_".join(loop[0:3])
                 second_anchor = "_".join(loop[3:6])
                 try:
-                    uniq_edges = itertools.product(
+                    for edge in itertools.product(
                         first_anchor_edges[first_anchor],
                         second_anchor_edges[second_anchor],
-                    )
-                    for edge in uniq_edges:
+                    ):
                         yield edge
                 except KeyError:
                     continue
@@ -497,8 +496,8 @@ class EdgeParser:
         except TypeError:
             pass
 
-        for element in gene_overlaps:
-            chrom_loop_edges.extend(
+        chrom_loop_edges = chain(
+            (
                 self.get_loop_edges(
                     chromatin_loops=self.loop_file,
                     feat_1=element[0],
@@ -506,10 +505,9 @@ class EdgeParser:
                     tss=True,
                     edge_type=element[1],
                 )
-            )
-
-        for element in promoters_overlaps:
-            chrom_loop_edges.extend(
+                for element in gene_overlaps
+            ),
+            (
                 self.get_loop_edges(
                     chromatin_loops=self.loop_file,
                     feat_1=element[0],
@@ -517,7 +515,9 @@ class EdgeParser:
                     tss=False,
                     edge_type=element[1],
                 )
-            )
+                for element in promoters_overlaps
+            ),
+        )
 
         # only parse edges specified in experiment
         ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
@@ -528,12 +528,6 @@ class EdgeParser:
             [],
         )
         if self.interaction_types is not None:
-            # if "ppis" in self.interaction_types:
-            #     ppi_edges = self._iid_ppi(
-            #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-            #         tissue=self.ppi_tissue,
-            #     )
-            # else:
             if "mirna" in self.interaction_types:
                 mirna_targets = self._mirna_targets(
                     target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
@@ -553,38 +547,53 @@ class EdgeParser:
                     tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
                     footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
                 )
+            # if "ppis" in self.interaction_types:
+            #     ppi_edges = self._iid_ppi(
+            #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+            #         tissue=self.ppi_tissue,
+            #     )
 
-        self.interaction_edges = (
-            ppi_edges + mirna_targets + tf_markers + circuit_edges + tfbinding_edges
+        self.interaction_edges = list(
+            chain(ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges)
         )
         self.chrom_edges = list(set(chrom_loop_edges))
-        self.all_edges = self.chrom_edges + self.interaction_edges
+        self.all_edges = list(chain(self.chrom_edges, self.interaction_edges))
 
-        chrom_loops_regulatory_nodes = [
-            edge[0]
-            for edge in self.chrom_edges
-            if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
-        ] + [
-            edge[1]
-            for edge in self.chrom_edges
-            if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
-        ]
+        chrom_loops_regulatory_nodes = set(
+            chain(
+                (
+                    edge[0]
+                    for edge in self.chrom_edges
+                    if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+                ),
+                (
+                    edge[1]
+                    for edge in self.chrom_edges
+                    if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
+                ),
+            )
+        )
 
-        chrom_loops_se_nodes = [
-            edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]
-        ] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
+        chrom_loops_se_nodes = set(
+            chain(
+                (edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]),
+                (edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]),
+            )
+        )
 
-        gencode_nodes = (
-            [tup[0] for tup in ppi_edges]
-            + [tup[1] for tup in ppi_edges]
-            + [tup[1] for tup in mirna_targets]
-            + [tup[0] for tup in tf_markers]
-            + [tup[1] for tup in tf_markers]
-            + [tup[0] for tup in circuit_edges]
-            + [tup[1] for tup in circuit_edges]
-            + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
-            + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
-            + [tup[0] for tup in tfbinding_edges]
+        gencode_nodes = set(
+            chain(
+                (tup[0] for tup in ppi_edges),
+                (tup[1] for tup in ppi_edges),
+                (tup[1] for tup in mirna_targets),
+                (tup[0] for tup in tf_markers),
+                (tup[1] for tup in tf_markers),
+                (tup[0] for tup in circuit_edges),
+                (tup[1] for tup in circuit_edges),
+                (edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]),
+                (edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]),
+                (tup[0] for tup in tfbinding_edges),
+            )
         )
 
         return (
@@ -630,20 +639,22 @@ class EdgeParser:
         print("Adding coordinates to nodes...")
         # add coordinates to nodes in parallel
         pool = Pool(processes=5)
-        nodes_for_attr = pool.starmap(
-            self._add_node_coordinates,
-            list(
-                zip(
-                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
-                    [
-                        self.gencode_attr_ref,
-                        self.regulatory_attr_ref,
-                        self.se_ref,
-                        self.mirna_ref,
-                        self.footprint_ref,
-                    ],
+        nodes_for_attr = list(
+            chain.from_iterable(
+                pool.starmap(
+                    self._add_node_coordinates,
+                    zip(
+                        [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
+                        [
+                            self.gencode_attr_ref,
+                            self.regulatory_attr_ref,
+                            self.se_ref,
+                            self.mirna_ref,
+                            self.footprint_ref,
+                        ],
+                    ),
                 )
-            ),
+            )
         )
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
