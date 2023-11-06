@@ -589,8 +589,16 @@ class EdgeParser:
                 (tup[1] for tup in tf_markers),
                 (tup[0] for tup in circuit_edges),
                 (tup[1] for tup in circuit_edges),
-                (edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]),
-                (edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]),
+                (
+                    edge[0]
+                    for edge in self.chrom_edges
+                    if isinstance(edge, tuple) and "ENSG" in edge[0]
+                ),
+                (
+                    edge[1]
+                    for edge in self.chrom_edges
+                    if isinstance(edge, tuple) and "ENSG" in edge[1]
+                ),
                 (tup[0] for tup in tfbinding_edges),
             )
         )
