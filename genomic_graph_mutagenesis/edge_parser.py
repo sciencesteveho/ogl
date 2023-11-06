@@ -690,22 +690,36 @@ class EdgeParser:
         print("Writing edges to file...")
         # add coordinates to edges
         nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
-        with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
+        with open(f"{self.interaction_dir}/interact_edges.txt", "w+") as output:
             writer = csv.writer(output, delimiter="\t")
             for edge in self.all_edges:
-                if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
-                    writer.writerow(
-                        [edge[0]]
-                        + nodes_with_coords[edge[0]]
-                        + [edge[1]]
-                        + nodes_with_coords[edge[1]]
-                        + [edge[2], edge[3]]
-                    )
+                if isinstance(edge, tuple):
+                    writer.writerow(edge)
+                    # writer.writerow(
+                    #     [edge[0]]
+                    #     + nodes_with_coords[edge[0]]
+                    #     + [edge[1]]
+                    #     + nodes_with_coords[edge[1]]
+                    #     + [edge[2], edge[3]]
+                    # ) if edge[0] in nodes_with_coords and edge[
+                    #     1
+                    # ] in nodes_with_coords else None
+                    # if edge[0] in nodes_with_coords and edge[1] in nodes_with_coords:
+                    #     writer.writerow(
+                    #         [edge[0]]
+                    #         + nodes_with_coords[edge[0]]
+                    #         + [edge[1]]
+                    #         + nodes_with_coords[edge[1]]
+                    #         + [edge[2], edge[3]]
+                    #     )
 
                     # write edges to file
-                    all_interaction_file = (
-                        f"{self.interaction_dir}/interaction_edges.txt"
-                    )
+                    # all_interaction_file = (
+                    #     f"{self.interaction_dir}/interaction_edges.txt"
+                    # )
 
-                    with open(all_interaction_file, "w+") as output:
-                        csv.writer(output, delimiter="\t").writerows(self.all_edges)
+                    # with open(all_interaction_file, "w+") as output:
+                    #     csv.writer(output, delimiter="\t").writerows(self.all_edges)
+
+                    # with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
+        #     writer = csv.writer(output, delimiter="\t")
