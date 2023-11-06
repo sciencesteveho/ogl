@@ -645,26 +645,40 @@ class EdgeParser:
         print("Parsing edges complete!")
         print("Adding coordinates to nodes...")
         # add coordinates to nodes in parallel
-        pool = Pool(processes=5)
-        nodes_for_attr = list(
-            chain.from_iterable(
-                pool.starmap(
-                    self._add_node_coordinates,
-                    zip(
-                        [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
-                        [
-                            self.gencode_attr_ref,
-                            self.regulatory_attr_ref,
-                            self.se_ref,
-                            self.mirna_ref,
-                            self.footprint_ref,
-                        ],
-                    ),
-                )
-            )
-        )
-        pool.close()
-        nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+        # pool = Pool(processes=5)
+        # nodes_for_attr = list(
+        #     chain.from_iterable(
+        #         pool.starmap(
+        #             self._add_node_coordinates,
+        #             zip(
+        #                 [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
+        #                 [
+        #                     self.gencode_attr_ref,
+        #                     self.regulatory_attr_ref,
+        #                     self.se_ref,
+        #                     self.mirna_ref,
+        #                     self.footprint_ref,
+        #                 ],
+        #             ),
+        #         )
+        #     )
+        # )
+        # pool.close()
+        # nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+
+        nodes_for_attr = []
+        for nodes, node_ref in zip(
+            [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
+            [
+                self.gencode_attr_ref,
+                self.regulatory_attr_ref,
+                self.se_ref,
+                self.mirna_ref,
+                self.footprint_ref,
+            ],
+        ):
+            nodes_for_attr.extend(self._add_node_coordinates(nodes, node_ref))
+        # nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
 
         print("Adding coordinates to nodes complete!")
         print("Writing nodes and edges to file...")
