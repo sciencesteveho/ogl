@@ -13,7 +13,7 @@ from collections import defaultdict
 import csv
 import itertools
 from multiprocessing import Pool
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Generator
 
 import numpy as np
 import pandas as pd
@@ -298,7 +298,7 @@ class EdgeParser:
         feat_2: str,
         edge_type: str,
         tss: bool = False,
-    ) -> List[Tuple[str, str, float, str]]:
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Connects nodes if they are linked by chromatin loops. Can specify if
         the loops should only be done for direct overlaps or if they should
         be within 2mb of a loop anchor for TSS. If using TSS, make sure to
@@ -310,7 +310,7 @@ class EdgeParser:
             type (str): _description_
 
         Returns:
-            List[Tuple[str, str, float, str]]: _description_
+            Generator[Tuple[str, str, float, str], None, None]: _description_
         """
 
         def _loop_direct_overlap(
@@ -369,18 +369,16 @@ class EdgeParser:
             loops: pybedtools.BedTool,
             first_anchor_edges: Dict[str, List[str]],
             second_anchor_edges: Dict[str, List[str]],
-        ) -> List[Any]:
-            """Return a list of edges that are connected by their overlap over chromatin
+        ) -> Generator[Tuple[str, str], None, None]:
+            """Return a generator of edges that are connected by their overlap over chromatin
             loop anchors by matching the anchor names across dicts"""
             for loop in loops:
                 first_anchor = "_".join(loop[0:3])
                 second_anchor = "_".join(loop[3:6])
                 try:
-                    uniq_edges = list(
-                        itertools.product(
-                            first_anchor_edges[first_anchor],
-                            second_anchor_edges[second_anchor],
-                        )
+                    uniq_edges = itertools.product(
+                        first_anchor_edges[first_anchor],
+                        second_anchor_edges[second_anchor],
                     )
                     for edge in uniq_edges:
                         yield edge
@@ -404,58 +402,48 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_within_distance(second_anchor, feat_2, 2000),
             )
-            return_edges = []
-            for edge in list(
-                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
+            for edge in _loop_edges(
+                first_anchor, first_anchor_edges, second_anchor_edges
             ):
                 if "tss" in edge[0] and "tss" in edge[1]:
                     if _check_tss_gene_in_gencode(
                         edge[0]
                     ) and _check_tss_gene_in_gencode(edge[1]):
-                        return_edges.append(
-                            (
-                                _check_tss_gene_in_gencode(edge[0]),
-                                _check_tss_gene_in_gencode(edge[1]),
-                                -1,
-                                "g_g",
-                            )
+                        yield (
+                            _check_tss_gene_in_gencode(edge[0]),
+                            _check_tss_gene_in_gencode(edge[1]),
+                            -1,
+                            "g_g",
                         )
                     else:
                         pass
                 elif "tss" in edge[0] and "tss" not in edge[1]:
                     if _check_tss_gene_in_gencode(edge[0]):
-                        return_edges.append(
-                            (
-                                _check_tss_gene_in_gencode(edge[0]),
-                                edge[1],
-                                -1,
-                                edge_type,
-                            )
+                        yield (
+                            _check_tss_gene_in_gencode(edge[0]),
+                            edge[1],
+                            -1,
+                            edge_type,
                         )
                     else:
                         pass
                 elif "tss" not in edge[0] and "tss" in edge[1]:
                     if _check_tss_gene_in_gencode(edge[1]):
-                        return_edges.append(
-                            (
-                                edge[0],
-                                _check_tss_gene_in_gencode(edge[1]),
-                                -1,
-                                edge_type,
-                            )
+                        yield (
+                            edge[0],
+                            _check_tss_gene_in_gencode(edge[1]),
+                            -1,
+                            edge_type,
                         )
                     else:
                         pass
                 else:
-                    return_edges.append(
-                        (
-                            edge[0],
-                            edge[1],
-                            -1,
-                            edge_type,
-                        )
+                    yield (
+                        edge[0],
+                        edge[1],
+                        -1,
+                        edge_type,
                     )
-            return return_edges
         else:
             first_anchor_edges = _flatten_anchors(
                 _loop_direct_overlap(first_anchor, feat_1),
@@ -465,16 +453,10 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_direct_overlap(second_anchor, feat_2),
             )
-            return [
-                (edge[0], edge[1], -1, edge_type)
-                for edge in list(
-                    set(
-                        _loop_edges(
-                            first_anchor, first_anchor_edges, second_anchor_edges
-                        )
-                    )
-                )
-            ]
+            for edge in _loop_edges(
+                first_anchor, first_anchor_edges, second_anchor_edges
+            ):
+                yield (edge[0], edge[1], -1, edge_type)
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
