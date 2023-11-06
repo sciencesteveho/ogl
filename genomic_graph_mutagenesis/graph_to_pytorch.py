@@ -20,9 +20,9 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from dataset_split import _genes_train_test_val_split
-from dataset_split import _genes_from_gff
-from utils import TISSUES
+# from dataset_split import _genes_train_test_val_split
+# from dataset_split import _genes_from_gff
+# from utils import TISSUES
 
 
 def filter_genes(
