@@ -560,24 +560,22 @@ class EdgeParser:
         self.all_edges = list(chain(self.chrom_edges, self.interaction_edges))
 
         chrom_loops_regulatory_nodes = set(
-            chain(
+            chain.from_iterable(
                 (
-                    edge[0]
+                    (edge[0], edge[1])
                     for edge in self.chrom_edges
                     if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
-                ),
-                (
-                    edge[1]
-                    for edge in self.chrom_edges
-                    if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
                 ),
             )
         )
 
         chrom_loops_se_nodes = set(
-            chain(
-                (edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]),
-                (edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]),
+            chain.from_iterable(
+                (
+                    (edge[0], edge[1])
+                    for edge in self.chrom_edges
+                    if "superenhancer" in edge[0]
+                ),
             )
         )
 
