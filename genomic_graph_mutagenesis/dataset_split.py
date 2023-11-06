@@ -150,7 +150,7 @@ def _save_partitioning_split(
     chr_split_dictionary = f"{save_dir}/{('').join(chrs)}_training_split.pkl"
 
     if not os.path.exists(chr_split_dictionary):
-        with open(chr_split_dictionary, "wb") as output:
+        with open("training_targets_split.pkl", "wb") as output:
             pickle.dump(split, output)
 
     # return f"{('').join(chrs)}"

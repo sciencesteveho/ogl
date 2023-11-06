@@ -156,12 +156,8 @@ def graph_to_pytorch(
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
-    split, _ = _genes_train_test_val_split(
-        genes=_genes_from_gff(gene_gtf),
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-        tissue_append=True,
-    )
+    with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
+        split = pickle.load(f)
 
     # filtered_genes = filter_genes(root_dir=root_dir, tissues=TISSUES)
     # filtered_split = dict.fromkeys(["train", "test", "validation"])
