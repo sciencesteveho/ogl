@@ -423,9 +423,7 @@ def _difference_from_average_activity_per_tissue(
                 # difference = tissue_average.subtract(
                 #     average_remove_tissue["average"]
                 # ).abs()
-                difference = tissue_average.subtract(
-                    average_remove_tissue["average"]
-                ).abs()
+                difference = tissue_average.subtract(average_remove_tissue["average"])
                 difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
                 dfs.append(difference)
 
