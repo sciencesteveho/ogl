@@ -220,6 +220,20 @@ TISSUES = [
     # "npc",
 ]
 
+TISSUES_early_testing = [
+    "aorta",
+    "hippocampus",
+    "left_ventricle",
+    "liver",
+    "lung",
+    "pancreas",
+    "skeletal_muscle",
+    "small_intestine",
+    # "hela",
+    # "k562",
+    # "npc",
+]
+
 ONEHOT_EDGETYPE = {
     "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
     "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"

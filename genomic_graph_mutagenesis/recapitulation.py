@@ -29,10 +29,8 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from gnn import GATv2
-from gnn import GCN
-from gnn import GraphSAGE
 from graph_to_pytorch import graph_to_pytorch
-from utils import TISSUES
+from utils import TISSUES_early_testing
 
 
 def _load_model_for_inference():
@@ -48,6 +46,10 @@ def _load_model_for_inference():
     return model
 
 
+def _load_checkpoint(checkpoint: str, map_location: str):
+    checkpoint = torch.load(checkpoint, map_location=map_location)
+
+
 def _tensor_out_to_array(tensor, idx):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
@@ -61,7 +63,7 @@ def _get_idxs_for_coessential_pairs(
 
     def _dict_init(first_pairs, second_pairs):
         keys = []
-        for tissue in TISSUES:
+        for tissue in TISSUES_early_testing:
             for pair in first_pairs:
                 try:
                     keys.append(graph_idxs[f"{pair[0]}_{tissue}"])
@@ -80,17 +82,17 @@ def _get_idxs_for_coessential_pairs(
     ]
 
     pos_keys = _dict_init(pos_pairs, neg_pairs)
-    pos_coessn_idxs = {key: [] for key in pos_keys}  # init dict
-    for tissue in TISSUES:
+    positive_coessential_idxs = {key: [] for key in pos_keys}  # init dict
+    for tissue in TISSUES_early_testing:
         for tup in pos_pairs:
             try:
                 if graph_idxs[f"{tup[1]}_{tissue}"] < graph_idxs[f"{tup[0]}_{tissue}"]:
-                    pos_coessn_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
+                    positive_coessential_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
                         graph_idxs[f"{tup[1]}_{tissue}"]
                     )
             except KeyError:
                 pass
-    return pos_coessn_idxs
+    return positive_coessential_idxs
 
 
 def _random_gene_pairs(
@@ -106,7 +108,23 @@ def _random_gene_pairs(
     return coessential_idxs
 
 
-def _remove_node_features():
+def _perturb_eQTLs():
+    """_summary_ of function"""
+
+
+def _remove_lethal_genes():
+    """_summary_ of function"""
+
+
+def _remove_random_genes():
+    """_summary_ of function"""
+
+
+def _ablate_housekeeping_genes():
+    """_summary_ of function"""
+
+
+def _ablate_random_genes():
     """_summary_ of function"""
 
 
@@ -197,8 +215,8 @@ def main(
 
     # prepare IDXs for different perturbations
     coessential_idxs = _get_idxs_for_coessential_pairs(
-        coessential_pos="/ocean/projects/bio210019p/stevesho/data/preprocess/comparisons/coessential_gencode_named_pos.txt",
-        coessential_neg="/ocean/projects/bio210019p/stevesho/data/preprocess/comparisons/coessential_gencode_named_neg.txt",
+        coessential_pos="/ocean/projects/bio210019p/stevesho/data/preprocess/perturbations/coessential_gencode_named_pos.txt",
+        coessential_neg="/ocean/projects/bio210019p/stevesho/data/preprocess/perturbations/coessential_gencode_named_neg.txt",
         graph_idxs=graph_idxs,
     )
 
@@ -353,7 +371,7 @@ if __name__ == "__main__":
     # )
 
 # pos_idxs, neg_idxs = {}, {}
-# for tissue in TISSUES:
+# for tissue in TISSUES_early_testing:
 #     for tup in pos_pairs:
 #         pos_idxs[graph_idxs[f"{tup[0]}_{tissue}"]] = graph_idxs[f"{tup[1]}_{tissue}"]
 #     pos_idxs[]
