@@ -520,8 +520,7 @@ class EdgeParser:
         except TypeError:
             pass
 
-        chrom_loop_edges = []
-        chrom_loop_edges.extend(
+        chrom_loop_edges = [
             self.get_loop_edges(
                 chromatin_loops=self.loop_file,
                 feat_1=element[0],
@@ -530,11 +529,14 @@ class EdgeParser:
                 edge_type=element[1],
             )
             for element in gene_overlaps + promoters_overlaps
-        )
+        ]
 
-        # convert to tuples to make hashable
-        chrom_loop_edges = [tuple(edge) for edge in chrom_loop_edges]
+        # flatten the list of lists and convert to tuples to make hashable
+        chrom_loop_edges = [
+            tuple(edge) for sublist in chrom_loop_edges for edge in sublist
+        ]
 
+        return chrom_loop_edges
         # only parse edges specified in experiment
         ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
             [],
