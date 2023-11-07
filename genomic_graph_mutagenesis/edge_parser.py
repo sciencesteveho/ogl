@@ -453,10 +453,15 @@ class EdgeParser:
 
         first_anchor, second_anchor = _split_chromatin_loops(chromatin_loops)
 
+        # if tss:
+        #     return list(_process_tss_edges())
+        # else:
+        #     return list(_process_non_tss_edges())
+
         if tss:
-            return list(_process_tss_edges())
+            return _process_tss_edges()
         else:
-            return list(_process_non_tss_edges())
+            return _process_non_tss_edges()
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
