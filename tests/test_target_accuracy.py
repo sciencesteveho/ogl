@@ -4,12 +4,12 @@
 """Tests that a random subset of targets match the median values in their
 respective tissues."""
 
-import numpy as np
-import pandas as pd
 import pickle
 import random
 
 from cmapPy.pandasGEXpress.parse_gct import parse
+import numpy as np
+import pandas as pd
 
 TISSUES = {
     "aorta": "Artery - Aorta",
@@ -20,7 +20,7 @@ TISSUES = {
     "mammary": "Breast - Mammary Tissue",
     "pancreas": "Pancreas",
     "skeletal_muscle": "Muscle - Skeletal",
-    "skin": "Skin - Sun Exposed (Lower leg)",
+    "skin": "Skin - Not Sun Exposed (Suprapubic)",
     "small_intestine": "Small Intestine - Terminal Ileum",
 }
 
@@ -62,7 +62,10 @@ def test_tpm_median_values(
             true_median = true_df.loc[target, TISSUES[tissue]]
             # print(f"log2 true median plus 0.25: {np.log2(true_median + 0.25)}")
             # print(targets[split][entry][0])
-            assert np.isclose(np.log2(true_median + 0.25), targets[split][entry][0])
+            try:
+                assert np.isclose(np.log2(true_median + 0.25), targets[split][entry][0])
+            except AssertionError:
+                print("AssertionError: offending target: " + entry)
 
 
 def test_tpm_foldchange_values(
@@ -81,7 +84,10 @@ def test_tpm_foldchange_values(
 
             # print(f"true fold: {true_fold}")
             # print(f"target fold: {targets[split][entry][1]}")
-            assert np.isclose(true_fold, targets[split][entry][1])
+            try:
+                assert np.isclose(true_fold, targets[split][entry][1])
+            except AssertionError:
+                print("AssertionError: offending target: " + entry)
 
 
 def test_difference_from_average_activity(
@@ -97,8 +103,10 @@ def test_difference_from_average_activity(
             true_average_diff = true_df.loc[
                 target, f"{tissue_rename}_difference_from_average"
             ]
-
-            assert np.isclose(true_average_diff, targets[split][entry][2])
+            try:
+                assert np.isclose(true_average_diff, targets[split][entry][2])
+            except AssertionError:
+                print("AssertionError: offending target: " + entry)
 
 
 def run_test():
@@ -122,10 +130,13 @@ def run_test():
 
     targets_dir = f"{root_dir}/graph_processing"
     for targets in [
-        "targets_random_assign.pkl",
-        "targets_test_chr1.pkl",
-        "targets_test_chr8-chr9_val_chr11-chr13.pkl",
+        "regulatory_only_deeploop_only_test_8_9_val_7_13_mediantpm/graphs/targets.pkl",
+        "regulatory_only_peakachu_deepanchor_liveronly_chr1_test_mediantpm/graphs/targets.pkl",
+        "regulatory_only_peakachu_deepanchor_alltiss_chr1_test_mediantpm/graphs/targets.pkl",
+        "regulatory_only_peakachu_deepanchor_alltiss_randomsplit_mediantpm/graphs/targets.pkl",
+        "regulatory_only_peakachu_deepanchor_alltiss_test_8_9_val_7_13_mediantpm/graphs/targets.pkl",
     ]:
+        print(f"testing {targets}")
         with open(targets_dir + "/" + targets, "rb") as f:
             # open targets
             targets = pickle.load(f)

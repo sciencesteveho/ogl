@@ -168,7 +168,7 @@ LOOPFILES = {
         "skeletal_muscle": "GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38",
         "small_intestine": "GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38",
     },
-    "deeploop_peakachu_deepanchor": {
+    "deeploop_deepanchor_peakachu": {
         "aorta": "aorta_alloops.bed",
         "hippocampus": "hippocampus_alloops.bed",
         "left_ventricle": "left_ventricle_alloops.bed",
@@ -687,6 +687,7 @@ def _convert_coessential_to_gencode(
 def _set_matplotlib_publication_parameters() -> None:
     plt.rcParams.update({"font.size": 7})  # set font size
     plt.rcParams.update({"axes.titlesize": "small"})
+    plt.rcParams.update({"font.sans-serif": "Nimbus Sans"})
     # plt.rcParams["font.family"] = "Liberation Sans"  # set font
 
 
