@@ -14,7 +14,7 @@ import csv
 import itertools
 from itertools import chain
 from multiprocessing import Pool
-from typing import Any, Dict, List, Tuple, Generator
+from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -358,11 +358,12 @@ class EdgeParser:
         def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
             """Creates a dict to store each anchor and its overlaps. Adds the feature by
             ignoring the first 7 columns of the bed file and adding whatever is left."""
-            anchor = defaultdict(list)
-            for feature in itertools.chain(*beds):
-                anchor["_".join(feature[:3])].append(
-                    "_".join([feature[6], feature[7], feature[9]])
-                )
+            anchor = {}
+            for bed in beds:
+                for feature in bed:
+                    anchor.setdefault("_".join(feature[0:3]), []).append(
+                        "_".join([feature[6], feature[7], feature[9]])
+                    )
             return anchor
 
         def _loop_edges(
@@ -401,8 +402,8 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_within_distance(second_anchor, feat_2, 2000),
             )
-            for edge in _loop_edges(
-                first_anchor, first_anchor_edges, second_anchor_edges
+            for edge in list(
+                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
             ):
                 if "tss" in edge[0] and "tss" in edge[1]:
                     if _check_tss_gene_in_gencode(
@@ -452,8 +453,8 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_direct_overlap(second_anchor, feat_2),
             )
-            for edge in _loop_edges(
-                first_anchor, first_anchor_edges, second_anchor_edges
+            for edge in list(
+                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
             ):
                 yield (edge[0], edge[1], -1, edge_type)
 
