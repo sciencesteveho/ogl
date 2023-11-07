@@ -368,28 +368,30 @@ class EdgeParser:
 
         def _loop_edges(
             loops: pybedtools.BedTool,
-            first_anchor_edges: dict,
-            second_anchor_edges: dict,
-        ):
+            first_anchor_edges: Dict[str, List[str]],
+            second_anchor_edges: Dict[str, List[str]],
+        ) -> List[Any]:
+            """Return a list of edges that are connected by their overlap over chromatin
+            loop anchors by matching the anchor names across dicts"""
+            edges = []
             for loop in loops:
                 first_anchor = "_".join(loop[0:3])
                 second_anchor = "_".join(loop[3:6])
                 try:
-                    uniq_edges = itertools.product(
-                        first_anchor_edges[first_anchor],
-                        second_anchor_edges[second_anchor],
+                    uniq_edges = list(
+                        itertools.product(
+                            first_anchor_edges[first_anchor],
+                            second_anchor_edges[second_anchor],
+                        )
                     )
-                    for edge in uniq_edges:
-                        yield edge
+                    edges.extend(uniq_edges)
                 except KeyError:
                     continue
+            return edges
 
-        def _check_tss_gene_in_gencode(tss: str):
+        def _check_tss_gene_in_gencode(tss: str) -> bool:
             gene = tss.split("_")[5]
-            if gene in self.genesymbol_to_gencode.keys():
-                return self.genesymbol_to_gencode[gene]
-            else:
-                return False
+            return self.genesymbol_to_gencode.get(gene, False)
 
         def _process_tss_edges():
             first_anchor_edges = _flatten_anchors(
@@ -400,42 +402,58 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_within_distance(second_anchor, feat_2, 2000),
             )
-            for edge in _loop_edges(
-                first_anchor, first_anchor_edges, second_anchor_edges
+            return_edges = []
+            for edge in list(
+                set(_loop_edges(first_anchor, first_anchor_edges, second_anchor_edges))
             ):
                 if "tss" in edge[0] and "tss" in edge[1]:
                     if _check_tss_gene_in_gencode(
                         edge[0]
                     ) and _check_tss_gene_in_gencode(edge[1]):
-                        yield (
-                            _check_tss_gene_in_gencode(edge[0]),
-                            _check_tss_gene_in_gencode(edge[1]),
-                            -1,
-                            "g_g",
+                        return_edges.append(
+                            (
+                                _check_tss_gene_in_gencode(edge[0]),
+                                _check_tss_gene_in_gencode(edge[1]),
+                                -1,
+                                "g_g",
+                            )
                         )
+                    else:
+                        pass
                 elif "tss" in edge[0] and "tss" not in edge[1]:
                     if _check_tss_gene_in_gencode(edge[0]):
-                        yield (
-                            _check_tss_gene_in_gencode(edge[0]),
+                        return_edges.append(
+                            (
+                                _check_tss_gene_in_gencode(edge[0]),
+                                edge[1],
+                                -1,
+                                edge_type,
+                            )
+                        )
+                    else:
+                        pass
+                elif "tss" not in edge[0] and "tss" in edge[1]:
+                    if _check_tss_gene_in_gencode(edge[1]):
+                        return_edges.append(
+                            (
+                                edge[0],
+                                _check_tss_gene_in_gencode(edge[1]),
+                                -1,
+                                edge_type,
+                            )
+                        )
+                    else:
+                        pass
+                else:
+                    return_edges.append(
+                        (
+                            edge[0],
                             edge[1],
                             -1,
                             edge_type,
                         )
-                elif "tss" not in edge[0] and "tss" in edge[1]:
-                    if _check_tss_gene_in_gencode(edge[1]):
-                        yield (
-                            edge[0],
-                            _check_tss_gene_in_gencode(edge[1]),
-                            -1,
-                            edge_type,
-                        )
-                else:
-                    yield (
-                        edge[0],
-                        edge[1],
-                        -1,
-                        edge_type,
                     )
+            return return_edges
 
         def _process_non_tss_edges():
             first_anchor_edges = _flatten_anchors(
@@ -446,17 +464,23 @@ class EdgeParser:
                 _loop_direct_overlap(second_anchor, feat_1),
                 _loop_direct_overlap(second_anchor, feat_2),
             )
-            for edge in _loop_edges(
-                first_anchor, first_anchor_edges, second_anchor_edges
-            ):
-                yield (edge[0], edge[1], -1, edge_type)
+            return [
+                (edge[0], edge[1], -1, edge_type)
+                for edge in list(
+                    set(
+                        _loop_edges(
+                            first_anchor, first_anchor_edges, second_anchor_edges
+                        )
+                    )
+                )
+            ]
 
         first_anchor, second_anchor = _split_chromatin_loops(chromatin_loops)
 
         if tss:
-            return list(_process_tss_edges())
+            return _process_tss_edges()
         else:
-            return list(_process_non_tss_edges())
+            return _process_non_tss_edges()
 
     @time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
@@ -496,29 +520,16 @@ class EdgeParser:
         except TypeError:
             pass
 
-        chrom_loop_edges = chain(
-            (
-                self.get_loop_edges(
-                    chromatin_loops=self.loop_file,
-                    feat_1=element[0],
-                    feat_2=tss,
-                    tss=True,
-                    edge_type=element[1],
-                )
-                for element in gene_overlaps
-            ),
-            (
-                self.get_loop_edges(
-                    chromatin_loops=self.loop_file,
-                    feat_1=element[0],
-                    feat_2=promoters,
-                    tss=False,
-                    edge_type=element[1],
-                )
-                for element in promoters_overlaps
-            ),
-        )
-
+        chrom_loop_edges += [
+            self.get_loop_edges(
+                chromatin_loops=self.loop_file,
+                feat_1=element[0],
+                feat_2=tss if element is gene_overlaps else promoters,
+                tss=element is gene_overlaps,
+                edge_type=element[1],
+            )
+            for element in gene_overlaps + promoters_overlaps
+        ]
         # only parse edges specified in experiment
         ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
             [],
@@ -553,45 +564,37 @@ class EdgeParser:
             #         tissue=self.ppi_tissue,
             #     )
 
-        self.interaction_edges = list(
-            chain(ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges)
+        self.interaction_edges = (
+            ppi_edges + mirna_targets + tf_markers + circuit_edges + tfbinding_edges
         )
         self.chrom_edges = list(set(chrom_loop_edges))
-        self.all_edges = list(chain(self.chrom_edges, self.interaction_edges))
+        self.all_edges = self.chrom_edges + self.interaction_edges
 
-        chrom_loops_regulatory_nodes = set(
-            chain.from_iterable(
-                (
-                    (edge[0], edge[1])
-                    for edge in self.chrom_edges
-                    if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
-                )
-            )
-        )
+        chrom_loops_regulatory_nodes = [
+            edge[0]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[0] and "superenhancer" not in edge[0]
+        ] + [
+            edge[1]
+            for edge in self.chrom_edges
+            if "ENSG" not in edge[1] and "superenhancer" not in edge[1]
+        ]
 
-        chrom_loops_se_nodes = set(
-            chain.from_iterable(
-                (
-                    (edge[0], edge[1])
-                    for edge in self.chrom_edges
-                    if "superenhancer" in edge[0]
-                )
-            )
-        )
+        chrom_loops_se_nodes = [
+            edge[0] for edge in self.chrom_edges if "superenhancer" in edge[0]
+        ] + [edge[1] for edge in self.chrom_edges if "superenhancer" in edge[1]]
 
-        gencode_nodes = set(
-            chain(
-                (tup[0] for tup in ppi_edges),
-                (tup[1] for tup in ppi_edges),
-                (tup[1] for tup in mirna_targets),
-                (tup[0] for tup in tf_markers),
-                (tup[1] for tup in tf_markers),
-                (tup[0] for tup in circuit_edges),
-                (tup[1] for tup in circuit_edges),
-                (edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]),
-                (edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]),
-                (tup[0] for tup in tfbinding_edges),
-            )
+        gencode_nodes = (
+            [tup[0] for tup in ppi_edges]
+            + [tup[1] for tup in ppi_edges]
+            + [tup[1] for tup in mirna_targets]
+            + [tup[0] for tup in tf_markers]
+            + [tup[1] for tup in tf_markers]
+            + [tup[0] for tup in circuit_edges]
+            + [tup[1] for tup in circuit_edges]
+            + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
+            + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
+            + [tup[0] for tup in tfbinding_edges]
         )
 
         return (
@@ -636,40 +639,24 @@ class EdgeParser:
         print("Parsing edges complete!")
         print("Adding coordinates to nodes...")
         # add coordinates to nodes in parallel
-        # pool = Pool(processes=5)
-        # nodes_for_attr = list(
-        #     chain.from_iterable(
-        #         pool.starmap(
-        #             self._add_node_coordinates,
-        #             zip(
-        #                 [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
-        #                 [
-        #                     self.gencode_attr_ref,
-        #                     self.regulatory_attr_ref,
-        #                     self.se_ref,
-        #                     self.mirna_ref,
-        #                     self.footprint_ref,
-        #                 ],
-        #             ),
-        #         )
-        #     )
-        # )
-        # pool.close()
-        # nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
-
-        nodes_for_attr = []
-        for nodes, node_ref in zip(
-            [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
-            [
-                self.gencode_attr_ref,
-                self.regulatory_attr_ref,
-                self.se_ref,
-                self.mirna_ref,
-                self.footprint_ref,
-            ],
-        ):
-            nodes_for_attr.extend(self._add_node_coordinates(nodes, node_ref))
-        # nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
+        pool = Pool(processes=5)
+        nodes_for_attr = pool.starmap(
+            self._add_node_coordinates,
+            list(
+                zip(
+                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
+                    [
+                        self.gencode_attr_ref,
+                        self.regulatory_attr_ref,
+                        self.se_ref,
+                        self.mirna_ref,
+                        self.footprint_ref,
+                    ],
+                )
+            ),
+        )
+        pool.close()
+        nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
 
         print("Adding coordinates to nodes complete!")
         print("Writing nodes and edges to file...")
