@@ -520,6 +520,7 @@ class EdgeParser:
         except TypeError:
             pass
 
+        chrom_loop_edges = []
         chrom_loop_edges += [
             self.get_loop_edges(
                 chromatin_loops=self.loop_file,
