@@ -674,7 +674,7 @@ class EdgeParser:
         print("Writing edges to file...")
         # add coordinates to edges
         # nodes_with_coords = {node[3]: node[0:3] for node in nodes_for_attr}
-        with open(f"{self.interaction_dir}/interact_edges.txt", "w+") as output:
+        with open(f"{self.interaction_dir}/interaction_edges.txt", "w+") as output:
             writer = csv.writer(output, delimiter="\t")
             for edge in self.all_edges:
                 writer.writerow(edge)
