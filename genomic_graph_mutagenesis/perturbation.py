@@ -35,6 +35,19 @@ from graph_to_pytorch import graph_to_pytorch
 from utils import TISSUES
 
 
+def _load_model_for_inference():
+    """_summary_ of function"""
+    model = GATv2(
+        in_size=41,
+        embedding_size=256,
+        out_channels=1,
+        num_layers=2,
+        heads=2,
+    ).to_device()
+
+    return model
+
+
 def _tensor_out_to_array(tensor, idx):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 

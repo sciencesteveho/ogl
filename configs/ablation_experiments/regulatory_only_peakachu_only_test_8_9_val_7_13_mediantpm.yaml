@@ -1,23 +1,13 @@
 ---
 baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
 
-baseloops: deeploop_deepanchor_peakachu
+baseloops: peakachu
 
-experiment_name: alldata_combinedloops
+experiment_name: regulatory_only_peakachu_only_test_8_9_val_7_13_mediantpm
 
-interaction_types:
-  - tf_marker
-  - tf_binding
-  - mirna
+interaction_types: null
 
-nodes:
-  - cpgislands
-  - crms
-  - ctcfccre
-  - superenhancers
-  - tads
-  - tfbindingsites
-  - tss
+nodes: null
 
 tissues:
   - aorta
@@ -25,8 +15,10 @@ tissues:
   - left_ventricle
   - liver
   - lung
+  - mammary
   - pancreas
   - skeletal_muscle
+  - skin
   - small_intestine
 
 training_targets:

@@ -420,6 +420,9 @@ def _difference_from_average_activity_per_tissue(
 
                 df = pd.read_table(f"{tpm_dir}/{file}", index_col=0, header=[2])
                 tissue_average = df.mean(axis=1)
+                # difference = tissue_average.subtract(
+                #     average_remove_tissue["average"]
+                # ).abs()
                 difference = tissue_average.subtract(
                     average_remove_tissue["average"]
                 ).abs()

@@ -701,7 +701,7 @@ def plot_training_losses(
     learning_rate: float,
     outdir: str,
 ) -> None:
-    plt.figure(figsize=(3, 2.25))
+    plt.figure(figsize=(3.125, 2.25))
     _set_matplotlib_publication_parameters()
 
     losses = {"Train": [], "Test": [], "Validation": []}
