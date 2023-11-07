@@ -122,12 +122,20 @@ final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_fu
 if ! [ -f ${final_graph} ]; then
     echo "Final graph not found. Submitting pipeline jobs."
 
+    # temporary fix
+    # use EM partition for deeploop
+    if [ ${partition} == "EM" ]; then
+        node_and_edge_generator=pipeline_node_and_edge_generation_em.sh
+    else
+        node_and_edge_generator=pipeline_node_and_edge_generation.sh
+    fi
+
     # Parse nodes and edges
     pipeline_a_ids=()
     for tissue in ${tissues[@]}; do
         ID=$(sbatch \
             --parsable \
-            pipeline_node_and_edge_generation.sh \
+            ${node_and_edge_generator} \
             ${experiment_yaml} \
             genomic_graph_mutagenesis/configs/${tissue}.yaml
         )
