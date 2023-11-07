@@ -536,7 +536,6 @@ class EdgeParser:
             tuple(edge) for sublist in chrom_loop_edges for edge in sublist
         ]
 
-        return chrom_loop_edges
         # only parse edges specified in experiment
         ppi_edges, mirna_targets, tf_markers, circuit_edges, tfbinding_edges = (
             [],
