@@ -34,31 +34,57 @@ from utils import filtered_genes_from_bed
 from utils import TISSUES_early_testing
 
 
-def _load_model_for_inference():
+def _tensor_out_to_array(tensor, idx):
+    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+
+
+def _load_GAT_model_for_inference(
+    in_size, 
+    embedding_size,
+    num_layers,
+    checkpoint,
+    map_location
+):
     """_summary_ of function"""
     model = GATv2(
-        in_size=41,
-        embedding_size=256,
+        in_size=in_size,
+        embedding_size=embedding_size,
         out_channels=1,
-        num_layers=2,
+        num_layers=num_layers,
         heads=2,
     ).to_device()
+    
+    checkpoint = torch.load(checkpoint, map_location=map_location)
+    model.load_state_dict(checkpoint, strict=False)
+    model.to_device()
 
     return model
 
 
-def _load_checkpoint(checkpoint: str, map_location: str):
-    checkpoint = torch.load(checkpoint, map_location=map_location)
-
-
-def _tensor_out_to_array(tensor, idx):
-    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
-
-    
+def _load_graph_data(
+    experiment_name,
+    graph_type,
+    root_dir,
+    targets_types,
+    test_chrs,
+    val_chrs,
+    randomize_feats,
+    zero_node_feats,
+):
+    return graph_to_pytorch(
+        experiment_name=experiment_name,
+        graph_type=graph_type,
+        root_dir=root_dir,
+        targets_types=targets_types,
+        test_chrs=test_chrs,
+        val_chrs=val_chrs,
+        randomize_feats=randomize_feats,
+        zero_node_feats=zero_node_feats,
+    )
 
 
 @torch.no_grad()
-def test(model, device, data_loader, epoch):
+def inference(model, device, data_loader, epoch):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
@@ -155,7 +181,7 @@ def main(
             batch_size=1024,
             input_nodes=baseline_data.test_mask,
         )
-        rmse, outs, labels = test(
+        rmse, outs, labels = inference(
             model=model,
             device=device,
             data_loader=loader,
@@ -192,7 +218,7 @@ def main(
             batch_size=1024,
             input_nodes=perturbed_data.test_mask,
         )
-        rmse, outs, labels = test(
+        rmse, outs, labels = inference(
             model=model,
             device=device,
             data_loader=loader,
@@ -217,7 +243,7 @@ def main(
             batch_size=1024,
             input_nodes=perturbed_data.test_mask,
         )
-        rmse, outs, labels = test(
+        rmse, outs, labels = inference(
             model=model,
             device=device,
             data_loader=loader,

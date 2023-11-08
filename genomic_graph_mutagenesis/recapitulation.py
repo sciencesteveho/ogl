@@ -28,31 +28,12 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from gnn import GATv2
 from graph_to_pytorch import graph_to_pytorch
+from perturbation import _load_GAT_model_for_inference
+from perturbation import _load_graph_data
+from perturbation import _tensor_out_to_array
 from utils import filtered_genes_from_bed
 from utils import TISSUES_early_testing
-
-
-def _load_model_for_inference():
-    """_summary_ of function"""
-    model = GATv2(
-        in_size=41,
-        embedding_size=256,
-        out_channels=1,
-        num_layers=2,
-        heads=2,
-    ).to_device()
-
-    return model
-
-
-def _load_checkpoint(checkpoint: str, map_location: str):
-    checkpoint = torch.load(checkpoint, map_location=map_location)
-
-
-def _tensor_out_to_array(tensor, idx):
-    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
 def _pre_nest_tissue_dict(tissues):
@@ -217,7 +198,7 @@ def _ablate_random_genes():
 
 
 @torch.no_grad()
-def test(model, device, data_loader, epoch):
+def inference(model, device, data_loader, epoch):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
@@ -250,7 +231,14 @@ def main(
     coessentiality: bool = False,
 ) -> None:
     """Main function"""
-
+        
+    # get big ugly names out the way!
+    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
+    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
+    positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt"
+    negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt"
+    
     def _perturb_loader(data):
         test_loader = NeighborLoader(
             data,
@@ -258,7 +246,15 @@ def main(
             batch_size=1024,
             input_nodes=data.test_mask,
         )
+    
+    # open graph
+    with open(graph, "rb") as file:
+        graph = pickle.load(file)
 
+    # open idxs
+    with open(graph_idxs, "rb") as file:
+        graph_idxs = pickle.load(file)
+        
     # check for device
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
@@ -268,43 +264,19 @@ def main(
         device = torch.device("cpu")
         map_location = torch.device("cpu")
 
-    # only using to check size for model init
-    # data = graph_to_pytorch(
-    #     root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-    #     graph_type="full",
-    # )
-    # data.x.shape[1]  # 41
-
-    # prepare stuff
-    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
-    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
-
-    # open graph
-    with open(graph, "rb") as file:
-        graph = pickle.load(file)
-
-    # open idxs
-    with open(graph_idxs, "rb") as file:
-        graph_idxs = pickle.load(file)
-
-    # initialize model model
-    model = GraphSAGE(
+    # initialize model and load checkpoint weights
+    model = _load_GAT_model_for_inference(
         in_size=41,
-        embedding_size=250,
-        out_channels=2,
+        embedding_size=256,
         num_layers=2,
-    ).to(device)
-
-    # load checkpoint
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/GraphSAGE_2_250_5e-05_batch1024_neighbor_idx_early_epoch_52_mse_0.8029395813403142.pt"
-    checkpoint = torch.load(checkpoint_file, map_location=map_location)
-    model.load_state_dict(checkpoint, strict=False)
-    model.to(device)
+        checkpoint=checkpoint_file,
+        map_location=map_location
+    )
 
     # prepare IDXs for different perturbations
     coessential_genes = _get_idxs_for_coessential_pairs(
-        positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt",
-        negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt",
+        positive_coessential_genes=positive_coessential_genes,
+        negative_coessential_genes=negative_coessential_genes,
         graph_idxs=graph_idxs,
     )
 
@@ -313,8 +285,8 @@ def main(
         graph_idxs=graph_idxs,
     )
 
-    test_genes = random.sample(list(coessential_genes.keys()), 10)
-    test_random = random.sample(list(random_co_idxs.keys()), 10)
+    # test_genes = random.sample(list(coessential_genes.keys()), 10)
+    # test_random = random.sample(list(random_co_idxs.keys()), 10)
 
     if need_baseline:
         # get baseline expression
@@ -329,7 +301,7 @@ def main(
             batch_size=1024,
             input_nodes=baseline_data.test_mask,
         )
-        rmse, outs, labels = test(
+        rmse, outs, labels = inference(
             model=model,
             device=device,
             data_loader=loader,
@@ -337,21 +309,7 @@ def main(
         )
 
         predictions_median = _tensor_out_to_array(outs, 0)
-        # predictions_fold = _tensor_out_to_array(outs, 1)
         labels_median = _tensor_out_to_array(labels, 0)
-        # labels_fold = _tensor_out_to_array(labels, 1)
-
-        with open("base_predictions_median.pkl", "wb") as f:
-            pickle.dump(predictions_median, f)
-
-        # with open("predictions_fold.pkl", "wb") as f:
-        #     pickle.dump(predictions_fold, f)
-
-        with open("base_labels_median.pkl", "wb") as f:
-            pickle.dump(labels_median, f)
-
-        with open("labels_fold.pkl", "wb") as f:
-            pickle.dump(labels_fold, f)
 
 
     # coessentiality
@@ -371,7 +329,7 @@ def main(
                 batch_size=1024,
                 input_nodes=baseline_data.test_mask,
             )
-            mse, outs, labels = test(
+            mse, outs, labels = inference(
                 model=model,
                 device=device,
                 data_loader=loader,
@@ -387,7 +345,7 @@ def main(
                     node_remove_edges=co_gene,
                 )
                 loader = _perturb_loader(perturbed_graph)
-                inference = test(
+                inference = inference(
                     model=model,
                     device=device,
                     data_loader=loader,
