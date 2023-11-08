@@ -169,7 +169,20 @@ def _random_gene_pairs(
             subdict["negative"][idx1].append(idx2)
 
     return random_copairs
-        
+
+
+def _store_baseline():
+    """STEPS
+    1. store baseline TPMs for each gene from checkpoint model
+    for coessential dict and random pairs dict:
+        for each key:
+            remove the key from the graph
+            run inference
+            for each value:
+                get inferred TPM
+                calculate difference from baseline
+                store back into a dict
+    """
         
 def _scale_coordinate(scaler, coordinate):
     """_summary_ of function"""

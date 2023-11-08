@@ -11,8 +11,13 @@ import argparse
 from datetime import datetime
 import logging
 import math
+from typing import Any, Dict, Optional
 
 import torch
+from torch.nn import BatchNorm1d
+from torch.nn import Linear
+from torch.nn import ReLU
+from torch.nn import Sequential
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.explain import Explainer
@@ -22,7 +27,12 @@ from torch_geometric.loader import RandomNodeLoader
 from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GPSConv
+from torch_geometric.nn import GraphNorm
 from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import TransformerConv
+from torch_geometric.nn.attention import PerformerAttention
+import torch_geometric.transforms as T
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
@@ -46,8 +56,8 @@ class GraphSAGE(torch.nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
-        self.convs = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
 
         self.convs.append(SAGEConv(in_size, embedding_size, aggr="sum"))
         for _ in range(num_layers - 1):
@@ -85,8 +95,8 @@ class GCN(torch.nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
-        self.convs = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
 
         self.convs.append(GCNConv(in_size, embedding_size))
         for _ in range(num_layers - 1):
@@ -119,13 +129,14 @@ class GATv2(torch.nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
-        self.convs = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
 
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
         for _ in range(num_layers - 1):
             self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
-            self.batch_norms.append(BatchNorm(heads * embedding_size))
+            # self.batch_norms.append(BatchNorm(heads * embedding_size))
+            self.batch_norms.append(GraphNorm(heads * embedding_size))
 
         self.lin1 = nn.Linear(heads * embedding_size, embedding_size)
         self.lin2 = nn.Linear(embedding_size, out_channels)
@@ -140,7 +151,77 @@ class GATv2(torch.nn.Module):
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.lin2(x)
         return x
+    
+    
+class GPSTransformer(torch.nn.Module):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        walk_length: int,
+        channels: int,
+        pe_dim: int,
+        num_layers: int,
+    ):
+        super().__init__()
 
+        self.node_emb = nn.Linear(in_size, embedding_size - pe_dim)
+        self.pe_lin = nn.Linear(walk_length, pe_dim)
+        self.pe_norm = nn.BatchNorm1d(walk_length)
+
+        self.convs = torch.nn.ModuleList()
+        for _ in range(num_layers):
+            gcnconv = GCNConv(embedding_size, embedding_size)
+            conv = GPSConv(
+                channels,
+                gcnconv,
+                heads=4,
+                attn_kwargs={"dropout": 0.5}
+            )
+            self.convs.append(conv)
+
+        self.mlp = Sequential(
+            Linear(channels, channels // 2),
+            ReLU(),
+            Linear(channels // 2, channels // 4),
+            ReLU(),
+            Linear(channels // 4, 1),
+        )
+        
+        self.redraw_projection = RedrawProjection(
+            self.convs,
+            None)
+
+    def forward(self, x, pe, edge_index, batch):
+        x_pe = self.pe_norm(pe)
+        x = torch.cat((self.node_emb(x.squeeze(-1)), self.pe_lin(x_pe)), 1)
+
+        for conv in self.convs:
+            x = conv(x, edge_index, batch)
+        return self.mlp(x)
+    
+    
+class RedrawProjection:
+    def __init__(self, model: torch.nn.Module,
+                 redraw_interval: Optional[int] = None):
+        self.model = model
+        self.redraw_interval = redraw_interval
+        self.num_last_redraw = 0
+
+    def redraw_projections(self):
+        if not self.model.training or self.redraw_interval is None:
+            return
+        if self.num_last_redraw >= self.redraw_interval:
+            fast_attentions = [
+                module for module in self.model.modules()
+                if isinstance(module, PerformerAttention)
+            ]
+            for fast_attention in fast_attentions:
+                fast_attention.redraw_projection_matrix()
+            self.num_last_redraw = 0
+            return
+        self.num_last_redraw += 1
+        
 
 ### baseline MLP
 class MLP(torch.nn.Module):
@@ -492,9 +573,21 @@ def main() -> None:
             embedding_size=args.dimensions,
             out_channels=1,
         ).to(device)
+    if args.model == "GPS":
+        model = GPSTransformer(
+            in_size=data.x.shape[1],
+            embedding_size=args.dimensions,
+            channels=64,
+            pe_dim=8,
+            num_layers=args.layers,
+        ).to(device)
 
     # set gradient descent optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=args.learning_rate,
+        weight_decay=1e-5,
+    )
 
     epochs = 100
     best_validation = stop_counter = 0
@@ -577,8 +670,7 @@ def main() -> None:
     # first, load checkpoints
     checkpoint = torch.load(
         f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
-        map_location=torch.device("cuda:" + str(0)),
-    )
+        map_location=torch.device("cuda:" + str(0)),)
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
@@ -607,8 +699,7 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         outdir=f"{working_directory}/models/plots",
-        rmse=rmse,
-    )
+        rmse=rmse,)
 
     # plot training losses
     plot_training_losses(

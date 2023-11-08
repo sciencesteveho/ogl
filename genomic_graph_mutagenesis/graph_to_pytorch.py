@@ -142,6 +142,7 @@ def graph_to_pytorch(
     node_remove_edges: str = None,
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     single_gene: str = None,
+    scaled: bool = False,
 ):
     """_summary_
 
@@ -222,6 +223,10 @@ def graph_to_pytorch(
     val_mask[val] = True
 
     # get target values. shape should be [num_nodes, 4]
+    if scaled:
+        targets = f"{graph_dir}/targets_scaled.pkl"
+    else:
+        targets = f"{graph_dir}/targets.pkl"
     target_values = _get_target_values_for_mask(targets=f"{graph_dir}/targets.pkl")
 
     # change the key in one dict to the value of another dict, which has its key as the index
