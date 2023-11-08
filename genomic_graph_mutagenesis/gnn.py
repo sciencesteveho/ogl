@@ -468,24 +468,6 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-        # prepare data
-        # if args.zero_nodes == "true":
-        #     data = graph_to_pytorch(
-        #         experiment_name=params["experiment_name"],
-        #         root_dir=root_dir,
-        #         graph_type=args.graph_type,
-        #         only_expression_no_fold=args.expression_only,
-        #         zero_node_feats=,
-        #     )
-        # elif args.randomize_node_feats == "true":
-        #     data = graph_to_pytorch(
-        #         experiment_name=params["experiment_name"],
-        #         root_dir=root_dir,
-        #         graph_type=args.graph_type,
-        #         only_expression_no_fold=args.expression_only,
-        #         random_node_feats=True,
-        #     )
-        # else:
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
@@ -496,6 +478,10 @@ def main() -> None:
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
     )
+    
+    if args.model == "GPS":
+        transform = T.AddRandomWalkPE(walk_length=20, attr_name='pe')
+        data = transform(data)
 
     # data loaders
     if args.loader == "random":
@@ -577,6 +563,7 @@ def main() -> None:
         model = GPSTransformer(
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
+            walk_length=20,
             channels=64,
             pe_dim=8,
             num_layers=args.layers,
@@ -588,6 +575,10 @@ def main() -> None:
         lr=args.learning_rate,
         weight_decay=1e-5,
     )
+    
+    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20,
+    #                             min_lr=0.00001)
+
 
     epochs = 100
     best_validation = stop_counter = 0
@@ -634,7 +625,8 @@ def main() -> None:
                 epoch=epoch,
                 mask="test",
             )
-
+            
+        # scheduler.step(val_acc)
         if args.early_stop == "true":
             if epoch == 0:
                 best_validation = val_acc
