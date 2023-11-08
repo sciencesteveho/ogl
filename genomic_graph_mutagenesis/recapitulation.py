@@ -30,6 +30,7 @@ from tqdm import tqdm
 
 from gnn import GATv2
 from graph_to_pytorch import graph_to_pytorch
+from utils import filtered_genes_from_bed
 from utils import TISSUES_early_testing
 
 
@@ -54,62 +55,136 @@ def _tensor_out_to_array(tensor, idx):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
+def _pre_nest_tissue_dict(tissues):
+    return {tissue: {} for tissue in tissues}
+
+
 def _get_idxs_for_coessential_pairs(
-    coessential_pos: str,
-    coessential_neg: str,
+    positive_coessential_genes: str,
+    negative_coessential_genes: str,
     graph_idxs: Dict[str, str],
 ) -> List[Tuple[int, int]]:
-    """_summary_ of function"""
-
-    def _dict_init(first_pairs, second_pairs):
-        keys = []
-        for tissue in TISSUES_early_testing:
-            for pair in first_pairs:
-                try:
-                    keys.append(graph_idxs[f"{pair[0]}_{tissue}"])
-                except KeyError:
-                    pass
-        return set(keys)
-
-    pos_pairs = [
-        (line[0], line[1])
-        for line in csv.reader(open(coessential_pos, newline=""), delimiter="\t")
-    ]
-
-    neg_pairs = [
-        (line[0], line[1])
-        for line in csv.reader(open(coessential_neg, newline=""), delimiter="\t")
-    ]
-
-    pos_keys = _dict_init(pos_pairs, neg_pairs)
-    positive_coessential_idxs = {key: [] for key in pos_keys}  # init dict
-    for tissue in TISSUES_early_testing:
-        for tup in pos_pairs:
+    """_summary_ of function
+    
+    Create a dictionary of coessential genes for each tissue of the following
+    format:
+        coessential_genes: {
+            'tissue_1': {
+                positive: {idx1: [], idx2: []},
+                negative: {idx1: [], idx2: []},
+            },
+            'tissue_2': {
+                positive: {idx1: [], idx2: []},
+                negative: {idx1: [], idx2: []},
+            },
+        }
+    """
+    def _prepopulate_dict_with_keys(pairs, tissue):
+        all_genes = [tup[0] for tup in pairs] + [tup[1] for tup in pairs]
+        return {graph_idxs[f"{gene}_{tissue}"]: [] for gene in all_genes if f"{gene}_{tissue}" in graph_idxs.keys()}
+        
+    def _populate_dict_with_co_pairs(pairs, tissue, pre_dict):    
+        for pair in pairs:
             try:
-                if graph_idxs[f"{tup[1]}_{tissue}"] < graph_idxs[f"{tup[0]}_{tissue}"]:
-                    positive_coessential_idxs[graph_idxs[f"{tup[0]}_{tissue}"]].append(
-                        graph_idxs[f"{tup[1]}_{tissue}"]
-                    )
+                idx1 = graph_idxs[f"{pair[0]}_{tissue}"]
+                idx2 = graph_idxs[f"{pair[1]}_{tissue}"]
+                if idx2 < idx1:
+                    pre_dict[idx1].append(idx2)
             except KeyError:
                 pass
-    return positive_coessential_idxs
+        return {key: value for key, value in pre_dict.items() if value}
+
+    positive_pairs = [
+        (line[0], line[1])
+        for line in csv.reader(open(positive_coessential_genes, newline=""), delimiter="\t")
+    ]
+
+    negative_pairs = [
+        (line[0], line[1])
+        for line in csv.reader(open(negative_coessential_genes, newline=""), delimiter="\t")
+    ]
+    
+    coessential_genes = _pre_nest_tissue_dict(TISSUES_early_testing)
+    for key in coessential_genes.keys():
+        coessential_genes[key] = {
+            "positive": _populate_dict_with_co_pairs(pairs=positive_pairs, tissue=key, pre_dict=_prepopulate_dict_with_keys(pairs=positive_pairs, tissue=key),),
+            "negative": _populate_dict_with_co_pairs(pairs=negative_pairs, tissue=key, pre_dict=_prepopulate_dict_with_keys(pairs=negative_pairs, tissue=key),),
+        }
+    
+    return coessential_genes
 
 
 def _random_gene_pairs(
-    coessential_idxs: Dict[str, str],
+    coessential_genes: Dict[int, List[int]],
     graph_idxs: Dict[str, str],
+    model_dir: str = '/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/alldata_combinedloops',
 ) -> List[Tuple[int, int]]:
     """_summary_ of function"""
-    random_pool = list(graph_idxs.values())
-    for key in coessential_idxs.keys():
-        num_elements = len(coessential_idxs[key])
-        coessential_idxs[key] = random.sample((random_pool), num_elements)
+    
+    def _get_number_of_pairs(subdict):
+        total = sum(len(value) + 1 for value in subdict.values())
+        return total
 
-    return coessential_idxs
+    def _gencode_to_idx_list(tissue, genes):
+        gencode_keys = set(f"{gene}_{tissue}" for gene in genes)
+        return [graph_idxs[key] for key in gencode_keys if key in graph_idxs]
+
+    def _generate_random_pairs(tissue_genes, total_pairs):
+        gencode_idxs = _gencode_to_idx_list(tissue=tissue, genes=tissue_genes)
+        random_pairs = []
+
+        for _ in range(total_pairs):
+            idx1 = random.choice(gencode_idxs)
+            idx2 = random.choice(gencode_idxs)
+            if idx2 < idx1:
+                random_pairs.append((idx1, idx2))
+
+        return random_pairs
+    
+    # initialize the dict
+    random_copairs = _pre_nest_tissue_dict(TISSUES_early_testing)
+    
+    # get number of pairs to emulate, use first tissue as reference
+    first_tissue = list(coessential_genes.keys())[0]
+    total_positive_pairs = _get_number_of_pairs(coessential_genes[first_tissue]["positive"])
+    total_negative_pairs = _get_number_of_pairs(coessential_genes[first_tissue]["negative"])
+
+    for tissue, subdict in random_copairs.items():
+        subdict["positive"] = {}
+        subdict["negative"] = {}
+        tissue_genes = filtered_genes_from_bed(
+            tpm_filtered_genes=f"{model_dir}/{tissue}/tpm_filtered_genes.bed",
+        )
+        positive_pairs = _generate_random_pairs(tissue_genes, total_positive_pairs)
+        negative_pairs = _generate_random_pairs(tissue_genes, total_negative_pairs)
+
+        for idx1, idx2 in positive_pairs:
+            if idx1 not in subdict["positive"]:
+                subdict["positive"][idx1] = []
+            subdict["positive"][idx1].append(idx2)
+        
+        for idx1, idx2 in negative_pairs:
+            if idx1 not in subdict["negative"]:
+                subdict["negative"][idx1] = []
+            subdict["negative"][idx1].append(idx2)
+
+    return random_copairs
+        
+        
+def _scale_coordinate(scaler, coordinate):
+    """_summary_ of function"""
 
 
 def _perturb_eQTLs():
-    """_summary_ of function"""
+    """
+    idxs:
+        0 = tissue
+        1 = gene
+        5 = beta
+        8 = chrom
+        9 = start
+        10 = end
+    if del in 4"""
 
 
 def _remove_lethal_genes():
@@ -188,8 +263,8 @@ def main(
     # data.x.shape[1]  # 41
 
     # prepare stuff
-    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl"
-    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl"
+    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
+    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
 
     # open graph
     with open(graph, "rb") as file:
@@ -214,18 +289,18 @@ def main(
     model.to(device)
 
     # prepare IDXs for different perturbations
-    coessential_idxs = _get_idxs_for_coessential_pairs(
-        coessential_pos="/ocean/projects/bio210019p/stevesho/data/preprocess/perturbations/coessential_gencode_named_pos.txt",
-        coessential_neg="/ocean/projects/bio210019p/stevesho/data/preprocess/perturbations/coessential_gencode_named_neg.txt",
+    coessential_genes = _get_idxs_for_coessential_pairs(
+        positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt",
+        negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt",
         graph_idxs=graph_idxs,
     )
 
     random_co_idxs = _random_gene_pairs(
-        coessential_idxs=coessential_idxs,
+        coessential_genes=coessential_genes,
         graph_idxs=graph_idxs,
     )
 
-    test_genes = random.sample(list(coessential_idxs.keys()), 10)
+    test_genes = random.sample(list(coessential_genes.keys()), 10)
     test_random = random.sample(list(random_co_idxs.keys()), 10)
 
     if need_baseline:
@@ -265,63 +340,12 @@ def main(
         with open("labels_fold.pkl", "wb") as f:
             pickle.dump(labels_fold, f)
 
-    # prepare feature perturbation data
-    if feat_perturbation:
-        perturbed_data = graph_to_pytorch(
-            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-            graph_type="full",
-            node_perturbation="h3k27ac",
-        )
-        loader = NeighborLoader(
-            data=perturbed_data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=1024,
-            input_nodes=perturbed_data.test_mask,
-        )
-        rmse, outs, labels = test(
-            model=model,
-            device=device,
-            data_loader=loader,
-            epoch=0,
-        )
-        labels = _tensor_out_to_array(labels, 0)
-        h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
-        with open("h3k27ac_perturbed_expression.pkl", "wb") as f:
-            pickle.dump(h3k27ac_perturbed, f)
-
-        with open("h3k27ac_labels.pkl", "wb") as f:
-            pickle.dump(labels, f)
-
-        perturbed_data = graph_to_pytorch(
-            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-            graph_type="full",
-            node_perturbation="h3k4me3",
-        )
-        loader = NeighborLoader(
-            data=perturbed_data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=1024,
-            input_nodes=perturbed_data.test_mask,
-        )
-        rmse, outs, labels = test(
-            model=model,
-            device=device,
-            data_loader=loader,
-            epoch=0,
-        )
-        labels = _tensor_out_to_array(labels, 0)
-        h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
-        with open("h3k4me3_perturbed_expression.pkl", "wb") as f:
-            pickle.dump(h3k4me3_perturbed, f)
-
-        with open("h3k4me3_labels.pkl", "wb") as f:
-            pickle.dump(labels, f)
 
     # coessentiality
     # get baseline expression
     if coessentiality:
         baselines = {}
-        for gene in coessential_idxs.keys():
+        for gene in coessential_genes.keys():
             baselines[gene] = []
             baseline_data = graph_to_pytorch(
                 root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
@@ -342,7 +366,7 @@ def main(
             )
             baselines.append(baseline)
             # baseline_measure
-            for co_gene in coessential_idxs[gene]:
+            for co_gene in coessential_genes[gene]:
                 perturbed_graph = graph_to_pytorch(
                     root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
                     graph_type="full",
@@ -372,14 +396,14 @@ if __name__ == "__main__":
 
 # pos_idxs, neg_idxs = {}, {}
 # for tissue in TISSUES_early_testing:
-#     for tup in pos_pairs:
+#     for tup in positive_pairs:
 #         pos_idxs[graph_idxs[f"{tup[0]}_{tissue}"]] = graph_idxs[f"{tup[1]}_{tissue}"]
 #     pos_idxs[]
 #     pos_idxs.extend(
 #         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in pos_pairs
+#         for tup in positive_pairs
 #     )
 #     neg_idxs.extend(
 #         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in neg_pairs
+#         for tup in negative_pairs
 #     )
