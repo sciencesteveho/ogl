@@ -14,6 +14,7 @@
 
 """_summary_ of project"""
 
+import argparse
 import csv
 import math
 import os
@@ -29,10 +30,11 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
+from perturbation import _device_check
 from perturbation import _load_GAT_model_for_inference
-from perturbation import _load_graph_data
 from perturbation import _tensor_out_to_array
 from utils import filtered_genes_from_bed
+from utils import parse_yaml
 from utils import TISSUES_early_testing
 
 
@@ -239,6 +241,11 @@ def main(
     positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt"
     negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt"
     
+    # parse yaml for params, used to load data
+    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml'
+    # parser = argparse.ArgumentParser()
+    params = parse_yaml(config)
+    
     def _perturb_loader(data):
         test_loader = NeighborLoader(
             data,
@@ -256,13 +263,7 @@ def main(
         graph_idxs = pickle.load(file)
         
     # check for device
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
-        device = torch.device("cuda:" + str(0))
-        map_location = torch.device("cuda:" + str(0))
-    else:
-        device = torch.device("cpu")
-        map_location = torch.device("cpu")
+    device, map_location = _device_check()
 
     # initialize model and load checkpoint weights
     model = _load_GAT_model_for_inference(
@@ -270,7 +271,8 @@ def main(
         embedding_size=256,
         num_layers=2,
         checkpoint=checkpoint_file,
-        map_location=map_location
+        map_location=map_location,
+        device=device,
     )
 
     # prepare IDXs for different perturbations
@@ -287,29 +289,49 @@ def main(
 
     # test_genes = random.sample(list(coessential_genes.keys()), 10)
     # test_random = random.sample(list(random_co_idxs.keys()), 10)
+    working_directory = params["working_directory"]
+    root_dir = f"{working_directory}/{params['experiment_name']}"
+    
+    data = graph_to_pytorch(
+        experiment_name=params["experiment_name"],
+        graph_type='full',
+        root_dir=root_dir,
+        targets_types=params["training_targets"]["targets_types"],
+        test_chrs=params["training_targets"]["test_chrs"],
+        val_chrs=params["training_targets"]["val_chrs"],
+    )
+    
+    batch_size=32
 
-    if need_baseline:
-        # get baseline expression
-        baseline_data = graph_to_pytorch(
-            root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-            graph_type="full",
-            only_expression_no_fold=True,
-        )
-        loader = NeighborLoader(
-            data=baseline_data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=1024,
-            input_nodes=baseline_data.test_mask,
-        )
-        rmse, outs, labels = inference(
-            model=model,
-            device=device,
-            data_loader=loader,
-            epoch=0,
-        )
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=batch_size,
+        input_nodes=data.train_mask,
+        shuffle=True,
+    )
+    test_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=batch_size,
+        input_nodes=data.test_mask,
+    )
+    val_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=batch_size,
+        input_nodes=data.val_mask,
+    )
+    
+    rmse, outs, labels = inference(
+        model=model,
+        device=device,
+        data_loader=test_loader,
+        epoch=0,
+    )
 
-        predictions_median = _tensor_out_to_array(outs, 0)
-        labels_median = _tensor_out_to_array(labels, 0)
+    predictions_median = _tensor_out_to_array(outs, 0)
+    labels_median = _tensor_out_to_array(labels, 0)
 
 
     # coessentiality

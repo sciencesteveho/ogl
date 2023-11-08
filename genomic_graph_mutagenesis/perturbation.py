@@ -37,13 +37,21 @@ from utils import TISSUES_early_testing
 def _tensor_out_to_array(tensor, idx):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
+def _device_check():
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
+        return torch.device("cuda:" + str(0)), torch.device("cuda:" + str(0))
+    else:
+        return torch.device("cpu"), torch.device("cpu")
+
 
 def _load_GAT_model_for_inference(
     in_size, 
     embedding_size,
     num_layers,
     checkpoint,
-    map_location
+    map_location,
+    device,
 ):
     """_summary_ of function"""
     model = GATv2(
@@ -52,11 +60,11 @@ def _load_GAT_model_for_inference(
         out_channels=1,
         num_layers=num_layers,
         heads=2,
-    ).to_device()
+    ).to(device)
     
     checkpoint = torch.load(checkpoint, map_location=map_location)
     model.load_state_dict(checkpoint, strict=False)
-    model.to_device()
+    model.to(device)
 
     return model
 
@@ -117,14 +125,6 @@ def main(
     coessentiality: bool = False,
 ) -> None:
     """Main function"""
-
-    def _perturb_loader(data):
-        test_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=1024,
-            input_nodes=data.test_mask,
-        )
 
     # check for device
     if torch.cuda.is_available():
