@@ -70,7 +70,7 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
         
     all_genes = []
     for key, value in split.items():
-        for gene in value.items():
+        for gene in value:
             all_genes += gene
 
     return (

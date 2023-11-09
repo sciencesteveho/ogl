@@ -297,47 +297,13 @@ def main(
         num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=batch_size,
         input_nodes=data.all_mask,
-        shuffle=False,
-    )
-    train_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=data.train_mask,
-        shuffle=False,
-    )
-    test_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=data.test_mask,
-    )
-    val_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=data.val_mask,
     )
     
     # perform inference for the three splits
-    _, train_outs, train_labels = train_inference(
+    _, touts, labels = all_inference(
         model=model,
         device=device,
-        data_loader=train_loader,
-        epoch=0,
-    )
-    
-    _, val_outs, val_labels = val_inference(
-        model=model,
-        device=device,
-        data_loader=val_loader,
-        epoch=0,
-    )
-    
-    _, test_outs, test_labels = test_inference(
-        model=model,
-        device=device,
-        data_loader=test_loader,
+        data_loader=all_loader,
         epoch=0,
     )
     
