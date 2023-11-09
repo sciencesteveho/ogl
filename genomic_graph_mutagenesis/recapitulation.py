@@ -294,7 +294,7 @@ def main(
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
+        batch_size=1,
         input_nodes=data.all_mask,
     )
     
