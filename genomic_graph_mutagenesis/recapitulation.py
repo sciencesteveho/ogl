@@ -346,6 +346,11 @@ def main(
         negative_coessential_genes=negative_coessential_genes,
         graph_idxs=graph_idxs,
     )
+
+    random_co_idxs = _random_gene_pairs(
+        coessential_genes=coessential_genes,
+        graph_idxs=graph_idxs,
+    )
     
     # convert to a list of tuples
     # positive = coessential_genes["positive"]
@@ -358,11 +363,10 @@ def main(
     liver_negative = coessential_genes["liver"]["negative"]
     liver_positive = [(key, val) for key, values in liver_positive.items() for val in values]
     liver_negative = [(key, val) for key, values in liver_negative.items() for val in values]
-
-    random_co_idxs = _random_gene_pairs(
-        coessential_genes=coessential_genes,
-        graph_idxs=graph_idxs,
-    )
+    
+    # conver random to a list of tuples as well
+    random_co_testing = random_co_idxs["liver"]["positive"]
+    random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
     
     def _calculate_difference(baseline_dict, perturbed_dict, key1, key2):
         baseline = baseline_expression[key1]
@@ -373,34 +377,62 @@ def main(
     pairs = liver_positive
     liver_perturbed_expression = []
     for x in range(10):
-        for tup in pairs:
-            if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys():
-                data = graph_to_pytorch(
-                    experiment_name=params["experiment_name"],
-                    graph_type='full',
-                    root_dir=root_dir,
-                    targets_types=params["training_targets"]["targets_types"],
-                    test_chrs=params["training_targets"]["test_chrs"],
-                    val_chrs=params["training_targets"]["val_chrs"],
-                    node_remove_edges=[tup[0]]
-                )
-                batch_size=32
-                perturb_loader = NeighborLoader(
-                    data,
-                    num_neighbors=[5, 5, 5, 5, 5, 3],
-                    batch_size=32,
-                    input_nodes=data.all_mask,
-                )
-                _, _, _, perturbed_expression = all_inference(
-                    model=model,
-                    device=device,
-                    data_loader=perturb_loader,
-                )
-                liver_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1]))
+        tup = pairs[x]
+        if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys():
+            data = graph_to_pytorch(
+                experiment_name=params["experiment_name"],
+                graph_type='full',
+                root_dir=root_dir,
+                targets_types=params["training_targets"]["targets_types"],
+                test_chrs=params["training_targets"]["test_chrs"],
+                val_chrs=params["training_targets"]["val_chrs"],
+                node_remove_edges=[tup[0]]
+            )
+            batch_size=2048
+            perturb_loader = NeighborLoader(
+                data,
+                num_neighbors=[5, 5, 5, 5, 5, 3],
+                batch_size=batch_size,
+                input_nodes=data.all_mask,
+            )
+            _, _, _, perturbed_expression = all_inference(
+                model=model,
+                device=device,
+                data_loader=perturb_loader,
+            )
+            liver_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1]))
                 
     # Perturb graphs for random pairs
-                
-                
+    random_perturbed_expression = []
+    total_comp = len(liver_perturbed_expression)
+    random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
+    for key, value in random_co_idxs_for_testing:
+        if key in baseline_expression.keys() and value in baseline_expression.keys():
+            data = graph_to_pytorch(
+                experiment_name=params["experiment_name"],
+                graph_type='full',
+                root_dir=root_dir,
+                targets_types=params["training_targets"]["targets_types"],
+                test_chrs=params["training_targets"]["test_chrs"],
+                val_chrs=params["training_targets"]["val_chrs"],
+                node_remove_edges=[key]
+            )
+            batch_size=2048
+            perturb_loader = NeighborLoader(
+                data,
+                num_neighbors=[5, 5, 5, 5, 5, 3],
+                batch_size=batch_size,
+                input_nodes=data.all_mask,
+            )
+            _, _, _, perturbed_expression = all_inference(
+                model=model,
+                device=device,
+                data_loader=perturb_loader,
+            )
+            random_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, key, value))
+            
+    
+
                 
 
 if __name__ == "__main__":

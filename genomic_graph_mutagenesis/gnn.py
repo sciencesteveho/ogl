@@ -283,7 +283,7 @@ def train_gps(model, device, optimizer, train_loader, epoch):
         data = data.to(device)
         optimizer.zero_grad()
         
-        model.redraw_projection.redraw_projecti
+        model.redraw_projection.redraw_projections()
         out = model(data.x, data.pe, data.edge_index, data.batch)
 
         # calculate loss
