@@ -3,7 +3,7 @@ baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_file
 
 baseloops: peakachu_deepanchor
 
-experiment_name: regulatory_only_peakachu_deepanchor_liveronly_chr1_test_mediantpm
+experiment_name: regulatory_only_onetissue_chr1_test_mediantpm
 
 interaction_types: null
 

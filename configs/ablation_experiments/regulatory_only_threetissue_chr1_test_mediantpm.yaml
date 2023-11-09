@@ -3,7 +3,7 @@ baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_file
 
 baseloops: peakachu_deepanchor
 
-experiment_name: regulatory_only_peakachu_deepanchor_liveronly_chr1_test_mediantpm
+experiment_name: regulatory_only_threetissue_chr1_test_mediantpm
 
 interaction_types: null
 
@@ -11,6 +11,8 @@ nodes: null
 
 tissues:
   - liver
+  - lung
+  - left_ventricle
 
 training_targets:
   average_activity_df: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl
