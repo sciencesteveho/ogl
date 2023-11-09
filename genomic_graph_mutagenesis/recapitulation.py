@@ -39,6 +39,30 @@ from utils import TISSUES_early_testing
 
 
 @torch.no_grad()
+def all_inference(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # calculate loss
+        outs.extend(out[data.all_mask])
+        labels.extend(data.y[data.all_mask])
+        mse.append(F.mse_loss(out[data.all_mask], data.y[data.all_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
+
+@torch.no_grad()
 def train_inference(model, device, data_loader, epoch):
     model.eval()
 
@@ -381,6 +405,8 @@ def main(
         data_loader=test_loader,
         epoch=0,
     )
+    
+    # total = 245164
     
     # def _tensor_out_to_array(tensor, idx):
     #     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)

@@ -90,6 +90,10 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             ],
             dtype=torch.long,
         ),
+        torch.Tensor(
+            [graph_index[gene] for gene in split["train"]+split["test"]+split["validation"] if gene in graph_index.keys()],
+            dtype=torch.long,
+        )
     )
 
 
@@ -201,7 +205,7 @@ def graph_to_pytorch(
             x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
-    graph_index, train, test, val = _get_mask_idxs(index=index, split=split)
+    graph_index, train, test, val, all_idx = _get_mask_idxs(index=index, split=split)
 
     # get individual if querying for single gene
     if single_gene:
@@ -223,7 +227,7 @@ def graph_to_pytorch(
     val_mask[val] = True
     
     all_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    all_mask[train + test + val] = True
+    all_mask[all_idx] = True
 
     # get target values. shape should be [num_nodes, 4]
     if scaled:
