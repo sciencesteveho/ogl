@@ -36,21 +36,6 @@ from utils import filtered_genes_from_bed
 from utils import parse_yaml
 from utils import TISSUES_early_testing
 
-# negative_direction_eqtls = [
-#     ["liver", "ENSG00000157322.17", -1.3680225998813775, "chr16", 70117253, 70117254],
-#     ["aorta", "ENSG00000157322.17", -1.3603281368933724, "chr16", 70117253, 70117254],
-#     ["hippocampus", "ENSG00000154529.14", -1.2627508295506484, "chr9", 42293423, 42293424],
-#     ["pancreas", "ENSG00000230521.1", -1.2545929219146132, "chr6", 29875340, 29875567],
-#     ["lung", "ENSG00000230521.1", -1.187098720385814, "chr6", 29875340, 29875567],
-# ]
-
-# positive_direction_eqtls = [
-#     ["left_ventricle", "ENSG00000181126.13", 1.629405140136749, "chr6", 29986227, 29986299],
-#     ["aorta", "ENSG00000181126.13", 1.57365496389186, "chr6", 29986227, 29986299],
-#     ["hippocampus", "ENSG00000267065.2", 1.5457906875965717, "chr17", 76787243, 76792227],
-#     ["liver", "ENSG00000253301.5", 1.5034768626375365, "chr8", 57205334, 57206689],
-#     ["pancreas", "ENSG00000197083.11", 1.4950484460600506, "chr5", 150798099, 150802038],
-# ]
 
 @torch.no_grad()
 def all_inference(model, device, data_loader):
@@ -103,31 +88,6 @@ def _flatten_inference_array(input_list):
             result_list.append(arr[0])
 
     return result_list
-
-
-def _eqtl_to_coords(eqtl, graph_idxs):
-    """_summary_ of function"""
-    tissue, gene, beta, chrom, start, stop = eqtl
-    idx = graph_idxs[f"{gene}_{tissue}"]
-    begin = start - 1000000
-    end = stop + 1000000
-    chr_window_start = f'{chrom}_{begin}'
-    chr_window_end = f'{chrom}_{end}'
-    return idx, start, stop, chr_window_start, chr_window_end
-
-
-def _get_subset_of_idx_dictionary(dictionary, chrom):
-    """_summary_ of function"""
-    subdict = {key: value for key, value in dictionary.items() if chrom in key}
-    
-    
-def _get_idxs_for_sv(dictionary, graph_idxs, start, stop):
-    idxs = []
-    for key, value in dictionary.items():
-        _, begin, _ = key.split("_", 2)
-        if begin >= start and begin <= stop:
-            idx = graph_idxs[key]
-            idxs.append(idx)
 
 
 def _get_idxs_for_coessential_pairs(
