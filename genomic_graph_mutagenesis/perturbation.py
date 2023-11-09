@@ -231,49 +231,7 @@ def main() -> None:
 
     with open(f"{savedir}/{savestr}_h3k4me3_labels.pkl", "wb") as f:
         pickle.dump(labels, f)
-        
-    # # zero node features
-    # perturbed_data = graph_to_pytorch(
-    #     experiment_name=params["experiment_name"],
-    #     graph_type='full',
-    #     root_dir=root_dir,
-    #     targets_types=params["training_targets"]["targets_types"],
-    #     test_chrs=params["training_targets"]["test_chrs"],
-    #     val_chrs=params["training_targets"]["val_chrs"],
-    #     zero_node_feats="true",
-    # )
-    # loader = NeighborLoader(
-    #     data=perturbed_data,
-    #     num_neighbors=[5, 5, 5, 5, 5, 3],
-    #     batch_size=batch_size,
-    #     input_nodes=perturbed_data.test_mask,
-    # )
-    # _, outs, labels = inference(
-    #     model=model,
-    #     device=device,
-    #     data_loader=loader,
-    #     epoch=0,
-    # )
-    
-    # labels = _tensor_out_to_array(labels, 0)
-    # zero_node_feats_perturbed = _tensor_out_to_array(outs, 0)
-    
-    # with open(f"{savedir}/{savestr}_zero_node_feats_perturbed_expression.pkl", "wb") as f:
-    #     pickle.dump(zero_node_feats_perturbed, f)
-        
-    # with open(f"{savedir}/{savestr}_zero_node_feats_labels.pkl", "wb") as f:
-    #     pickle.dump(labels, f)
-        
-    # # random node features
-    # perturbed_data = graph_to_pytorch(
-    #     experiment_name=params["experiment_name"],
-    #     graph_type='full',
-    #     root_dir=root_dir,
-    #     targets_types=params["training_targets"]["targets_types"],
-    #     test_chrs=params["training_targets"]["test_chrs"],
-    #     val_chrs=params["training_targets"]["val_chrs"],
-    #     randomize_feats="true",
-    # )
+
     
 if __name__ == "__main__":
     main()

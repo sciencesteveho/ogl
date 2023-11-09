@@ -518,6 +518,11 @@ def main() -> None:
         type=str,
         default="false",
     )
+    parser.add_argument(
+        "--randomize_edges",
+        type=str,
+        default="false",
+    )
     args = parser.parse_args()
 
     params = parse_yaml(args.experiment_config)
@@ -533,6 +538,8 @@ def main() -> None:
         savestr = f"{savestr}_random_node_feats"
     if args.expression_only == "true":
         savestr = f"{savestr}_expression_only"
+    if args.randomize_edges == "true":
+        savestr = f"{savestr}_randomize_edges"
 
     # make directories and set up training log
     dir_check_make(f"{working_directory}/models/logs")
@@ -559,6 +566,7 @@ def main() -> None:
         val_chrs=params["training_targets"]["val_chrs"],
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
+        randomize_edges=args.randomize_edges,
         # scaled=True,
     )
     
@@ -793,6 +801,8 @@ def main() -> None:
         experiment_name = f"{experiment_name}_random_node_feats"
     if args.zero_nodes == "true":
         experiment_name = f"{experiment_name}_zero_node_feats"
+    if args.randomize_edges == "true":
+        experiment_name = f"{experiment_name}_randomize_edges"
 
     # plot performance
     plot_predicted_versus_expected(

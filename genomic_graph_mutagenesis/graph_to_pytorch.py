@@ -198,6 +198,18 @@ def graph_to_pytorch(
             ),
             dtype=torch.long,
         )
+    elif randomize_edges == "true":
+        total_edges = len(graph_data["edge_index"][0])
+        total_range = max(np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1]))
+        edge_index = torch.tensor(
+            np.array(
+                [
+                    np.random.randint(0, total_range, total_edges),
+                    np.random.randint(0, total_range, total_edges),
+                ]
+            ),
+            dtype=torch.long,
+        )
     else:
         edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
 

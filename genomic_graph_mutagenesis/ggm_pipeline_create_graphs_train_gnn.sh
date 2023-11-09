@@ -23,13 +23,14 @@ parse_arguments() {
     randomize_node_feats=""
     early_stop=""
     expression_only=""
+    randomize_edges=""
 
     # Use getopt with the additional --options and --longoptions flags
-    options=$(getopt --options "e:p:m:l:d:o:r:b:i:g:z:n:s:h:p" --longoptions "experiment_yaml:,partition:,model:,layers:,dimensions:,loader:,learning_rate:,batch_size:,idx:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,expression_only:,help:" --name "$0" -- "$@")
+    options=$(getopt --options "e:p:m:l:d:o:r:b:i:g:z:n:s:h:p" --longoptions "experiment_yaml:,partition:,model:,layers:,dimensions:,loader:,learning_rate:,batch_size:,idx:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,expression_only:,randomize_edges:,help:" --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
-        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only]"
+        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only] [--randomize_edges]"
         exit 1
     fi
 
@@ -93,8 +94,12 @@ parse_arguments() {
                 expression_only="$2"
                 shift 2
                 ;;
+            -r|--randomize_edges)
+                randomize_edges="$2"
+                shift 2
+                ;;
             -h|--help)
-                echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only]"
+                echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only] [--randomize_edges]"
                 exit 0
                 ;;
             --)
@@ -206,7 +211,8 @@ if ! [ -f ${final_graph} ]; then
         ${zero_nodes} \
         ${randomize_node_feats} \
         ${early_stop} \
-        ${expression_only}
+        ${expression_only} \
+        ${randomize_edges}
 
 else
     echo "Final graph found. Going straight to GNN training."
@@ -226,5 +232,6 @@ else
         ${zero_nodes} \
         ${randomize_node_feats} \
         ${early_stop} \
-        ${expression_only}
+        ${expression_only} \
+        ${randomize_edges}
 fi
