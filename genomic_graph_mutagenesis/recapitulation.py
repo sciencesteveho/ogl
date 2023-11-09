@@ -43,7 +43,7 @@ def all_inference(model, device, data_loader, epoch):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+    pbar.set_description(f"Performing inference")
 
     mse, outs, labels = [], [], []
     for data in data_loader:
@@ -59,7 +59,6 @@ def all_inference(model, device, data_loader, epoch):
         pbar.update(1)
 
     pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
     return math.sqrt(float(loss.mean())), outs, labels
 
 
@@ -300,7 +299,7 @@ def main(
     )
     
     # perform inference for the three splits
-    _, touts, labels = all_inference(
+    _, outs, labels = all_inference(
         model=model,
         device=device,
         data_loader=all_loader,
