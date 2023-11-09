@@ -525,7 +525,7 @@ def main() -> None:
     # set up helper variables
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
-    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_targetnoscale_idx"
+    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout"
 
     # adjust log name
     if args.randomize_node_feats == "true":
