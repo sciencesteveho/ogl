@@ -684,7 +684,7 @@ def main() -> None:
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         if args.idx == "true":
-            if model == "GPS":
+            if args.model == "GPS":
                 val_acc = test_gps(
                     model=model,
                     device=device,

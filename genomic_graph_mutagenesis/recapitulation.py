@@ -78,6 +78,19 @@ def _pre_nest_tissue_dict(tissues):
     return {tissue: {} for tissue in tissues}
 
 
+def _flatten_inference_array(input_list):
+    result_list = []
+
+    for arr in input_list:
+        if len(arr) > 1:
+            mean_value = np.mean(arr)
+            result_list.append(mean_value)
+        else:
+            result_list.append(arr[0])
+
+    return result_list
+
+
 def _get_idxs_for_coessential_pairs(
     positive_coessential_genes: str,
     negative_coessential_genes: str,
@@ -269,6 +282,7 @@ def main(
     checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
     positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt"
     negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt"
+    savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential'
     
     # parse yaml for params, used to load data
     config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml'
@@ -324,7 +338,7 @@ def main(
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=32,
+        batch_size=2048,
         input_nodes=data.all_mask,
     )
     
@@ -352,17 +366,11 @@ def main(
         graph_idxs=graph_idxs,
     )
     
-    # convert to a list of tuples
-    # positive = coessential_genes["positive"]
-    # negative = coessential_genes["negative"]
-    # for key in negative.keys():
-    #     negative[key] = [(key, val) for key, values in negative[key].items() for val in values]
-    # for key in positive.keys():
-    #     positive[key] = [(key, val) for key, values in positive[key].items() for val in values]
-    liver_positive = coessential_genes["liver"]["positive"]
-    liver_negative = coessential_genes["liver"]["negative"]
-    liver_positive = [(key, val) for key, values in liver_positive.items() for val in values]
-    liver_negative = [(key, val) for key, values in liver_negative.items() for val in values]
+    for key, value in coessential_genes.items():
+        liver_positive = coessential_genes["liver"]["positive"]
+        liver_negative = coessential_genes["liver"]["negative"]
+        liver_positive = [(key, val) for key, values in liver_positive.items() for val in values]
+        liver_negative = [(key, val) for key, values in liver_negative.items() for val in values]
     
     # conver random to a list of tuples as well
     random_co_testing = random_co_idxs["liver"]["positive"]
@@ -372,18 +380,6 @@ def main(
         baseline = baseline_dict[key1]
         perturbed = perturbed_dict[key2]
         return abs(baseline - perturbed)
-    
-    def process_arrays(input_list):
-        result_list = []
-
-        for arr in input_list:
-            if len(arr) > 1:
-                mean_value = np.mean(arr)
-                result_list.append(mean_value)
-            else:
-                result_list.append(arr[0])
-
-        return result_list
 
     # Perturb graphs for coessential pairs. Save the difference in expression
     pairs = liver_positive
@@ -443,10 +439,11 @@ def main(
         )
         random_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, key, value))
         
-    liver_perturbed_expression = process_arrays(liver_perturbed_expression)
-    random_perturbed_expression = process_arrays(random_perturbed_expression)
+    liver_perturbed_expression = _flatten_inference_array(liver_perturbed_expression)
+    random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
     
-
+    from scipy import stats
+    stats.ttest_ind(liver_perturbed_expression, random_perturbed_expression)
                 
 
 if __name__ == "__main__":
