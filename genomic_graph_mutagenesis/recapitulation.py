@@ -421,7 +421,7 @@ def main() -> None:
     positive = [(key, val) for key, values in positive.items() for val in values]
     # negative = [(key, val) for key, values in negative.items() for val in values]
     positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
-    positive = random.sample(positive, 500)
+    positive = random.sample(positive, 250)
     
     # convert random to a list of tuples as well
     # random_co_testing = random_co_idxs[key]["positive"]
