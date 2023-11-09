@@ -157,6 +157,7 @@ def graph_to_pytorch(
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     single_gene: str = None,
     scaled: bool = False,
+    remove_node: str = None,
 ):
     """_summary_
 

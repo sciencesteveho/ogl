@@ -39,13 +39,14 @@ from utils import TISSUES_early_testing
 
 
 @torch.no_grad()
-def all_inference(model, device, data_loader, epoch):
+def all_inference(model, device, data_loader):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Performing inference")
 
     mse, outs, labels = [], [], []
+    expression = {}
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
@@ -55,11 +56,22 @@ def all_inference(model, device, data_loader, epoch):
         labels.extend(data.y[data.all_mask])
         mse.append(F.mse_loss(out[data.all_mask], data.y[data.all_mask]).cpu())
         loss = torch.stack(mse)
-
+        
+        # get idxs
+        array_index_only = data.n_id.cpu().numpy() * data.all_mask.cpu().numpy()
+        array_index_only = array_index_only[array_index_only != 0]
+        outdata = out[data.all_mask].cpu().detach().numpy()
+        for idx, _ in enumerate(array_index_only):
+            try:
+                expression[array_index_only[idx]].append(outdata[idx][0])
+            except KeyError:
+                expression[array_index_only[idx]] = []
+                expression[array_index_only[idx]].append(outdata[idx][0])
+                                                     
         pbar.update(1)
 
     pbar.close()
-    return math.sqrt(float(loss.mean())), outs, labels
+    return math.sqrt(float(loss.mean())), outs, labels, expression
 
 
 def _pre_nest_tissue_dict(tissues):
@@ -178,6 +190,14 @@ def _random_gene_pairs(
     return random_copairs
 
 
+def _average_values_across_dict(dictionary):
+    """Given a dictionary where each value is a list of floats, returns the same
+    dictionary but replaces the list of floats with the average"""
+    for key, value in dictionary.items():
+        dictionary[key] = np.mean(value)
+    return dictionary
+
+
 def _store_baseline():
     """STEPS
     1. store baseline TPMs for each gene from checkpoint model
@@ -204,7 +224,17 @@ def _perturb_eQTLs():
         8 = chrom
         9 = start
         10 = end
-    if del in 4"""
+    if del in 4
+    
+    split eqtls into plus and minus, per tissue
+    for eqtl
+        convert start and end to coords
+        in graph
+            delete all nodes between start and end
+            run inference
+            check direction of effect
+        store difference from baseline
+    """
 
 
 def _remove_lethal_genes():
@@ -294,27 +324,20 @@ def main(
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=1,
+        batch_size=32,
         input_nodes=data.all_mask,
     )
     
     # perform inference for the three splits
-    _, outs, labels = all_inference(
+    _, outs, labels, expression = all_inference(
         model=model,
         device=device,
         data_loader=all_loader,
-        epoch=0,
     )
     
-    # total = 245164
-    
-    # def _tensor_out_to_array(tensor, idx):
-    #     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
-    
-    if_true_test = tf.where(tf.equal(tf.constant(data.test_mask), True))
-
-    predictions_median = _tensor_out_to_array(outs, 0)
-    labels_median = _tensor_out_to_array(labels, 0)
+    # average values across the dictionary
+    # each key is an idx
+    baseline_expression = _average_values_across_dict(expression)
 
     # coessentiality
     # prepare IDXs for different perturbations
@@ -323,74 +346,62 @@ def main(
         negative_coessential_genes=negative_coessential_genes,
         graph_idxs=graph_idxs,
     )
+    
+    # convert to a list of tuples
+    # positive = coessential_genes["positive"]
+    # negative = coessential_genes["negative"]
+    # for key in negative.keys():
+    #     negative[key] = [(key, val) for key, values in negative[key].items() for val in values]
+    # for key in positive.keys():
+    #     positive[key] = [(key, val) for key, values in positive[key].items() for val in values]
+    liver_positive = coessential_genes["liver"]["positive"]
+    liver_negative = coessential_genes["liver"]["negative"]
+    liver_positive = [(key, val) for key, values in liver_positive.items() for val in values]
+    liver_negative = [(key, val) for key, values in liver_negative.items() for val in values]
 
     random_co_idxs = _random_gene_pairs(
         coessential_genes=coessential_genes,
         graph_idxs=graph_idxs,
     )
-
-    # get baseline expression
-    if coessentiality:
-        baselines = {}
-        for gene in coessential_genes.keys():
-            baselines[gene] = []
-            baseline_data = graph_to_pytorch(
-                root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-                graph_type="full",
-                single_gene=gene,
-            )
-            loader = NeighborLoader(
-                data=baseline_data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=1024,
-                input_nodes=baseline_data.test_mask,
-            )
-            mse, outs, labels = inference(
-                model=model,
-                device=device,
-                data_loader=loader,
-                epoch=0,
-            )
-            baselines.append(baseline)
-            # baseline_measure
-            for co_gene in coessential_genes[gene]:
-                perturbed_graph = graph_to_pytorch(
-                    root_dir="/ocean/projects/bio210019p/stevesho/data/preprocess",
-                    graph_type="full",
-                    single_gene=gene,
-                    node_remove_edges=co_gene,
+    
+    def _calculate_difference(baseline_dict, perturbed_dict, key1, key2):
+        baseline = baseline_expression[key1]
+        perturbed = perturbed_dict[key2]
+        return abs(baseline - perturbed)
+       
+    # Perturb graphs for coessential pairs. Save the difference in expression
+    pairs = liver_positive
+    liver_perturbed_expression = []
+    for x in range(10):
+        for tup in pairs:
+            if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys():
+                data = graph_to_pytorch(
+                    experiment_name=params["experiment_name"],
+                    graph_type='full',
+                    root_dir=root_dir,
+                    targets_types=params["training_targets"]["targets_types"],
+                    test_chrs=params["training_targets"]["test_chrs"],
+                    val_chrs=params["training_targets"]["val_chrs"],
+                    node_remove_edges=[tup[0]]
                 )
-                loader = _perturb_loader(perturbed_graph)
-                inference = inference(
+                batch_size=32
+                perturb_loader = NeighborLoader(
+                    data,
+                    num_neighbors=[5, 5, 5, 5, 5, 3],
+                    batch_size=32,
+                    input_nodes=data.all_mask,
+                )
+                _, _, _, perturbed_expression = all_inference(
                     model=model,
                     device=device,
-                    data_loader=loader,
-                    epoch=0,
+                    data_loader=perturb_loader,
                 )
-                baselines[gene].append(inference)
-
-        with open("coessentiality.pkl", "wb") as f:
-            pickle.dump(baselines, f)
-
+                liver_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1]))
+                
+    # Perturb graphs for random pairs
+                
+                
+                
 
 if __name__ == "__main__":
     main()
-    # main(
-    #     model="/ocean/projects/bio210019p/shared/model_checkpoint.pt",
-    #     graph="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/scaled/all_tissue_full_graph_scaled.pkl",
-    #     graph_idxs="/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/all_tissue_full_graph_idxs.pkl",
-    # )
-
-# pos_idxs, neg_idxs = {}, {}
-# for tissue in TISSUES_early_testing:
-#     for tup in positive_pairs:
-#         pos_idxs[graph_idxs[f"{tup[0]}_{tissue}"]] = graph_idxs[f"{tup[1]}_{tissue}"]
-#     pos_idxs[]
-#     pos_idxs.extend(
-#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in positive_pairs
-#     )
-#     neg_idxs.extend(
-#         (graph_idxs[f"{tup[0]}_{tissue}"], graph_idxs[f"{tup[1]}_{tissue}"])
-#         for tup in negative_pairs
-#     )

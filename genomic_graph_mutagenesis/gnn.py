@@ -272,6 +272,34 @@ def train(model, device, optimizer, train_loader, epoch):
     return total_loss / total_examples
 
 
+def train_gps(model, device, optimizer, train_loader, epoch):
+    model.train()
+
+    pbar = tqdm(total=len(train_loader))
+    pbar.set_description(f"Training epoch: {epoch:04d}")
+
+    total_loss = total_examples = 0
+    for data in train_loader:
+        data = data.to(device)
+        optimizer.zero_grad()
+        
+        model.redraw_projection.redraw_projecti
+        out = model(data.x, data.pe, data.edge_index, data.batch)
+
+        # calculate loss
+        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
+        loss.backward()
+        optimizer.step()
+
+        total_loss += float(loss) * int(data.train_mask.sum())
+        total_examples += int(data.train_mask.sum())
+
+        pbar.update(1)
+
+    pbar.close()
+    return total_loss / total_examples
+
+
 @torch.no_grad()
 def test(model, device, data_loader, epoch, mask):
     model.eval()
@@ -331,6 +359,35 @@ def test_with_idxs(model, device, data_loader, epoch, mask):
 
 
 @torch.no_grad()
+def test_gps(model, device, data_loader, epoch, mask):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse = []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.pe, data.edge_index, data.batch)
+
+        # calculate loss
+        if mask == "val":
+            idx_mask = data.val_mask
+        if mask == "test":
+            idx_mask = data.test_mask
+        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
+        # outs.extend(out[idx_mask])
+        # labels.extend(data.y[idx_mask])
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean()))
+
+
+@torch.no_grad()
 def inference(model, device, data_loader, epoch):
     model.eval()
 
@@ -352,6 +409,30 @@ def inference(model, device, data_loader, epoch):
 
     pbar.close()
     # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
+
+
+@torch.no_grad()
+def inference_gps(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.pe, data.edge_index, data.batch)
+
+        # calculate loss
+        outs.extend(out[data.test_mask])
+        labels.extend(data.y[data.test_mask])
+        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
     return math.sqrt(float(loss.mean())), outs, labels
 
 
@@ -583,32 +664,58 @@ def main() -> None:
     epochs = 100
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
-        loss = train(
-            model=model,
-            device=device,
-            optimizer=optimizer,
-            train_loader=train_loader,
-            epoch=epoch,
-        )
+        if args.model == "GPS":
+            loss = train_gps(
+                model=model,
+                device=device,
+                optimizer=optimizer,
+                train_loader=train_loader,
+                epoch=epoch,
+            )
+        else:
+            loss = train(
+                model=model,
+                device=device,
+                optimizer=optimizer,
+                train_loader=train_loader,
+                epoch=epoch,
+            )
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         if args.idx == "true":
-            val_acc = test_with_idxs(
-                model=model,
-                device=device,
-                data_loader=val_loader,
-                epoch=epoch,
-                mask="val",
-            )
+            if model == "GPS":
+                val_acc = test_gps(
+                    model=model,
+                    device=device,
+                    data_loader=val_loader,
+                    epoch=epoch,
+                    mask="val",
+                )
+                
+                test_acc = test_gps(
+                    model=model,
+                    device=device,
+                    data_loader=test_loader,
+                    epoch=epoch,
+                    mask="test",
+                )
+            else:
+                val_acc = test_with_idxs(
+                    model=model,
+                    device=device,
+                    data_loader=val_loader,
+                    epoch=epoch,
+                    mask="val",
+                )
 
-            test_acc = test_with_idxs(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="test",
-            )
+                test_acc = test_with_idxs(
+                    model=model,
+                    device=device,
+                    data_loader=test_loader,
+                    epoch=epoch,
+                    mask="test",
+                )
         else:
             val_acc = test(
                 model=model,
@@ -667,9 +774,14 @@ def main() -> None:
     model.to(device)
 
     # get predictions
-    rmse, outs, labels = inference(
-        model=model, device=device, data_loader=test_loader, epoch=0
-    )
+    if args.model == "GPS":
+        rmse, outs, labels = inference_gps(
+            model=model, device=device, data_loader=test_loader, epoch=0
+        )
+    else:
+        rmse, outs, labels = inference(
+            model=model, device=device, data_loader=test_loader, epoch=0
+        )
 
     predictions_median = _tensor_out_to_array(outs, 0)
     labels_median = _tensor_out_to_array(labels, 0)
