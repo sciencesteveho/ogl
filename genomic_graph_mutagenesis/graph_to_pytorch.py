@@ -221,6 +221,9 @@ def graph_to_pytorch(
 
     val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
     val_mask[val] = True
+    
+    all_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+    all_mask[train + test + val] = True
 
     # get target values. shape should be [num_nodes, 4]
     if scaled:
@@ -306,5 +309,6 @@ def graph_to_pytorch(
         data.test_mask = test_mask
     data.val_mask = val_mask
     data.y = y.T
+    data.all_mask = all_mask
 
     return data

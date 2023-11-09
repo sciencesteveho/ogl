@@ -38,6 +38,79 @@ from utils import parse_yaml
 from utils import TISSUES_early_testing
 
 
+@torch.no_grad()
+def train_inference(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # calculate loss
+        outs.extend(out[data.train_mask])
+        labels.extend(data.y[data.train_mask])
+        mse.append(F.mse_loss(out[data.train_mask], data.y[data.train_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
+
+@torch.no_grad()
+def val_inference(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # calculate loss
+        outs.extend(out[data.val_mask])
+        labels.extend(data.y[data.val_mask])
+        mse.append(F.mse_loss(out[data.val_mask], data.y[data.val_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
+
+@torch.no_grad()
+def test_inference(model, device, data_loader, epoch):
+    model.eval()
+
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse, outs, labels = [], [], []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        # calculate loss
+        outs.extend(out[data.test_mask])
+        labels.extend(data.y[data.test_mask])
+        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        loss = torch.stack(mse)
+
+        pbar.update(1)
+
+    pbar.close()
+    # print(spearman(torch.stack(outs), torch.stack(labels)))
+    return math.sqrt(float(loss.mean())), outs, labels
+
+
 def _pre_nest_tissue_dict(tissues):
     return {tissue: {} for tissue in tissues}
 
@@ -191,37 +264,12 @@ def _remove_random_genes():
     """_summary_ of function"""
 
 
-def _ablate_housekeeping_genes():
-    """_summary_ of function"""
+# def _ablate_housekeeping_genes():
+#     """_summary_ of function"""
 
 
-def _ablate_random_genes():
-    """_summary_ of function"""
-
-
-@torch.no_grad()
-def inference(model, device, data_loader, epoch):
-    model.eval()
-
-    pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-
-    mse, outs, labels = [], [], []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
-
-        # calculate loss
-        outs.extend(out[data.test_mask])
-        labels.extend(data.y[data.test_mask])
-        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-
-    pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
-    return math.sqrt(float(loss.mean())), outs, labels
+# def _ablate_random_genes():
+#     """_summary_ of function"""
 
 
 def main(
@@ -275,23 +323,12 @@ def main(
         device=device,
     )
 
-    # prepare IDXs for different perturbations
-    coessential_genes = _get_idxs_for_coessential_pairs(
-        positive_coessential_genes=positive_coessential_genes,
-        negative_coessential_genes=negative_coessential_genes,
-        graph_idxs=graph_idxs,
-    )
-
-    random_co_idxs = _random_gene_pairs(
-        coessential_genes=coessential_genes,
-        graph_idxs=graph_idxs,
-    )
-
     # test_genes = random.sample(list(coessential_genes.keys()), 10)
     # test_random = random.sample(list(random_co_idxs.keys()), 10)
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
     
+    # load data
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
         graph_type='full',
@@ -300,15 +337,15 @@ def main(
         test_chrs=params["training_targets"]["test_chrs"],
         val_chrs=params["training_targets"]["val_chrs"],
     )
-    
-    batch_size=32
 
+    # set up loaders for inference
+    batch_size=32
     train_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=batch_size,
         input_nodes=data.train_mask,
-        shuffle=True,
+        shuffle=False,
     )
     test_loader = NeighborLoader(
         data,
@@ -323,18 +360,49 @@ def main(
         input_nodes=data.val_mask,
     )
     
-    rmse, outs, labels = inference(
+    # perform inference for the three splits
+    _, train_outs, train_labels = train_inference(
+        model=model,
+        device=device,
+        data_loader=train_loader,
+        epoch=0,
+    )
+    
+    _, val_outs, val_labels = val_inference(
+        model=model,
+        device=device,
+        data_loader=val_loader,
+        epoch=0,
+    )
+    
+    _, test_outs, test_labels = test_inference(
         model=model,
         device=device,
         data_loader=test_loader,
         epoch=0,
     )
+    
+    # def _tensor_out_to_array(tensor, idx):
+    #     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+    
+    if_true_test = tf.where(tf.equal(tf.constant(data.test_mask), True))
 
     predictions_median = _tensor_out_to_array(outs, 0)
     labels_median = _tensor_out_to_array(labels, 0)
 
-
     # coessentiality
+    # prepare IDXs for different perturbations
+    coessential_genes = _get_idxs_for_coessential_pairs(
+        positive_coessential_genes=positive_coessential_genes,
+        negative_coessential_genes=negative_coessential_genes,
+        graph_idxs=graph_idxs,
+    )
+
+    random_co_idxs = _random_gene_pairs(
+        coessential_genes=coessential_genes,
+        graph_idxs=graph_idxs,
+    )
+
     # get baseline expression
     if coessentiality:
         baselines = {}
