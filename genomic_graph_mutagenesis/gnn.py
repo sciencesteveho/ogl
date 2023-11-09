@@ -647,7 +647,7 @@ def main() -> None:
             in_size=data.x.shape[1],
             embedding_size=args.dimensions,
             walk_length=20,
-            channels=500,
+            channels=args.dimensions,
             pe_dim=8,
             num_layers=args.layers,
         ).to(device)

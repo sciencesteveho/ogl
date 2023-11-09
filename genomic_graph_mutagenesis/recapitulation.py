@@ -36,6 +36,21 @@ from utils import filtered_genes_from_bed
 from utils import parse_yaml
 from utils import TISSUES_early_testing
 
+negative_direction_eqtls = [
+    ["liver", "ENSG00000157322.17", -1.3680225998813775, "chr16", 70117253, 70117254],
+    ["aorta", "ENSG00000157322.17", -1.3603281368933724, "chr16", 70117253, 70117254],
+    ["hippocampus", "ENSG00000154529.14", -1.2627508295506484, "chr9", 42293423, 42293424],
+    ["pancreas", "ENSG00000230521.1", -1.2545929219146132, "chr6", 29875340, 29875567],
+    ["lung", "ENSG00000230521.1", -1.187098720385814, "chr6", 29875340, 29875567],
+]
+
+positive_direction_eqtls = [
+    ["left_ventricle", "ENSG00000181126.13", 1.629405140136749, "chr6", 29986227, 29986299],
+    ["aorta", "ENSG00000181126.13", 1.57365496389186, "chr6", 29986227, 29986299],
+    ["hippocampus", "ENSG00000267065.2", 1.5457906875965717, "chr17", 76787243, 76792227]
+    ["liver", "ENSG00000253301.5", 1.5034768626375365, "chr8", 57205334, 57206689],
+    ["pancreas", "ENSG00000197083.11", 1.4950484460600506, "chr5", 150798099, 150802038],
+]
 
 @torch.no_grad()
 def all_inference(model, device, data_loader):
@@ -88,6 +103,13 @@ def _flatten_inference_array(input_list):
             result_list.append(arr[0])
 
     return result_list
+
+
+def _eqtl_to_coords(eqtl, graph_idxs):
+    """_summary_ of function"""
+    tissue, gene, beta, chrom, start, stop = eqtl
+    idx = graph_idxs[f"{gene}_{tissue}"]
+    return idx, start, stop
 
 
 def _get_idxs_for_coessential_pairs(
@@ -267,6 +289,13 @@ def _remove_random_genes():
 
 def main() -> None:
     """Main function"""
+    argparse.ArgumentParser()
+    argparse.add_argument(
+        "--tissue",
+        "-t",
+        type=str,
+    )
+    args = argparse.parse_args()
         
     # get big ugly names out the way!
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
@@ -382,106 +411,104 @@ def main() -> None:
     
     batch_size=2048
     all_positive= []
-    for key, value in coessential_genes.items():
-        positive = coessential_genes[key]["positive"]
-        positive = [(key, val) for key, values in positive.items() for val in values]
-        positive = [tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
-        all_positive.extend(positive)
-    
-    for key, value in coessential_genes.items():
-        positive = coessential_genes[key]["positive"]
-        # negative = coessential_genes[key]["negative"]
-        positive = [(key, val) for key, values in positive.items() for val in values]
-        # negative = [(key, val) for key, values in negative.items() for val in values]
-        positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
-        positive = random.sample(positive, 500)
-        
-        # convert random to a list of tuples as well
-        # random_co_testing = random_co_idxs[key]["positive"]
-        # random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
+    positive = coessential_genes[args.tissue]["positive"]
+    positive = [(key, val) for key, values in positive.items() for val in values]
+    positive = [tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+    all_positive.extend(positive)
 
-        # Perturb graphs for coessential pairs. Save the difference in expression
-        coessential_perturbed_expression = []
-        for tup in positive:
-            data = graph_to_pytorch(
-                experiment_name=params["experiment_name"],
-                graph_type='full',
-                root_dir=root_dir,
-                targets_types=params["training_targets"]["targets_types"],
-                test_chrs=params["training_targets"]["test_chrs"],
-                val_chrs=params["training_targets"]["val_chrs"],
-                node_remove_edges=[tup[0]]
-            )
-            perturb_loader = NeighborLoader(
-                data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=batch_size,
-                input_nodes=data.all_mask,
-            )
-            _, _, _, perturbed_expression = all_inference(
-                model=model,
-                device=device,
-                data_loader=perturb_loader,
-            )
-            coessential_perturbed_expression.append(
-                _calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1])
-            )
-                
-        coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
-        with open(f"{savedir}/{key}_perturbed.pkl", "wb") as file:
-            pickle.dump(coessential_perturbed_expression, file)
-                    
-        # Perturb graphs for random pairs
-        total_comp = len(perturbed_expression)
-        # random_co_idxs_for_testing = [
-        #     tup for tup
-        #     in random_co_flat
-        #     if tup[0] in baseline_expression.keys()
-        #     and tup[1] in baseline_expression.keys()
-        # ]
-        # random_co_idxs_for_testing = [
-        #     tup for tup
-        #     in random_co_idxs_for_testing
-        #     if tup not in positive
-        # ]
-        # random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
-        random_co_idxs_for_testing = generate_unique_tuples(
-            input_list=list(baseline_expression.keys()),
-            existing_tuples=all_positive,
-            num_tuples=total_comp,
+    positive = coessential_genes[args.tissue]["positive"]
+    # negative = coessential_genes[key]["negative"]
+    positive = [(key, val) for key, values in positive.items() for val in values]
+    # negative = [(key, val) for key, values in negative.items() for val in values]
+    positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+    positive = random.sample(positive, 500)
+    
+    # convert random to a list of tuples as well
+    # random_co_testing = random_co_idxs[key]["positive"]
+    # random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
+
+    # Perturb graphs for coessential pairs. Save the difference in expression
+    coessential_perturbed_expression = []
+    for tup in positive:
+        data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
+            graph_type='full',
+            root_dir=root_dir,
+            targets_types=params["training_targets"]["targets_types"],
+            test_chrs=params["training_targets"]["test_chrs"],
+            val_chrs=params["training_targets"]["val_chrs"],
+            node_remove_edges=[tup[0]]
         )
-        random_perturbed_expression = []
-        for key, value in random_co_idxs_for_testing:
-            data = graph_to_pytorch(
-                experiment_name=params["experiment_name"],
-                graph_type='full',
-                root_dir=root_dir,
-                targets_types=params["training_targets"]["targets_types"],
-                test_chrs=params["training_targets"]["test_chrs"],
-                val_chrs=params["training_targets"]["val_chrs"],
-                node_remove_edges=[key]
-            )
-            perturb_loader = NeighborLoader(
-                data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=batch_size,
-                input_nodes=data.all_mask,
-            )
-            _, _, _, perturbed_expression = all_inference(
-                model=model,
-                device=device,
-                data_loader=perturb_loader,
-            )
-            random_perturbed_expression.append(
-                _calculate_difference(baseline_expression, perturbed_expression, key, value)
-            )
+        perturb_loader = NeighborLoader(
+            data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=batch_size,
+            input_nodes=data.all_mask,
+        )
+        _, _, _, perturbed_expression = all_inference(
+            model=model,
+            device=device,
+            data_loader=perturb_loader,
+        )
+        coessential_perturbed_expression.append(
+            _calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1])
+        )
+
+    coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
+    with open(f"{savedir}/{args.tissue}_perturbed.pkl", "wb") as file:
+        pickle.dump(coessential_perturbed_expression, file)
+                
+    # Perturb graphs for random pairs
+    total_comp = len(perturbed_expression)
+    # random_co_idxs_for_testing = [
+    #     tup for tup
+    #     in random_co_flat
+    #     if tup[0] in baseline_expression.keys()
+    #     and tup[1] in baseline_expression.keys()
+    # ]
+    # random_co_idxs_for_testing = [
+    #     tup for tup
+    #     in random_co_idxs_for_testing
+    #     if tup not in positive
+    # ]
+    # random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
+    random_co_idxs_for_testing = generate_unique_tuples(
+        input_list=list(baseline_expression.keys()),
+        existing_tuples=all_positive,
+        num_tuples=total_comp,
+    )
+    random_perturbed_expression = []
+    for key, value in random_co_idxs_for_testing:
+        data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
+            graph_type='full',
+            root_dir=root_dir,
+            targets_types=params["training_targets"]["targets_types"],
+            test_chrs=params["training_targets"]["test_chrs"],
+            val_chrs=params["training_targets"]["val_chrs"],
+            node_remove_edges=[key]
+        )
+        perturb_loader = NeighborLoader(
+            data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=batch_size,
+            input_nodes=data.all_mask,
+        )
+        _, _, _, perturbed_expression = all_inference(
+            model=model,
+            device=device,
+            data_loader=perturb_loader,
+        )
+        random_perturbed_expression.append(
+            _calculate_difference(baseline_expression, perturbed_expression, key, value)
+        )
+    
+    random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
+    with open(f"{savedir}/{args.tissue}_random.pkl", "wb") as file:
+        pickle.dump(random_perturbed_expression, file)
         
-        random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
-        with open(f"{savedir}/{key}_random.pkl", "wb") as file:
-            pickle.dump(random_perturbed_expression, file)
-            
-        print(f"tissue: {key}")
-        print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
+    print(f"tissue: {key}")
+    print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
                 
 
 if __name__ == "__main__":
