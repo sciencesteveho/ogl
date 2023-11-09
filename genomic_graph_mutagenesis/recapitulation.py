@@ -415,6 +415,11 @@ def main() -> None:
             if tup[0] in baseline_expression.keys()
             and tup[1] in baseline_expression.keys()
         ]
+        random_co_idxs_for_testing = [
+            tup for tup
+            in random_co_idxs_for_testing
+            if tup not in positive
+        ]
         random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
         random_perturbed_expression = []
         for key, value in random_co_idxs_for_testing:
