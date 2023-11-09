@@ -436,38 +436,38 @@ def main() -> None:
     # random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
 
     # Perturb graphs for coessential pairs. Save the difference in expression
-    coessential_perturbed_expression = []
-    for tup in positive:
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            graph_type='full',
-            root_dir=root_dir,
-            targets_types=params["training_targets"]["targets_types"],
-            test_chrs=params["training_targets"]["test_chrs"],
-            val_chrs=params["training_targets"]["val_chrs"],
-            node_remove_edges=[tup[0]]
-        )
-        perturb_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=batch_size,
-            input_nodes=data.all_mask,
-        )
-        _, _, _, perturbed_expression = all_inference(
-            model=model,
-            device=device,
-            data_loader=perturb_loader,
-        )
-        coessential_perturbed_expression.append(
-            _calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1])
-        )
+    # coessential_perturbed_expression = []
+    # for tup in positive:
+    #     data = graph_to_pytorch(
+    #         experiment_name=params["experiment_name"],
+    #         graph_type='full',
+    #         root_dir=root_dir,
+    #         targets_types=params["training_targets"]["targets_types"],
+    #         test_chrs=params["training_targets"]["test_chrs"],
+    #         val_chrs=params["training_targets"]["val_chrs"],
+    #         node_remove_edges=[tup[0]]
+    #     )
+    #     perturb_loader = NeighborLoader(
+    #         data,
+    #         num_neighbors=[5, 5, 5, 5, 5, 3],
+    #         batch_size=batch_size,
+    #         input_nodes=data.all_mask,
+    #     )
+    #     _, _, _, perturbed_expression = all_inference(
+    #         model=model,
+    #         device=device,
+    #         data_loader=perturb_loader,
+    #     )
+    #     coessential_perturbed_expression.append(
+    #         _calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1])
+    #     )
 
-    coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
-    with open(f"{savedir}/{args.tissue}_perturbed.pkl", "wb") as file:
-        pickle.dump(coessential_perturbed_expression, file)
+    # coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
+    # with open(f"{savedir}/{args.tissue}_perturbed.pkl", "wb") as file:
+    #     pickle.dump(coessential_perturbed_expression, file)
                 
-    # Perturb graphs for random pairs
-    total_comp = len(perturbed_expression)
+    # # Perturb graphs for random pairs
+    # total_comp = len(perturbed_expression)
     # random_co_idxs_for_testing = [
     #     tup for tup
     #     in random_co_flat
@@ -483,7 +483,7 @@ def main() -> None:
     random_co_idxs_for_testing = generate_unique_tuples(
         input_list=list(baseline_expression.keys()),
         existing_tuples=all_positive,
-        num_tuples=total_comp,
+        num_tuples=250,
     )
     random_perturbed_expression = []
     for key, value in random_co_idxs_for_testing:
@@ -515,8 +515,8 @@ def main() -> None:
     with open(f"{savedir}/{args.tissue}_random.pkl", "wb") as file:
         pickle.dump(random_perturbed_expression, file)
         
-    print(f"tissue: {key}")
-    print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
+    # print(f"tissue: {key}")
+    # print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
                 
 
 if __name__ == "__main__":
