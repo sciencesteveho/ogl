@@ -17,12 +17,12 @@
 import argparse
 import csv
 import math
-import os
 import pickle
 import random
 from typing import Dict, List, Tuple
 
 import numpy as np
+from scipy import stats
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,7 +32,6 @@ from tqdm import tqdm
 from graph_to_pytorch import graph_to_pytorch
 from perturbation import _device_check
 from perturbation import _load_GAT_model_for_inference
-from perturbation import _tensor_out_to_array
 from utils import filtered_genes_from_bed
 from utils import parse_yaml
 from utils import TISSUES_early_testing
@@ -266,14 +265,7 @@ def _remove_random_genes():
 #     """_summary_ of function"""
 
 
-def main(
-    mode: str,
-    graph: str,
-    graph_idxs: str,
-    need_baseline: bool = False,
-    feat_perturbation: bool = False,
-    coessentiality: bool = False,
-) -> None:
+def main() -> None:
     """Main function"""
         
     # get big ugly names out the way!
@@ -366,27 +358,27 @@ def main(
         graph_idxs=graph_idxs,
     )
     
-    for key, value in coessential_genes.items():
-        liver_positive = coessential_genes["liver"]["positive"]
-        liver_negative = coessential_genes["liver"]["negative"]
-        liver_positive = [(key, val) for key, values in liver_positive.items() for val in values]
-        liver_negative = [(key, val) for key, values in liver_negative.items() for val in values]
-    
-    # conver random to a list of tuples as well
-    random_co_testing = random_co_idxs["liver"]["positive"]
-    random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
-    
     def _calculate_difference(baseline_dict, perturbed_dict, key1, key2):
         baseline = baseline_dict[key1]
         perturbed = perturbed_dict[key2]
         return abs(baseline - perturbed)
+    
+    batch_size=2048
+    for key, value in coessential_genes.items():
+        positive = coessential_genes[key]["positive"]
+        # negative = coessential_genes[key]["negative"]
+        positive = [(key, val) for key, values in positive.items() for val in values]
+        # negative = [(key, val) for key, values in negative.items() for val in values]
+        positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+        positive = random.sample(positive, 10000)
+        
+        # convert random to a list of tuples as well
+        random_co_testing = random_co_idxs[key]["positive"]
+        random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
 
-    # Perturb graphs for coessential pairs. Save the difference in expression
-    pairs = liver_positive
-    liver_perturbed_expression = []
-    for x in range(10):
-        tup = pairs[x]
-        if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys():
+        # Perturb graphs for coessential pairs. Save the difference in expression
+        coessential_perturbed_expression = []
+        for tup in positive:
             data = graph_to_pytorch(
                 experiment_name=params["experiment_name"],
                 graph_type='full',
@@ -396,7 +388,6 @@ def main(
                 val_chrs=params["training_targets"]["val_chrs"],
                 node_remove_edges=[tup[0]]
             )
-            batch_size=2048
             perturb_loader = NeighborLoader(
                 data,
                 num_neighbors=[5, 5, 5, 5, 5, 3],
@@ -408,42 +399,55 @@ def main(
                 device=device,
                 data_loader=perturb_loader,
             )
-            liver_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1]))
+            coessential_perturbed_expression.append(
+                _calculate_difference(baseline_expression, perturbed_expression, tup[0], tup[1])
+            )
                 
-    # Perturb graphs for random pairs
-    total_comp = len(liver_perturbed_expression)
-    random_co_idxs_for_testing = [tup for tup in random_co_flat if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
-    random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
-    random_perturbed_expression = []
-    for key, value in random_co_idxs_for_testing:
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            graph_type='full',
-            root_dir=root_dir,
-            targets_types=params["training_targets"]["targets_types"],
-            test_chrs=params["training_targets"]["test_chrs"],
-            val_chrs=params["training_targets"]["val_chrs"],
-            node_remove_edges=[key]
-        )
-        batch_size=2048
-        perturb_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=batch_size,
-            input_nodes=data.all_mask,
-        )
-        _, _, _, perturbed_expression = all_inference(
-            model=model,
-            device=device,
-            data_loader=perturb_loader,
-        )
-        random_perturbed_expression.append(_calculate_difference(baseline_expression, perturbed_expression, key, value))
+        coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
+        with open(f"{savedir}/{key}_perturbed.pkl", "wb") as file:
+            pickle.dump(coessential_perturbed_expression, file)
+                    
+        # Perturb graphs for random pairs
+        total_comp = len(perturbed_expression)
+        random_co_idxs_for_testing = [
+            tup for tup
+            in random_co_flat
+            if tup[0] in baseline_expression.keys()
+            and tup[1] in baseline_expression.keys()
+        ]
+        random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
+        random_perturbed_expression = []
+        for key, value in random_co_idxs_for_testing:
+            data = graph_to_pytorch(
+                experiment_name=params["experiment_name"],
+                graph_type='full',
+                root_dir=root_dir,
+                targets_types=params["training_targets"]["targets_types"],
+                test_chrs=params["training_targets"]["test_chrs"],
+                val_chrs=params["training_targets"]["val_chrs"],
+                node_remove_edges=[key]
+            )
+            perturb_loader = NeighborLoader(
+                data,
+                num_neighbors=[5, 5, 5, 5, 5, 3],
+                batch_size=batch_size,
+                input_nodes=data.all_mask,
+            )
+            _, _, _, perturbed_expression = all_inference(
+                model=model,
+                device=device,
+                data_loader=perturb_loader,
+            )
+            random_perturbed_expression.append(
+                _calculate_difference(baseline_expression, perturbed_expression, key, value)
+            )
         
-    liver_perturbed_expression = _flatten_inference_array(liver_perturbed_expression)
-    random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
-    
-    from scipy import stats
-    stats.ttest_ind(liver_perturbed_expression, random_perturbed_expression)
+        random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
+        with open(f"{savedir}/{key}_random.pkl", "wb") as file:
+            pickle.dump(random_perturbed_expression, file)
+            
+        print(f"tissue: {key}")
+        print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
                 
 
 if __name__ == "__main__":
