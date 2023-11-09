@@ -364,11 +364,11 @@ def main(
 
     # set up loaders for inference
     batch_size=32
-    train_loader = NeighborLoader(
+    all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=batch_size,
-        input_nodes=data.train_mask,
+        input_nodes=data.all_mask,
         shuffle=False,
     )
     train_loader = NeighborLoader(
