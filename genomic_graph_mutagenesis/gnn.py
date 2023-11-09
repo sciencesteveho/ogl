@@ -525,6 +525,7 @@ def main() -> None:
     # set up helper variables
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
+    # savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
     savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
 
     # adjust log name
@@ -558,7 +559,7 @@ def main() -> None:
         val_chrs=params["training_targets"]["val_chrs"],
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
-        scaled=True,
+        # scaled=True,
     )
     
     if args.model == "GPS":
