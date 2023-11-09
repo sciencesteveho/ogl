@@ -99,7 +99,7 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             ],
             dtype=torch.long,
         ),
-        torch.Tensor(
+        torch.tensor(
             [
                 graph_index[gene]
                 for gene in all_genes
