@@ -245,7 +245,7 @@ def graph_to_pytorch(
         targets = f"{graph_dir}/targets_scaled.pkl"
     else:
         targets = f"{graph_dir}/targets.pkl"
-    target_values = _get_target_values_for_mask(targets=f"{graph_dir}/targets.pkl")
+    target_values = _get_target_values_for_mask(targets=targets)
 
     # change the key in one dict to the value of another dict, which has its key as the index
     remapped = {}
