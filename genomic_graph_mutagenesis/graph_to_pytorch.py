@@ -91,7 +91,11 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             dtype=torch.long,
         ),
         torch.Tensor(
-            [graph_index[gene] for gene in split["train"]+split["test"]+split["validation"] if gene in graph_index.keys()],
+            [
+                graph_index[gene]
+                for gene in [split["train"]+split["test"]+split["validation"]]
+                if gene in graph_index.keys()
+            ],
             dtype=torch.long,
         )
     )

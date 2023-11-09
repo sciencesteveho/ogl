@@ -371,6 +371,13 @@ def main(
         input_nodes=data.train_mask,
         shuffle=False,
     )
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=batch_size,
+        input_nodes=data.train_mask,
+        shuffle=False,
+    )
     test_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
