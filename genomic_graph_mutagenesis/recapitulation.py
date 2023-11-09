@@ -289,13 +289,13 @@ def _remove_random_genes():
 
 def main() -> None:
     """Main function"""
-    argparse.ArgumentParser()
-    argparse.add_argument(
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
         "--tissue",
         "-t",
         type=str,
     )
-    args = argparse.parse_args()
+    args = parser.parse_args()
         
     # get big ugly names out the way!
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
