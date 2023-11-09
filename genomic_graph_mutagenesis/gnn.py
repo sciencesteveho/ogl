@@ -145,10 +145,10 @@ class GATv2(torch.nn.Module):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
 
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin1(x)
         x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
         return x
     
@@ -526,7 +526,7 @@ def main() -> None:
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
     # savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
-    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx"
+    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout"
 
     # adjust log name
     if args.randomize_node_feats == "true":

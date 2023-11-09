@@ -744,7 +744,7 @@ def plot_training_losses(
     )
     plt.tight_layout()
     plt.savefig(
-        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_loss.png",
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_loss.png",
         dpi=300,
     )
     plt.close()
@@ -776,7 +776,7 @@ def plot_predicted_versus_expected(
     )
     plt.tight_layout()
     plt.savefig(
-        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_performance.png",
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_performance.png",
         dpi=300,
     )
     plt.close()
