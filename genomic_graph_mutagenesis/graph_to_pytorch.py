@@ -67,11 +67,6 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
     # load graph indexes
     with open(index, "rb") as f:
         graph_index = pickle.load(f)
-        
-    all_genes = []
-    for key, value in split.items():
-        for gene in value:
-            all_genes += gene
 
     return (
         graph_index,
@@ -102,7 +97,7 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
         torch.tensor(
             [
                 graph_index[gene]
-                for gene in all_genes
+                for gene in [split['train'] + split['test'] + split['validation']]
                 if gene in graph_index.keys()
             ],
             dtype=torch.long,
