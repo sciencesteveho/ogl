@@ -363,18 +363,42 @@ def main() -> None:
         perturbed = perturbed_dict[key2]
         return abs(baseline - perturbed)
     
+    def generate_unique_tuples(input_list, existing_tuples, num_tuples):
+        unique_tuples = []
+
+        while len(unique_tuples) < num_tuples:
+            value1 = random.choice(input_list)
+            value2 = random.choice(input_list)
+
+            # Ensure values are not the same
+            if value1 != value2:
+                new_tuple = (value1, value2)
+
+                # Check if the tuple already exists in the existing_tuples list
+                if new_tuple not in existing_tuples:
+                    unique_tuples.append(new_tuple)
+
+        return unique_tuples
+    
     batch_size=2048
+    all_positive= []
+    for key, value in coessential_genes.items():
+        positive = coessential_genes[key]["positive"]
+        positive = [(key, val) for key, values in positive.items() for val in values]
+        positive = [tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+        all_positive.extend(positive)
+    
     for key, value in coessential_genes.items():
         positive = coessential_genes[key]["positive"]
         # negative = coessential_genes[key]["negative"]
         positive = [(key, val) for key, values in positive.items() for val in values]
         # negative = [(key, val) for key, values in negative.items() for val in values]
         positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
-        positive = random.sample(positive, 1250)
+        positive = random.sample(positive, 500)
         
         # convert random to a list of tuples as well
-        random_co_testing = random_co_idxs[key]["positive"]
-        random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
+        # random_co_testing = random_co_idxs[key]["positive"]
+        # random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
 
         # Perturb graphs for coessential pairs. Save the difference in expression
         coessential_perturbed_expression = []
@@ -409,18 +433,23 @@ def main() -> None:
                     
         # Perturb graphs for random pairs
         total_comp = len(perturbed_expression)
-        random_co_idxs_for_testing = [
-            tup for tup
-            in random_co_flat
-            if tup[0] in baseline_expression.keys()
-            and tup[1] in baseline_expression.keys()
-        ]
-        random_co_idxs_for_testing = [
-            tup for tup
-            in random_co_idxs_for_testing
-            if tup not in positive
-        ]
-        random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
+        # random_co_idxs_for_testing = [
+        #     tup for tup
+        #     in random_co_flat
+        #     if tup[0] in baseline_expression.keys()
+        #     and tup[1] in baseline_expression.keys()
+        # ]
+        # random_co_idxs_for_testing = [
+        #     tup for tup
+        #     in random_co_idxs_for_testing
+        #     if tup not in positive
+        # ]
+        # random_co_idxs_for_testing = random.sample(random_co_flat, total_comp)
+        random_co_idxs_for_testing = generate_unique_tuples(
+            input_list=list(baseline_expression.keys()),
+            existing_tuples=all_positive,
+            num_tuples=total_comp,
+        )
         random_perturbed_expression = []
         for key, value in random_co_idxs_for_testing:
             data = graph_to_pytorch(
