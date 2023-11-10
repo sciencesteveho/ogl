@@ -10,6 +10,8 @@
 # loader = NeighborLoader(new_data, input_nodes=new_node_ids, ...)
 # out = model(new_data.x, new_data.edge_index)
 # compare co-essential perturbations to random perturbation
+#
+# grep -e Artery_Aorta -e Brain_Hippocampus -e Liver -e Lung -e Muscle_Skeletal -e Pancreas -e  Heart_Left_Ventricle -e Small_Intestine_Terminal_Ileum filtered_cops_gtex.tsv | cut -f1,3,5
 
 
 """_summary_ of project"""

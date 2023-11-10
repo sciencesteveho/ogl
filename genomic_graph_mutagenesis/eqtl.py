@@ -74,30 +74,6 @@ positive_direction_eqtls = [
 
 
 @torch.no_grad()
-def inference(model, device, data_loader):
-    model.eval()
-
-    pbar = tqdm(total=len(data_loader))
-
-    mse, outs, labels = [], [], []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
-
-        # calculate loss
-        outs.extend(out[data.test_mask])
-        labels.extend(data.y[data.test_mask])
-        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-
-    pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
-    return math.sqrt(float(loss.mean())), outs, labels
-
-
-@torch.no_grad()
 def all_inference(model, device, data_loader):
     model.eval()
 
@@ -223,29 +199,9 @@ def main() -> None:
     
     def _tensor_out_to_array(tensor, idx):
         return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
-    
-    # get test data cuz we here
-    # batch_size=32
-    # test_loader = NeighborLoader(
-    #     data,
-    #     num_neighbors=[5, 5, 5, 5, 5, 3],
-    #     batch_size=batch_size,
-    #     input_nodes=data.test_mask,
-    # )
-    # _, outs, labels = inference(
-    #     model=model,
-    #     device=device,
-    #     data_loader=test_loader,
-    # )
-    # predictions_median = _tensor_out_to_array(outs, 0)
-    # labels_median = _tensor_out_to_array(labels, 0)
-    # with open(f'{savedir}/median_predictions.pkl', 'wb') as file:
-    #     pickle.dump(predictions_median, file)
-    # with open(f'{savedir}/median_labels.pkl', 'wb') as file:
-    #     pickle.dump(labels_median, file)
 
     # set up loaders for inference
-    batch_size=32
+    batch_size=2048
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
@@ -353,9 +309,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
-"""
-Two where it works!
-{'hippocampus_ENSG00000178404.9_8_0_86049_del_-1.2153434357979227': [-0.3131829, -0.54981804],
- 'lung_ENSG00000214401.4_12_0_84023_del_1.2476457467323692': [1.2725096, 1.475115]}
-"""

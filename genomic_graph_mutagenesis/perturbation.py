@@ -71,11 +71,10 @@ def _device_check():
     
 
 @torch.no_grad()
-def inference(model, device, data_loader, epoch):
+def inference(model, device, data_loader):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     mse, outs, labels = [], [], []
     for data in data_loader:
@@ -98,15 +97,25 @@ def inference(model, device, data_loader, epoch):
 def main() -> None:
     """Main function"""
 
+    # # prepare stuff
+    # graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_scaled.pkl"
+    # graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_idxs.pkl"
+    # checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only_mse_1.8369761025042963.pt"
+    # savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/pickles'
+    # savestr='curated'
+
+    # # parse yaml for params, used to load data
+    # config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml'
+    
     # prepare stuff
-    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_scaled.pkl"
-    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_idxs.pkl"
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only_mse_1.8369761025042963.pt"
+    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
+    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
+    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
     savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/pickles'
-    savestr='curated'
+    savestr='regulatory_only_all_loops_test_8_9_val_7_13_mediantpm'
 
     # parse yaml for params, used to load data
-    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml'
+    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml'
     # parser = argparse.ArgumentParser()
     params = parse_yaml(config)
     
@@ -124,7 +133,7 @@ def main() -> None:
     # initialize model and load checkpoint weights
     model = _load_GAT_model_for_inference(
         in_size=41,
-        embedding_size=500,
+        embedding_size=256,
         num_layers=2,
         checkpoint=checkpoint_file,
         map_location=map_location,
@@ -189,7 +198,6 @@ def main() -> None:
         model=model,
         device=device,
         data_loader=loader,
-        epoch=0,
     )
     labels = _tensor_out_to_array(labels, 0)
     h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
@@ -220,7 +228,6 @@ def main() -> None:
         model=model,
         device=device,
         data_loader=loader,
-        epoch=0,
     )
     
     labels = _tensor_out_to_array(labels, 0)
