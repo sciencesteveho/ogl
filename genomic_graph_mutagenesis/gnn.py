@@ -672,6 +672,7 @@ def main() -> None:
 
 
     epochs = 100
+    epochs = 15
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         if args.model == "GPS":
