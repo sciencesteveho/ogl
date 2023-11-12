@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Utilities for genome data processing"""
+"""Utilities for genome data processing."""
 
 import csv
 from datetime import timedelta
@@ -62,21 +62,6 @@ ATTRIBUTES = [
     "snp",
 ]
 
-POSSIBLE_NODES = [
-    "cpgislands",
-    "crms",
-    "ctcfccre",
-    "dyadic",
-    "enhancers",
-    "gencode",
-    "promoters",
-    "superenhancers",
-    "tads",
-    "tfbindingsites",
-    "tss",
-]
-
-
 NODE_FEAT_IDXS = (
     {
         "start": 0,
@@ -120,6 +105,20 @@ NODE_FEAT_IDXS = (
         "snp": 38,
     },
 )
+
+POSSIBLE_NODES = [
+    "cpgislands",
+    "crms",
+    "ctcfccre",
+    "dyadic",
+    "enhancers",
+    "gencode",
+    "promoters",
+    "superenhancers",
+    "tads",
+    "tfbindingsites",
+    "tss",
+]
 
 LOOPFILES = {
     "deepanchor": {
@@ -178,30 +177,6 @@ LOOPFILES = {
         "skeletal_muscle": "skeletal_muscle_alloops.bed",
         "small_intestine": "small_intestine_alloops.bed",
     },
-    # "peakachu_deeploop_10": {
-    #     "aorta": "Aorta_10000.hg38.combined_loops",
-    #     "hippocampus": "Hippocampus_10000.hg38.combined_loops",
-    #     "left_ventricle": "VentricleLeft_10000.hg38.combined_loops",
-    #     "liver": "Liver_10000.hg38.combined_loops",
-    #     "lung": "Lung_10000.hg38.combined_loops",
-    #     "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
-    #     "pancreas": "Pancreas_10000.hg38.combined_loops",
-    #     "skeletal_muscle": "Psoas_10000.hg38.combined_loops",
-    #     "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
-    #     "small_intestine": "Bowel_Small_10000.hg38.combined_loops",
-    # },
-    # "peakachu_deeploop_50": {
-    #     "aorta": "aorta_peakachu_deepanchor.hg38.combined_loops",
-    #     "hippocampus": "hippocampus_peakachu_deepanchor.hg38.combined_loops",
-    #     "left_ventricle": "left_ventricle_peakachu_deepanchor.hg38.combined_loops",
-    #     "liver": "liver_peakachu_deepanchor.hg38.combined_loops",
-    #     "lung": "lung_peakachu_deepanchor.hg38.combined_loops",
-    #     "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
-    #     "pancreas": "pancreas_peakachu_deepanchor.hg38.combined_loops",
-    #     "skeletal_muscle": "skeletal_muscle_peakachu_deepanchor.hg38.combined_loops",
-    #     "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
-    #     "small_intestine": "small_intestine_peakachu_deepanchor.hg38.combined_loops",
-    # },
 }
 
 TISSUES = [
@@ -248,63 +223,6 @@ ONEHOT_EDGETYPE = {
     "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "tf-marker"
     "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "circuits"
     "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "local"
-}
-
-TISSUE_TPM_KEYS = {
-    "Adipose - Subcutaneous": 3,
-    "Adipose - Visceral (Omentum)": 4,
-    "Adrenal Gland": 5,
-    "Artery - Aorta": 6,
-    "Artery - Coronary": 7,
-    "Artery - Tibial": 8,
-    "Bladder": 9,
-    "Brain - Amygdala": 10,
-    "Brain - Anterior cingulate cortex (BA24)": 11,
-    "Brain - Caudate (basal ganglia)": 12,
-    "Brain - Cerebellar Hemisphere": 13,
-    "Brain - Cerebellum": 14,
-    "Brain - Cortex": 15,
-    "Brain - Frontal Cortex (BA9)": 16,
-    "Brain - Hippocampus": 17,
-    "Brain - Hypothalamus": 18,
-    "Brain - Nucleus accumbens (basal ganglia)": 19,
-    "Brain - Putamen (basal ganglia)": 20,
-    "Brain - Spinal cord (cervical c-1)": 21,
-    "Brain - Substantia nigra": 22,
-    "Breast - Mammary Tissue": 23,
-    "Cells - Cultured fibroblasts": 24,
-    "Cells - EBV-transformed lymphocytes": 25,
-    "Cervix - Ectocervix": 26,
-    "Cervix - Endocervix": 27,
-    "Colon - Sigmoid": 28,
-    "Colon - Transverse": 29,
-    "Esophagus - Gastroesophageal Junction": 30,
-    "Esophagus - Mucosa": 31,
-    "Esophagus - Muscularis": 32,
-    "Fallopian Tube": 33,
-    "Heart - Atrial Appendage": 34,
-    "Heart - Left Ventricle": 35,
-    "Kidney - Cortex": 36,
-    "Kidney - Medulla": 37,
-    "Liver": 38,
-    "Lung": 39,
-    "Minor Salivary Gland": 40,
-    "Muscle - Skeletal": 41,
-    "Nerve - Tibial": 42,
-    "Ovary": 43,
-    "Pancreas": 44,
-    "Pituitary": 45,
-    "Prostate": 46,
-    "Skin - Not Sun Exposed (Suprapubic)": 47,
-    "Skin - Sun Exposed (Lower leg)": 48,
-    "Small Intestine - Terminal Ileum": 49,
-    "Spleen": 50,
-    "Stomach": 51,
-    "Testis": 52,
-    "Thyroid": 53,
-    "Uterus": 54,
-    "Vagina": 55,
-    "Whole Blood": 56,
 }
 
 

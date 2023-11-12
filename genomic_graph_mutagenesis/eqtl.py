@@ -34,42 +34,306 @@ from utils import parse_yaml
 from utils import TISSUES_early_testing
 
 negative_direction_eqtls = [
-    ["hippocampus", "ENSG00000164744.12", "3_0_35239_del", -0.6438042031778736, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000006377.10", "3_0_35239_del", -0.2936797367856676, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000078053.16", "3_0_35239_del", -0.2623219411917521, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000179869.14", "3_0_35239_del", -0.2615095075550178, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000135211.5", "3_0_35239_del", -0.25865248145267555, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000170092.14", "3_0_35239_del", -0.2517748623987624, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000160870.12", "3_0_35239_del", -0.2502080745486415, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000158528.11", "3_0_35239_del", -0.24258394305078676, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000106336.12", "3_0_35239_del", -0.23531929357231152, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000127990.15", "3_0_35239_del", -0.2158726448663987, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000146834.13", "3_0_35239_del", -0.21461684646781262, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000128606.12", "3_0_35239_del", -0.2120187586062632, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000106608.16", "3_0_35239_del", -0.2067606451541328, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000155428.12", "3_0_35239_del", -0.20651630583744213, "chr7", 35046248, 103160096],
-    ["lung", "ENSG00000169894.17", "3_0_35239_del", -0.2034626845105262, "chr7", 35046248, 103160096],
+    [
+        "hippocampus",
+        "ENSG00000164744.12",
+        "3_0_35239_del",
+        -0.6438042031778736,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000006377.10",
+        "3_0_35239_del",
+        -0.2936797367856676,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000078053.16",
+        "3_0_35239_del",
+        -0.2623219411917521,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000179869.14",
+        "3_0_35239_del",
+        -0.2615095075550178,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000135211.5",
+        "3_0_35239_del",
+        -0.25865248145267555,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000170092.14",
+        "3_0_35239_del",
+        -0.2517748623987624,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000160870.12",
+        "3_0_35239_del",
+        -0.2502080745486415,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000158528.11",
+        "3_0_35239_del",
+        -0.24258394305078676,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000106336.12",
+        "3_0_35239_del",
+        -0.23531929357231152,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000127990.15",
+        "3_0_35239_del",
+        -0.2158726448663987,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000146834.13",
+        "3_0_35239_del",
+        -0.21461684646781262,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000128606.12",
+        "3_0_35239_del",
+        -0.2120187586062632,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000106608.16",
+        "3_0_35239_del",
+        -0.2067606451541328,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000155428.12",
+        "3_0_35239_del",
+        -0.20651630583744213,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "lung",
+        "ENSG00000169894.17",
+        "3_0_35239_del",
+        -0.2034626845105262,
+        "chr7",
+        35046248,
+        103160096,
+    ],
 ]
 
 positive_direction_eqtls = [
-    ["hippocampus", "ENSG00000006634.7", "3_0_35239_del", 0.20398663949133608, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000087085.13", "3_0_35239_del", 0.20614364897025753, "chr7", 35046248, 103160096],
-    ["lung", "ENSG00000228204.2", "3_0_35239_del", 0.207677492318611, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000130305.16", "3_0_35239_del", 0.2107289132323575, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000146828.17", "3_0_35239_del", 0.21470728664189329, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000106178.6", "3_0_35239_del", 0.21515157976434116, "chr7", 35046248, 103160096],
-    ["lung", "ENSG00000128564.6", "3_0_35239_del", 0.2168664546802869, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000001629.9", "3_0_35239_del", 0.22185520521866678, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000187037.8", "3_0_35239_del", 0.22483940128822572, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000197037.10", "3_0_35239_del", 0.22826529142138344, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000201772.1", "3_0_35239_del", 0.24060158825873143, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000136206.3", "3_0_35239_del", 0.2408891284701545, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000126522.16", "3_0_35239_del", 0.2421245581152866, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000185467.7", "3_0_35239_del", 0.25980169193232105, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000182487.12", "3_0_35239_del", 0.261391431427422, "chr7", 35046248, 103160096],
-    ["liver", "ENSG00000146700.8", "3_0_35239_del", 0.2641123645062674, "chr7", 35046248, 103160096],
-    ["lung", "ENSG00000226220.1", "3_0_35239_del", 0.2785446881586681, "chr7", 35046248, 103160096],
-    ["hippocampus", "ENSG00000106336.12", "3_0_35239_del", 0.28444995173885645, "chr7", 35046248, 103160096]
+    [
+        "hippocampus",
+        "ENSG00000006634.7",
+        "3_0_35239_del",
+        0.20398663949133608,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000087085.13",
+        "3_0_35239_del",
+        0.20614364897025753,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "lung",
+        "ENSG00000228204.2",
+        "3_0_35239_del",
+        0.207677492318611,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000130305.16",
+        "3_0_35239_del",
+        0.2107289132323575,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000146828.17",
+        "3_0_35239_del",
+        0.21470728664189329,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000106178.6",
+        "3_0_35239_del",
+        0.21515157976434116,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "lung",
+        "ENSG00000128564.6",
+        "3_0_35239_del",
+        0.2168664546802869,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000001629.9",
+        "3_0_35239_del",
+        0.22185520521866678,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000187037.8",
+        "3_0_35239_del",
+        0.22483940128822572,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000197037.10",
+        "3_0_35239_del",
+        0.22826529142138344,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000201772.1",
+        "3_0_35239_del",
+        0.24060158825873143,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000136206.3",
+        "3_0_35239_del",
+        0.2408891284701545,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000126522.16",
+        "3_0_35239_del",
+        0.2421245581152866,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000185467.7",
+        "3_0_35239_del",
+        0.25980169193232105,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000182487.12",
+        "3_0_35239_del",
+        0.261391431427422,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "liver",
+        "ENSG00000146700.8",
+        "3_0_35239_del",
+        0.2641123645062674,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "lung",
+        "ENSG00000226220.1",
+        "3_0_35239_del",
+        0.2785446881586681,
+        "chr7",
+        35046248,
+        103160096,
+    ],
+    [
+        "hippocampus",
+        "ENSG00000106336.12",
+        "3_0_35239_del",
+        0.28444995173885645,
+        "chr7",
+        35046248,
+        103160096,
+    ],
 ]
 
 
@@ -91,7 +355,7 @@ def all_inference(model, device, data_loader):
         labels.extend(data.y[data.all_mask])
         mse.append(F.mse_loss(out[data.all_mask], data.y[data.all_mask]).cpu())
         loss = torch.stack(mse)
-        
+
         # get idxs
         array_index_only = data.n_id.cpu().numpy() * data.all_mask.cpu().numpy()
         array_index_only = array_index_only[array_index_only != 0]
@@ -102,7 +366,7 @@ def all_inference(model, device, data_loader):
             except KeyError:
                 expression[array_index_only[idx]] = []
                 expression[array_index_only[idx]].append(outdata[idx][0])
-                                                     
+
         pbar.update(1)
 
     pbar.close()
@@ -120,9 +384,13 @@ def _eqtl_to_coords(eqtl, graph_idxs):
 
 def _get_subset_of_idx_dictionary(dictionary, chrom, tissue):
     """_summary_ of function"""
-    return {key: value for key, value in dictionary.items() if chrom in key and tissue in key}
+    return {
+        key: value
+        for key, value in dictionary.items()
+        if chrom in key and tissue in key
+    }
 
-      
+
 def _get_idxs_for_sv(dictionary, graph_idxs, start, stop):
     idxs = []
     for key, value in dictionary.items():
@@ -151,18 +419,18 @@ def main() -> None:
     #     type=str,
     # )
     # args = parser.parse_args()
-        
+
     # get big ugly names out the way!
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_scaled.pkl"
     graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_idxs.pkl"
     checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only_mse_1.8369761025042963.pt"
-    savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/'
-    
+    savedir = "/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/"
+
     # parse yaml for params, used to load data
-    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml'
+    config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml"
     # parser = argparse.ArgumentParser()
     params = parse_yaml(config)
-    
+
     # open graph
     with open(graph, "rb") as file:
         graph = pickle.load(file)
@@ -170,7 +438,7 @@ def main() -> None:
     # open idxs
     with open(graph_idxs, "rb") as file:
         graph_idxs = pickle.load(file)
-        
+
     # check for device
     device, map_location = _device_check()
 
@@ -186,50 +454,55 @@ def main() -> None:
 
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
-    
+
     # load data
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        graph_type='full',
+        graph_type="full",
         root_dir=root_dir,
         targets_types=params["training_targets"]["targets_types"],
         test_chrs=params["training_targets"]["test_chrs"],
         val_chrs=params["training_targets"]["val_chrs"],
     )
-    
+
     def _tensor_out_to_array(tensor, idx):
         return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
     # set up loaders for inference
-    batch_size=2048
+    batch_size = 2048
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=2048,
         input_nodes=data.all_mask,
     )
-    
+
     # perform inference
     _, outs, labels, expression = all_inference(
         model=model,
         device=device,
         data_loader=all_loader,
     )
-    
+
     # average values across the dictionary
     # each key is an idx
     baseline_expression = _average_values_across_dict(expression)
-    
-    
+
     # try qtls
     qtl_dict = {}
     for samples in [negative_direction_eqtls, positive_direction_eqtls]:
         for qtl in samples:
-            savename = f'{qtl[0]}_{qtl[1]}_{qtl[2]}_{qtl[3]}'
+            savename = f"{qtl[0]}_{qtl[1]}_{qtl[2]}_{qtl[3]}"
             try:
-                idx, start, stop, chr_window_start, chr_window_end = _eqtl_to_coords(qtl, graph_idxs)
-                chr_dict = _get_subset_of_idx_dictionary(graph_idxs, chrom=qtl[4], tissue=qtl[0])
-                qtl_del_idxs = _get_idxs_for_sv(chr_dict, graph_idxs, chr_window_start, chr_window_end)
+                idx, start, stop, chr_window_start, chr_window_end = _eqtl_to_coords(
+                    qtl, graph_idxs
+                )
+                chr_dict = _get_subset_of_idx_dictionary(
+                    graph_idxs, chrom=qtl[4], tissue=qtl[0]
+                )
+                qtl_del_idxs = _get_idxs_for_sv(
+                    chr_dict, graph_idxs, chr_window_start, chr_window_end
+                )
 
                 # store baseline
                 qtl_dict[savename] = []
@@ -237,7 +510,7 @@ def main() -> None:
 
                 data = graph_to_pytorch(
                     experiment_name=params["experiment_name"],
-                    graph_type='full',
+                    graph_type="full",
                     root_dir=root_dir,
                     targets_types=params["training_targets"]["targets_types"],
                     test_chrs=params["training_targets"]["test_chrs"],
@@ -259,13 +532,15 @@ def main() -> None:
                 qtl_dict[savename].append(perturbed_expression[idx])
             except KeyError:
                 pass
-            
-    with open('/ocean/projects/bio210019p/stevesho/data/preprocess/pickles/qtl_dict.pkl', 'wb') as file:
+
+    with open(
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/pickles/qtl_dict.pkl", "wb"
+    ) as file:
         pickle.dump(qtl_dict, file)
-            
+
     # # try other tissues
     # other_tissues = {}
-    
+
     # qtl = positive_direction_eqtls[1]
     # real_tissue = qtl[0]
     # for tissue in ['aorta', 'hippocampus', 'left_ventricle', 'pancreas', 'liver', 'lung', 'skeletal_muscle', 'small_intestine',]:
@@ -305,7 +580,7 @@ def main() -> None:
     #             other_tissues[savename].append(perturbed_expression[idx])
     #         except KeyError:
     #             pass
-        
+
 
 if __name__ == "__main__":
     main()

@@ -67,8 +67,8 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
     # load graph indexes
     with open(index, "rb") as f:
         graph_index = pickle.load(f)
-        
-    all_genes = split['train'] + split['test'] + split['validation']
+
+    all_genes = split["train"] + split["test"] + split["validation"]
 
     return (
         graph_index,
@@ -81,11 +81,7 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             dtype=torch.long,
         ),
         torch.tensor(
-            [
-                graph_index[gene]
-                for gene in split["test"]
-                if gene in graph_index.keys()
-            ],
+            [graph_index[gene] for gene in split["test"] if gene in graph_index.keys()],
             dtype=torch.long,
         ),
         torch.tensor(
@@ -97,13 +93,9 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             dtype=torch.long,
         ),
         torch.tensor(
-            [
-                graph_index[gene]
-                for gene in all_genes
-                if gene in graph_index.keys()
-            ],
+            [graph_index[gene] for gene in all_genes if gene in graph_index.keys()],
             dtype=torch.long,
-        )
+        ),
     )
 
 
@@ -200,7 +192,9 @@ def graph_to_pytorch(
         )
     elif randomize_edges == "true":
         total_edges = len(graph_data["edge_index"][0])
-        total_range = max(np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1]))
+        total_range = max(
+            np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1])
+        )
         edge_index = torch.tensor(
             np.array(
                 [
@@ -249,7 +243,7 @@ def graph_to_pytorch(
 
     val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
     val_mask[val] = True
-    
+
     all_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
     all_mask[all_idx] = True
 

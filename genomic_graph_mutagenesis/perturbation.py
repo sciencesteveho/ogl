@@ -39,7 +39,7 @@ def _tensor_out_to_array(tensor, idx):
 
 
 def _load_GAT_model_for_inference(
-    in_size, 
+    in_size,
     embedding_size,
     num_layers,
     checkpoint,
@@ -54,7 +54,7 @@ def _load_GAT_model_for_inference(
         num_layers=num_layers,
         heads=2,
     ).to(device)
-    
+
     checkpoint = torch.load(checkpoint, map_location=map_location)
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -68,7 +68,7 @@ def _device_check():
         return torch.device("cuda:" + str(0)), torch.device("cuda:" + str(0))
     else:
         return torch.device("cpu"), torch.device("cpu")
-    
+
 
 @torch.no_grad()
 def inference(model, device, data_loader):
@@ -106,19 +106,19 @@ def main() -> None:
 
     # # parse yaml for params, used to load data
     # config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml'
-    
+
     # prepare stuff
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
     graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
     checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
-    savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/pickles'
-    savestr='regulatory_only_all_loops_test_8_9_val_7_13_mediantpm'
+    savedir = "/ocean/projects/bio210019p/stevesho/data/preprocess/pickles"
+    savestr = "regulatory_only_all_loops_test_8_9_val_7_13_mediantpm"
 
     # parse yaml for params, used to load data
-    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml'
+    config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml"
     # parser = argparse.ArgumentParser()
     params = parse_yaml(config)
-    
+
     # open graph
     with open(graph, "rb") as file:
         graph = pickle.load(file)
@@ -126,7 +126,7 @@ def main() -> None:
     # open idxs
     with open(graph_idxs, "rb") as file:
         graph_idxs = pickle.load(file)
-        
+
     # check for device
     device, map_location = _device_check()
 
@@ -139,22 +139,22 @@ def main() -> None:
         map_location=map_location,
         device=device,
     )
-    
+
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
 
     # load data
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        graph_type='full',
+        graph_type="full",
         root_dir=root_dir,
         targets_types=params["training_targets"]["targets_types"],
         test_chrs=params["training_targets"]["test_chrs"],
         val_chrs=params["training_targets"]["val_chrs"],
     )
-    
+
     # get test data cuz we here
-    batch_size=32
+    batch_size = 32
     test_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
@@ -166,22 +166,21 @@ def main() -> None:
         device=device,
         data_loader=test_loader,
     )
-    
+
     predictions_median = _tensor_out_to_array(outs, 0)
     labels_median = _tensor_out_to_array(labels, 0)
-    
-    with open(f'{savedir}/{savestr}_median_predictions.pkl', 'wb') as file:
-        pickle.dump(predictions_median, file)
-    
-    with open(f'{savedir}/{savestr}_median_labels.pkl', 'wb') as file:
-        pickle.dump(labels_median, file)
 
+    with open(f"{savedir}/{savestr}_median_predictions.pkl", "wb") as file:
+        pickle.dump(predictions_median, file)
+
+    with open(f"{savedir}/{savestr}_median_labels.pkl", "wb") as file:
+        pickle.dump(labels_median, file)
 
     # perform feature perturbations
     # remove h3k27ac
     perturbed_data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        graph_type='full',
+        graph_type="full",
         root_dir=root_dir,
         targets_types=params["training_targets"]["targets_types"],
         test_chrs=params["training_targets"]["test_chrs"],
@@ -201,7 +200,7 @@ def main() -> None:
     )
     labels = _tensor_out_to_array(labels, 0)
     h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
-    
+
     with open(f"{savedir}/{savestr}_h3k27ac_perturbed_expression.pkl", "wb") as f:
         pickle.dump(h3k27ac_perturbed, f)
 
@@ -211,7 +210,7 @@ def main() -> None:
     # remove h3k4me3
     perturbed_data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        graph_type='full',
+        graph_type="full",
         root_dir=root_dir,
         targets_types=params["training_targets"]["targets_types"],
         test_chrs=params["training_targets"]["test_chrs"],
@@ -229,16 +228,16 @@ def main() -> None:
         device=device,
         data_loader=loader,
     )
-    
+
     labels = _tensor_out_to_array(labels, 0)
     h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
-    
+
     with open(f"{savedir}/{savestr}_h3k4me3_perturbed_expression.pkl", "wb") as f:
         pickle.dump(h3k4me3_perturbed, f)
 
     with open(f"{savedir}/{savestr}_h3k4me3_labels.pkl", "wb") as f:
         pickle.dump(labels, f)
 
-    
+
 if __name__ == "__main__":
     main()

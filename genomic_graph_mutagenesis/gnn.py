@@ -151,8 +151,8 @@ class GATv2(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
         return x
-    
-    
+
+
 class GPSTransformer(torch.nn.Module):
     def __init__(
         self,
@@ -172,12 +172,7 @@ class GPSTransformer(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for _ in range(num_layers):
             gcnconv = GCNConv(embedding_size, embedding_size)
-            conv = GPSConv(
-                channels,
-                gcnconv,
-                heads=4,
-                attn_kwargs={"dropout": 0.5}
-            )
+            conv = GPSConv(channels, gcnconv, heads=4, attn_kwargs={"dropout": 0.5})
             self.convs.append(conv)
 
         self.mlp = Sequential(
@@ -187,10 +182,8 @@ class GPSTransformer(torch.nn.Module):
             ReLU(),
             Linear(channels // 4, 1),
         )
-        
-        self.redraw_projection = RedrawProjection(
-            self.convs,
-            None)
+
+        self.redraw_projection = RedrawProjection(self.convs, None)
 
     def forward(self, x, pe, edge_index, batch):
         x_pe = self.pe_norm(pe)
@@ -199,11 +192,10 @@ class GPSTransformer(torch.nn.Module):
         for conv in self.convs:
             x = conv(x, edge_index, batch)
         return self.mlp(x)
-    
-    
+
+
 class RedrawProjection:
-    def __init__(self, model: torch.nn.Module,
-                 redraw_interval: Optional[int] = None):
+    def __init__(self, model: torch.nn.Module, redraw_interval: Optional[int] = None):
         self.model = model
         self.redraw_interval = redraw_interval
         self.num_last_redraw = 0
@@ -213,7 +205,8 @@ class RedrawProjection:
             return
         if self.num_last_redraw >= self.redraw_interval:
             fast_attentions = [
-                module for module in self.model.modules()
+                module
+                for module in self.model.modules()
                 if isinstance(module, PerformerAttention)
             ]
             for fast_attention in fast_attentions:
@@ -221,7 +214,7 @@ class RedrawProjection:
             self.num_last_redraw = 0
             return
         self.num_last_redraw += 1
-        
+
 
 ### baseline MLP
 class MLP(torch.nn.Module):
@@ -282,7 +275,7 @@ def train_gps(model, device, optimizer, train_loader, epoch):
     for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
-        
+
         model.redraw_projection.redraw_projections()
         out = model(data.x, data.pe, data.edge_index, data.batch)
 
@@ -569,9 +562,9 @@ def main() -> None:
         randomize_edges=args.randomize_edges,
         # scaled=True,
     )
-    
+
     if args.model == "GPS":
-        transform = T.AddRandomWalkPE(walk_length=20, attr_name='pe')
+        transform = T.AddRandomWalkPE(walk_length=20, attr_name="pe")
         data = transform(data)
 
     # data loaders
@@ -666,10 +659,9 @@ def main() -> None:
         lr=args.learning_rate,
         weight_decay=1e-5,
     )
-    
+
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20,
     #                             min_lr=0.00001)
-
 
     epochs = 100
     epochs = 15
@@ -703,7 +695,7 @@ def main() -> None:
                     epoch=epoch,
                     mask="val",
                 )
-                
+
                 test_acc = test_gps(
                     model=model,
                     device=device,
@@ -743,7 +735,7 @@ def main() -> None:
                 epoch=epoch,
                 mask="test",
             )
-            
+
         # scheduler.step(val_acc)
         if args.early_stop == "true":
             if epoch == 0:
@@ -780,7 +772,8 @@ def main() -> None:
     # first, load checkpoints
     checkpoint = torch.load(
         f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
-        map_location=torch.device("cuda:" + str(0)),)
+        map_location=torch.device("cuda:" + str(0)),
+    )
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
@@ -816,7 +809,8 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         outdir=f"{working_directory}/models/plots",
-        rmse=rmse,)
+        rmse=rmse,
+    )
 
     # plot training losses
     plot_training_losses(

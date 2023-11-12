@@ -67,7 +67,9 @@ def _split_chromatin_loops(
             )  # sort by score and keep n top anchors
             loop_path = sorted_anchors
         except IndexError:
-            print("Deeploop calls have associated scores, which are missing. Is this a loop file from Peakachu?")
+            print(
+                "Deeploop calls have associated scores, which are missing. Is this a loop file from Peakachu?"
+            )
     else:
         raise ValueError("Caller must be either 'peakachu' or 'deeploop'")
     first_anchor = pybedtools.BedTool(loop_path)
@@ -145,7 +147,7 @@ def get_loop_edges(
         loop_path=loop_path,
         caller=caller,
     )
-    
+
     first_anchor_edges = _flatten_anchors(
         _loop_direct_overlap(first_anchor, enhancers),
         _loop_within_distance(first_anchor, tss, 2000),
@@ -154,29 +156,27 @@ def get_loop_edges(
         _loop_direct_overlap(second_anchor, enhancers),
         _loop_within_distance(second_anchor, tss, 2000),
     )
-    
+
     return _loop_edges(first_anchor, first_anchor_edges, second_anchor_edges)
 
 
 def main(
     enhancer_path: str,
     loop_path: str,
-    tss_path: str,   
+    tss_path: str,
 ) -> None:
     """Main function"""
     enhancers = pybedtools.BedTool(enhancer_path)
     tss = _load_tss(tss_path)
-    edges = get_loop_edges(
-        enhancers=enhancers
-    )
+    edges = get_loop_edges(enhancers=enhancers)
     len(set([x for edge in edges for x in edge]))
 
 
 if __name__ == "__main__":
     main(
-        enhancer_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed",
-        loop_path = "GSE167200_Liver.top300K.txt",
-        tss_path = "/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed",
+        enhancer_path="/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/epimap/BSS00511_LVR.LIVER_hg38_enhancer.bed",
+        loop_path="GSE167200_Liver.top300K.txt",
+        tss_path="/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/reftss_annotated.bed",
     )
 
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 #     "/ocean/projects/bio210019p/stevesho/data/preprocess/v4_graphs/liver/local/enhancers_lifted_liver.bed_noalt"
 # # )
 # loop_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/hippocampus/Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
-    
+
 
 # liver
 # all els - 137720
