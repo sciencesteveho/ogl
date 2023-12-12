@@ -14,28 +14,14 @@ import math
 from typing import Any, Dict, Optional
 
 import torch
-from torch.nn import BatchNorm1d
-from torch.nn import Linear
-from torch.nn import ReLU
-from torch.nn import Sequential
-import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.explain import Explainer
 from torch_geometric.explain import GNNExplainer
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.loader import RandomNodeLoader
-from torch_geometric.nn import BatchNorm
-from torch_geometric.nn import GATv2Conv
-from torch_geometric.nn import GCNConv
-from torch_geometric.nn import GPSConv
-from torch_geometric.nn import GraphNorm
-from torch_geometric.nn import SAGEConv
-from torch_geometric.nn import TransformerConv
-from torch_geometric.nn.attention import PerformerAttention
-import torch_geometric.transforms as T
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
+from models import GraphSAGE, GCN, GATv2, GPSTransformer, MLP
 from utils import _set_matplotlib_publication_parameters
 from utils import _tensor_out_to_array
 from utils import dir_check_make
@@ -44,204 +30,24 @@ from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
 
 
-# Define/Instantiate GNN model
-class GraphSAGE(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-        num_layers,
-    ):
-        super().__init__()
-        self.num_layers = num_layers
-
-        self.convs = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
-
-        self.convs.append(SAGEConv(in_size, embedding_size, aggr="sum"))
-        for _ in range(num_layers - 1):
-            self.convs.append(SAGEConv(embedding_size, embedding_size, aggr="sum"))
-            self.batch_norms.append(BatchNorm(embedding_size))
-
-        self.lin1 = nn.Linear(embedding_size, embedding_size)
-        # self.lin2 = nn.Linear(embedding_size, out_channels)  # if only using 2 linear layers
-        self.lin2 = nn.Linear(embedding_size, embedding_size)
-        self.lin3 = nn.Linear(embedding_size, out_channels)
-
-    def forward(self, x, edge_index):
-        for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
-
-        x = F.dropout(x, p=0.2, training=self.training)
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
-        x = self.lin2(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.2, training=self.training)
-        x = self.lin3(x)
-        return x
+def create_model(model_type, in_size, embedding_size, out_channels, num_layers, heads=None,):
+    if model_type == "GraphSAGE":
+        return GraphSAGE(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers)
+    elif model_type == "GCN":
+        return GCN(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers)
+    elif model_type == "GATv2":
+        return GATv2(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers, heads=heads)
+    elif model_type == "MLP":
+        return MLP(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels)
+    elif model_type == "GPS":
+        return GPSTransformer(in_size=in_size, embedding_size=embedding_size, walk_length=20,
+                              channels=embedding_size, pe_dim=8, num_layers=num_layers)
+    else:
+        raise ValueError(f"Invalid model type: {model_type}")
 
 
-class GCN(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-        num_layers,
-    ):
-        super().__init__()
-        self.num_layers = num_layers
-
-        self.convs = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
-
-        self.convs.append(GCNConv(in_size, embedding_size))
-        for _ in range(num_layers - 1):
-            self.convs.append(GCNConv(embedding_size, embedding_size))
-            self.batch_norms.append(BatchNorm(embedding_size))
-
-        self.lin1 = nn.Linear(embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, out_channels)
-
-    def forward(self, x, edge_index):
-        for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
-
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = self.lin2(x)
-        return x
-
-
-class GATv2(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-        num_layers,
-        heads,
-    ):
-        super().__init__()
-        self.num_layers = num_layers
-
-        self.convs = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
-
-        self.convs.append(GATv2Conv(in_size, embedding_size, heads))
-        for _ in range(num_layers - 1):
-            self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
-            # self.batch_norms.append(BatchNorm(heads * embedding_size))
-            self.batch_norms.append(GraphNorm(heads * embedding_size))
-
-        self.lin1 = nn.Linear(heads * embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, out_channels)
-
-    def forward(self, x, edge_index):
-        for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
-
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin2(x)
-        return x
-
-
-class GPSTransformer(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        walk_length: int,
-        channels: int,
-        pe_dim: int,
-        num_layers: int,
-    ):
-        super().__init__()
-
-        self.node_emb = nn.Linear(in_size, embedding_size - pe_dim)
-        self.pe_lin = nn.Linear(walk_length, pe_dim)
-        self.pe_norm = nn.BatchNorm1d(walk_length)
-
-        self.convs = torch.nn.ModuleList()
-        for _ in range(num_layers):
-            gcnconv = GCNConv(embedding_size, embedding_size)
-            conv = GPSConv(channels, gcnconv, heads=4, attn_kwargs={"dropout": 0.5})
-            self.convs.append(conv)
-
-        self.mlp = Sequential(
-            Linear(channels, channels // 2),
-            ReLU(),
-            Linear(channels // 2, channels // 4),
-            ReLU(),
-            Linear(channels // 4, 1),
-        )
-
-        self.redraw_projection = RedrawProjection(self.convs, None)
-
-    def forward(self, x, pe, edge_index, batch):
-        x_pe = self.pe_norm(pe)
-        x = torch.cat((self.node_emb(x.squeeze(-1)), self.pe_lin(x_pe)), 1)
-
-        for conv in self.convs:
-            x = conv(x, edge_index, batch)
-        return self.mlp(x)
-
-
-class RedrawProjection:
-    def __init__(self, model: torch.nn.Module, redraw_interval: Optional[int] = None):
-        self.model = model
-        self.redraw_interval = redraw_interval
-        self.num_last_redraw = 0
-
-    def redraw_projections(self):
-        if not self.model.training or self.redraw_interval is None:
-            return
-        if self.num_last_redraw >= self.redraw_interval:
-            fast_attentions = [
-                module
-                for module in self.model.modules()
-                if isinstance(module, PerformerAttention)
-            ]
-            for fast_attention in fast_attentions:
-                fast_attention.redraw_projection_matrix()
-            self.num_last_redraw = 0
-            return
-        self.num_last_redraw += 1
-
-
-### baseline MLP
-class MLP(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-    ):
-        super().__init__()
-
-        self.lin1 = nn.Linear(in_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, embedding_size)
-        self.lin3 = nn.Linear(embedding_size, out_channels)
-
-    def forward(self, x, edge_index):
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = self.lin2(x)
-        x = F.relu(x)
-        x = self.lin3(x)
-        return x
-
-
-def train(model, device, optimizer, train_loader, epoch):
+def train(model, device, optimizer, train_loader, epoch, gps=False):
     model.train()
-
     pbar = tqdm(total=len(train_loader))
     pbar.set_description(f"Training epoch: {epoch:04d}")
 
@@ -249,37 +55,13 @@ def train(model, device, optimizer, train_loader, epoch):
     for data in train_loader:
         optimizer.zero_grad()
         data = data.to(device)
-        out = model(data.x, data.edge_index)
+        
+        if gps:
+            model.redraw_projection.redraw_projections()
+            out = model(data.x, data.pe, data.edge_index, data.batch)
+        else:
+            out = model(data.x, data.edge_index)
 
-        # calculate loss
-        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
-        loss.backward()
-        optimizer.step()
-
-        total_loss += float(loss) * int(data.train_mask.sum())
-        total_examples += int(data.train_mask.sum())
-
-        pbar.update(1)
-
-    pbar.close()
-    return total_loss / total_examples
-
-
-def train_gps(model, device, optimizer, train_loader, epoch):
-    model.train()
-
-    pbar = tqdm(total=len(train_loader))
-    pbar.set_description(f"Training epoch: {epoch:04d}")
-
-    total_loss = total_examples = 0
-    for data in train_loader:
-        data = data.to(device)
-        optimizer.zero_grad()
-
-        model.redraw_projection.redraw_projections()
-        out = model(data.x, data.pe, data.edge_index, data.batch)
-
-        # calculate loss
         loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
         optimizer.step()
@@ -294,87 +76,31 @@ def train_gps(model, device, optimizer, train_loader, epoch):
 
 
 @torch.no_grad()
-def test(model, device, data_loader, epoch, mask):
-    model.eval()
-
-    pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-
-    mse = []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
-        print(out)
-        print(data.y)
-
-        # calculate loss
-        if mask == "val":
-            idx_mask = data.val_mask
-        if mask == "test":
-            idx_mask = data.test_mask
-        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-
-    pbar.close()
-    return math.sqrt(float(loss.mean()))
-
-
-@torch.no_grad()
-def test_with_idxs(model, device, data_loader, epoch, mask):
+def test(model, device, data_loader, epoch, mask, gps=False):
     # spearman = SpearmanCorrCoef(num_outputs=2)
     model.eval()
-
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     mse = []
     for data in data_loader:
         data = data.to(device)
-        out = model(data.x, data.edge_index)
+        if gps:
+            out = model(data.x, data.pe, data.edge_index, data.batch)
+        else:
+            out = model(data.x, data.edge_index)
 
-        # calculate loss
         if mask == "val":
             idx_mask = data.val_mask
-        if mask == "test":
+        elif mask == "test":
             idx_mask = data.test_mask
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
         # outs.extend(out[idx_mask])
         # labels.extend(data.y[idx_mask])
         loss = torch.stack(mse)
-
         pbar.update(1)
-
-    pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
-    return math.sqrt(float(loss.mean()))
-
-
-@torch.no_grad()
-def test_gps(model, device, data_loader, epoch, mask):
-    model.eval()
-
-    pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-
-    mse = []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.pe, data.edge_index, data.batch)
-
-        # calculate loss
-        if mask == "val":
-            idx_mask = data.val_mask
-        if mask == "test":
-            idx_mask = data.test_mask
-        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
-        # outs.extend(out[idx_mask])
-        # labels.extend(data.y[idx_mask])
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-
+    
+    # loss = torch.stack(mse)  # this might need to be inline...
     pbar.close()
     # print(spearman(torch.stack(outs), torch.stack(labels)))
     return math.sqrt(float(loss.mean()))
@@ -406,25 +132,28 @@ def inference(model, device, data_loader, epoch):
 
 
 @torch.no_grad()
-def inference_gps(model, device, data_loader, epoch):
+def inference(model, device, data_loader, epoch, gps=False):
     model.eval()
-
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     mse, outs, labels = [], [], []
     for data in data_loader:
         data = data.to(device)
-        out = model(data.x, data.pe, data.edge_index, data.batch)
+        if gps:
+            out = model(data.x, data.pe, data.edge_index, data.batch)
+        else:
+            out = model(data.x, data.edge_index)
 
-        # calculate loss
         outs.extend(out[data.test_mask])
         labels.extend(data.y[data.test_mask])
         mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        
         loss = torch.stack(mse)
 
         pbar.update(1)
-
+        
+    # loss = torch.stack(mse)
     pbar.close()
     return math.sqrt(float(loss.mean())), outs, labels
 
@@ -563,96 +292,46 @@ def main() -> None:
         # scaled=True,
     )
 
-    if args.model == "GPS":
-        transform = T.AddRandomWalkPE(walk_length=20, attr_name="pe")
-        data = transform(data)
-
-    # data loaders
-    if args.loader == "random":
-        train_loader = RandomNodeLoader(
-            data,
-            num_parts=250,
-            shuffle=True,
-            num_workers=5,
-        )
-        test_loader = RandomNodeLoader(
-            data,
-            num_parts=250,
-            num_workers=5,
-        )
+    # # data loaders
+    # if args.loader == "random":
+    #     train_loader = RandomNodeLoader(
+    #         data,
+    #         num_parts=250,
+    #         shuffle=True,
+    #         num_workers=5,
+    #     )
+    #     test_loader = RandomNodeLoader(
+    #         data,
+    #         num_parts=250,
+    #         num_workers=5,
+    #     )
 
     if args.loader == "neighbor":
         train_loader = NeighborLoader(
             data,
-            num_neighbors=[15, 10, 5],
+            num_neighbors=[5, 5, 5, 5, 5, 3],
             batch_size=args.batch_size,
+            input_nodes=data.train_mask,
             shuffle=True,
         )
         test_loader = NeighborLoader(
             data,
-            num_neighbors=[15, 10, 5],
+            num_neighbors=[5, 5, 5, 5, 5, 3],
             batch_size=args.batch_size,
+            input_nodes=data.test_mask,
         )
-        if args.idx == "true":
-            train_loader = NeighborLoader(
-                data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch_size,
-                input_nodes=data.train_mask,
-                shuffle=True,
-            )
-            test_loader = NeighborLoader(
-                data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch_size,
-                input_nodes=data.test_mask,
-            )
-            val_loader = NeighborLoader(
-                data,
-                num_neighbors=[5, 5, 5, 5, 5, 3],
-                batch_size=args.batch_size,
-                input_nodes=data.val_mask,
-            )
+        val_loader = NeighborLoader(
+            data,
+            num_neighbors=[5, 5, 5, 5, 5, 3],
+            batch_size=args.batch_size,
+            input_nodes=data.val_mask,
+        )
 
     # CHOOSE YOUR WEAPON
-    if args.model == "GraphSAGE":
-        model = GraphSAGE(
-            in_size=data.x.shape[1],
-            embedding_size=args.dimensions,
-            out_channels=1,
-            num_layers=args.layers,
+    model = create_model(
+        args.model, in_size=data.x.shape[1], embedding_size=args.dimensions,out_channels=1, num_layers=args.layers, heads=2 if args.model == "GATv2" else None
         ).to(device)
-    if args.model == "GCN":
-        model = GCN(
-            in_size=data.x.shape[1],
-            embedding_size=args.dimensions,
-            out_channels=1,
-            num_layers=args.layers,
-        ).to(device)
-    if args.model == "GAT":
-        model = GATv2(
-            in_size=data.x.shape[1],
-            embedding_size=args.dimensions,
-            out_channels=1,
-            num_layers=args.layers,
-            heads=2,
-        ).to(device)
-    if args.model == "MLP":
-        model = MLP(
-            in_size=data.x.shape[1],
-            embedding_size=args.dimensions,
-            out_channels=1,
-        ).to(device)
-    if args.model == "GPS":
-        model = GPSTransformer(
-            in_size=data.x.shape[1],
-            embedding_size=args.dimensions,
-            walk_length=20,
-            channels=args.dimensions,
-            pe_dim=8,
-            num_layers=args.layers,
-        ).to(device)
-
+    
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(
         model.parameters(),
@@ -664,79 +343,24 @@ def main() -> None:
     #                             min_lr=0.00001)
 
     epochs = 100
-    epochs = 15
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         if args.model == "GPS":
-            loss = train_gps(
-                model=model,
-                device=device,
-                optimizer=optimizer,
-                train_loader=train_loader,
-                epoch=epoch,
-            )
+            loss = train(model=model, device=device, optimizer=optimizer, train_loader=train_loader, epoch=epoch, gps=True)
         else:
-            loss = train(
-                model=model,
-                device=device,
-                optimizer=optimizer,
-                train_loader=train_loader,
-                epoch=epoch,
-            )
+            loss = train(model=model, device=device, optimizer=optimizer, train_loader=train_loader, epoch=epoch)
+            
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
-        if args.idx == "true":
-            if args.model == "GPS":
-                val_acc = test_gps(
-                    model=model,
-                    device=device,
-                    data_loader=val_loader,
-                    epoch=epoch,
-                    mask="val",
-                )
-
-                test_acc = test_gps(
-                    model=model,
-                    device=device,
-                    data_loader=test_loader,
-                    epoch=epoch,
-                    mask="test",
-                )
-            else:
-                val_acc = test_with_idxs(
-                    model=model,
-                    device=device,
-                    data_loader=val_loader,
-                    epoch=epoch,
-                    mask="val",
-                )
-
-                test_acc = test_with_idxs(
-                    model=model,
-                    device=device,
-                    data_loader=test_loader,
-                    epoch=epoch,
-                    mask="test",
-                )
-        else:
-            val_acc = test(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="val",
-            )
-
-            test_acc = test(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="test",
-            )
-
         # scheduler.step(val_acc)
+        if args.model == "GPS":
+            val_acc = test(model=model, device=device, data_loader=val_loader, epoch=epoch, mask="val", gps=True)
+            test_acc = test(model=model, device=device, data_loader=test_loader, epoch=epoch, mask="test", gps=True)
+        else:
+            val_acc = test(model=model, device=device, data_loader=val_loader, epoch=epoch, mask="val")
+            test_acc = test(model=model, device=device, data_loader=test_loader, epoch=epoch, mask="test")
+                
         if args.early_stop == "true":
             if epoch == 0:
                 best_validation = val_acc
@@ -779,12 +403,12 @@ def main() -> None:
 
     # get predictions
     if args.model == "GPS":
-        rmse, outs, labels = inference_gps(
-            model=model, device=device, data_loader=test_loader, epoch=0
+        rmse, outs, labels = inference(
+            model=model, device=device, data_loader=test_loader, epoch=0, gps=True,
         )
     else:
         rmse, outs, labels = inference(
-            model=model, device=device, data_loader=test_loader, epoch=0
+            model=model, device=device, data_loader=test_loader, epoch=0,
         )
 
     predictions_median = _tensor_out_to_array(outs, 0)
