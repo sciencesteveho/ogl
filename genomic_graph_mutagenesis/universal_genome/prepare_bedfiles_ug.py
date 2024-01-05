@@ -17,8 +17,8 @@ import pandas as pd
 import pybedtools
 import requests
 
-from utils import dir_check_make
-from utils import parse_yaml
+from utils import GeneralUtils.dir_check_make
+from utils import GeneralUtils.parse_yaml
 from utils import time_decorator
 
 
@@ -71,13 +71,13 @@ class UniversalGenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        dir_check_make(f"{self.root_dir}/shared_data")
+        GeneralUtils.dir_check_make(f"{self.root_dir}/shared_data")
 
         for directory in ["local", "interaction", "unprocessed"]:
-            dir_check_make(f"{self.tissue_dir}/{directory}")
+            GeneralUtils.dir_check_make(f"{self.tissue_dir}/{directory}")
 
         for directory in ["local", "interaction"]:
-            dir_check_make(f"{self.root_dir}/shared_data/{directory}")
+            GeneralUtils.dir_check_make(f"{self.root_dir}/shared_data/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -87,7 +87,7 @@ class UniversalGenomeDataPreprocessor:
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
 
-        def check_and_symlink(dst, src, boolean=False):
+        def GeneralUtils.check_and_symlink(dst, src, boolean=False):
             try:
                 if boolean == True:
                     if (bool(file) and os.path.exists(src)) and (
@@ -107,7 +107,7 @@ class UniversalGenomeDataPreprocessor:
         }
 
         for file in interact_files:
-            check_and_symlink(
+            GeneralUtils.check_and_symlink(
                 dst=f"{self.tissue_dir}/interaction/" + self.interaction[file],
                 src=interact_files[file],
                 boolean=False,
@@ -147,7 +147,7 @@ class UniversalGenomeDataPreprocessor:
     #     We keep CpGs if fractional methylation is greater than 0.70 and adjacent
     #     methylated CpGs are merged.
     #     """
-    #     dir_check_make(f"{self.dirs['methylation_dir']}/processing")
+    #     GeneralUtils.dir_check_make(f"{self.dirs['methylation_dir']}/processing")
 
     #     for chr in range(1, 23):
     #         df = pd.read_csv(
@@ -230,7 +230,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
+    params = GeneralUtils.parse_yaml(args.config)
 
     preprocessObject = UniversalGenomeDataPreprocessor(params)
     preprocessObject.prepare_data_files()

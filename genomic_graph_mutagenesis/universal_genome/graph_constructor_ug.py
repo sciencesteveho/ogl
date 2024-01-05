@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 import networkx as nx
 import numpy as np
 
-from utils import dir_check_make
+from utils import GeneralUtils.dir_check_make
 from utils import NODES
 from utils import time_decorator
 
@@ -47,7 +47,7 @@ def graph_constructor(
     interaction_dir = f"{root_dir}/{tissue}/interaction"
     parse_dir = f"{root_dir}/{tissue}/parsing"
     graph_dir = f"{root_dir}/graphs/{tissue}"
-    dir_check_make(graph_dir)
+    GeneralUtils.dir_check_make(graph_dir)
 
     def _base_graph(edges: List[str]):
         """Create a graph from list of edges"""

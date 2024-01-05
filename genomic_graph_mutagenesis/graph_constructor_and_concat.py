@@ -20,8 +20,7 @@ from typing import Any, Dict, Generator, List
 import networkx as nx
 import numpy as np
 
-from utils import dir_check_make
-from utils import parse_yaml
+from utils import GeneralUtils
 from utils import time_decorator
 
 NODES = [
@@ -195,7 +194,7 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = parse_yaml(args.experiment_config)
+    params = GeneralUtils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     if params["nodes"] is not None:
@@ -208,7 +207,7 @@ def main() -> None:
     # create primary graph directory
     root_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{root_dir}/graphs"
-    dir_check_make(graph_dir)
+    GeneralUtils.dir_check_make(graph_dir)
 
     # instantiate objects and process graphs
     for idx, tissue in enumerate(params["tissues"]):

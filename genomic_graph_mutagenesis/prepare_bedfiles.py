@@ -14,8 +14,7 @@ from typing import Dict, List
 
 import requests
 
-from utils import check_and_symlink
-from utils import dir_check_make
+from utils import GeneralUtils
 from utils import time_decorator
 
 NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
@@ -84,10 +83,10 @@ class GenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        dir_check_make(self.tissue_dir)
+        GeneralUtils.dir_check_make(self.tissue_dir)
 
         for directory in ["local", "interaction", "unprocessed"]:
-            dir_check_make(f"{self.tissue_dir}/{directory}")
+            GeneralUtils.dir_check_make(f"{self.tissue_dir}/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -97,7 +96,7 @@ class GenomeDataPreprocessor:
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
         for file in self.tissue_specific_nodes.values():
-            check_and_symlink(
+            GeneralUtils.check_and_symlink(
                 dst=f"{self.tissue_dir}/unprocessed/{file}",
                 src=f"{self.data_dir}/{file}",
                 boolean=True,
@@ -113,20 +112,20 @@ class GenomeDataPreprocessor:
         try:
             for datatype in self.interaction_types:
                 if datatype == "mirna":
-                    check_and_symlink(
+                    GeneralUtils.check_and_symlink(
                         src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction["mirdip"],
                         boolean=True,
                     )
-                    check_and_symlink(
+                    GeneralUtils.check_and_symlink(
                         src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction["mirnatargets"],
                         boolean=True,
                     )
                 else:
-                    check_and_symlink(
+                    GeneralUtils.check_and_symlink(
                         src=interact_files[datatype],
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction[datatype],
@@ -259,21 +258,21 @@ class GenomeDataPreprocessor:
             dst = f"{self.tissue_dir}/local/{file}"
             if file in NODETYPES_LOCAL:
                 if file in self.nodes:
-                    check_and_symlink(
+                    GeneralUtils.check_and_symlink(
                         src=src,
                         dst=dst,
                     )
                 else:
                     pass
             else:
-                check_and_symlink(
+                GeneralUtils.check_and_symlink(
                     src=src,
                     dst=dst,
                 )
 
         ### Make symlinks for histone marks
         for datatype in self.features:
-            check_and_symlink(
+            GeneralUtils.check_and_symlink(
                 src=f"{self.data_dir}/{self.features[datatype]}",
                 dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
             )
@@ -281,7 +280,7 @@ class GenomeDataPreprocessor:
         ### Make symlink for cpg
         src = f"{self.data_dir}/{self.methylation['cpg']}"
         dst = f"{self.tissue_dir}/unprocessed/{self.methylation['cpg']}"
-        check_and_symlink(
+        GeneralUtils.check_and_symlink(
             src=src,
             dst=dst,
         )
@@ -290,7 +289,7 @@ class GenomeDataPreprocessor:
             pass
         else:
             if "crms" in self.nodes:
-                check_and_symlink(
+                GeneralUtils.check_and_symlink(
                     src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
                     dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
                 )

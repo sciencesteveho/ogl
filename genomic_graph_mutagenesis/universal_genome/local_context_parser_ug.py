@@ -22,12 +22,12 @@ from typing import Dict, List, Optional, Tuple
 import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
-from utils import _listdir_isfile_wrapper
-from utils import _tpm_filter_gene_windows
-from utils import dir_check_make
-from utils import genes_from_gencode
+from utils import GeneralUtils._listdir_isfile_wrapper
+from utils import GenomeDataUtils._tpm_filter_gene_windows
+from utils import GeneralUtils.dir_check_make
+from utils import GenomeDataUtils.genes_from_gencode
 from utils import NODES
-from utils import parse_yaml
+from utils import GeneralUtils.parse_yaml
 from utils import time_decorator
 
 ATTRIBUTES = [
@@ -714,7 +714,7 @@ class LocalContextParser:
         # prepare references
         self.gencode_ref = pybedtools.BedTool(genes)
         self.gene_windows = pybedtools.BedTool(gene_windows)
-        self.genesymbol_to_gencode = genes_from_gencode(
+        self.genesymbol_to_gencode = GenomeDataUtils.genes_from_gencode(
             pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         )
 
@@ -725,7 +725,7 @@ class LocalContextParser:
         self, genes: str, gene_windows: str, base_nodes: str
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes = _tpm_filter_gene_windows(
+        filtered_genes = GenomeDataUtils._tpm_filter_gene_windows(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
             tpm_file=self.resources["tpm"],
@@ -739,7 +739,7 @@ class LocalContextParser:
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
-        dir_check_make(self.parse_dir)
+        GeneralUtils.dir_check_make(self.parse_dir)
 
         for directory in [
             "edges/genes",
@@ -747,10 +747,10 @@ class LocalContextParser:
             "intermediate/slopped",
             "intermediate/sorted",
         ]:
-            dir_check_make(f"{self.parse_dir}/{directory}")
+            GeneralUtils.dir_check_make(f"{self.parse_dir}/{directory}")
 
         for attribute in ATTRIBUTES:
-            dir_check_make(f"{self.attribute_dir}/{attribute}")
+            GeneralUtils.dir_check_make(f"{self.attribute_dir}/{attribute}")
 
     @time_decorator(print_args=True)
     def _region_specific_features_dict(
@@ -1121,9 +1121,9 @@ def main() -> None:
     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
+    params = GeneralUtils.parse_yaml(args.config)
 
-    bedfiles = _listdir_isfile_wrapper(
+    bedfiles = GeneralUtils._listdir_isfile_wrapper(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
     )
     bedfiles = [x for x in bedfiles if "chromatinloops" not in x]

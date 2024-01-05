@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import genes_from_gencode
+from utils import GenomeDataUtils
 from utils import time_decorator
 
 
@@ -42,7 +42,7 @@ class EdgeParser:
 
     Methods
     ----------
-    _genes_from_gencode:
+    _GenomeDataUtils.genes_from_gencode:
         Lorem
     _base_graph:
         Lorem
@@ -96,7 +96,9 @@ class EdgeParser:
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
+        self.genesymbol_to_gencode = GenomeDataUtils.genes_from_gencode(
+            gencode_ref=self.gencode_ref
+        )
         self.gencode_attr_ref = self._create_reference_dict(
             params["resources"]["gencode_attr"]
         )

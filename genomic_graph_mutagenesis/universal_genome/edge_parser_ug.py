@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import genes_from_gencode
-from utils import parse_yaml
+from utils import GenomeDataUtils.genes_from_gencode
+from utils import GeneralUtils.parse_yaml
 from utils import time_decorator
 
 
@@ -43,7 +43,7 @@ class EdgeParser:
 
     Methods
     ----------
-    _genes_from_gencode:
+    _GenomeDataUtils.genes_from_gencode:
         Lorem
     _base_graph:
         Lorem
@@ -116,7 +116,7 @@ class EdgeParser:
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
+        self.genesymbol_to_gencode = GenomeDataUtils.genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_attr_ref = self._blind_read_file(
             params["resources"]["gencode_attr"]
         )
@@ -647,7 +647,7 @@ def main() -> None:
     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
-    params = parse_yaml(args.config)
+    params = GeneralUtils.parse_yaml(args.config)
 
     # instantiate object
     edgeparserObject = EdgeParser(

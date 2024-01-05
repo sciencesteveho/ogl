@@ -24,7 +24,7 @@ from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 
 from graph_to_pytorch_exp import graph_to_pytorch
-from utils import dir_check_make
+from utils import GeneralUtils.dir_check_make
 
 
 # Define/Instantiate GNN model
@@ -278,7 +278,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # make directories and set up training logs
-    dir_check_make("models/logs")
+    GeneralUtils.dir_check_make("models/logs")
     logging.basicConfig(
         filename=f"{args.root}/models/logs/{args.model}_{args.layers}_{args.dimensions}_{args.lr}_{args.loader}_exp.log",
         level=logging.DEBUG,

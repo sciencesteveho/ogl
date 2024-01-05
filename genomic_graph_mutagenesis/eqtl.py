@@ -30,7 +30,7 @@ from graph_to_pytorch import graph_to_pytorch
 from perturbation import _device_check
 from perturbation import _load_GAT_model_for_inference
 from utils import filtered_genes_from_bed
-from utils import parse_yaml
+from utils import GeneralUtils.parse_yaml
 from utils import TISSUES_early_testing
 
 negative_direction_eqtls = [
@@ -429,7 +429,7 @@ def main() -> None:
     # parse yaml for params, used to load data
     config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml"
     # parser = argparse.ArgumentParser()
-    params = parse_yaml(config)
+    params = GeneralUtils.parse_yaml(config)
 
     # open graph
     with open(graph, "rb") as file:
@@ -465,7 +465,7 @@ def main() -> None:
         val_chrs=params["training_targets"]["val_chrs"],
     )
 
-    def _tensor_out_to_array(tensor, idx):
+    def GeneralUtils._tensor_out_to_array(tensor, idx):
         return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
     # set up loaders for inference

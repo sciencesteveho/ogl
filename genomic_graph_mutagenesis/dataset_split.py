@@ -25,8 +25,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from utils import genes_from_gff
-from utils import parse_yaml
+from utils import GeneralUtils
+from utils import GenomeDataUtils
 from utils import time_decorator
 
 PROTEIN_TISSUE_NAMES = [
@@ -61,7 +61,7 @@ def _get_tissue_keywords(
     tissue_keywords = {}
 
     for tissue in tissues:
-        params = parse_yaml(f"{config_dir}/{tissue}.yaml")
+        params = GeneralUtils.parse_yaml(f"{config_dir}/{tissue}.yaml")
 
         tpm_keyword = params["resources"]["key_tpm"]
         protein_abundance_keyword = params["resources"]["key_protein_abundance"]
@@ -644,7 +644,7 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = parse_yaml(args.experiment_config)
+    params = GeneralUtils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
@@ -693,7 +693,7 @@ def main() -> None:
 
     # split genes based on chromosome
     split, barebones_split = _genes_train_test_val_split(
-        genes=genes_from_gff(gencode_gtf),
+        genes=GenomeDataUtils.genes_from_gff(gencode_gtf),
         target_genes=filtered_genes,
         tissues=tissues,
         test_chrs=test_chrs,

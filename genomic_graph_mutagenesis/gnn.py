@@ -21,27 +21,58 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
-from models import GraphSAGE, GCN, GATv2, GPSTransformer, MLP
-from utils import _set_matplotlib_publication_parameters
-from utils import _tensor_out_to_array
-from utils import dir_check_make
-from utils import parse_yaml
-from utils import plot_predicted_versus_expected
-from utils import plot_training_losses
+from models import GATv2
+from models import GCN
+from models import GPSTransformer
+from models import GraphSAGE
+from models import MLP
+from utils import DataVizUtils
+from utils import GeneralUtils
 
 
-def create_model(model_type, in_size, embedding_size, out_channels, num_layers, heads=None,):
+def create_model(
+    model_type,
+    in_size,
+    embedding_size,
+    out_channels,
+    num_layers,
+    heads=None,
+):
     if model_type == "GraphSAGE":
-        return GraphSAGE(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers)
+        return GraphSAGE(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            out_channels=out_channels,
+            num_layers=num_layers,
+        )
     elif model_type == "GCN":
-        return GCN(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers)
+        return GCN(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            out_channels=out_channels,
+            num_layers=num_layers,
+        )
     elif model_type == "GATv2":
-        return GATv2(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels, num_layers=num_layers, heads=heads)
+        return GATv2(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            heads=heads,
+        )
     elif model_type == "MLP":
-        return MLP(in_size=in_size, embedding_size=embedding_size, out_channels=out_channels)
+        return MLP(
+            in_size=in_size, embedding_size=embedding_size, out_channels=out_channels
+        )
     elif model_type == "GPS":
-        return GPSTransformer(in_size=in_size, embedding_size=embedding_size, walk_length=20,
-                              channels=embedding_size, pe_dim=8, num_layers=num_layers)
+        return GPSTransformer(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            walk_length=20,
+            channels=embedding_size,
+            pe_dim=8,
+            num_layers=num_layers,
+        )
     else:
         raise ValueError(f"Invalid model type: {model_type}")
 
@@ -55,7 +86,7 @@ def train(model, device, optimizer, train_loader, epoch, gps=False):
     for data in train_loader:
         optimizer.zero_grad()
         data = data.to(device)
-        
+
         if gps:
             model.redraw_projection.redraw_projections()
             out = model(data.x, data.pe, data.edge_index, data.batch)
@@ -99,7 +130,7 @@ def test(model, device, data_loader, epoch, mask, gps=False):
         # labels.extend(data.y[idx_mask])
         loss = torch.stack(mse)
         pbar.update(1)
-    
+
     # loss = torch.stack(mse)  # this might need to be inline...
     pbar.close()
     # print(spearman(torch.stack(outs), torch.stack(labels)))
@@ -148,11 +179,11 @@ def inference(model, device, data_loader, epoch, gps=False):
         outs.extend(out[data.test_mask])
         labels.extend(data.y[data.test_mask])
         mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-        
+
         loss = torch.stack(mse)
 
         pbar.update(1)
-        
+
     # loss = torch.stack(mse)
     pbar.close()
     return math.sqrt(float(loss.mean())), outs, labels
@@ -247,7 +278,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    params = parse_yaml(args.experiment_config)
+    params = GeneralUtils.parse_yaml(args.experiment_config)
 
     # set up helper variables
     working_directory = params["working_directory"]
@@ -264,8 +295,8 @@ def main() -> None:
         savestr = f"{savestr}_randomize_edges"
 
     # make directories and set up training log
-    dir_check_make(f"{working_directory}/models/logs")
-    dir_check_make(f"{working_directory}/models/{savestr}")
+    GeneralUtils.dir_check_make(f"{working_directory}/models/logs")
+    GeneralUtils.dir_check_make(f"{working_directory}/models/{savestr}")
 
     logging.basicConfig(
         filename=f"{working_directory}/models/logs/{savestr}.log",
@@ -329,9 +360,14 @@ def main() -> None:
 
     # CHOOSE YOUR WEAPON
     model = create_model(
-        args.model, in_size=data.x.shape[1], embedding_size=args.dimensions,out_channels=1, num_layers=args.layers, heads=2 if args.model == "GATv2" else None
-        ).to(device)
-    
+        args.model,
+        in_size=data.x.shape[1],
+        embedding_size=args.dimensions,
+        out_channels=1,
+        num_layers=args.layers,
+        heads=2 if args.model == "GATv2" else None,
+    ).to(device)
+
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(
         model.parameters(),
@@ -346,21 +382,60 @@ def main() -> None:
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         if args.model == "GPS":
-            loss = train(model=model, device=device, optimizer=optimizer, train_loader=train_loader, epoch=epoch, gps=True)
+            loss = train(
+                model=model,
+                device=device,
+                optimizer=optimizer,
+                train_loader=train_loader,
+                epoch=epoch,
+                gps=True,
+            )
         else:
-            loss = train(model=model, device=device, optimizer=optimizer, train_loader=train_loader, epoch=epoch)
-            
+            loss = train(
+                model=model,
+                device=device,
+                optimizer=optimizer,
+                train_loader=train_loader,
+                epoch=epoch,
+            )
+
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         # scheduler.step(val_acc)
         if args.model == "GPS":
-            val_acc = test(model=model, device=device, data_loader=val_loader, epoch=epoch, mask="val", gps=True)
-            test_acc = test(model=model, device=device, data_loader=test_loader, epoch=epoch, mask="test", gps=True)
+            val_acc = test(
+                model=model,
+                device=device,
+                data_loader=val_loader,
+                epoch=epoch,
+                mask="val",
+                gps=True,
+            )
+            test_acc = test(
+                model=model,
+                device=device,
+                data_loader=test_loader,
+                epoch=epoch,
+                mask="test",
+                gps=True,
+            )
         else:
-            val_acc = test(model=model, device=device, data_loader=val_loader, epoch=epoch, mask="val")
-            test_acc = test(model=model, device=device, data_loader=test_loader, epoch=epoch, mask="test")
-                
+            val_acc = test(
+                model=model,
+                device=device,
+                data_loader=val_loader,
+                epoch=epoch,
+                mask="val",
+            )
+            test_acc = test(
+                model=model,
+                device=device,
+                data_loader=test_loader,
+                epoch=epoch,
+                mask="test",
+            )
+
         if args.early_stop == "true":
             if epoch == 0:
                 best_validation = val_acc
@@ -390,7 +465,7 @@ def main() -> None:
     )
 
     # set params for plotting
-    _set_matplotlib_publication_parameters()
+    DataVizUtils._set_matplotlib_publication_parameters()
 
     # calculate and plot spearmann rho, predictions vs. labels
     # first, load checkpoints
@@ -404,15 +479,22 @@ def main() -> None:
     # get predictions
     if args.model == "GPS":
         rmse, outs, labels = inference(
-            model=model, device=device, data_loader=test_loader, epoch=0, gps=True,
+            model=model,
+            device=device,
+            data_loader=test_loader,
+            epoch=0,
+            gps=True,
         )
     else:
         rmse, outs, labels = inference(
-            model=model, device=device, data_loader=test_loader, epoch=0,
+            model=model,
+            device=device,
+            data_loader=test_loader,
+            epoch=0,
         )
 
-    predictions_median = _tensor_out_to_array(outs, 0)
-    labels_median = _tensor_out_to_array(labels, 0)
+    predictions_median = GeneralUtils._tensor_out_to_array(outs, 0)
+    labels_median = GeneralUtils._tensor_out_to_array(labels, 0)
 
     experiment_name = params["experiment_name"]
     if args.randomize_node_feats == "true":
@@ -423,7 +505,7 @@ def main() -> None:
         experiment_name = f"{experiment_name}_randomize_edges"
 
     # plot performance
-    plot_predicted_versus_expected(
+    DataVizUtils.plot_predicted_versus_expected(
         expected=labels_median,
         predicted=predictions_median,
         experiment_name=experiment_name,
@@ -437,7 +519,7 @@ def main() -> None:
     )
 
     # plot training losses
-    plot_training_losses(
+    DataVizUtils.plot_training_losses(
         log=f"{working_directory}/models/logs/{savestr}.log",
         experiment_name=experiment_name,
         model=args.model,

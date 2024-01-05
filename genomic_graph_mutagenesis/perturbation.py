@@ -31,10 +31,10 @@ from tqdm import tqdm
 
 from gnn import GATv2
 from graph_to_pytorch import graph_to_pytorch
-from utils import parse_yaml
+from utils import GeneralUtils.parse_yaml
 
 
-def _tensor_out_to_array(tensor, idx):
+def GeneralUtils._tensor_out_to_array(tensor, idx):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
@@ -117,7 +117,7 @@ def main() -> None:
     # parse yaml for params, used to load data
     config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml"
     # parser = argparse.ArgumentParser()
-    params = parse_yaml(config)
+    params = GeneralUtils.parse_yaml(config)
 
     # open graph
     with open(graph, "rb") as file:
@@ -167,8 +167,8 @@ def main() -> None:
         data_loader=test_loader,
     )
 
-    predictions_median = _tensor_out_to_array(outs, 0)
-    labels_median = _tensor_out_to_array(labels, 0)
+    predictions_median = GeneralUtils._tensor_out_to_array(outs, 0)
+    labels_median = GeneralUtils._tensor_out_to_array(labels, 0)
 
     with open(f"{savedir}/{savestr}_median_predictions.pkl", "wb") as file:
         pickle.dump(predictions_median, file)
@@ -198,8 +198,8 @@ def main() -> None:
         device=device,
         data_loader=loader,
     )
-    labels = _tensor_out_to_array(labels, 0)
-    h3k27ac_perturbed = _tensor_out_to_array(outs, 0)
+    labels = GeneralUtils._tensor_out_to_array(labels, 0)
+    h3k27ac_perturbed = GeneralUtils._tensor_out_to_array(outs, 0)
 
     with open(f"{savedir}/{savestr}_h3k27ac_perturbed_expression.pkl", "wb") as f:
         pickle.dump(h3k27ac_perturbed, f)
@@ -229,8 +229,8 @@ def main() -> None:
         data_loader=loader,
     )
 
-    labels = _tensor_out_to_array(labels, 0)
-    h3k4me3_perturbed = _tensor_out_to_array(outs, 0)
+    labels = GeneralUtils._tensor_out_to_array(labels, 0)
+    h3k4me3_perturbed = GeneralUtils._tensor_out_to_array(outs, 0)
 
     with open(f"{savedir}/{savestr}_h3k4me3_perturbed_expression.pkl", "wb") as f:
         pickle.dump(h3k4me3_perturbed, f)

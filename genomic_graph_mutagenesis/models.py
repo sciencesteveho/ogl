@@ -44,13 +44,15 @@ class GraphSAGE(torch.nn.Module):
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
         self.convs.append(SAGEConv(in_size, embedding_size, aggr="sum"))
-        
+
         for _ in range(num_layers - 1):
             self.convs.append(SAGEConv(embedding_size, embedding_size, aggr="sum"))
             self.batch_norms.append(BatchNorm(embedding_size))
-            
-        self.linears = self.create_linear_layers(embedding_size, out_channels, lin_layers)
-        
+
+        self.linears = self.create_linear_layers(
+            embedding_size, out_channels, lin_layers
+        )
+
     def create_linear_layers(
         self,
         in_size,
@@ -66,29 +68,15 @@ class GraphSAGE(torch.nn.Module):
     def forward(self, x, edge_index):
         for conv, batch_norm in zip(self.convs, self.batch_norms):
             x = F.relu(batch_norm(conv(x, edge_index)))
-            
+
         x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        
+
         for i, linear in enumerate(self.linears):
             if i == len(self.linears) - 1:
-                x = linear(
-                    F.dropout(
-                        x,
-                        p=self.dropout_rate,
-                        training=self.training
-                    )
-                )
+                x = linear(F.dropout(x, p=self.dropout_rate, training=self.training))
             else:
-                x = F.relu(
-                    linear(
-                        F.dropout(
-                            x,
-                            p=0.2,
-                            training=self.training
-                        )
-                    )
-                )
-                
+                x = F.relu(linear(F.dropout(x, p=0.2, training=self.training)))
+
         return x
 
 
@@ -105,7 +93,7 @@ class GCN(torch.nn.Module):
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
         self.convs.append(GCNConv(in_size, embedding_size))
-        
+
         for _ in range(num_layers - 1):
             self.convs.append(GCNConv(embedding_size, embedding_size))
             self.batch_norms.append(BatchNorm(embedding_size))
@@ -141,7 +129,7 @@ class GATv2(torch.nn.Module):
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
-        
+
         for _ in range(num_layers - 1):
             self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
             # self.batch_norms.append(BatchNorm(heads * embedding_size))
