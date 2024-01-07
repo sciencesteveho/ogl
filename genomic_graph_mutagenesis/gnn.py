@@ -292,6 +292,7 @@ def main() -> None:
 
     # set up helper variables
     working_directory = params["working_directory"]
+    print(f"Working directory: {working_directory}")
     root_dir = f"{working_directory}/{params['experiment_name']}"
     # savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
     savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout"
@@ -306,6 +307,7 @@ def main() -> None:
     if args.total_random_edges > 0:
         savestr = f"{savestr}_totalrandomedges_{args.total_random_edges}"
 
+    print(f"Working directory: {working_directory}")
     # make directories and set up training log
     GeneralUtils.dir_check_make(f"{working_directory}/models/logs")
     GeneralUtils.dir_check_make(f"{working_directory}/models/{savestr}")
