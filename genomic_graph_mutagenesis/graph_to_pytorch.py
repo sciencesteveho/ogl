@@ -14,6 +14,7 @@ consider the nodes that pass the TPM filter.
 
 import csv
 import pickle
+import random
 from typing import Dict, List
 
 import numpy as np
@@ -149,6 +150,7 @@ def graph_to_pytorch(
     gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     single_gene: str = None,
     randomize_edges: str = "false",
+    total_random_edges: int = 0,
     scaled: bool = False,
     remove_node: str = None,
 ):
@@ -191,10 +193,13 @@ def graph_to_pytorch(
             dtype=torch.long,
         )
     elif randomize_edges == "true":
-        total_edges = len(graph_data["edge_index"][0])
         total_range = max(
             np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1])
         )
+        if total_random_edges != 0:
+            total_edges = total_random_edges
+        else:
+            total_edges = len(graph_data["edge_index"][0])
         edge_index = torch.tensor(
             np.array(
                 [

@@ -276,6 +276,11 @@ def main() -> None:
         type=str,
         default="false",
     )
+    parser.add_argument(
+        "--total_random_edges",
+        type=int,
+        default="0",
+    )
     args = parser.parse_args()
 
     params = GeneralUtils.parse_yaml(args.experiment_config)
@@ -293,6 +298,8 @@ def main() -> None:
         savestr = f"{savestr}_expression_only"
     if args.randomize_edges == "true":
         savestr = f"{savestr}_randomize_edges"
+    if args.total_random_edges > 0:
+        savestr = f"{savestr}_totalrandomedges_{args.total_random_edges}"
 
     # make directories and set up training log
     GeneralUtils.dir_check_make(f"{working_directory}/models/logs")
@@ -320,8 +327,11 @@ def main() -> None:
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,
-        # scaled=True,
+        total_random_edges=args.total_random_edges,
     )
+
+    # temporary - to check number of edges for randomization tests
+    print(f"Number of edges: {data.num_edges}")
 
     # # data loaders
     # if args.loader == "random":
