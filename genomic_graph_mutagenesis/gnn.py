@@ -214,6 +214,11 @@ def main() -> None:
         default="600",
     )
     parser.add_argument(
+        "--epochs",
+        type=int,
+        default="50",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
@@ -388,7 +393,8 @@ def main() -> None:
     # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20,
     #                             min_lr=0.00001)
 
-    epochs = 100
+    epochs = args.epochs
+    print(f"Training for {epochs} epochs")
     best_validation = stop_counter = 0
     for epoch in range(0, epochs + 1):
         if args.model == "GPS":
