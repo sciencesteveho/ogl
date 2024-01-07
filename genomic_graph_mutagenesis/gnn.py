@@ -523,6 +523,10 @@ def main() -> None:
         experiment_name = f"{experiment_name}_zero_node_feats"
     if args.randomize_edges == "true":
         experiment_name = f"{experiment_name}_randomize_edges"
+    if args.total_random_edges > 0:
+        experiment_name = (
+            f"{experiment_name}_totalrandomedges_{args.total_random_edges}"
+        )
 
     # plot performance
     DataVizUtils.plot_predicted_versus_expected(
