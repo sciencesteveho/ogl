@@ -27,7 +27,7 @@ parse_arguments() {
     total_random_edges=""
 
     # Use getopt with the additional --options and --longoptions flags
-    options=$(getopt --options "e:p:m:l:d:o:r:b:i:g:z:n:s:h:p" --longoptions "experiment_yaml:,partition:,model:,layers:,dimensions:,loader:,learning_rate:,batch_size:,idx:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,expression_only:,randomize_edges:total_random_edges:,help:" --name "$0" -- "$@")
+    options=$(getopt --options "e:p:m:l:d:o:r:b:i:g:z:n:s:h:p" --longoptions "experiment_yaml:,partition:,model:,layers:,dimensions:,loader:,learning_rate:,batch_size:,idx:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,expression_only:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then

@@ -52,7 +52,7 @@ def create_model(
             out_channels=out_channels,
             num_layers=num_layers,
         )
-    elif model_type == "GATv2":
+    elif model_type == "GAT":
         return GATv2(
             in_size=in_size,
             embedding_size=embedding_size,
@@ -375,7 +375,7 @@ def main() -> None:
         embedding_size=args.dimensions,
         out_channels=1,
         num_layers=args.layers,
-        heads=2 if args.model == "GATv2" else None,
+        heads=2 if args.model == "GAT" else None,
     ).to(device)
 
     # set gradient descent optimizer
