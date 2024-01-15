@@ -526,7 +526,7 @@ class DataVizUtils:
         learning_rate,
         rmse,
     ):
-        plt.figure(figsize=(3, 2.75))
+        plt.figure(figsize=(3.15, 2.95))
         DataVizUtils._set_matplotlib_publication_parameters()
 
         sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
@@ -534,7 +534,7 @@ class DataVizUtils:
         plt.xlabel("Expected Log2 TPM", fontsize=7)
         plt.ylabel("Predicted Log2 TPM", fontsize=7)
         plt.title(
-            f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}",
+            f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\nPearson: {stats.pearsonr(expected, predicted)[0]}",
             wrap=True,
             fontsize=7,
         )
@@ -722,3 +722,17 @@ def _string_list(arg):
     list
     """
     return arg.split(",")
+
+
+def _combine_and_sort_arrays(edge_index):
+    """Combines stored edge index and returns dedupe'd array of nodes"""
+    combined = np.concatenate((edge_index[0], edge_index[1]))
+    return np.unique(combined)
+
+
+def _get_number_of_edges_per_idx(node_idx):
+    """_summary_"""
+
+
+def _find_isolated_nodes():
+    """_summary_"""
