@@ -107,11 +107,12 @@ def main() -> None:
         "--experiment_config",
         type=str,
         help="Path to .yaml file with experimental conditions",
+        default="/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml",
     )
     parser.add_argument(
         "--model",
         type=str,
-        default="GCN",
+        default="GAT",
     )
     parser.add_argument(
         "--layers",
@@ -121,12 +122,12 @@ def main() -> None:
     parser.add_argument(
         "--dimensions",
         type=int,
-        default="600",
+        default="256",
     )
     parser.add_argument(
         "--epochs",
         type=int,
-        default="50",
+        default="25",
     )
     parser.add_argument(
         "--seed",
@@ -143,12 +144,12 @@ def main() -> None:
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=1024,
+        default=64,
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=1e-4,
+        default=0.0001,
     )
     parser.add_argument(
         "--idx",
@@ -184,17 +185,17 @@ def main() -> None:
     parser.add_argument(
         "--expression_only",
         type=str,
-        default="false",
+        default="true",
     )
     parser.add_argument(
         "--randomize_edges",
         type=str,
-        default="false",
+        default="true",
     )
     parser.add_argument(
         "--total_random_edges",
         type=int,
-        default="0",
+        default="10000000",
     )
     args = parser.parse_args()
 
@@ -262,7 +263,7 @@ def main() -> None:
         total_random_edges=args.total_random_edges,
     )
 
-    for percentile in 10, 25, 50, 75, 90:
+    for percentile in [None, 10, 25, 50, 75, 90]:
         test_loader = NeighborLoader(
             data,
             num_neighbors=[5, 5, 5, 5, 5, 3],
