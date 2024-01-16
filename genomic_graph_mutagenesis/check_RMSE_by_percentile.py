@@ -237,7 +237,7 @@ def main() -> None:
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
-    for percentile in [10, 25, 50, 75, 90]:
+    for percentile in [None, 10, 25, 50, 75, 90]:
         # for percentile in [10, 25, 50, 75, 90]:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],

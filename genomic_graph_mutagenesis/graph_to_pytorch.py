@@ -26,33 +26,33 @@ from torch_geometric.data import Data
 # from utils import TISSUES
 
 
-def filter_genes(
-    root_dir,
-    tissues,
-):
-    """Filters and only keeps targets that pass the TPM filter of >.1 TPM across
-    20% of samples
+# def filter_genes(
+#     root_dir,
+#     tissues,
+# ):
+#     """Filters and only keeps targets that pass the TPM filter of >.1 TPM across
+#     20% of samples
 
-    Args:
-        tissues (Dict[Tuple[str, str]]): _description_
-        targets (Dict[str, Dict[str, np.ndarray]]): _description_
+#     Args:
+#         tissues (Dict[Tuple[str, str]]): _description_
+#         targets (Dict[str, Dict[str, np.ndarray]]): _description_
 
-    Returns:
-        Dict[str, Dict[str, np.ndarray]]: _description_
-    """
+#     Returns:
+#         Dict[str, Dict[str, np.ndarray]]: _description_
+#     """
 
-    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+#         with open(tpm_filtered_genes, newline="") as file:
+#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
 
-    for idx, tissue in enumerate(tissues):
-        if idx == 0:
-            genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-        else:
-            update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-            genes += update_genes
+#     for idx, tissue in enumerate(tissues):
+#         if idx == 0:
+#             genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+#         else:
+#             update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+#             genes += update_genes
 
-    return set(genes)
+#     return set(genes)
 
 
 def _get_mask_idxs(
@@ -93,7 +93,7 @@ def _get_mask_idxs(
             graph_index,
             get_tensor_for_genes(split["train"]),
             torch.tensor(
-                [gene for gene in test_genes if gene in graph_index.keys()],
+                [gene for gene in test_genes if gene in graph_index.values()],
                 dtype=torch.long,
             ),
             get_tensor_for_genes(split["validation"]),
