@@ -137,29 +137,29 @@ def test(model, device, data_loader, epoch, mask, gps=False):
     return math.sqrt(float(loss.mean()))
 
 
-@torch.no_grad()
-def inference(model, device, data_loader, epoch):
-    model.eval()
+# @torch.no_grad()
+# def inference(model, device, data_loader, epoch):
+#     model.eval()
 
-    pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+#     pbar = tqdm(total=len(data_loader))
+#     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-    mse, outs, labels = [], [], []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
+#     mse, outs, labels = [], [], []
+#     for data in data_loader:
+#         data = data.to(device)
+#         out = model(data.x, data.edge_index)
 
-        # calculate loss
-        outs.extend(out[data.test_mask])
-        labels.extend(data.y[data.test_mask])
-        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-        loss = torch.stack(mse)
+#         # calculate loss
+#         outs.extend(out[data.test_mask])
+#         labels.extend(data.y[data.test_mask])
+#         mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+#         loss = torch.stack(mse)
 
-        pbar.update(1)
+#         pbar.update(1)
 
-    pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
-    return math.sqrt(float(loss.mean())), outs, labels
+#     pbar.close()
+#     # print(spearman(torch.stack(outs), torch.stack(labels)))
+#     return math.sqrt(float(loss.mean())), outs, labels
 
 
 @torch.no_grad()

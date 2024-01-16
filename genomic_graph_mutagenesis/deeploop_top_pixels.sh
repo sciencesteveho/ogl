@@ -14,6 +14,13 @@
 # setting up variables
 SECONDS=0
 
+function convertsecs() {
+ ((h=${1}/3600))
+ ((m=(${1}%3600)/60))
+ ((s=${1}%60))
+ printf "%02d:%02d:%02d\n" $h $m $s
+}
+
 # Arguments:
 #   $1 - tissue name
 #   $2 - one level above /path/to/data
@@ -84,7 +91,7 @@ function _format_deeploop_bedpe () {
         $1/$2.pixels_2.hg38 \
         | sed 's/ /\t/g' \
         | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6}' \
-        | sort -k1,1 -k2,2n \
+        | sort --parallel=8 -S 50% -k1,1 -k2,2n \
         > $3/${2}_pixels.hg38
 }
 
@@ -121,7 +128,7 @@ deeploop_processing_main () {
 
     # _extract_from_cooler \
     #     $filename \
-    #     $2
+    #     /ocean/projects/bio210019p/stevesho/hic \
 
     _liftover_deeploop_bedpe \
         $loop_dir \
@@ -141,19 +148,18 @@ deeploop_processing_main () {
 
 # run main functions!
 # filenames=(Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine)
-filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
-for filename in ${filenames[@]};
+# filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
+# for name in ${filenames[@]};
+for addendum in 5000000 10000000 50000000;
 do
-    for addendum in 5000000 10000000 50000000;
-    do
-        deeploop_processing_main \
-            ${filename}_${addendum} \
-            /ocean/projects/bio210019p/stevesho/hic/top_pixels \
-            /ocean/projects/bio210019p/stevesho/resources \
-            /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_full
-    done
+    echo "Processing ${name}_${addendum}..."
+    deeploop_processing_main \
+        ${1}_${addendum} \
+        /ocean/projects/bio210019p/stevesho/hic/top_pixels \
+        /ocean/projects/bio210019p/stevesho/resources \
+        /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
 done
 
 end=`date +%s`
 time=$((end-start))
-echo "Finished! in time seconds."
+echo "Finished in $(convertsecs $time)!"

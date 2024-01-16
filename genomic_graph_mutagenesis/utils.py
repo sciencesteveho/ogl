@@ -177,6 +177,36 @@ LOOPFILES = {
         "skeletal_muscle": "skeletal_muscle_alloops.bed",
         "small_intestine": "small_intestine_alloops.bed",
     },
+    "deeploop_5000000": {
+        "aorta": "aorta_5000000_pixels.hg38",
+        "hippocampus": "hippocampus_5000000_pixels.hg38",
+        "left_ventricle": "leftventricle_5000000_pixels.hg38",
+        "liver": "liver_5000000_pixels.hg38",
+        "lung": "lung_5000000_pixels.hg38",
+        "pancreas": "pancreas_5000000_pixels.hg38",
+        "skeletal_muscle": "psoas_muscle_5000000_pixels.hg38",
+        "small_intestine": "small_intestine_5000000_pixels.hg38",
+    },
+    "deeploop_10000000": {
+        "aorta": "aorta_10000000_pixels.hg38",
+        "hippocampus": "hippocampus_10000000_pixels.hg38",
+        "left_ventricle": "leftventricle_10000000_pixels.hg38",
+        "liver": "liver_10000000_pixels.hg38",
+        "lung": "lung_10000000_pixels.hg38",
+        "pancreas": "pancreas_10000000_pixels.hg38",
+        "skeletal_muscle": "psoas_muscle_10000000_pixels.hg38",
+        "small_intestine": "small_intestine_10000000_pixels.hg38",
+    },
+    "deeploop_50000000": {
+        "aorta": "aorta_50000000_pixels.hg38",
+        "hippocampus": "hippocampus_50000000_pixels.hg38",
+        "left_ventricle": "leftventricle_50000000_pixels.hg38",
+        "liver": "liver_50000000_pixels.hg38",
+        "lung": "lung_50000000_pixels.hg38",
+        "pancreas": "pancreas_50000000_pixels.hg38",
+        "skeletal_muscle": "psoas_muscle_50000000_pixels.hg38",
+        "small_intestine": "small_intestine_50000000_pixels.hg38",
+    },
 }
 
 TISSUES = [

@@ -55,7 +55,11 @@ def filter_genes(
     return set(genes)
 
 
-def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
+def _get_mask_idxs(
+    index: str,
+    split: Dict[str, List[str]],
+    percentile: int = None,
+) -> np.ndarray:
     """_summary_
 
     Args:
@@ -70,7 +74,44 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
         graph_index = pickle.load(f)
 
     all_genes = split["train"] + split["test"] + split["validation"]
-
+    if not percentile:
+        return (
+            graph_index,
+            torch.tensor(
+                [
+                    graph_index[gene]
+                    for gene in split["train"]
+                    if gene in graph_index.keys()
+                ],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [
+                    graph_index[gene]
+                    for gene in test_genes
+                    if gene in graph_index.keys()
+                ],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [
+                    graph_index[gene]
+                    for gene in split["validation"]
+                    if gene in graph_index.keys()
+                ],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [graph_index[gene] for gene in all_genes if gene in graph_index.keys()],
+                dtype=torch.long,
+            ),
+        )
+    with open(
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile}.pkl",
+        "rb",
+    ) as f:
+        test_genes = pickle.load(f)
+    test_genes = list(test_genes.keys())
     return (
         graph_index,
         torch.tensor(
@@ -82,7 +123,7 @@ def _get_mask_idxs(index: str, split: Dict[str, List[str]]) -> np.ndarray:
             dtype=torch.long,
         ),
         torch.tensor(
-            [graph_index[gene] for gene in split["test"] if gene in graph_index.keys()],
+            [gene for gene in test_genes if gene in graph_index.keys()],
             dtype=torch.long,
         ),
         torch.tensor(
@@ -117,23 +158,21 @@ def _get_target_values_for_mask(
 
     all_dict = {}
     for split in ["train", "test", "validation"]:
-        all_dict.update(graph_targets[split])
+        all_dict |= graph_targets[split]
 
     return all_dict
 
 
-def _get_masked_tensor(num_nodes: int):
+def _get_masked_tensor(
+    num_nodes: int,
+    fill_value: int = -1,
+) -> torch.Tensor:
     """_summary_
 
     Args:
         num_nodes (int): _description_
-
-    Returns:
-        _type_: _description_
     """
-    tensor = torch.zeros(num_nodes, dtype=torch.float)
-    tensor[tensor == 0] = -1
-    return tensor
+    return torch.full((num_nodes,), fill_value, dtype=torch.float)
 
 
 def graph_to_pytorch(
@@ -153,6 +192,7 @@ def graph_to_pytorch(
     total_random_edges: int = 0,
     scaled: bool = False,
     remove_node: str = None,
+    percentile: int = None,
 ):
     """_summary_
 
@@ -228,7 +268,14 @@ def graph_to_pytorch(
             x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
-    graph_index, train, test, val, all_idx = _get_mask_idxs(index=index, split=split)
+    if percentile:
+        graph_index, train, test, val, all_idx = _get_mask_idxs(
+            index=index, split=split, percentile=percentile
+        )
+    else:
+        graph_index, train, test, val, all_idx = _get_mask_idxs(
+            index=index, split=split
+        )
 
     # get individual if querying for single gene
     if single_gene:
