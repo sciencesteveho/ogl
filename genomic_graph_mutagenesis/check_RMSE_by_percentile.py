@@ -251,6 +251,7 @@ def main() -> None:
     model.to(device)
 
     for percentile in [None, 10, 25, 50, 75, 90]:
+        # for percentile in [10, 25, 50, 75, 90]:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
             graph_type=args.graph_type,
@@ -262,7 +263,7 @@ def main() -> None:
             zero_node_feats=args.zero_nodes,
             randomize_edges=args.randomize_edges,
             total_random_edges=args.total_random_edges,
-            percentile=percentile,
+            percentile_cutoff=percentile,
         )
         test_loader = NeighborLoader(
             data,
@@ -305,7 +306,7 @@ def main() -> None:
             width=args.dimensions,
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
-            outdir=f"{working_directory}/models/plots",
+            outdir="/ocean/projects/bio210019p/stevesho/data/preprocess",
             rmse=rmse,
         )
 

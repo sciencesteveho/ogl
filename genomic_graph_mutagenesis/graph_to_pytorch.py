@@ -107,39 +107,40 @@ def _get_mask_idxs(
                 dtype=torch.long,
             ),
         )
-    with open(
-        f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile_cutoff}.pkl",
-        "rb",
-    ) as f:
-        test_genes = pickle.load(f)
-    test_genes = list(test_genes.keys())
-    return (
-        graph_index,
-        torch.tensor(
-            [
-                graph_index[gene]
-                for gene in split["train"]
-                if gene in graph_index.keys()
-            ],
-            dtype=torch.long,
-        ),
-        torch.tensor(
-            [gene for gene in test_genes if gene in graph_index.keys()],
-            dtype=torch.long,
-        ),
-        torch.tensor(
-            [
-                graph_index[gene]
-                for gene in split["validation"]
-                if gene in graph_index.keys()
-            ],
-            dtype=torch.long,
-        ),
-        torch.tensor(
-            [graph_index[gene] for gene in all_genes if gene in graph_index.keys()],
-            dtype=torch.long,
-        ),
-    )
+    else:
+        with open(
+            f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile_cutoff}.pkl",
+            "rb",
+        ) as f:
+            test_genes = pickle.load(f)
+        test_genes = list(test_genes.keys())
+        return (
+            graph_index,
+            torch.tensor(
+                [
+                    graph_index[gene]
+                    for gene in split["train"]
+                    if gene in graph_index.keys()
+                ],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [gene for gene in test_genes if gene in graph_index.keys()],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [
+                    graph_index[gene]
+                    for gene in split["validation"]
+                    if gene in graph_index.keys()
+                ],
+                dtype=torch.long,
+            ),
+            torch.tensor(
+                [graph_index[gene] for gene in all_genes if gene in graph_index.keys()],
+                dtype=torch.long,
+            ),
+        )
 
 
 def _get_target_values_for_mask(
