@@ -75,6 +75,7 @@ def _get_mask_idxs(
 
     all_genes = split["train"] + split["test"] + split["validation"]
     if not percentile:
+        test_genes = split["test"]
         return (
             graph_index,
             torch.tensor(
