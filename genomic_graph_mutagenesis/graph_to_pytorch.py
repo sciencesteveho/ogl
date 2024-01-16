@@ -93,7 +93,8 @@ def _get_mask_idxs(
             graph_index,
             get_tensor_for_genes(split["train"]),
             torch.tensor(
-                [int(gene) for gene in test_genes if gene in graph_index.keys()]
+                [gene for gene in test_genes if gene in graph_index.keys()],
+                dtype=torch.long,
             ),
             get_tensor_for_genes(split["validation"]),
             get_tensor_for_genes(all_genes),
