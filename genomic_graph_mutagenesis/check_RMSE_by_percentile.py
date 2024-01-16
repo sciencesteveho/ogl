@@ -213,23 +213,10 @@ def main() -> None:
     else:
         device = torch.device("cpu")
 
-    data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type=args.graph_type,
-        root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-        randomize_feats=args.randomize_node_feats,
-        zero_node_feats=args.zero_nodes,
-        randomize_edges=args.randomize_edges,
-        total_random_edges=args.total_random_edges,
-    )
-
     # CHOOSE YOUR WEAPON
     model = create_model(
         args.model,
-        in_size=data.x.shape[1],
+        in_size=41,
         embedding_size=args.dimensions,
         out_channels=1,
         num_layers=args.layers,
@@ -250,7 +237,7 @@ def main() -> None:
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
-    for percentile in [None, 10, 25, 50, 75, 90]:
+    for percentile in [10, 25, 50, 75, 90]:
         # for percentile in [10, 25, 50, 75, 90]:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
