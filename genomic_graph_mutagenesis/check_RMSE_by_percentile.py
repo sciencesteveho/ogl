@@ -122,7 +122,7 @@ def main() -> None:
     parser.add_argument(
         "--dimensions",
         type=int,
-        default="256",
+        default="128",
     )
     parser.add_argument(
         "--epochs",
@@ -250,26 +250,25 @@ def main() -> None:
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
-    data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type=args.graph_type,
-        root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-        randomize_feats=args.randomize_node_feats,
-        zero_node_feats=args.zero_nodes,
-        randomize_edges=args.randomize_edges,
-        total_random_edges=args.total_random_edges,
-    )
-
     for percentile in [None, 10, 25, 50, 75, 90]:
+        data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
+            graph_type=args.graph_type,
+            root_dir=root_dir,
+            targets_types=params["training_targets"]["targets_types"],
+            test_chrs=params["training_targets"]["test_chrs"],
+            val_chrs=params["training_targets"]["val_chrs"],
+            randomize_feats=args.randomize_node_feats,
+            zero_node_feats=args.zero_nodes,
+            randomize_edges=args.randomize_edges,
+            total_random_edges=args.total_random_edges,
+            percentile=percentile,
+        )
         test_loader = NeighborLoader(
             data,
             num_neighbors=[5, 5, 5, 5, 5, 3],
             batch_size=args.batch_size,
             input_nodes=data.test_mask,
-            percentile_cutoff=percentile,
         )
 
         # get predictions

@@ -58,7 +58,7 @@ def filter_genes(
 def _get_mask_idxs(
     index: str,
     split: Dict[str, List[str]],
-    percentile: int = None,
+    percentile_cutoff: int = None,
 ) -> np.ndarray:
     """_summary_
 
@@ -74,7 +74,7 @@ def _get_mask_idxs(
         graph_index = pickle.load(f)
 
     all_genes = split["train"] + split["test"] + split["validation"]
-    if not percentile:
+    if not percentile_cutoff:
         test_genes = split["test"]
         return (
             graph_index,
@@ -108,7 +108,7 @@ def _get_mask_idxs(
             ),
         )
     with open(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile}.pkl",
+        f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile_cutoff}.pkl",
         "rb",
     ) as f:
         test_genes = pickle.load(f)
@@ -193,7 +193,7 @@ def graph_to_pytorch(
     total_random_edges: int = 0,
     scaled: bool = False,
     remove_node: str = None,
-    percentile: int = None,
+    percentile_cutoff: int = None,
 ):
     """_summary_
 
@@ -269,9 +269,9 @@ def graph_to_pytorch(
             x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
     # get mask indexes
-    if percentile:
+    if percentile_cutoff:
         graph_index, train, test, val, all_idx = _get_mask_idxs(
-            index=index, split=split, percentile=percentile
+            index=index, split=split, percentile_cutoff=percentile_cutoff
         )
     else:
         graph_index, train, test, val, all_idx = _get_mask_idxs(
