@@ -21,39 +21,6 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-# from dataset_split import _genes_train_test_val_split
-# from dataset_split import _GenomeDataUtils.genes_from_gff
-# from utils import TISSUES
-
-
-# def filter_genes(
-#     root_dir,
-#     tissues,
-# ):
-#     """Filters and only keeps targets that pass the TPM filter of >.1 TPM across
-#     20% of samples
-
-#     Args:
-#         tissues (Dict[Tuple[str, str]]): _description_
-#         targets (Dict[str, Dict[str, np.ndarray]]): _description_
-
-#     Returns:
-#         Dict[str, Dict[str, np.ndarray]]: _description_
-#     """
-
-#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-#         with open(tpm_filtered_genes, newline="") as file:
-#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
-
-#     for idx, tissue in enumerate(tissues):
-#         if idx == 0:
-#             genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-#         else:
-#             update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-#             genes += update_genes
-
-#     return set(genes)
-
 
 def _get_mask_idxs(
     index: str,
@@ -148,13 +115,10 @@ def graph_to_pytorch(
     graph_type: str,
     root_dir: str,
     targets_types: str,
-    test_chrs: List[str],
-    val_chrs: List[str],
     randomize_feats: str = "false",
     zero_node_feats: str = "false",
     node_perturbation: str = None,
     node_remove_edges: List[str] = None,
-    gene_gtf: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
     single_gene: str = None,
     randomize_edges: str = "false",
     total_random_edges: int = 0,
@@ -177,13 +141,6 @@ def graph_to_pytorch(
 
     with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
         split = pickle.load(f)
-
-    # filtered_genes = filter_genes(root_dir=root_dir, tissues=TISSUES)
-    # filtered_split = dict.fromkeys(["train", "test", "validation"])
-    # for data_split in ["train", "test", "validation"]:
-    #     filtered_split[data_split] = [
-    #         x for x in split[data_split] if x in filtered_genes
-    #     ]
 
     with open(graph, "rb") as file:
         graph_data = pickle.load(file)
@@ -224,7 +181,7 @@ def graph_to_pytorch(
     if node_perturbation == "h3k27ac":
         graph_data["node_feat"][:, 9] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
-    if node_perturbation == "h3k4me3":
+    elif node_perturbation == "h3k4me3":
         graph_data["node_feat"][:, 14] = 0
         x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
     if not node_perturbation:
@@ -274,81 +231,37 @@ def graph_to_pytorch(
         targets = f"{graph_dir}/targets.pkl"
     target_values = _get_target_values_for_mask(targets=targets)
 
-    # change the key in one dict to the value of another dict, which has its key as the index
-    remapped = {}
-    for target in target_values:
-        if target in graph_index:
-            remapped[graph_index[target]] = target_values[target]
+    # handling of targets_types, to only put proper targets into mask
+    target_indices = {
+        "expression_median_only": [0],
+        "expression_median_and_foldchange": [0, 1],
+        "difference_from_average": [2],
+        "protein_targets": [0, 1, 2, 3],
+    }
 
-    first, second, third, fourth, fifth = (
-        _get_masked_tensor(data.num_nodes),
-        _get_masked_tensor(data.num_nodes),
-        _get_masked_tensor(data.num_nodes),
-        _get_masked_tensor(data.num_nodes),
-        _get_masked_tensor(data.num_nodes),
-    )
+    if targets_types not in target_indices:
+        raise ValueError("Invalid targets_types provided.")
 
-    if targets_types == "expression_median_only":
-        for idx in [0]:
-            for key, values in remapped.items():
-                first[key] = values[idx]
-        y = first.view(1, -1)
-    elif targets_types == "expression_median_and_foldchange":
-        for idx in [0, 1]:
-            for key, value in remapped.items():
-                if idx == 0:
-                    first[key] = value[idx]
-                elif idx == 1:
-                    second[key] = value[idx]
-        y = torch.cat(
-            (first.view(1, -1), second.view(1, -1)),
-            dim=0,
-        )
-    elif targets_types == "difference_from_average":
-        for idx in [2]:
-            for key, values in remapped.items():
-                third[key] = values[idx]
-            y = third.view(1, -1)
-    elif targets_types == "protein_targets":
-        pass
-    else:
-        raise ValueError(
-            "targets_types must be one of the following: expression_median_only, expression_median_and_foldchange, difference_from_average, protein_targets"
-        )
+    remapped = {
+        graph_index[target]: target_values[target]
+        for target in target_values
+        if target in graph_index
+    }
 
-    # if protein_targets:
-    #     first, second, third, fourth = (
-    #         _get_masked_tensor(data.num_nodes),
-    #         _get_masked_tensor(data.num_nodes),
-    #         _get_masked_tensor(data.num_nodes),
-    #         _get_masked_tensor(data.num_nodes),
-    #     )
-    #     for idx in [0, 1, 2, 3]:
-    #         for key, value in remapped.items():
-    #             if idx == 0:
-    #                 first[key] = value[idx]
-    #             elif idx == 1:
-    #                 second[key] = value[idx]
-    #             elif idx == 2:
-    #                 third[key] = value[idx]
-    #             elif idx == 3:
-    #                 fourth[key] = value[idx]
-    #         y = torch.cat(
-    #             (
-    #                 first.view(1, -1),
-    #                 second.view(1, -1),
-    #                 third.view(1, -1),
-    #                 fourth.view(1, -1),
-    #             ),
-    #             dim=0,
-    #         )
+    y_tensors = [
+        _get_masked_tensor(data.num_nodes)
+        for _ in range(len(target_indices[targets_types]))
+    ]
+
+    for idx, tensor in enumerate(y_tensors):
+        for key, values in remapped.items():
+            tensor[key] = values[target_indices[targets_types][idx]]
+
+    y = torch.stack(y_tensors).view(len(y_tensors), -1)
 
     # add mask and target values to data object
     data.train_mask = train_mask
-    if single_gene:
-        data.test_mask = gene_mask
-    else:
-        data.test_mask = test_mask
+    data.test_mask = gene_mask if single_gene else test_mask
     data.val_mask = val_mask
     data.y = y.T
     data.all_mask = all_mask

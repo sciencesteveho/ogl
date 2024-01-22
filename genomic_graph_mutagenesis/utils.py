@@ -3,6 +3,8 @@
 
 """Utilities for genome data processing."""
 
+
+from contextlib import suppress
 import csv
 from datetime import timedelta
 import functools
@@ -281,9 +283,9 @@ def time_decorator(
                 raise
             finally:
                 end_time = time.monotonic()
-                if print_args == True:
+                if print_args:
                     print(
-                        f"Finished {function.__name__} {[val for val in fxn_args.values()]} - Time: {timedelta(seconds=end_time - start_time)}"
+                        f"Finished {function.__name__} {list(fxn_args.values())} - Time: {timedelta(seconds=end_time - start_time)}"
                     )
                 else:
                     print(
@@ -309,10 +311,8 @@ class GeneralUtils:
     @staticmethod
     def dir_check_make(dir: str) -> None:
         """Utility to make directories only if they do not already exist"""
-        try:
+        with suppress(FileExistsError):
             os.makedirs(dir)
-        except FileExistsError:
-            pass
 
     @staticmethod
     def check_and_symlink(
@@ -320,15 +320,12 @@ class GeneralUtils:
         dst: str,
         boolean: bool = False,
     ) -> None:
-        try:
-            if boolean == True:
+        with suppress(FileExistsError):
+            if boolean:
                 if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
                     os.symlink(src, dst)
-            else:
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
-        except FileExistsError:
-            pass
+            elif not os.path.exists(dst):
+                os.symlink(src, dst)
 
     @staticmethod
     def _listdir_isfile_wrapper(dir: str) -> List[str]:
@@ -351,14 +348,14 @@ class GenomeDataUtils:
     ) -> Dict[int, List[str]]:
         """Constructs graphs in parallel"""
         ### get list of all gencode V26 genes
-        for num in range(0, 5):
+        for _ in range(5):
             random.shuffle(genes)
 
         split_list = lambda l, chunks: [
             l[n : n + chunks] for n in range(0, len(l), chunks)
         ]
         split_genes = split_list(genes, chunks)
-        return {index: gene_list for index, gene_list in enumerate(split_genes)}
+        return dict(enumerate(split_genes))
 
     @staticmethod
     def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
@@ -406,9 +403,9 @@ class GenomeDataUtils:
         """
         df = pd.read_table(file, index_col=0, header=[2])
         sample_n = len(df.columns)
-        df["total"] = df.select_dtypes(np.number).ge(0.1).sum(axis=1)
+        df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
         df["result"] = df["total"] >= (0.20 * sample_n)
-        if return_list == False:
+        if not return_list:
             return [
                 f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)
             ]
@@ -417,46 +414,9 @@ class GenomeDataUtils:
 
     @staticmethod
     @time_decorator(print_args=True)
-    def _filter_low_tpm_across_tissues(
-        file: str,
-        tissue: str,
-        return_list: False,
-        tpm: int = 0.5,
-        tissues: List[str] = [
-            "Brain - Hippocampus",
-            "Breast - Mammary Tissue",
-            "Heart - Left Ventricle",
-            "Liver",
-            "Lung",
-            "Pancreas",
-            "Muscle - Skeletal",
-            "Skin - Not Sun Exposed (Suprapubic)",
-            "Small Intestine - Terminal Ileum",
-        ],
-    ) -> List[str]:
-        """
-        Filter genes according to the following criteria: (B) Only keep genes that
-        express >= TPM in one of the samples in our tissues
-        """
-        df = parse(file).data_df
-        df = df[tissues]
-        if return_list == False:
-            return [
-                f"{gene}_{tissue}"
-                for gene in list(df.loc[df[df >= tpm].any(axis=1)].index)
-            ]
-        else:
-            return [gene for gene in list(df.loc[df[df >= tpm].any(axis=1)].index)]
-
-    @staticmethod
-    @time_decorator(print_args=True)
     def _tpm_filter_gene_windows(
         gencode: str,
-        tissue: str,
         tpm_file: str,
-        slop: bool,
-        chromfile: Optional[str] = None,
-        window: Optional[int] = 0,
     ) -> Tuple[pybedtools.BedTool, List[str]]:
         """
         Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
@@ -466,25 +426,19 @@ class GenomeDataUtils:
         Returns:
             pybedtools object with +/- <window> windows around that gene
         """
-        tpm_filtered_genes = _filter_low_tpm(
-            file=tpm_file,
-            tissue=tissue,
-            return_list=True,
-        )
+        df = pd.read_table(tpm_file, index_col=0, header=[2])
+        sample_n = len(df.columns)
+        df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
+        df["result"] = df["total"] >= (0.20 * sample_n)
+        tpm_filtered_genes = list(df.loc[df["result"] == True].index)
+
         genes = pybedtools.BedTool(gencode)
         genes_filtered = genes.filter(
             lambda x: x[3] in tpm_filtered_genes
             and x[0] not in ["chrX", "chrY", "chrM"]
         ).saveas()
 
-        if slop:
-            return (
-                genes_filtered.sort(),
-                genes_filtered.slop(g=chromfile, b=window).cut([0, 1, 2, 3]).sort(),
-            )
-        else:
-            return genes_filtered.sort()
-            # [x[3] for x in genes_filtered]
+        return genes_filtered.sort()
 
 
 class DataVizUtils:
@@ -615,12 +569,10 @@ def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     Args:
         tissue_list (str): _description_
     """
-    graph_list = []
-    for tissue in tissue_list:
-        graph_list.append(
-            nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
-        )
-
+    graph_list = [
+        nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
+        for tissue in tissue_list
+    ]
     return nx.compose_all(graph_list)
 
 
@@ -630,7 +582,7 @@ def _combined_graph_arrays(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Combine graph arrays from multiple tissues"""
     feats = []
-    for tissue in tissue_list:
+    for _ in tissue_list:
         graph_file = f"{graph_dir}/graph.pkl"
         with open(graph_file, "rb") as f:
             graph = pickle.load(f)
@@ -731,12 +683,15 @@ def _convert_coessential_to_gencode(
         (str): _description_
     """
     return [
-        (genesymbol_to_gencode[line[0]], genesymbol_to_gencode[line[1]], line[2])
+        (
+            genesymbol_to_gencode[line[0]],
+            genesymbol_to_gencode[line[1]],
+            line[2],
+        )
         for line in csv.reader(
             open(coessential, newline="", encoding="utf-8-sig"), delimiter="\t"
         )
-        if line[0] in genesymbol_to_gencode.keys()
-        and line[1] in genesymbol_to_gencode.keys()
+        if line[0] in genesymbol_to_gencode and line[1] in genesymbol_to_gencode
     ]
 
 

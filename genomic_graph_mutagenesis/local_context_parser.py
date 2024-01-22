@@ -118,7 +118,6 @@ class LocalContextParser:
             tissue=self.tissue,
             tpm_file=gct,
             chromfile=self.chromfile,
-            slop=False,
         )
 
         windows = pybedtools.BedTool(base_nodes).slop(g=self.chromfile, b=25000).sort()

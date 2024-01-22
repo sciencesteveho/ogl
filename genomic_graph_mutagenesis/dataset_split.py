@@ -169,9 +169,7 @@ def _tpm_median_across_all_tissues(
         gct_file (str): /path/to/gtex gct file
     """
     savefile = f"{save_path}/gtex_tpm_median_across_all_tissues.pkl"
-    if os.path.exists(savefile):
-        pass
-    else:
+    if not os.path.exists(savefile):
         df = parse(gct_file).data_df
         median_series = pd.Series(df.median(axis=1), name="all_tissues").to_frame()
         median_series.to_pickle(savefile)
@@ -323,12 +321,12 @@ def _get_protein_adundance_tissue_matrix(
             sep=",",
             index_col="gene.id.full",
         )
-    if graph not in ("tissue", "universal"):
+    if graph in {"tissue", "universal"}:
+        return df.apply(np.exp2).fillna(
+            0
+        )  # relative abundances are log2, so we take the inverse using exponential
+    else:
         raise ValueError("Graph data_type must be either 'tissues' or 'universal'")
-
-    return df.apply(np.exp2).fillna(
-        0
-    )  # relative abundances are log2, so we take the inverse using exponential
 
 
 def _tissue_rename(
@@ -466,20 +464,16 @@ def _get_target_values_for_tissues(
             if tissue_name == tissue:
                 new[target] = np.array(
                     [
-                        tpm_median_and_foldchange_df.loc[
-                            gene, tpmkey
-                        ],  # median tpm in the tissue
-                        tpm_median_and_foldchange_df.loc[
-                            gene, tpmkey + "_foldchange"
-                        ],  # fold change
+                        tpm_median_and_foldchange_df.loc[gene, tpmkey],
+                        tpm_median_and_foldchange_df.loc[gene, f"{tpmkey}_foldchange"],
                         diff_from_average_df.loc[
-                            gene, tpmkey + "_difference_from_average"
+                            gene, f"{tpmkey}_difference_from_average"
                         ],
                         protein_median_and_foldchange_df.loc[gene, prokey]
                         if gene in protein_median_and_foldchange_df.index
                         else -1,
                         protein_median_and_foldchange_df.loc[
-                            gene, prokey + "_foldchange"
+                            gene, f"{prokey}_foldchange"
                         ]
                         if gene in protein_median_and_foldchange_df.index
                         else -1,
@@ -579,8 +573,7 @@ def _tissue_targets_for_training(
         data_type="protein",
     )
 
-    # parse targets into a dictionary for each gene/tissue combination
-    targets = {
+    return {
         dataset: _get_target_values_for_tissues(
             tissue_keywords=tissue_keywords,
             split=split,
@@ -591,8 +584,6 @@ def _tissue_targets_for_training(
         )
         for dataset in split
     }
-
-    return targets
 
 
 @time_decorator(print_args=False)
