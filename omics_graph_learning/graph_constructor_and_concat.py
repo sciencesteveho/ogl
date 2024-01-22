@@ -20,8 +20,7 @@ from typing import Any, Dict, Generator, List
 import networkx as nx
 import numpy as np
 
-from utils import GeneralUtils
-from utils import time_decorator
+import utils
 
 NODES = [
     "dyadic",
@@ -31,7 +30,7 @@ NODES = [
 ]
 
 
-@time_decorator(print_args=True)
+@utils.time_decorator(print_args=True)
 def graph_constructor(
     tissue: str,
     root_dir: str,
@@ -63,7 +62,7 @@ def graph_constructor(
             G.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
         return G
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _get_edges(
         edge_file: str,
         edge_type: str,
@@ -85,7 +84,7 @@ def graph_constructor(
             else:
                 raise ValueError("Edge type must be 'base' or 'local'")
 
-    @time_decorator(print_args=False)
+    @utils.time_decorator(print_args=False)
     def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
         """Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
@@ -142,7 +141,7 @@ def graph_constructor(
         return graph
 
 
-@time_decorator(print_args=True)
+@utils.time_decorator(print_args=True)
 def _nx_to_tensors(
     prefix: str,
     graph_dir: str,
@@ -166,8 +165,7 @@ def _nx_to_tensors(
                     [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                 ),
                 "node_feat": np.array(
-                    [[val for val in graph.nodes[node].values()] for node in nodes],
-                    # dtype=np.float64,
+                    [list(graph.nodes[node].values()) for node in nodes]
                 ),
                 "edge_feat": [edge[2]["edge_type"] for edge in edges],
                 "num_nodes": graph.number_of_nodes(),
@@ -194,20 +192,17 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
-    if params["nodes"] is not None:
-        nodes = params["nodes"] + NODES
-    else:
-        nodes = NODES
+    nodes = params["nodes"] + NODES if params["nodes"] is not None else NODES
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
 
     # create primary graph directory
     root_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{root_dir}/graphs"
-    GeneralUtils.dir_check_make(graph_dir)
+    utils.dir_check_make(graph_dir)
 
     # instantiate objects and process graphs
     for idx, tissue in enumerate(params["tissues"]):

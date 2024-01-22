@@ -25,9 +25,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from utils import GeneralUtils
-from utils import GenomeDataUtils
-from utils import time_decorator
+import utils
 
 PROTEIN_TISSUE_NAMES = [
     "Artery Aorta",
@@ -61,7 +59,7 @@ def _get_tissue_keywords(
     tissue_keywords = {}
 
     for tissue in tissues:
-        params = GeneralUtils.parse_yaml(f"{config_dir}/{tissue}.yaml")
+        params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
 
         tpm_keyword = params["resources"]["key_tpm"]
         protein_abundance_keyword = params["resources"]["key_protein_abundance"]
@@ -175,7 +173,7 @@ def _tpm_median_across_all_tissues(
         median_series.to_pickle(savefile)
 
 
-@time_decorator(print_args=False)
+@utils.utils.time_dectorator(print_args=False)
 def _genes_train_test_val_split(
     genes: Dict[str, str],
     target_genes: List[str],
@@ -354,7 +352,7 @@ def _tissue_rename(
     return tissue_rename
 
 
-@time_decorator(print_args=False)
+@utils.time_dectorator(print_args=False)
 def _calculate_foldchange_from_medians(
     median_matrix: pd.DataFrame,
     median_across_tissues: pd.DataFrame,
@@ -387,7 +385,7 @@ def _calculate_foldchange_from_medians(
     return np.log2(df.drop(columns=["all_tissues"]))
 
 
-@time_decorator(print_args=False)
+@utils.time_dectorator(print_args=False)
 def _difference_from_average_activity_per_tissue(
     average_activity: pd.DataFrame,
     pseudocount: float,
@@ -429,7 +427,7 @@ def _difference_from_average_activity_per_tissue(
     return np.log2(all_tissues + pseudocount)
 
 
-@time_decorator(print_args=False)
+@utils.time_dectorator(print_args=False)
 def _get_target_values_for_tissues(
     diff_from_average_df: pd.DataFrame,
     protein_median_and_foldchange_df: pd.DataFrame,
@@ -586,7 +584,7 @@ def _tissue_targets_for_training(
     }
 
 
-@time_decorator(print_args=False)
+@utils.time_dectorator(print_args=False)
 def _scale_targets(
     targets: Dict[str, Dict[str, np.ndarray]]
 ) -> Dict[str, Dict[str, np.ndarray]]:
@@ -635,7 +633,7 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]
@@ -684,7 +682,7 @@ def main() -> None:
 
     # split genes based on chromosome
     split, barebones_split = _genes_train_test_val_split(
-        genes=GenomeDataUtils.genes_from_gff(gencode_gtf),
+        genes=utils.genes_from_gff(gencode_gtf),
         target_genes=filtered_genes,
         tissues=tissues,
         test_chrs=test_chrs,

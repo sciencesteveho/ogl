@@ -12,7 +12,7 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-from utils import GeneralUtils
+import utils
 
 
 def load_graph(
@@ -20,6 +20,16 @@ def load_graph(
     experiment_name: str,
     graph_type: str,
 ):
+    """_summary_
+
+    Args:
+        graph_dir (str): _description_
+        experiment_name (str): _description_
+        graph_type (str): _description_
+
+    Returns:
+        _type_: _description_
+    """
     graph_path = f"{graph_dir}/{experiment_name}_{graph_type}_graph.pkl"
     with open(graph_path, "rb") as f:
         return pickle.load(f)
@@ -29,8 +39,17 @@ def load_scalers(
     scaler_dir: str,
     feat_range: int,
 ) -> Dict[int, MinMaxScaler]:
+    """_summary_
+
+    Args:
+        scaler_dir (str): _description_
+        feat_range (int): _description_
+
+    Returns:
+        Dict[int, MinMaxScaler]: _description_
+    """
     return {
-        i: joblib.load(f"{scaler_dir}/feat_{i}_scaler.pt") for i in range(0, feat_range)
+        i: joblib.load(f"{scaler_dir}/feat_{i}_scaler.pt") for i in range(feat_range)
     }
 
 
@@ -39,6 +58,16 @@ def scale_node_features(
     scalers: Dict[int, MinMaxScaler],
     feat_range: int,
 ) -> np.array:
+    """_summary_
+
+    Args:
+        node_feat (np.array): _description_
+        scalers (Dict[int, MinMaxScaler]): _description_
+        feat_range (int): _description_
+
+    Returns:
+        np.array: _description_
+    """
     if type(node_feat) == list:
         node_feat = np.array(node_feat)
     for i in range(feat_range):
@@ -54,6 +83,14 @@ def save_scaled_graph(
     experiment_name,
     graph_type,
 ):
+    """_summary_
+
+    Args:
+        graph (_type_): _description_
+        graph_dir (_type_): _description_
+        experiment_name (_type_): _description_
+        graph_type (_type_): _description_
+    """
     scaled_graph_path = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     with open(scaled_graph_path, "wb") as output:
         pickle.dump(graph, output, protocol=4)
@@ -75,7 +112,7 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     feat_range = 39  # set up which node feats are continuous, and thus should be scaled

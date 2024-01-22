@@ -20,9 +20,9 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import GenomeDataUtils.genes_from_gencode
-from utils import GeneralUtils.parse_yaml
-from utils import time_decorator
+from utils import utils.genes_from_gencode
+from utils import utils.parse_yaml
+from utils import utils.time_decorator
 
 
 class EdgeParser:
@@ -43,7 +43,7 @@ class EdgeParser:
 
     Methods
     ----------
-    _GenomeDataUtils.genes_from_gencode:
+    _utils.genes_from_gencode:
         Lorem
     _base_graph:
         Lorem
@@ -116,7 +116,7 @@ class EdgeParser:
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = GenomeDataUtils.genes_from_gencode(gencode_ref=self.gencode_ref)
+        self.genesymbol_to_gencode = utils.genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_attr_ref = self._blind_read_file(
             params["resources"]["gencode_attr"]
         )
@@ -132,7 +132,7 @@ class EdgeParser:
         """
         return [line for line in csv.reader(open(file, newline=""), delimiter="\t")]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _iid_ppi(
         self,
         interaction_file: str,
@@ -166,7 +166,7 @@ class EdgeParser:
             and edge[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _mirna_targets(
         self,
         target_list: str,
@@ -185,7 +185,7 @@ class EdgeParser:
             if line[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _tf_markers(self, interaction_file: str) -> List[Tuple[str, str]]:
         tf_keep = ["TF", "I Marker", "TFMarker"]
         tf_markers = []
@@ -222,7 +222,7 @@ class EdgeParser:
             and tup[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _marbach_regulatory_circuits(
         self,
         interaction_file: str,
@@ -267,7 +267,7 @@ class EdgeParser:
         tss = pybedtools.BedTool(f"{self.tss}")
         return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def get_loop_edges(
         self,
         chromatin_loops: str,
@@ -457,7 +457,7 @@ class EdgeParser:
                 )
             ]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """_summary_ of function"""
         chromatin_loops = f"{self.tissue_dir}/local/chromatinloops_{self.tissue}.bed"
@@ -570,7 +570,7 @@ class EdgeParser:
             set([tup[0] for tup in mirna_targets]),
         )
 
-    @time_decorator(print_args=False)
+    @utils.time_decorator(print_args=False)
     def _add_node_coordinates(
         self,
         nodes,
@@ -584,7 +584,7 @@ class EdgeParser:
         """
         return [line[0:4] for line in node_ref if line[3] in set(nodes)]
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
@@ -647,7 +647,7 @@ def main() -> None:
     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
-    params = GeneralUtils.parse_yaml(args.config)
+    params = utils.parse_yaml(args.config)
 
     # instantiate object
     edgeparserObject = EdgeParser(

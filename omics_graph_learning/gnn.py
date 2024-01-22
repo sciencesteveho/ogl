@@ -26,8 +26,7 @@ from models import GCN
 from models import GPSTransformer
 from models import GraphSAGE
 from models import MLP
-from utils import DataVizUtils
-from utils import GeneralUtils
+import utils
 
 
 def create_model(
@@ -288,7 +287,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up helper variables
     working_directory = params["working_directory"]
@@ -311,8 +310,8 @@ def main() -> None:
     print(f"Working directory: {working_directory}")
     print(f"savestr: {savestr}")
     # make directories and set up training log
-    GeneralUtils.dir_check_make(f"{working_directory}/models/logs")
-    GeneralUtils.dir_check_make(f"{working_directory}/models/{savestr}")
+    utils.dir_check_make(f"{working_directory}/models/logs")
+    utils.dir_check_make(f"{working_directory}/models/{savestr}")
 
     logging.basicConfig(
         filename=f"{working_directory}/models/logs/{savestr}.log",
@@ -400,7 +399,7 @@ def main() -> None:
     epochs = args.epochs
     print(f"Training for {epochs} epochs")
     best_validation = stop_counter = 0
-    for epoch in range(0, epochs + 1):
+    for epoch in range(epochs + 1):
         if args.model == "GPS":
             loss = train(
                 model=model,
@@ -485,7 +484,7 @@ def main() -> None:
     )
 
     # set params for plotting
-    DataVizUtils._set_matplotlib_publication_parameters()
+    utils._set_matplotlib_publication_parameters()
 
     # calculate and plot spearmann rho, predictions vs. labels
     # first, load checkpoints
@@ -513,8 +512,8 @@ def main() -> None:
             epoch=0,
         )
 
-    predictions_median = GeneralUtils._tensor_out_to_array(outs, 0)
-    labels_median = GeneralUtils._tensor_out_to_array(labels, 0)
+    predictions_median = utils._tensor_out_to_array(outs, 0)
+    labels_median = utils._tensor_out_to_array(labels, 0)
 
     experiment_name = params["experiment_name"]
     if args.randomize_node_feats == "true":
@@ -529,7 +528,7 @@ def main() -> None:
         )
 
     # plot performance
-    DataVizUtils.plot_predicted_versus_expected(
+    utils.plot_predicted_versus_expected(
         expected=labels_median,
         predicted=predictions_median,
         experiment_name=experiment_name,
@@ -543,7 +542,7 @@ def main() -> None:
     )
 
     # plot training losses
-    DataVizUtils.plot_training_losses(
+    utils.plot_training_losses(
         log=f"{working_directory}/models/logs/{savestr}.log",
         experiment_name=experiment_name,
         model=args.model,

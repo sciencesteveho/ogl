@@ -11,6 +11,7 @@ matrices to cooler format at 40kb resolution against hg19."""
 
 
 import argparse
+import contextlib
 import os
 
 import cooler
@@ -97,17 +98,12 @@ def main(chromsize_file: str, binsize: int) -> None:
         binsize=40000,
     )
 
-    try:
+    with contextlib.suppress(FileExistsError):
         os.makedirs(f"{args.savedir}/chrs")
-    except FileExistsError:
-        pass
-
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
-        if chrom == "chrY":
-            pass
-        else:
+        if chrom != "chrY":
             _chr_matrix_to_cooler(
                 data_directory=args.data_directory,
                 savedir=args.savedir,

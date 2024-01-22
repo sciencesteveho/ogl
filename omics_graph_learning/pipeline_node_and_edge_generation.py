@@ -16,7 +16,7 @@ from typing import Dict, List, Union
 from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
 from prepare_bedfiles import GenomeDataPreprocessor
-from utils import GeneralUtils
+import utils
 from utils import LOOPFILES
 from utils import POSSIBLE_NODES
 
@@ -96,10 +96,10 @@ def parse_local_context(
     remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
 
     local_dir = f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local"
-    bedfiles = GeneralUtils._listdir_isfile_wrapper(dir=local_dir)
+    bedfiles = utils._listdir_isfile_wrapper(dir=local_dir)
 
     adjusted_bedfiles = [
-        bed for bed in bedfiles if not any(node in bed for node in remove_nodes)
+        bed for bed in bedfiles if all(node not in bed for node in remove_nodes)
     ]
 
     localparseObject = LocalContextParser(
@@ -111,7 +111,7 @@ def parse_local_context(
     )
 
     localparseObject.parse_context_data()
-    print(f"Local context parser complete!")
+    print("Local context parser complete!")
 
 
 def main() -> None:
@@ -128,8 +128,8 @@ def main() -> None:
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
     args = parser.parse_args()
-    experiment_params = GeneralUtils.parse_yaml(args.experiment_config)
-    tissue_params = GeneralUtils.parse_yaml(args.tissue_config)
+    experiment_params = utils.parse_yaml(args.experiment_config)
+    tissue_params = utils.parse_yaml(args.tissue_config)
     try:
         nodes = experiment_params["nodes"] + NODES
     except TypeError:
@@ -137,7 +137,7 @@ def main() -> None:
     print(f"Starting pipeline for {experiment_params['experiment_name']}!")
 
     # create working directory for experimnet
-    GeneralUtils.dir_check_make(
+    utils.dir_check_make(
         dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 

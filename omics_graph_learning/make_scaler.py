@@ -14,7 +14,7 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-from utils import GeneralUtils
+import utils
 
 # from sklearn.preprocessing import StandardScaler
 
@@ -25,7 +25,7 @@ def create_scaler_directory(
 ) -> Tuple[str, str]:
     graph_dir = f"{working_directory}/{experiment_name}/graphs"
     scaler_dir = f"{working_directory}/{experiment_name}/data_scaler"
-    GeneralUtils.dir_check_make(scaler_dir)
+    utils.dir_check_make(scaler_dir)
     return scaler_dir, graph_dir
 
 
@@ -66,11 +66,7 @@ def fit_scaler_and_save(
     joblib.dump(scaler, f"{scaler_dir}/feat_{feat}_scaler.pt")
 
 
-def main(
-    gene_gtf: str,
-    test_chrs: list = ["chr8", "chr9"],
-    val_chrs: list = ["chr7", "chr13"],
-) -> None:
+def main(gene_gtf: str, test_chrs: list = None, val_chrs: list = None) -> None:
     """_summary_
 
     Args:
@@ -78,6 +74,10 @@ def main(
         test_chrs (list, optional): Chrs to withhold for the tet set. Defaults to ["chr8", "chr9"].
         val_chrs (list, optional): Chrs to withold for the validation set_. Defaults to ["chr7", "chr13"].
     """
+    if test_chrs is None:
+        test_chrs = ["chr8", "chr9"]
+    if val_chrs is None:
+        val_chrs = ["chr7", "chr13"]
     scaler = MinMaxScaler()
 
     parser = argparse.ArgumentParser()
@@ -99,7 +99,7 @@ def main(
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up variables for params to improve readability
     experiment_name = params["experiment_name"]

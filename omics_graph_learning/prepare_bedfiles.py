@@ -8,14 +8,15 @@
 
 """Code to preprocess bedfiles before parsing into graph structures"""
 
+
+import contextlib
 import os
 import subprocess
 from typing import Dict, List
 
 import requests
 
-from utils import GeneralUtils
-from utils import time_decorator
+import utils
 
 NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
 
@@ -24,7 +25,11 @@ class GenomeDataPreprocessor:
     """Data preprocessor for dealing with differences in bed files.
 
     Args:
-        Params // Filenames and options parsed from initial yaml
+        experiment_name (str): The name of the experiment.
+        interaction_types (List[str]): The types of interactions.
+        nodes (List[str]): The nodes.
+        working_directory (str): The working directory.
+        params (Dict[str, Dict[str, str]]): The parameters.
 
     Methods
     ----------
@@ -83,10 +88,10 @@ class GenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        GeneralUtils.dir_check_make(self.tissue_dir)
+        utils.dir_check_make(self.tissue_dir)
 
         for directory in ["local", "interaction", "unprocessed"]:
-            GeneralUtils.dir_check_make(f"{self.tissue_dir}/{directory}")
+            utils.dir_check_make(f"{self.tissue_dir}/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -96,7 +101,7 @@ class GenomeDataPreprocessor:
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
         for file in self.tissue_specific_nodes.values():
-            GeneralUtils.check_and_symlink(
+            utils.check_and_symlink(
                 dst=f"{self.tissue_dir}/unprocessed/{file}",
                 src=f"{self.data_dir}/{file}",
                 boolean=True,
@@ -109,30 +114,27 @@ class GenomeDataPreprocessor:
             "tf_binding": f"{self.shared_data_dir}/interaction/{self.interaction['tf_binding']}",
         }
 
-        try:
+        with contextlib.suppress(TypeError):
             for datatype in self.interaction_types:
                 if datatype == "mirna":
-                    GeneralUtils.check_and_symlink(
+                    utils.check_and_symlink(
                         src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction["mirdip"],
                         boolean=True,
                     )
-                    GeneralUtils.check_and_symlink(
+                    utils.check_and_symlink(
                         src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction["mirnatargets"],
                         boolean=True,
                     )
                 else:
-                    GeneralUtils.check_and_symlink(
+                    utils.check_and_symlink(
                         src=interact_files[datatype],
-                        dst=f"{self.tissue_dir}/interaction/"
-                        + self.interaction[datatype],
+                        dst=f"{self.tissue_dir}/interaction/{self.interaction[datatype]}",
                         boolean=False,
                     )
-        except TypeError:
-            pass
 
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
@@ -142,16 +144,14 @@ class GenomeDataPreprocessor:
                 response = requests.get(url)
                 file.write(response.content)
 
-        if os.listdir(f"{self.root_dir}/local_feats") == self.shared:
-            pass
-        else:
+        if os.listdir(f"{self.root_dir}/local_feats") != self.shared:
             for file in self.shared.values():
                 download(
                     f"https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}",
                     f"{self.root_dir}/shared_data/local_feats/{file}",
                 )
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
@@ -160,7 +160,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
@@ -169,7 +169,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _tf_binding_sites(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites Vierstra et
@@ -218,7 +218,7 @@ class GenomeDataPreprocessor:
         for cmds in [cmd, rename]:
             self._run_cmd(cmds)
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _merge_cpg(self, bed: str) -> None:
         """Merge individual CPGs with optional liftover"""
         if self.methylation["cpg_liftover"] == True:
@@ -248,7 +248,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(bedtools_cmd)
 
-    @time_decorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles"""
 
@@ -256,23 +256,18 @@ class GenomeDataPreprocessor:
         for file in self.shared.values():
             src = f"{self.shared_data_dir}/local/{file}"
             dst = f"{self.tissue_dir}/local/{file}"
-            if file in NODETYPES_LOCAL:
-                if file in self.nodes:
-                    GeneralUtils.check_and_symlink(
-                        src=src,
-                        dst=dst,
-                    )
-                else:
-                    pass
-            else:
-                GeneralUtils.check_and_symlink(
+            if (
+                file in NODETYPES_LOCAL
+                and file in self.nodes
+                or file not in NODETYPES_LOCAL
+            ):
+                utils.check_and_symlink(
                     src=src,
                     dst=dst,
                 )
-
         ### Make symlinks for histone marks
         for datatype in self.features:
-            GeneralUtils.check_and_symlink(
+            utils.check_and_symlink(
                 src=f"{self.data_dir}/{self.features[datatype]}",
                 dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
             )
@@ -280,16 +275,14 @@ class GenomeDataPreprocessor:
         ### Make symlink for cpg
         src = f"{self.data_dir}/{self.methylation['cpg']}"
         dst = f"{self.tissue_dir}/unprocessed/{self.methylation['cpg']}"
-        GeneralUtils.check_and_symlink(
+        utils.check_and_symlink(
             src=src,
             dst=dst,
         )
 
-        if self.nodes is None:
-            pass
-        else:
+        if self.nodes is not None:
             if "crms" in self.nodes:
-                GeneralUtils.check_and_symlink(
+                utils.check_and_symlink(
                     src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
                     dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
                 )

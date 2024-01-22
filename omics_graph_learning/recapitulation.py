@@ -16,7 +16,9 @@
 
 """_summary_ of project"""
 
+
 import argparse
+import contextlib
 import csv
 import math
 import pickle
@@ -34,8 +36,7 @@ from tqdm import tqdm
 from graph_to_pytorch import graph_to_pytorch
 from perturbation import _device_check
 from perturbation import _load_GAT_model_for_inference
-from utils import filtered_genes_from_bed
-from utils import GeneralUtils.parse_yaml
+import utils
 from utils import TISSUES_early_testing
 
 
@@ -44,7 +45,7 @@ def all_inference(model, device, data_loader):
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Performing inference")
+    pbar.set_description("Performing inference")
 
     mse, outs, labels = [], [], []
     expression = {}
@@ -57,7 +58,7 @@ def all_inference(model, device, data_loader):
         labels.extend(data.y[data.all_mask])
         mse.append(F.mse_loss(out[data.all_mask], data.y[data.all_mask]).cpu())
         loss = torch.stack(mse)
-        
+
         # get idxs
         array_index_only = data.n_id.cpu().numpy() * data.all_mask.cpu().numpy()
         array_index_only = array_index_only[array_index_only != 0]
@@ -66,9 +67,7 @@ def all_inference(model, device, data_loader):
             try:
                 expression[array_index_only[idx]].append(outdata[idx][0])
             except KeyError:
-                expression[array_index_only[idx]] = []
-                expression[array_index_only[idx]].append(outdata[idx][0])
-                                                     
+                expression[array_index_only[idx]] = [outdata[idx][0]]
         pbar.update(1)
 
     pbar.close()
@@ -98,7 +97,7 @@ def _get_idxs_for_coessential_pairs(
     graph_idxs: Dict[str, str],
 ) -> List[Tuple[int, int]]:
     """_summary_ of function
-    
+
     Create a dictionary of coessential genes for each tissue of the following
     format:
         coessential_genes: {
@@ -112,54 +111,69 @@ def _get_idxs_for_coessential_pairs(
             },
         }
     """
+
     def _prepopulate_dict_with_keys(pairs, tissue):
         all_genes = [tup[0] for tup in pairs] + [tup[1] for tup in pairs]
-        return {graph_idxs[f"{gene}_{tissue}"]: [] for gene in all_genes if f"{gene}_{tissue}" in graph_idxs.keys()}
-        
-    def _populate_dict_with_co_pairs(pairs, tissue, pre_dict):    
+        return {
+            graph_idxs[f"{gene}_{tissue}"]: []
+            for gene in all_genes
+            if f"{gene}_{tissue}" in graph_idxs
+        }
+
+    def _populate_dict_with_co_pairs(pairs, tissue, pre_dict):
         for pair in pairs:
-            try:
+            with contextlib.suppress(KeyError):
                 idx1 = graph_idxs[f"{pair[0]}_{tissue}"]
                 idx2 = graph_idxs[f"{pair[1]}_{tissue}"]
                 if idx2 < idx1:
                     pre_dict[idx1].append(idx2)
-            except KeyError:
-                pass
         return {key: value for key, value in pre_dict.items() if value}
 
     positive_pairs = [
         (line[0], line[1])
-        for line in csv.reader(open(positive_coessential_genes, newline=""), delimiter="\t")
+        for line in csv.reader(
+            open(positive_coessential_genes, newline=""), delimiter="\t"
+        )
     ]
 
     negative_pairs = [
         (line[0], line[1])
-        for line in csv.reader(open(negative_coessential_genes, newline=""), delimiter="\t")
+        for line in csv.reader(
+            open(negative_coessential_genes, newline=""), delimiter="\t"
+        )
     ]
-    
+
     coessential_genes = _pre_nest_tissue_dict(TISSUES_early_testing)
     for key in coessential_genes.keys():
         coessential_genes[key] = {
-            "positive": _populate_dict_with_co_pairs(pairs=positive_pairs, tissue=key, pre_dict=_prepopulate_dict_with_keys(pairs=positive_pairs, tissue=key),),
-            "negative": _populate_dict_with_co_pairs(pairs=negative_pairs, tissue=key, pre_dict=_prepopulate_dict_with_keys(pairs=negative_pairs, tissue=key),),
+            "positive": _populate_dict_with_co_pairs(
+                pairs=positive_pairs,
+                tissue=key,
+                pre_dict=_prepopulate_dict_with_keys(pairs=positive_pairs, tissue=key),
+            ),
+            "negative": _populate_dict_with_co_pairs(
+                pairs=negative_pairs,
+                tissue=key,
+                pre_dict=_prepopulate_dict_with_keys(pairs=negative_pairs, tissue=key),
+            ),
         }
-    
+
     return coessential_genes
 
 
 def _random_gene_pairs(
     coessential_genes: Dict[int, List[int]],
     graph_idxs: Dict[str, str],
-    model_dir: str = '/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/alldata_combinedloops',
+    model_dir: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/alldata_combinedloops",
 ) -> List[Tuple[int, int]]:
     """_summary_ of function"""
-    
+
     def _get_number_of_pairs(subdict):
         total = sum(len(value) + 1 for value in subdict.values())
         return total
 
     def _gencode_to_idx_list(tissue, genes):
-        gencode_keys = set(f"{gene}_{tissue}" for gene in genes)
+        gencode_keys = {f"{gene}_{tissue}" for gene in genes}
         return [graph_idxs[key] for key in gencode_keys if key in graph_idxs]
 
     def _generate_random_pairs(tissue_genes, total_pairs):
@@ -173,19 +187,23 @@ def _random_gene_pairs(
                 random_pairs.append((idx1, idx2))
 
         return random_pairs
-    
+
     # initialize the dict
     random_copairs = _pre_nest_tissue_dict(TISSUES_early_testing)
-    
+
     # get number of pairs to emulate, use first tissue as reference
     first_tissue = list(coessential_genes.keys())[0]
-    total_positive_pairs = _get_number_of_pairs(coessential_genes[first_tissue]["positive"])
-    total_negative_pairs = _get_number_of_pairs(coessential_genes[first_tissue]["negative"])
+    total_positive_pairs = _get_number_of_pairs(
+        coessential_genes[first_tissue]["positive"]
+    )
+    total_negative_pairs = _get_number_of_pairs(
+        coessential_genes[first_tissue]["negative"]
+    )
 
     for tissue, subdict in random_copairs.items():
         subdict["positive"] = {}
         subdict["negative"] = {}
-        tissue_genes = filtered_genes_from_bed(
+        tissue_genes = utils.filtered_genes_from_bed(
             tpm_filtered_genes=f"{model_dir}/{tissue}/tpm_filtered_genes.bed",
         )
         positive_pairs = _generate_random_pairs(tissue_genes, total_positive_pairs)
@@ -195,7 +213,7 @@ def _random_gene_pairs(
             if idx1 not in subdict["positive"]:
                 subdict["positive"][idx1] = []
             subdict["positive"][idx1].append(idx2)
-        
+
         for idx1, idx2 in negative_pairs:
             if idx1 not in subdict["negative"]:
                 subdict["negative"][idx1] = []
@@ -224,7 +242,8 @@ def _store_baseline():
                 calculate difference from baseline
                 store back into a dict
     """
-        
+
+
 def _scale_coordinate(scaler, coordinate):
     """_summary_ of function"""
 
@@ -239,7 +258,7 @@ def _perturb_eQTLs():
         9 = start
         10 = end
     if del in 4
-    
+
     split eqtls into plus and minus, per tissue
     for eqtl
         convert start and end to coords
@@ -276,20 +295,20 @@ def main() -> None:
         type=str,
     )
     args = parser.parse_args()
-        
+
     # get big ugly names out the way!
     graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
     graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
     checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
-    positive_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt"
-    negative_coessential_genes="/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt"
-    savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential'
-    
+    positive_coessential_genes = "/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_pos.txt"
+    negative_coessential_genes = "/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential_gencode_named_neg.txt"
+    savedir = "/ocean/projects/bio210019p/stevesho/data/preprocess/recapitulations/coessential"
+
     # parse yaml for params, used to load data
-    config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml'
+    config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml"
     # parser = argparse.ArgumentParser()
-    params = GeneralUtils.parse_yaml(config)
-    
+    params = utils.parse_yaml(config)
+
     # open graph
     with open(graph, "rb") as file:
         graph = pickle.load(file)
@@ -297,7 +316,7 @@ def main() -> None:
     # open idxs
     with open(graph_idxs, "rb") as file:
         graph_idxs = pickle.load(file)
-        
+
     # check for device
     device, map_location = _device_check()
 
@@ -313,11 +332,11 @@ def main() -> None:
 
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{params['experiment_name']}"
-    
+
     # load data
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
-        graph_type='full',
+        graph_type="full",
         root_dir=root_dir,
         targets_types=params["training_targets"]["targets_types"],
         test_chrs=params["training_targets"]["test_chrs"],
@@ -325,21 +344,21 @@ def main() -> None:
     )
 
     # set up loaders for inference
-    batch_size=32
+    batch_size = 32
     all_loader = NeighborLoader(
         data,
         num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=2048,
         input_nodes=data.all_mask,
     )
-    
+
     # perform inference for the three splits
     _, outs, labels, expression = all_inference(
         model=model,
         device=device,
         data_loader=all_loader,
     )
-    
+
     # average values across the dictionary
     # each key is an idx
     baseline_expression = _average_values_across_dict(expression)
@@ -356,12 +375,12 @@ def main() -> None:
         coessential_genes=coessential_genes,
         graph_idxs=graph_idxs,
     )
-    
+
     def _calculate_difference(baseline_dict, perturbed_dict, key1, key2):
         baseline = baseline_dict[key1]
         perturbed = perturbed_dict[key2]
         return abs(baseline - perturbed)
-    
+
     def generate_unique_tuples(input_list, existing_tuples, num_tuples):
         unique_tuples = []
 
@@ -378,21 +397,29 @@ def main() -> None:
                     unique_tuples.append(new_tuple)
 
         return unique_tuples
-    
-    batch_size=2048
-    all_positive= []
+
+    batch_size = 2048
+    all_positive = []
     positive = coessential_genes[args.tissue]["positive"]
     positive = [(key, val) for key, values in positive.items() for val in values]
-    positive = [tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+    positive = [
+        tup
+        for tup in positive
+        if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()
+    ]
     all_positive.extend(positive)
 
     positive = coessential_genes[args.tissue]["positive"]
     # negative = coessential_genes[key]["negative"]
     positive = [(key, val) for key, values in positive.items() for val in values]
     # negative = [(key, val) for key, values in negative.items() for val in values]
-    positive =[tup for tup in positive if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()]
+    positive = [
+        tup
+        for tup in positive
+        if tup[0] in baseline_expression.keys() and tup[1] in baseline_expression.keys()
+    ]
     positive = random.sample(positive, 250)
-    
+
     # convert random to a list of tuples as well
     # random_co_testing = random_co_idxs[key]["positive"]
     # random_co_flat = [(key, val) for key, values in random_co_testing.items() for val in values]
@@ -427,7 +454,7 @@ def main() -> None:
     # coessential_perturbed_expression = _flatten_inference_array(coessential_perturbed_expression)
     # with open(f"{savedir}/{args.tissue}_perturbed.pkl", "wb") as file:
     #     pickle.dump(coessential_perturbed_expression, file)
-                
+
     # # Perturb graphs for random pairs
     # total_comp = len(perturbed_expression)
     # random_co_idxs_for_testing = [
@@ -451,12 +478,12 @@ def main() -> None:
     for key, value in random_co_idxs_for_testing:
         data = graph_to_pytorch(
             experiment_name=params["experiment_name"],
-            graph_type='full',
+            graph_type="full",
             root_dir=root_dir,
             targets_types=params["training_targets"]["targets_types"],
             test_chrs=params["training_targets"]["test_chrs"],
             val_chrs=params["training_targets"]["val_chrs"],
-            node_remove_edges=[key]
+            node_remove_edges=[key],
         )
         perturb_loader = NeighborLoader(
             data,
@@ -472,14 +499,14 @@ def main() -> None:
         random_perturbed_expression.append(
             _calculate_difference(baseline_expression, perturbed_expression, key, value)
         )
-    
+
     random_perturbed_expression = _flatten_inference_array(random_perturbed_expression)
     with open(f"{savedir}/{args.tissue}_random.pkl", "wb") as file:
         pickle.dump(random_perturbed_expression, file)
-        
+
     # print(f"tissue: {key}")
     # print(stats.ttest_ind(perturbed_expression, random_perturbed_expression))
-                
+
 
 if __name__ == "__main__":
     main()

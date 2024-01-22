@@ -27,7 +27,67 @@ from torch_geometric.nn.attention import PerformerAttention
 import torch_geometric.transforms as T
 
 
-# Define/Instantiate GNN model
+# Define/Instantiate GNN models
+class GATv2(torch.nn.Module):
+    def __init__(
+        self,
+        in_size,
+        embedding_size,
+        out_channels,
+        num_layers,
+        heads,
+    ):
+        super().__init__()
+        self.num_layers = num_layers
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
+        self.convs.append(GATv2Conv(in_size, embedding_size, heads))
+
+        for _ in range(num_layers - 1):
+            self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
+            self.batch_norms.append(GraphNorm(heads * embedding_size))
+
+        # Create linear layers
+        linear_sizes = (
+            [heads * embedding_size]
+            + [embedding_size] * (num_layers - 1)
+            + [out_channels]
+        )
+        self.linear_layers = self.create_linear_layers(linear_sizes)
+
+    def create_linear_layers(
+        self,
+        sizes,
+    ):
+        layers = [nn.Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
+        return nn.ModuleList(layers)
+
+    def forward(self, x, edge_index):
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
+
+        for linear_layer in self.linear_layers[:-1]:
+            x = F.relu(linear_layer(x))
+
+        x = self.linear_layers[-1](x)
+        return x
+
+    # self.batch_norms.append(BatchNorm(heads * embedding_size))
+
+    # self.lin1 = nn.Linear(heads * embedding_size, embedding_size)
+    # self.lin2 = nn.Linear(embedding_size, out_channels)
+
+    # def forward(self, x, edge_index):
+    #     for conv, batch_norm in zip(self.convs, self.batch_norms):
+    #         x = F.relu(batch_norm(conv(x, edge_index)))
+
+    #     # x = F.dropout(x, p=0.5, training=self.training)
+    #     x = F.relu(self.lin1(x))
+    #     # x = F.dropout(x, p=0.5, training=self.training)
+    #     x = self.lin2(x)
+    #     return x
+
+
 class GraphSAGE(torch.nn.Module):
     def __init__(
         self,
@@ -59,9 +119,7 @@ class GraphSAGE(torch.nn.Module):
         out_size,
         num_layers,
     ):
-        layers = []
-        for _ in range(num_layers - 1):
-            layers.append(nn.Linear(in_size, in_size))
+        layers = [nn.Linear(in_size, in_size) for _ in range(num_layers - 1)]
         layers.append(nn.Linear(in_size, out_size))
         return nn.ModuleList(layers)
 
@@ -112,40 +170,6 @@ class GCN(torch.nn.Module):
         x = F.relu(self.lin2(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin3(x)
-        return x
-
-
-class GATv2(torch.nn.Module):
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-        num_layers,
-        heads,
-    ):
-        super().__init__()
-        self.num_layers = num_layers
-        self.convs = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
-        self.convs.append(GATv2Conv(in_size, embedding_size, heads))
-
-        for _ in range(num_layers - 1):
-            self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
-            # self.batch_norms.append(BatchNorm(heads * embedding_size))
-            self.batch_norms.append(GraphNorm(heads * embedding_size))
-
-        self.lin1 = nn.Linear(heads * embedding_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, out_channels)
-
-    def forward(self, x, edge_index):
-        for conv, batch_norm in zip(self.convs, self.batch_norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
-
-        # x = F.dropout(x, p=0.5, training=self.training)
-        x = F.relu(self.lin1(x))
-        # x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin2(x)
         return x
 
 

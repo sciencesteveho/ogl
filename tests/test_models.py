@@ -1,8 +1,12 @@
 # test_gnn_models.py
-import torch
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GATv2
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GCN
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GPSTransformer
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GraphSAGE
+from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import MLP
 import pytest
+import torch
 
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GraphSAGE, GCN, GATv2, GPSTransformer, MLP
 
 @pytest.fixture
 def input_data():
@@ -15,6 +19,7 @@ def input_data():
         "pe": torch.randn(10, 5),  # Example positional encoding
     }
 
+
 def test_graphsage(input_data):
     # Test default configuration
     model = GraphSAGE(in_size=64, embedding_size=128, out_channels=32, num_layers=2)
@@ -22,9 +27,12 @@ def test_graphsage(input_data):
     assert output.shape == (10, 32)
 
     # Test with different number of linear layers
-    model = GraphSAGE(in_size=64, embedding_size=128, out_channels=32, num_layers=2, lin_layers=4)
+    model = GraphSAGE(
+        in_size=64, embedding_size=128, out_channels=32, num_layers=2, lin_layers=4
+    )
     output = model(input_data["x"], input_data["edge_index"])
     assert output.shape == (10, 32)
+
 
 def test_gcn(input_data):
     # Test default configuration
@@ -32,11 +40,15 @@ def test_gcn(input_data):
     output = model(input_data["x"], input_data["edge_index"])
     assert output.shape == (10, 32)
 
+
 def test_gatv2(input_data):
     # Test default configuration
-    model = GATv2(in_size=64, embedding_size=128, out_channels=32, num_layers=2, heads=2)
+    model = GATv2(
+        in_size=64, embedding_size=128, out_channels=32, num_layers=2, heads=2
+    )
     output = model(input_data["x"], input_data["edge_index"])
     assert output.shape == (10, 32)
+
 
 def test_gpstransformer(input_data):
     # Test default configuration
@@ -48,8 +60,11 @@ def test_gpstransformer(input_data):
         pe_dim=5,
         num_layers=2,
     )
-    output = model(input_data["x"], input_data["pe"], input_data["edge_index"], input_data["batch"])
+    output = model(
+        input_data["x"], input_data["pe"], input_data["edge_index"], input_data["batch"]
+    )
     assert output.shape == (10, 1)
+
 
 def test_mlp(input_data):
     # Test default configuration
@@ -61,5 +76,6 @@ def test_mlp(input_data):
     model = MLP(in_size=128, embedding_size=128, out_channels=32)
     output = model(input_data["x"], input_data["edge_index"])
     assert output.shape == (10, 32)
+
 
 # Add more tests as needed for other models and functionalities

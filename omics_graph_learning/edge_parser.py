@@ -9,10 +9,10 @@
 
 """Parse edges from interaction-type omics data"""
 
-from collections import defaultdict
+
+import contextlib
 import csv
 import itertools
-from itertools import chain
 from multiprocessing import Pool
 from typing import Any, Dict, Generator, List, Tuple
 
@@ -20,29 +20,22 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
-from utils import GenomeDataUtils
-from utils import time_decorator
+import utils
 
 
 class EdgeParser:
     """Object to construct tensor based graphs from parsed bedfiles
 
-    The baseline graph structure is build from the following in order:
-        Curated protein-protein interactions from the integrated interactions
-        database V 2021-05
-        TF-gene circuits from Marbach et al.
-        TF-gene interactions from TFMarker. We keep "TF" and "I Marker" type relationships
-        Enhancer-gene networks from FENRIR
-        Enhancer-enhancer networks from FENRIR
-
-        Alternative polyadenylation targets from APAatlas
-
     Args:
-        params: configuration vals from yaml
+        experiment_name (str): The name of the experiment.
+        interaction_types (List[str]): The types of interactions to consider.
+        working_directory (str): The working directory.
+        loop_file (str): The loop file.
+        params (Dict[str, Dict[str, str]]): Configuration values from YAML.
 
     Methods
     ----------
-    _GenomeDataUtils.genes_from_gencode:
+    _utils.genes_from_gencode:
         Lorem
     _base_graph:
         Lorem
@@ -96,7 +89,7 @@ class EdgeParser:
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = GenomeDataUtils.genes_from_gencode(
+        self.genesymbol_to_gencode = utils.genes_from_gencode(
             gencode_ref=self.gencode_ref
         )
         self.gencode_attr_ref = self._create_reference_dict(
@@ -117,13 +110,13 @@ class EdgeParser:
         """Reads a file and stores its lines in a dictionary"""
         try:
             return {
-                line[3]: line[0:4]
+                line[3]: line[:4]
                 for line in csv.reader(open(file, newline=""), delimiter="\t")
             }
         except FileNotFoundError:
             return {}
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _iid_ppi(
         self,
         interaction_file: str,
@@ -157,7 +150,7 @@ class EdgeParser:
             and edge[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _mirna_targets(
         self,
         target_list: str,
@@ -184,7 +177,7 @@ class EdgeParser:
             if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _tf_markers(self, interaction_file: str) -> List[Tuple[str, str]]:
         tf_keep = ["TF", "I Marker", "TFMarker"]
         tf_markers = []
@@ -193,7 +186,7 @@ class EdgeParser:
             next(file_reader)
             for line in file_reader:
                 if line[2] in tf_keep and line[5] == self.marker_name:
-                    try:
+                    with contextlib.suppress(IndexError):
                         if ";" in line[10]:
                             genes = line[10].split(";")
                             for gene in genes:
@@ -201,13 +194,10 @@ class EdgeParser:
                                     tf_markers.append((gene, line[1]))
                                 else:
                                     tf_markers.append((line[1], gene))
+                        elif line[2] == "I Marker":
+                            tf_markers.append((line[10], line[1]))
                         else:
-                            if line[2] == "I Marker":
-                                tf_markers.append((line[10], line[1]))
-                            else:
-                                tf_markers.append((line[1], line[10]))
-                    except IndexError:
-                        pass
+                            tf_markers.append((line[1], line[10]))
         return [
             (
                 f"{self.genesymbol_to_gencode[tup[0]]}_tf",
@@ -220,7 +210,7 @@ class EdgeParser:
             and tup[1] in self.genesymbol_to_gencode.keys()
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _marbach_regulatory_circuits(
         self,
         interaction_file: str,
@@ -256,7 +246,7 @@ class EdgeParser:
             if line[2] >= cutoff
         ]
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _tfbinding_footprints(
         self,
         tfbinding_file: str,
@@ -293,7 +283,7 @@ class EdgeParser:
         tss = pybedtools.BedTool(f"{self.tss}")
         return tss.filter(lambda x: x[3].split("_")[3] != "").saveas()
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def get_loop_edges(
         self,
         chromatin_loops: str,
@@ -363,7 +353,7 @@ class EdgeParser:
             anchor = {}
             for bed in beds:
                 for feature in bed:
-                    anchor.setdefault("_".join(feature[0:3]), []).append(
+                    anchor.setdefault("_".join(feature[:3]), []).append(
                         "_".join([feature[6], feature[7], feature[9]])
                     )
             return anchor
@@ -377,7 +367,7 @@ class EdgeParser:
             loop anchors by matching the anchor names across dicts"""
             edges = []
             for loop in loops:
-                first_anchor = "_".join(loop[0:3])
+                first_anchor = "_".join(loop[:3])
                 second_anchor = "_".join(loop[3:6])
                 try:
                     uniq_edges = list(
@@ -420,8 +410,6 @@ class EdgeParser:
                                 "g_g",
                             )
                         )
-                    else:
-                        pass
                 elif "tss" in edge[0] and "tss" not in edge[1]:
                     if _check_tss_gene_in_gencode(edge[0]):
                         return_edges.append(
@@ -432,8 +420,6 @@ class EdgeParser:
                                 edge_type,
                             )
                         )
-                    else:
-                        pass
                 elif "tss" not in edge[0] and "tss" in edge[1]:
                     if _check_tss_gene_in_gencode(edge[1]):
                         return_edges.append(
@@ -444,8 +430,6 @@ class EdgeParser:
                                 edge_type,
                             )
                         )
-                    else:
-                        pass
                 else:
                     return_edges.append(
                         (
@@ -478,13 +462,9 @@ class EdgeParser:
             ]
 
         first_anchor, second_anchor = _split_chromatin_loops(chromatin_loops)
+        return _process_tss_edges() if tss else _process_non_tss_edges()
 
-        if tss:
-            return _process_tss_edges()
-        else:
-            return _process_non_tss_edges()
-
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def _process_graph_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file. Edges
         will be loaded from the text file for subsequent runs to save
@@ -512,16 +492,13 @@ class EdgeParser:
             (dyadic, "p_d"),
         ]
 
-        try:
+        with contextlib.suppress(TypeError):
             if "superenhancers" in self.interaction_types:
                 super_enhancers = pybedtools.BedTool(
                     f"{self.local_dir}/superenhancers_{self.tissue}.bed"
                 )
-                gene_overlaps = gene_overlaps + [(super_enhancers, "g_se")]
+                gene_overlaps += [(super_enhancers, "g_se")]
                 promoter_overlaps = promoter_overlaps + [(super_enhancers, "p_se")]
-        except TypeError:
-            pass
-
         chrom_loop_edges = [
             self.get_loop_edges(
                 chromatin_loops=self.loop_file,
@@ -609,11 +586,11 @@ class EdgeParser:
             set(gencode_nodes),
             set(chrom_loops_regulatory_nodes),
             set(chrom_loops_se_nodes),
-            set([tup[0] for tup in mirna_targets]),
-            set(tup[1] for tup in tfbinding_edges),
+            {tup[0] for tup in mirna_targets},
+            {tup[1] for tup in tfbinding_edges},
         )
 
-    @time_decorator(print_args=False)
+    @utils.time_dectorator(print_args=False)
     def _add_node_coordinates(
         self,
         nodes,
@@ -625,17 +602,13 @@ class EdgeParser:
             nodes:
             node_ref:
         """
-        if len(nodes) == 0:
-            return []
-        else:
-            return [node_ref[node] for node in nodes]
+        return [] if len(nodes) == 0 else [node_ref[node] for node in nodes]
 
-    @time_decorator(print_args=True)
+    @utils.time_dectorator(print_args=True)
     def parse_edges(self) -> None:
         """Constructs tissue-specific interaction base graph"""
 
         print("Parsing edges...")
-        # retrieve interaction-based edges
         (
             gencode_nodes,
             regulatory_nodes,
@@ -650,18 +623,13 @@ class EdgeParser:
         pool = Pool(processes=5)
         nodes_for_attr = pool.starmap(
             self._add_node_coordinates,
-            list(
-                zip(
-                    [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
-                    [
-                        self.gencode_attr_ref,
-                        self.regulatory_attr_ref,
-                        self.se_ref,
-                        self.mirna_ref,
-                        self.footprint_ref,
-                    ],
-                )
-            ),
+            [
+                (gencode_nodes, self.gencode_attr_ref),
+                (regulatory_nodes, self.regulatory_attr_ref),
+                (se_nodes, self.se_ref),
+                (mirnas, self.mirna_ref),
+                (footprints, self.footprint_ref),
+            ],
         )
         pool.close()
         nodes_for_attr = sum(nodes_for_attr, [])  # flatten list of lists
@@ -708,3 +676,19 @@ class EdgeParser:
 
                 # with open(f"{self.interaction_dir}/full_edges.txt", "w+") as output:
         #     writer = csv.writer(output, delimiter="\t")
+
+        # nodes_for_attr = pool.starmap(
+        #     self._add_node_coordinates,
+        #     list(
+        #         zip(
+        #             [gencode_nodes, regulatory_nodes, se_nodes, mirnas, footprints],
+        #             [
+        #                 self.gencode_attr_ref,
+        #                 self.regulatory_attr_ref,
+        #                 self.se_ref,
+        #                 self.mirna_ref,
+        #                 self.footprint_ref,
+        #             ],
+        #         )
+        #     ),
+        # )

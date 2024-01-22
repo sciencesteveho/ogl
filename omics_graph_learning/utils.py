@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Utilities for genome data processing."""
+"""Utilities for omics graph learning modules."""
 
 
 from contextlib import suppress
@@ -297,237 +297,220 @@ def time_decorator(
     return _time_decorator_func
 
 
-class GeneralUtils:
-    def __init__(self):
-        pass
+def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
+    """Load yaml for parsing"""
+    with open(config_file, "r") as stream:
+        params = yaml.safe_load(stream)
+    return params
 
-    @staticmethod
-    def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
-        """Load yaml for parsing"""
-        with open(config_file, "r") as stream:
-            params = yaml.safe_load(stream)
-        return params
 
-    @staticmethod
-    def dir_check_make(dir: str) -> None:
-        """Utility to make directories only if they do not already exist"""
-        with suppress(FileExistsError):
-            os.makedirs(dir)
+def dir_check_make(dir: str) -> None:
+    """Utility to make directories only if they do not already exist"""
+    with suppress(FileExistsError):
+        os.makedirs(dir)
 
-    @staticmethod
-    def check_and_symlink(
-        src: str,
-        dst: str,
-        boolean: bool = False,
-    ) -> None:
-        with suppress(FileExistsError):
-            if boolean:
-                if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
-                    os.symlink(src, dst)
-            elif not os.path.exists(dst):
+
+def check_and_symlink(
+    src: str,
+    dst: str,
+    boolean: bool = False,
+) -> None:
+    with suppress(FileExistsError):
+        if boolean:
+            if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
                 os.symlink(src, dst)
-
-    @staticmethod
-    def _listdir_isfile_wrapper(dir: str) -> List[str]:
-        """Returns a list of files within the directory"""
-        return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
-
-    @staticmethod
-    def _tensor_out_to_array(tensor, idx):
-        return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+        elif not os.path.exists(dst):
+            os.symlink(src, dst)
 
 
-class GenomeDataUtils:
-    def __init__(self):
-        pass
+def _listdir_isfile_wrapper(dir: str) -> List[str]:
+    """Returns a list of files within the directory"""
+    return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
 
-    @staticmethod
-    def chunk_genes(
-        genes: List[str],
-        chunks: int,
-    ) -> Dict[int, List[str]]:
-        """Constructs graphs in parallel"""
-        ### get list of all gencode V26 genes
-        for _ in range(5):
-            random.shuffle(genes)
 
-        split_list = lambda l, chunks: [
-            l[n : n + chunks] for n in range(0, len(l), chunks)
-        ]
-        split_genes = split_list(genes, chunks)
-        return dict(enumerate(split_genes))
+def _tensor_out_to_array(tensor, idx):
+    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
-    @staticmethod
-    def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [line[3] for line in csv.reader(file, delimiter="\t")]
 
-    @staticmethod
-    def genes_from_gff(gff: str) -> List[str]:
-        """Get list of gtex genes from GFF file
+def chunk_genes(
+    genes: List[str],
+    chunks: int,
+) -> Dict[int, List[str]]:
+    """Constructs graphs in parallel"""
+    ### get list of all gencode V26 genes
+    for _ in range(5):
+        random.shuffle(genes)
 
-        Args:
-            gff (str): /path/to/genes.gtf
+    split_list = lambda l, chunks: [l[n : n + chunks] for n in range(0, len(l), chunks)]
+    split_genes = split_list(genes, chunks)
+    return dict(enumerate(split_genes))
 
-        Returns:
-            List[str]: genes
-        """
-        with open(gff, newline="") as file:
-            return {
-                line[3]: line[0]
-                for line in csv.reader(file, delimiter="\t")
-                if line[0] not in ["chrX", "chrY", "chrM"]
-            }
 
-    @staticmethod
-    def genes_from_gencode(gencode_ref) -> Dict[str, str]:
-        """Returns a dict of gencode v26 genes, their ids and associated gene
-        symbols
-        """
+def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
+    with open(tpm_filtered_genes, newline="") as file:
+        return [line[3] for line in csv.reader(file, delimiter="\t")]
+
+
+def genes_from_gff(gff: str) -> List[str]:
+    """Get list of gtex genes from GFF file
+
+    Args:
+        gff (str): /path/to/genes.gtf
+
+    Returns:
+        List[str]: genes
+    """
+    with open(gff, newline="") as file:
         return {
-            line[9].split(";")[3].split('"')[1]: line[3]
-            for line in gencode_ref
+            line[3]: line[0]
+            for line in csv.reader(file, delimiter="\t")
             if line[0] not in ["chrX", "chrY", "chrM"]
         }
 
-    @staticmethod
-    @time_decorator(print_args=True)
-    def _filter_low_tpm(
-        file: str,
-        tissue: str,
-        return_list: bool = False,
-    ) -> List[str]:
-        """
-        Filter genes according to the following criteria: (A) Only keep genes
-        expressing >= 0.1 TPM across 20% of samples in that tissue
-        """
-        df = pd.read_table(file, index_col=0, header=[2])
-        sample_n = len(df.columns)
-        df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-        df["result"] = df["total"] >= (0.20 * sample_n)
-        if not return_list:
-            return [
-                f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)
-            ]
-        else:
-            return list(df.loc[df["result"] == True].index)
 
-    @staticmethod
-    @time_decorator(print_args=True)
-    def _tpm_filter_gene_windows(
-        gencode: str,
-        tpm_file: str,
-    ) -> Tuple[pybedtools.BedTool, List[str]]:
-        """
-        Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
-        samples in that tissue. Additionally, we exclude analysis of sex
-        chromosomes.
-
-        Returns:
-            pybedtools object with +/- <window> windows around that gene
-        """
-        df = pd.read_table(tpm_file, index_col=0, header=[2])
-        sample_n = len(df.columns)
-        df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-        df["result"] = df["total"] >= (0.20 * sample_n)
-        tpm_filtered_genes = list(df.loc[df["result"] == True].index)
-
-        genes = pybedtools.BedTool(gencode)
-        genes_filtered = genes.filter(
-            lambda x: x[3] in tpm_filtered_genes
-            and x[0] not in ["chrX", "chrY", "chrM"]
-        ).saveas()
-
-        return genes_filtered.sort()
+def genes_from_gencode(gencode_ref) -> Dict[str, str]:
+    """Returns a dict of gencode v26 genes, their ids and associated gene
+    symbols
+    """
+    return {
+        line[9].split(";")[3].split('"')[1]: line[3]
+        for line in gencode_ref
+        if line[0] not in ["chrX", "chrY", "chrM"]
+    }
 
 
-class DataVizUtils:
-    def __init__(self):
-        pass
+@time_decorator(print_args=True)
+def _filter_low_tpm(
+    file: str,
+    tissue: str,
+    return_list: bool = False,
+) -> List[str]:
+    """
+    Filter genes according to the following criteria: (A) Only keep genes
+    expressing >= 0.1 TPM across 20% of samples in that tissue
+    """
+    df = pd.read_table(file, index_col=0, header=[2])
+    sample_n = len(df.columns)
+    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
+    df["result"] = df["total"] >= (0.20 * sample_n)
+    if not return_list:
+        return [f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)]
+    else:
+        return list(df.loc[df["result"] == True].index)
 
-    @time_decorator(print_args=True)
-    def _set_matplotlib_publication_parameters() -> None:
-        plt.rcParams.update({"font.size": 7})  # set font size
-        plt.rcParams.update({"axes.titlesize": "small"})
-        plt.rcParams.update({"font.sans-serif": "Nimbus Sans"})
-        # plt.rcParams["font.family"] = "Liberation Sans"  # set font
 
-    @time_decorator(print_args=True)
-    def plot_training_losses(
-        log: str,
-        experiment_name: str,
-        model: str,
-        layers: int,
-        width: int,
-        batch_size: int,
-        learning_rate: float,
-        outdir: str,
-    ) -> None:
-        plt.figure(figsize=(3.125, 2.25))
-        DataVizUtils._set_matplotlib_publication_parameters()
+@time_decorator(print_args=True)
+def _tpm_filter_gene_windows(
+    gencode: str,
+    tpm_file: str,
+) -> Tuple[pybedtools.BedTool, List[str]]:
+    """
+    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
+    samples in that tissue. Additionally, we exclude analysis of sex
+    chromosomes.
 
-        losses = {"Train": [], "Test": [], "Validation": []}
-        with open(log, newline="") as file:
-            reader = csv.reader(file, delimiter=":")
-            for line in reader:
-                for substr in line:
-                    for key in losses:
-                        if key in substr:
-                            losses[key].append(float(line[-1].split(" ")[-1]))
+    Returns:
+        pybedtools object with +/- <window> windows around that gene
+    """
+    df = pd.read_table(tpm_file, index_col=0, header=[2])
+    sample_n = len(df.columns)
+    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
+    df["result"] = df["total"] >= (0.20 * sample_n)
+    tpm_filtered_genes = list(df.loc[df["result"] == True].index)
 
-        # remove last item in train
-        try:
-            losses = pd.DataFrame(losses)
-        except ValueError:
-            losses["Train"] = losses["Train"][:-1]
+    genes = pybedtools.BedTool(gencode)
+    genes_filtered = genes.filter(
+        lambda x: x[3] in tpm_filtered_genes and x[0] not in ["chrX", "chrY", "chrM"]
+    ).saveas()
 
-        sns.lineplot(data=losses)
-        plt.margins(x=0)
-        plt.xlabel("Epoch", fontsize=7)
-        plt.ylabel("MSE Loss", fontsize=7)
-        plt.title(
-            f"Training loss for {experiment_name}, {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
-            wrap=True,
-            fontsize=7,
-        )
-        plt.tight_layout()
-        plt.savefig(
-            f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_loss.png",
-            dpi=300,
-        )
-        plt.close()
+    return genes_filtered.sort()
 
-    @time_decorator(print_args=True)
-    def plot_predicted_versus_expected(
-        expected,
-        predicted,
-        outdir,
-        experiment_name,
-        model,
-        layers,
-        width,
-        batch_size,
-        learning_rate,
-        rmse,
-    ):
-        plt.figure(figsize=(3.15, 2.95))
-        DataVizUtils._set_matplotlib_publication_parameters()
 
-        sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
-        plt.margins(x=0)
-        plt.xlabel("Expected Log2 TPM", fontsize=7)
-        plt.ylabel("Predicted Log2 TPM", fontsize=7)
-        plt.title(
-            f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\nPearson: {stats.pearsonr(expected, predicted)[0]}",
-            wrap=True,
-            fontsize=7,
-        )
-        plt.tight_layout()
-        plt.savefig(
-            f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_performance.png",
-            dpi=300,
-        )
-        plt.close()
+@time_decorator(print_args=True)
+def _set_matplotlib_publication_parameters() -> None:
+    plt.rcParams.update({"font.size": 7})  # set font size
+    plt.rcParams.update({"axes.titlesize": "small"})
+    plt.rcParams.update({"font.sans-serif": "Nimbus Sans"})
+    # plt.rcParams["font.family"] = "Liberation Sans"  # set font
+
+
+@time_decorator(print_args=True)
+def plot_training_losses(
+    log: str,
+    experiment_name: str,
+    model: str,
+    layers: int,
+    width: int,
+    batch_size: int,
+    learning_rate: float,
+    outdir: str,
+) -> None:
+    plt.figure(figsize=(3.125, 2.25))
+    DataVizUtils._set_matplotlib_publication_parameters()
+
+    losses = {"Train": [], "Test": [], "Validation": []}
+    with open(log, newline="") as file:
+        reader = csv.reader(file, delimiter=":")
+        for line in reader:
+            for substr in line:
+                for key in losses:
+                    if key in substr:
+                        losses[key].append(float(line[-1].split(" ")[-1]))
+
+    # remove last item in train
+    try:
+        losses = pd.DataFrame(losses)
+    except ValueError:
+        losses["Train"] = losses["Train"][:-1]
+
+    sns.lineplot(data=losses)
+    plt.margins(x=0)
+    plt.xlabel("Epoch", fontsize=7)
+    plt.ylabel("MSE Loss", fontsize=7)
+    plt.title(
+        f"Training loss for {experiment_name}, {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
+        wrap=True,
+        fontsize=7,
+    )
+    plt.tight_layout()
+    plt.savefig(
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_loss.png",
+        dpi=300,
+    )
+    plt.close()
+
+
+@time_decorator(print_args=True)
+def plot_predicted_versus_expected(
+    expected,
+    predicted,
+    outdir,
+    experiment_name,
+    model,
+    layers,
+    width,
+    batch_size,
+    learning_rate,
+    rmse,
+):
+    plt.figure(figsize=(3.15, 2.95))
+    DataVizUtils._set_matplotlib_publication_parameters()
+
+    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
+    plt.margins(x=0)
+    plt.xlabel("Expected Log2 TPM", fontsize=7)
+    plt.ylabel("Predicted Log2 TPM", fontsize=7)
+    plt.title(
+        f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\nPearson: {stats.pearsonr(expected, predicted)[0]}",
+        wrap=True,
+        fontsize=7,
+    )
+    plt.tight_layout()
+    plt.savefig(
+        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_performance.png",
+        dpi=300,
+    )
+    plt.close()
 
 
 def _get_sorted_node_degrees(graph: nx.Graph) -> None:
@@ -715,9 +698,55 @@ def _combine_and_sort_arrays(edge_index):
     return np.unique(combined)
 
 
-def _get_number_of_edges_per_idx(node_idx):
-    """_summary_"""
+def _open_graph(g_path, indexes, split, targets):
+    with open(g_path, "rb") as f:
+        graph = pickle.load(f)
+    with open(indexes, "rb") as f:
+        indexes = pickle.load(f)
+    with open(split, "rb") as f:
+        split = pickle.load(f)
+    with open(targets, "rb") as f:
+        targets = pickle.load(f)
+    return graph, indexes, split, targets
 
 
-def _find_isolated_nodes():
-    """_summary_"""
+def _get_split_indexes(split, indexes):
+    """Lorem Ipsum"""
+    train = split["train"]
+    val = split["validation"]
+    test = split["test"]
+    train_idx = [indexes[i] for i in train if i in indexes]
+    val_idx = [indexes[i] for i in val if i in indexes]
+    test_idx = [indexes[i] for i in test if i in indexes]
+    train_not_present = [i for i in train if i not in indexes]
+    val_not_present = [i for i in val if i not in indexes]
+    test_not_present = [i for i in test if i not in indexes]
+    return (
+        train_idx,
+        val_idx,
+        test_idx,
+        train_not_present,
+        val_not_present,
+        test_not_present,
+    )
+
+
+def _get_dict_subset_by_split(idxs, count_dict):
+    """Lorem Ipsum"""
+    return {idx: count_dict[idx] for idx in idxs}
+
+
+def _average_edges_per_expression_node(edge_count_dict):
+    """Sum edge counts (the values in the dictionary) and divide by the number
+    of keys (nodes)"""
+    return sum(edge_count_dict.values()) / len(edge_count_dict.keys())
+
+
+def _get_targets_for_train_list(genes, targets):
+    """Lorem Ipsum"""
+    return {gene: targets[gene][0] for gene in genes}
+
+
+def _save_wrapper(obj, name):
+    with open(name, "wb") as f:
+        pickle.dump(obj, f)

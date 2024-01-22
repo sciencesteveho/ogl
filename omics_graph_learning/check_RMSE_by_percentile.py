@@ -21,8 +21,7 @@ from models import GCN
 from models import GPSTransformer
 from models import GraphSAGE
 from models import MLP
-from utils import DataVizUtils
-from utils import GeneralUtils
+import utils
 
 
 def create_model(
@@ -199,7 +198,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    params = GeneralUtils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_config)
 
     # set up helper variables
     working_directory = params["working_directory"]
@@ -209,7 +208,7 @@ def main() -> None:
     # check for GPU
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
-        device = torch.device("cuda:" + str(args.device))
+        device = torch.device(f"cuda:{str(args.device)}")
     else:
         device = torch.device("cpu")
 
@@ -224,7 +223,7 @@ def main() -> None:
     ).to(device)
 
     # set params for plotting
-    DataVizUtils._set_matplotlib_publication_parameters()
+    utils._set_matplotlib_publication_parameters()
 
     # calculate and plot spearmann rho, predictions vs. labels
     # first, load checkpoints
@@ -232,7 +231,7 @@ def main() -> None:
     checkpoint_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_128_0.0001_batch64_neighbor_full_idx_dropout_expression_only_randomize_edges_totalrandomedges_100000000"
     checkpoint = torch.load(
         f"{checkpoint_dir}/{checkpoint_file}",
-        map_location=torch.device("cuda:" + str(0)),
+        map_location=torch.device("cuda:0"),
     )
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -267,8 +266,8 @@ def main() -> None:
             epoch=0,
         )
 
-        predictions_median = GeneralUtils._tensor_out_to_array(outs, 0)
-        labels_median = GeneralUtils._tensor_out_to_array(labels, 0)
+        predictions_median = utils._tensor_out_to_array(outs, 0)
+        labels_median = utils._tensor_out_to_array(labels, 0)
 
         experiment_name = params["experiment_name"]
         if args.randomize_node_feats == "true":
@@ -284,7 +283,7 @@ def main() -> None:
         experiment_name = f"{experiment_name}_cutoff_{percentile}"
 
         # plot performance
-        DataVizUtils.plot_predicted_versus_expected(
+        utils.plot_predicted_versus_expected(
             expected=labels_median,
             predicted=predictions_median,
             experiment_name=experiment_name,

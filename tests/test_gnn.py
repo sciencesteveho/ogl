@@ -1,6 +1,12 @@
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
+from gnn import create_model
+from gnn import inference
+from gnn import main
+from gnn import test
+from gnn import train
 import pytest
-from unittest.mock import patch, MagicMock
-from gnn import create_model, train, test, inference, main
 
 
 @pytest.fixture
@@ -25,15 +31,19 @@ def test_create_model():
     model_types = ["GraphSAGE", "GCN", "GATv2", "MLP", "GPS"]
 
     for model_type in model_types:
-        model = create_model(model_type, in_size=32, embedding_size=64, out_channels=128, num_layers=3)
+        model = create_model(
+            model_type, in_size=32, embedding_size=64, out_channels=128, num_layers=3
+        )
         assert model is not None
-        assert isinstance(model, YourModelClass)  # Replace YourModelClass with the actual model class
+        assert isinstance(
+            model, YourModelClass
+        )  # Replace YourModelClass with the actual model class
         # Add more specific assertions based on your model structure and properties
 
 
 def test_train(mock_data_loader):
     # Mocking torch.cuda.is_available() to always return False for testing
-    with patch('torch.cuda.is_available', return_value=False):
+    with patch("torch.cuda.is_available", return_value=False):
         device = "cpu"
         model = MagicMock()
         optimizer = MagicMock()
@@ -46,7 +56,7 @@ def test_train(mock_data_loader):
 
 def test_test(mock_data_loader):
     # Mocking torch.cuda.is_available() to always return False for testing
-    with patch('torch.cuda.is_available', return_value=False):
+    with patch("torch.cuda.is_available", return_value=False):
         device = "cpu"
         model = MagicMock()
         epoch = 1
@@ -59,12 +69,14 @@ def test_test(mock_data_loader):
 
 def test_inference(mock_data_loader):
     # Mocking torch.cuda.is_available() to always return False for testing
-    with patch('torch.cuda.is_available', return_value=False):
+    with patch("torch.cuda.is_available", return_value=False):
         device = "cpu"
         model = MagicMock()
         epoch = 1
 
-        rmse, outs, labels = inference(model, device, mock_data_loader, epoch, gps=False)
+        rmse, outs, labels = inference(
+            model, device, mock_data_loader, epoch, gps=False
+        )
         assert isinstance(rmse, float)
         assert isinstance(outs, list)
         assert isinstance(labels, list)
@@ -73,22 +85,26 @@ def test_inference(mock_data_loader):
 
 def test_main():
     # Mocking argparse.ArgumentParser to parse arguments from a list
-    with patch('argparse.ArgumentParser.parse_args',
-               return_value=MagicMock(experiment_config="config.yaml",
-                                      model="GCN",
-                                      layers=2,
-                                      dimensions=600,
-                                      seed=42,
-                                      loader="neighbor",
-                                      batch_size=1024,
-                                      learning_rate=1e-4,
-                                      idx="true",
-                                      device=0,
-                                      graph_type="full",
-                                      zero_nodes="false",
-                                      randomize_node_feats="false",
-                                      early_stop="true",
-                                      expression_only="false",
-                                      randomize_edges="false")):
+    with patch(
+        "argparse.ArgumentParser.parse_args",
+        return_value=MagicMock(
+            experiment_config="config.yaml",
+            model="GCN",
+            layers=2,
+            dimensions=600,
+            seed=42,
+            loader="neighbor",
+            batch_size=1024,
+            learning_rate=1e-4,
+            idx="true",
+            device=0,
+            graph_type="full",
+            zero_nodes="false",
+            randomize_node_feats="false",
+            early_stop="true",
+            expression_only="false",
+            randomize_edges="false",
+        ),
+    ):
         main()
         # Add more assertions based on your specific requirements
