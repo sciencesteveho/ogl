@@ -440,11 +440,11 @@ class EdgeParser:
         self,
         edges_df: pd.DataFrame,
         file_path: str,
-        tss=False,
+        genes=False,
     ) -> None:
         """Write the edges to a file in bulk."""
 
-        def _process_tss_edge(row):
+        def _process_gene_edges(row):
             if "tss" in row["edge_0"] and "tss" in row["edge_1"]:
                 if self._check_tss_gene_in_gencode(
                     row["edge_0"]
@@ -460,8 +460,8 @@ class EdgeParser:
             else:
                 pass
 
-        if tss:
-            edges_df = edges_df.apply(_process_tss_edge, axis=1)
+        if genes:
+            edges_df = edges_df.apply(_process_gene_edges, axis=1)
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
 
     def _run_generator_chromloops(self, generator: Generator) -> None:
@@ -496,6 +496,7 @@ class EdgeParser:
         self,
         features: pybedtools.BedTool,
         edge_type: str,
+        genes: bool = False,
     ) -> Generator[Tuple[str, str, float, str]]:
         """Connects nodes if they are linked by chromatin loops. Can specify if
         the loops should only be done for direct overlaps or if they should
@@ -514,11 +515,6 @@ class EdgeParser:
         first_anchor_df = first_anchor_overlaps.to_dataframe()
         second_anchor_df = second_anchor_overlaps.to_dataframe()
 
-        if overlap_func == self._loop_within_distance:
-            tss = False
-        else:
-            tss = True
-
         # get edges and write to file
         self._write_loop_edges(
             edges_df=self._generate_edge_combinations(
@@ -527,7 +523,7 @@ class EdgeParser:
                 edge_type=edge_type,
             ),
             file_path=f"{self.interaction_dir}/interaction_edges.txt",
-            tss=tss,
+            genes=genes,
         )
 
     def _prepare_regulatory_elements(self):
