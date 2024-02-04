@@ -318,7 +318,7 @@ class EdgeParser:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(node)
 
-    def _write_edge_to_file(self, edge: Tuple[Union[str, int]]) -> None:
+    def _write_edges(self, edge: Tuple[Union[str, int]]) -> None:
         """Write edge to file"""
         with open(f"{self.interaction_dir}/interaction_edges.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
@@ -375,9 +375,9 @@ class EdgeParser:
         with contextlib.suppress(StopIteration):
             while True:
                 if result := next(generator):
-                    self._write_edge_to_file(result)
+                    self._write_edges(result)
                     for element, attr_ref in zip(result, attr_refs):
-                        self._write_gene_nodes_to_file(
+                        self._write_gene_nodes(
                             self._add_node_coordinates(element, attr_ref)
                         )
 
@@ -436,7 +436,7 @@ class EdgeParser:
             )
         )
 
-    def _write_edges_to_file(
+    def _write_loop_edges(
         self,
         edges_df: pd.DataFrame,
         file_path: str,
@@ -488,159 +488,68 @@ class EdgeParser:
                         )
                     )
                 )
-                self._write_edge_to_file(result)
-                self._write_gene_nodes_to_file(self._add_node_coordinates(node, ref))
+                self._write_edges(result)
+                self._write_gene_nodes(self._add_node_coordinates(node, ref))
 
     @utils.time_dectorator(print_args=True)
-    def get_loop_edges(
+    def _process_loop_edges(
         self,
-        feat_1: str,
-        feat_2: str,
+        features: pybedtools.BedTool,
         edge_type: str,
-        tss: bool = False,
     ) -> Generator[Tuple[str, str, float, str]]:
         """Connects nodes if they are linked by chromatin loops. Can specify if
         the loops should only be done for direct overlaps or if they should
         be within 2mb of a loop anchor for TSS. If using TSS, make sure to
         specify the TSS as the second feature!
         """
+        first_anchor_overlaps = self._overlap_groupby(
+            self.first_anchor, features, self._loop_direct_overlap
+        )
+        second_anchor_overlaps = self._overlap_groupby(
+            self.second_anchor, features, self._loop_direct_overlap
+        )
+        second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
 
-        def _flatten_anchors(*beds: pybedtools.BedTool) -> Dict[str, List[str]]:
-            """Creates a dict to store each anchor and its overlaps. Adds the feature by
-            adding the last 4 columns of the entry."""
-            anchor = {}
-            for bed in beds:
-                for feature in bed:
-                    anchor.setdefault("_".join(feature[:3]), []).append(
-                        "_".join(feature[3:])
-                    )
-            return anchor
+        # convert to dataframe
+        first_anchor_df = first_anchor_overlaps.to_dataframe()
+        second_anchor_df = second_anchor_overlaps.to_dataframe()
 
-        def _loop_edges(
-            loops: pybedtools.BedTool,
-            first_anchor_edges: Dict[str, List[str]],
-            second_anchor_edges: Dict[str, List[str]],
-        ) -> Generator[Tuple[str, str, float, str]]:
-            """Yield edges that are connected by their overlap over chromatin
-            loop anchors by matching the anchor names across dicts"""
-            for loop in loops:
-                first_anchor = "_".join(loop[:3])
-                second_anchor = "_".join(loop[3:6])
-                try:
-                    yield from itertools.product(
-                        first_anchor_edges[first_anchor],
-                        second_anchor_edges[second_anchor],
-                    )
-                except KeyError:
-                    continue
+        if overlap_func == self._loop_within_distance:
+            tss = False
+        else:
+            tss = True
 
-        def _process_tss_edge(edge):
-            if "tss" in edge[0] and "tss" in edge[1]:
-                if self._check_tss_gene_in_gencode(
-                    edge[0]
-                ) and self._check_tss_gene_in_gencode(edge[1]):
-                    return (
-                        self._check_tss_gene_in_gencode(edge[0]),
-                        self._check_tss_gene_in_gencode(edge[1]),
-                        -1,
-                        "g_g",
-                    )
-            elif "tss" in edge[0]:
-                if self._check_tss_gene_in_gencode(edge[0]):
-                    return (
-                        self._check_tss_gene_in_gencode(edge[0]),
-                        edge[1],
-                        -1,
-                        edge_type,
-                    )
-            elif "tss" in edge[1]:
-                if self._check_tss_gene_in_gencode(edge[1]):
-                    return (
-                        edge[0],
-                        self._check_tss_gene_in_gencode(edge[1]),
-                        -1,
-                        edge_type,
-                    )
-            else:
-                return (
-                    edge[0],
-                    edge[1],
-                    -1,
-                    edge_type,
-                )
-
-        def _process_tss_edges():
-            """Process TSS edges and return a list of filtered edges.
-
-            Returns:
-                List[Tuple]: A list of filtered edges.
-            """
-            first_anchor_edges = first_anchor
-
-            first_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(self.first_anchor, feat_1),
-                _loop_within_distance(self.first_anchor, feat_2),
-            )
-            second_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(self.second_anchor, feat_1),
-                _loop_within_distance(self.second_anchor, feat_2),
-            )
-            for edge in set(
-                _loop_edges(self.first_anchor, first_anchor_edges, second_anchor_edges)
-            ):
-                filtered_edge = _process_tss_edge(edge)
-                if filtered_edge:
-                    yield filtered_edge
-
-        def _process_non_tss_edges():
-            """Process non-TSS edges and return a list of filtered edges."""
-            first_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(self.first_anchor, feat_1),
-                _loop_direct_overlap(self.first_anchor, feat_2),
-            )
-            second_anchor_edges = _flatten_anchors(
-                _loop_direct_overlap(self.second_anchor, feat_1),
-                _loop_direct_overlap(self.second_anchor, feat_2),
-            )
-            yield from (
-                (edge[0], edge[1], -1, edge_type)
-                for edge in set(
-                    _loop_edges(
-                        self.first_anchor, first_anchor_edges, second_anchor_edges
-                    )
-                )
-            )
-
-        return _process_tss_edges() if tss else _process_non_tss_edges()
+        # get edges and write to file
+        self._write_loop_edges(
+            edges_df=self._generate_edge_combinations(
+                df1=first_anchor_df,
+                df2=second_anchor_df,
+                edge_type=edge_type,
+            ),
+            file_path=f"{self.interaction_dir}/interaction_edges.txt",
+            tss=tss,
+        )
 
     def _prepare_regulatory_elements(self):
         """Simple wrapper to load regulatory elements and return BedTools"""
-        distal_enhancers = (
-            pybedtools.BedTool(f"{self.local_dir}/{self.shared['enhancers']}")
-            .filter(lambda x: x[3] == "dELS")
-            .saveas()
+        all_enhancers = pybedtools.BedTool(
+            f"{self.local_dir}/{self.shared['enhancers']}"
         )
+        distal_enhancers = all_enhancers.filter(lambda x: x[3] == "dELS").saveas()
         promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
         dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
-        return distal_enhancers, promoters, dyadic
+        return all_enhancers, distal_enhancers, promoters, dyadic
 
     @utils.time_dectorator(print_args=True)
-    def _process_chrom_edges(self) -> None:
+    def _parse_chromloop_basegraph(self, gene_gene: bool = False) -> None:
         """Need to depdupe chrom loop edges at the end...
         + [edge[0] for edge in self.chrom_edges if "ENSG" in edge[0]]
         + [edge[1] for edge in self.chrom_edges if "ENSG" in edge[1]]
-        """
-        # Helpers - types of elements connected by loops
-        gene_overlaps = [
-            (distal_enhancers, "g_e"),
-            (promoters, "g_p"),
-            (dyadic, "g_d"),
-        ]
-        promoters_overlaps = [
-            (distal_enhancers, "p_e"),
-            (dyadic, "p_d"),
-        ]
 
+        Optional boolian 'gene_gene' specifies if gene_gene interactions will be
+        parsed. If not, only gene_regulatory interactions will be parsed.
+        Defaults to no.
+        """
         # Load elements
         distal_enhancers, promoters, dyadic = self._prepare_regulatory_elements()
         tss = self._load_tss()
@@ -648,29 +557,49 @@ class EdgeParser:
             chromatin_loops=self.loop_file
         )
 
+        # Helpers - types of elements connected by loops
+        distance_overlaps = [
+            (distal_enhancers, "g_e"),
+            (promoters, "g_p"),
+            (dyadic, "g_d"),
+        ]
+        direct_overlaps = [
+            (distal_enhancers, "p_e"),
+            (dyadic, "p_d"),
+            (promoters, "p_p"),
+            (enhancers, "e_e"),
+        ]
+
+        if gene_gene:
+            distance_overlaps += [(tss, "g_g")]
+
+        """
+        g_e = gene, distal enhancer / uses tss
+        g_p = gene, promoter / uses tss
+        g_d = gene, dyadic / uses tss
+        
+        p_e = promoter, distal enhancer
+        p_d = promoter, dyadic
+        g_se = gene, superenhancer
+        p_se = promoter, superenhancer
+        
+        p_p = promoter, promoter (direct)
+        e_e = enhancer, enhancer (distance)
+        """
+
         with contextlib.suppress(TypeError):
             if "superenhancers" in self.interaction_types:
                 super_enhancers = pybedtools.BedTool(
                     f"{self.local_dir}/superenhancers_{self.tissue}.bed"
                 )
-                gene_overlaps += [(super_enhancers, "g_se")]
+                distance_overlaps += [(super_enhancers, "g_se")]
                 promoter_overlaps = promoter_overlaps + [(super_enhancers, "p_se")]
 
-        chrom_loop_edges = (
-            self.get_loop_edges(
-                chromatin_loops=self.loop_file,
-                feat_1=element[0],
-                feat_2=tss if element is gene_overlaps else promoters,
-                tss=element in gene_overlaps,
+        for element in distance_overlaps + direct_overlaps:
+            self._process_loop_edges(
+                features=element[0],
                 edge_type=element[1],
             )
-            for element in gene_overlaps + promoters_overlaps
-        )
-
-        # flatten the list of lists and convert to tuples to make hashable
-        chrom_loop_edges = [
-            tuple(edge) for sublist in chrom_loop_edges for edge in sublist
-        ]
 
     @utils.time_dectorator(print_args=True)
     def parse_edges(self) -> None:
@@ -686,7 +615,7 @@ class EdgeParser:
         print("Interaction edges complete!")
 
         print("Parsing chrom loop edges...")
-        self._process_chrom_edges()
+        self._parse_chromloop_basegraphs(gene_gene=self.gene_gene)
         print("Chrom loop edges complete!")
 
     @staticmethod
@@ -759,12 +688,12 @@ class EdgeParser:
         """Get features that directly overlap with loop anchor"""
         return loops.intersect(features, wo=True, stream=True)
 
-    @staticmethod
-    def _loop_within_distance(
-        loops: pybedtools.BedTool,
-        features: pybedtools.BedTool,
-        distance: int = 2000,
-    ) -> pybedtools.BedTool:
-        """Get features at specified distance to loop anchor. Defaults with 2kb
-        distance window."""
-        return loops.window(features, w=distance, stream=True)
+    # @staticmethod
+    # def _loop_within_distance(
+    #     loops: pybedtools.BedTool,
+    #     features: pybedtools.BedTool,
+    #     distance: int = 2000,
+    # ) -> pybedtools.BedTool:
+    #     """Get features at specified distance to loop anchor. Defaults with 2kb
+    #     distance window."""
+    #     return loops.window(features, w=distance, stream=True)
