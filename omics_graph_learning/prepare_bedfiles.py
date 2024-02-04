@@ -24,7 +24,7 @@ NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
 class GenomeDataPreprocessor:
     """Data preprocessor for dealing with differences in bed files.
 
-    Args:
+    Attributes:
         experiment_name (str): The name of the experiment.
         interaction_types (List[str]): The types of interactions.
         nodes (List[str]): The nodes.
@@ -34,21 +34,23 @@ class GenomeDataPreprocessor:
     Methods
     ----------
     _run_cmd:
-        runs shell command via subprocess call
+        Runs shell command via subprocess call.
     _make_directories:
-        make required directories for processing
+        Make required directories for processing.
     _symlink_rawdata:
-        symlink the raw data to a folder within the directory
+        Symlink the raw data to a folder within the directory.
     _download_shared_files:
-        download files used by multiple tissues
-    _add_tad_id:
-        add IDs to tad file
-    _tf_binding_clusters:
-        clusters of tf binding sites
+        Download files used by multiple tissues.
+    _add_TAD_id:
+        Add identification number to each TAD.
+    _superenhancers:
+        Simple parser to remove superenhancer bed unneeded info.
+    _tf_binding_sites:
+        Parse tissue-specific transcription factor binding sites.
     _merge_cpg:
-        merge book-ended cpg features
+        Merge individual CPGs with optional liftover.
     prepare_data_files:
-        main pipeline function
+        Main pipeline function.
     """
 
     def __init__(

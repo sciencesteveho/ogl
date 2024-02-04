@@ -27,7 +27,7 @@ from utils import ATTRIBUTES
 class LocalContextParser:
     """Object that parses local genomic data into graph edges
 
-    Args:
+    Attributes:
         bedfiles: dictionary containing each local genomic data type as bedtool
         obj
         windows: bedtool object of windows +/- 250k of protein coding genes
@@ -36,7 +36,22 @@ class LocalContextParser:
     Methods
     ----------
     _make_directories:
-        prepare necessary directories
+        Prepare necessary directories.
+    _region_specific_features_dict:
+        Creates a dict of local context datatypes and their bedtools objects.
+    _slop_sort:
+        Slop each line of a bedfile to get all features within a window.
+    _bed_intersect:
+        Function to intersect a slopped bed entry with all other node types.
+    _aggregate_attributes:
+        For each node of a node_type get their overlap with gene windows then
+        aggregate total nucleotides, gc content, and all other attributes.
+    _generate_edges:
+        Unix concatenate and sort each edge file.
+    _save_node_attributes:
+        Save attributes for all node entries.
+    parse_context_data:
+        Parse local genomic data into graph edges.
 
     # Helpers
         ATTRIBUTES -- list of node attribute types
@@ -66,20 +81,9 @@ class LocalContextParser:
         self.working_directory = working_directory
         self.node_processes = len(nodes) + 1  # 12
 
-        self.resources = params["resources"]
-        self.gencode = params["local"]["gencode"]
-
-        self.tissue = self.resources["tissue"]
-        self.chromfile = self.resources["chromfile"]
-        self.fasta = self.resources["fasta"]
-
-        self.root_dir = params["dirs"]["root_dir"]
-        self.tissue_dir = (
-            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
-        )
-        self.local_dir = f"{self.tissue_dir}/local"
-        self.parse_dir = f"{self.tissue_dir}/parsing"
-        self.attribute_dir = f"{self.parse_dir}/attributes"
+        self._set_params(params)
+        self._set_directories()
+        self._prepare_bed_references()
 
         genes = f"{self.tissue_dir}/tpm_filtered_genes.bed"
         gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
@@ -93,15 +97,35 @@ class LocalContextParser:
                 gct=f"{params['resources']['tpm']}",
             )
 
-        # prepare references
-        self.gencode_ref = pybedtools.BedTool(genes)
-        self.gene_windows = pybedtools.BedTool(gene_windows)
-        self.genesymbol_to_gencode = utils.genes_from_gencode(
-            pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        )
-
         # make directories
         self._make_directories()
+
+    def _set_params(self, params: Dict[str, Dict[str, str]]):
+        self.resources = params["resources"]
+        self.gencode = params["local"]["gencode"]
+        self.tissue = self.resources["tissue"]
+        self.chromfile = self.resources["chromfile"]
+        self.fasta = self.resources["fasta"]
+        self.root_dir = params["dirs"]["root_dir"]
+
+    def _set_directories(self):
+        self.tissue_dir = (
+            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
+        )
+        self.local_dir = f"{self.tissue_dir}/local"
+        self.parse_dir = f"{self.tissue_dir}/parsing"
+        self.attribute_dir = f"{self.parse_dir}/attributes"
+
+    def _prepare_bed_references(self):
+        self.gencode_ref = pybedtools.BedTool(
+            f"{self.tissue_dir}/tpm_filtered_genes.bed"
+        )
+        self.gene_windows = pybedtools.BedTool(
+            f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
+        )
+        self.genesymbol_to_gencode = utils.genes_from_gencode(
+            pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")
+        )
 
     def _prepare_tpm_filtered_genes(
         self,
@@ -112,7 +136,7 @@ class LocalContextParser:
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
         filtered_genes = utils._tpm_filter_gene_windows(
-            gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
+            gencode=f"{self.local_dir}/{self.gencode}",
             tissue=self.tissue,
             tpm_file=gct,
             chromfile=self.chromfile,
