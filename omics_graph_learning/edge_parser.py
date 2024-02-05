@@ -1,8 +1,9 @@
+# sourcery skip: lambdas-should-be-short
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - []
+# - [ ] Fix inheritance for self.gene_gene
 
 """Parse edges from interaction-type omics data"""
 
@@ -30,7 +31,7 @@ class EdgeParser:
 
     Methods
     ----------
-    _initialize_directories:
+    _initialize_directories_and_vars:
         Initialize directory paths.
     _initialize_references:
         Initialize reference dictionaries.
@@ -75,10 +76,12 @@ class EdgeParser:
         self.working_directory = working_directory
         self.loop_file = loop_file
 
-        self._initialize_directories(params)
+        self._initialize_directories_and_vars(params)
         self._initialize_references(params)
 
-    def _initialize_directories(self, params: Dict[str, Dict[str, str]]) -> None:
+    def _initialize_directories_and_vars(
+        self, params: Dict[str, Dict[str, str]]
+    ) -> None:
         """Initialize directory paths"""
         self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
@@ -450,17 +453,20 @@ class EdgeParser:
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
 
-        def _process_edge_nodes(row):
-            for edge in ("edge_0", "edge_1"):
-                if "tss" in row[edge]:
-                    checked_edge = self._check_tss_gene_in_gencode(row[edge])
-                    if checked_edge:
-                        row[edge] = checked_edge
-
         if tss:
-            edges_df = edges_df.apply(_process_edge_nodes, axis=1)
+            edges_df = edges_df.apply(
+                lambda row: [
+                    (
+                        self._check_tss_gene_in_gencode(row[edge])
+                        if "tss" in row[edge]
+                        else row[edge]
+                    )
+                    for edge in ("edge_0", "edge_1")
+                ],
+                axis=1,
+            )
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
-        return set(edges_df["edge_0"].unique() + edges_df["edge_1"].unique())
+        return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
 
     @utils.time_decorator(print_args=True)
     def _process_loop_edges(
@@ -477,9 +483,11 @@ class EdgeParser:
         The overlap function arg only affects the first anchor. The second
         anchor will always use direct overlap.
         """
-        first_anchor_overlaps = self._overlap_groupby(self.first_anchor, first_feature)
+        first_anchor_overlaps = self._overlap_groupby(
+            self.first_anchor, first_feature, self._loop_direct_overlap
+        )
         second_anchor_overlaps = self._overlap_groupby(
-            self.second_anchor, second_feature
+            self.second_anchor, second_feature, self._loop_direct_overlap
         )
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
 
@@ -546,11 +554,6 @@ class EdgeParser:
         )
 
         # Helpers - types of elements connected by loops
-        overlaps = {
-            self.tss: (distal_enhancers, promoters, dyadic),
-            promoters: (all_enhancers, dyadic, promoters),
-            all_enhancers: (all_enhancers, dyadic),
-        }
         overlaps = [
             (self.tss, distal_enhancers, "g_de"),
             (self.tss, promoters, "g_p"),
@@ -562,21 +565,22 @@ class EdgeParser:
             (all_enhancers, dyadic, "e_d"),
         ]
 
-        if "superenhancers" in self.interaction_types:
-            super_enhancers = pybedtools.BedTool(
-                f"{self.local_dir}/superenhancers_{self.tissue}.bed"
-            )
-            overlaps += [
-                (self.tss, super_enhancers, "g_se"),
-                (promoters, super_enhancers, "p_se"),
-                (dyadic, super_enhancers, "d_se"),
-                (all_enhancers, super_enhancers, "e_se"),
-                (super_enhancers, super_enhancers, "se_se"),
-            ]
+        with contextlib.suppress(TypeError):
+            if "superenhancers" in self.interaction_types:
+                super_enhancers = pybedtools.BedTool(
+                    f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+                )
+                overlaps += [
+                    (self.tss, super_enhancers, "g_se"),
+                    (promoters, super_enhancers, "p_se"),
+                    (dyadic, super_enhancers, "d_se"),
+                    (all_enhancers, super_enhancers, "e_se"),
+                    (super_enhancers, super_enhancers, "se_se"),
+                ]
 
         # Add gene_gene interactions if specified
-        if gene_gene:
-            overlaps.append((self.tss, self.tss, "g_g"))
+        # if gene_gene:
+        #     overlaps.append((self.tss, self.tss, "g_g"))
 
         # perform two sets of overlaps
         basenodes = set()
@@ -611,7 +615,8 @@ class EdgeParser:
 
         print("Parsing chrom loop edges...")
         basenodes = set()
-        self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
+        # self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
+        self._parse_chromloop_basegraph(gene_gene=False)
         print("Chrom loop edges complete!")
 
         print("Writing node references...")
@@ -649,7 +654,7 @@ class EdgeParser:
         return (
             df[["thickStart_x", "thickStart_y"]]
             .drop_duplicates()
-            .rename(columns={"thickStart_x": "edge_1", "thickStart_y": "edge_2"})
+            .rename(columns={"thickStart_x": "edge_0", "thickStart_y": "edge_1"})
             .assign(type=edge_type)
         )
 
@@ -688,13 +693,3 @@ class EdgeParser:
     ) -> pybedtools.BedTool:
         """Get features that directly overlap with loop anchor"""
         return loops.intersect(features, wo=True, stream=True)
-
-    # @staticmethod
-    # def _loop_within_distance(
-    #     loops: pybedtools.BedTool,
-    #     features: pybedtools.BedTool,
-    #     distance: int = 2000,
-    # ) -> pybedtools.BedTool:
-    #     """Get features at specified distance to loop anchor. Defaults with 2kb
-    #     distance window."""
-    #     return loops.window(features, w=distance, stream=True)
