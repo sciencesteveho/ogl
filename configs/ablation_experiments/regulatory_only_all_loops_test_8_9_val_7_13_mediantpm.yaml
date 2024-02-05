@@ -1,9 +1,11 @@
 ---
 baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
 
-baseloops: deeploop_deepanchor_peakachu
+baseloops: deeploop_5000000
 
 experiment_name: regulatory_only_all_loops_test_8_9_val_7_13_mediantpm
+
+gene_gene: False
 
 interaction_types: null
 

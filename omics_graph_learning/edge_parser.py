@@ -382,6 +382,10 @@ class EdgeParser:
             for element, attr_ref in zip(result, attr_refs):
                 self._write_node_list(self._add_node_coordinates(element, attr_ref))
 
+    def _check_if_interactions_exists(self) -> bool:
+        """Check if interaction edges file exists"""
+        return bool(self.interaction_types)
+
     @utils.time_decorator(print_args=True)
     def _process_interaction_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file. Edges
@@ -404,20 +408,21 @@ class EdgeParser:
             attr_refs = [self.gencode_attr_ref, self.footprint_ref]
             self._run_generator_common(generator, attr_refs)
 
-        # get generators
-        (
-            ppi_generator,
-            mirna_generator,
-            tf_generator,
-            circuit_generator,
-            tfbinding_generator,
-        ) = self._prepare_interaction_generators()
+        if self._check_if_interactions_exists():
+            # get generators
+            (
+                ppi_generator,
+                mirna_generator,
+                tf_generator,
+                circuit_generator,
+                tfbinding_generator,
+            ) = self._prepare_interaction_generators()
 
-        # run generators!
-        for gen in [ppi_generator, tf_generator, circuit_generator]:
-            _run_generator(gen)
-        _run_mirna_generator(mirna_generator)
-        _run_tfbinding_generator(tfbinding_generator)
+            # run generators!
+            for gen in [ppi_generator, tf_generator, circuit_generator]:
+                _run_generator(gen)
+            _run_mirna_generator(mirna_generator)
+            _run_tfbinding_generator(tfbinding_generator)
 
     def _overlap_groupby(
         self,
@@ -606,7 +611,7 @@ class EdgeParser:
 
         print("Parsing chrom loop edges...")
         basenodes = set()
-        self._parse_chromloop_basegraphs(gene_gene=self.gene_gene)
+        self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
         print("Chrom loop edges complete!")
 
         print("Writing node references...")
