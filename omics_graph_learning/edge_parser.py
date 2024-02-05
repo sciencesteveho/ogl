@@ -7,12 +7,9 @@
 """Parse edges from interaction-type omics data"""
 
 
-from collections import deque
 import contextlib
 import csv
-import itertools
-from multiprocessing import Pool
-from typing import Dict, Generator, List, Tuple, Union
+from typing import Dict, Generator, Iterator, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -133,6 +130,17 @@ class EdgeParser:
         except FileNotFoundError:
             return {}
 
+    def _read_csv_wrapper(
+        self, file_path: str, with_header: bool = True
+    ) -> Union[Tuple[List[str], Iterator[List[str]]], Iterator[List[str]]]:
+        """Wrapper function to read a CSV file."""
+        with open(file_path, newline="") as file:
+            reader = csv.reader(file, delimiter="=\t")
+            if with_header:
+                header = next(reader)
+                return header, reader
+            return reader
+
     def _iid_ppi(
         self,
         interaction_file: str,
@@ -140,35 +148,26 @@ class EdgeParser:
     ) -> Generator[Tuple[str, str, float, str]]:
         """Protein-protein interactions from the Integrated Interactions
         Database v 2021-05"""
-        with open(interaction_file, newline="") as file:
-            reader = csv.reader(file, delimiter="\t")
-            header = next(reader)
-            symbol1_idx = header.index("symbol1")
-            symbol2_idx = header.index("symbol2")
-            evidence_type_idx = header.index("evidence_type")
-            n_methods_idx = header.index("n_methods")
-            tissue_idx = header.index(tissue)
+        header, reader = self._read_csv_with_header(interaction_file, with_header=True)
+        idxs = {
+            key: header.index(key)
+            for key in ["symbol1", "symbol2", "evidence_type", "n_methods", tissue]
+        }
 
-            for line in reader:
-                symbol1 = line[symbol1_idx]
-                symbol2 = line[symbol2_idx]
-                evidence_type = line[evidence_type_idx]
-                n_methods = int(line[n_methods_idx])
-                tissue_value = float(line[tissue_idx])
-
-                if (
-                    tissue_value > 0
-                    and n_methods >= 3
-                    and "exp" in evidence_type
-                    and symbol1 in self.genesymbol_to_gencode
-                    and symbol2 in self.genesymbol_to_gencode
-                ):
-                    yield (
-                        self.genesymbol_to_gencode[symbol1],
-                        self.genesymbol_to_gencode[symbol2],
-                        -1,
-                        "ppi",
-                    )
+        for line in reader:
+            if (
+                float(line[idxs[tissue]]) > 0
+                and int(line[idxs["n_methods"]]) >= 3
+                and "exp" in line[idxs["evidence_type"]]
+                and line[idxs["symbol1"]] in self.genesymbol_to_gencode
+                and line[idxs["symbol2"]] in self.genesymbol_to_gencode
+            ):
+                yield (
+                    self.genesymbol_to_gencode[line[idxs["symbol1"]]],
+                    self.genesymbol_to_gencode[line[idxs["symbol2"]]],
+                    # -1,
+                    "ppi",
+                )
 
     def _mirna_targets(
         self,
@@ -178,25 +177,18 @@ class EdgeParser:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.
         """
-        active_mirna = set()
-        with open(tissue_active_mirnas, newline="") as file:
-            reader = csv.reader(file, delimiter="\t")
-            for line in reader:
-                active_mirna.add(line[3])
+        active_mirna_reader = self._read_csv_with_header(tissue_active_mirnas)
+        active_mirna = {line[3] for line in active_mirna_reader}
 
-        with open(target_list, newline="") as file:
-            reader = csv.reader(file, delimiter="\t")
-            for line in reader:
-                miRNA = line[0]
-                target_gene = line[1]
-
-                if miRNA in active_mirna and target_gene in self.genesymbol_to_gencode:
-                    yield (
-                        miRNA,
-                        self.genesymbol_to_gencode[target_gene],
-                        -1,
-                        "mirna",
-                    )
+        target_reader = self._read_csv_with_header(target_list)
+        for line in target_reader:
+            if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode:
+                yield (
+                    line[0],
+                    self.genesymbol_to_gencode[line[1]],
+                    # -1,
+                    "mirna",
+                )
 
     def _tf_markers(self, interaction_file: str) -> Generator[Tuple[str, str]]:
         """Filters tf markers based on specified conditions.
@@ -207,25 +199,25 @@ class EdgeParser:
         Returns:
             List[Tuple[str, str]]: A list of filtered tf marker interactions.
         """
-        tf_markers = []
         tf_keep = ["TF", "I Marker", "TFMarker"]
-        with open(interaction_file, newline="") as file:
-            file_reader = csv.reader(file, delimiter="\t")
-            next(file_reader)
-            for line in file_reader:
-                if line[2] in tf_keep and line[5] == self.marker_name:
-                    with contextlib.suppress(IndexError):
-                        if ";" in line[10]:
-                            genes = line[10].split(";")
-                            for gene in genes:
-                                if line[2] == "I Marker":
-                                    tf_markers.append((gene, line[1]))
-                                else:
-                                    tf_markers.append((line[1], gene))
-                        elif line[2] == "I Marker":
-                            tf_markers.append((line[10], line[1]))
-                        else:
-                            tf_markers.append((line[1], line[10]))
+        _, reader = self._read_csv_with_header(interaction_file)
+
+        tf_markers = []
+        for line in reader:
+            if line[2] in tf_keep and line[5] == self.marker_name:
+                with contextlib.suppress(IndexError):
+                    if ";" in line[10]:
+                        genes = line[10].split(";")
+                        for gene in genes:
+                            if line[2] == "I Marker":
+                                tf_markers.append((gene, line[1]))
+                            else:
+                                tf_markers.append((line[1], gene))
+                    elif line[2] == "I Marker":
+                        tf_markers.append((line[10], line[1]))
+                    else:
+                        tf_markers.append((line[1], line[10]))
+
         for tup in tf_markers:
             if (
                 tup[0] in self.genesymbol_to_gencode.keys()
@@ -234,7 +226,7 @@ class EdgeParser:
                 yield (
                     f"{self.genesymbol_to_gencode[tup[0]]}_tf",
                     self.genesymbol_to_gencode[tup[1]],
-                    -1,
+                    # -1,
                     "tf_marker",
                 )
 
@@ -249,28 +241,30 @@ class EdgeParser:
             col_2   Target gene
             col_3   Edge weight
         """
-        tf_g, scores = [], []
-        with open(interaction_file, newline="") as file:
-            reader = csv.reader(file, delimiter="\t")
-            for line in reader:
-                scores.append(float(line[2]))
-                tf = line[0]
-                target_gene = line[1]
-                if (
-                    tf in self.genesymbol_to_gencode
-                    and target_gene in self.genesymbol_to_gencode
-                ):
-                    weight = float(line[2])
-                    tf_g.append((tf, target_gene, weight))
+        reader = self._read_csv_with_header(interaction_file)
 
+        scores = [
+            float(line[2])
+            for line in reader
+            if (
+                line[0] in self.genesymbol_to_gencode
+                and line[1] in self.genesymbol_to_gencode
+            )
+        ]
         cutoff = np.percentile(scores, score_filter)
 
-        for line in tf_g:
-            if line[2] >= cutoff:
+        reader = self._read_csv_with_header(interaction_file)  # Re-read the file
+        for line in reader:
+            tf, target_gene, weight = line[0], line[1], float(line[2])
+            if (
+                tf in self.genesymbol_to_gencode
+                and target_gene in self.genesymbol_to_gencode
+                and weight >= cutoff
+            ):
                 yield (
-                    f"{self.genesymbol_to_gencode[line[0]]}_tf",
-                    self.genesymbol_to_gencode[line[1]],
-                    line[2],
+                    f"{self.genesymbol_to_gencode[tf]}_tf",
+                    self.genesymbol_to_gencode[target_gene],
+                    # weight,
                     "circuits",
                 )
 
@@ -295,7 +289,7 @@ class EdgeParser:
             yield (
                 f"{self.genesymbol_to_gencode[line[3]]}_tf",
                 f"{line[5]}_{line[6]}_{line[3]}",
-                -1,
+                # -1,
                 "tf_binding_footprint",
             )
 
@@ -371,6 +365,15 @@ class EdgeParser:
         generator: Generator,
         attr_refs: List[Dict[str, List[str]], Dict[str, List[str]]],
     ) -> None:
+        """Runs a generator and processes its results. Returns nothing.
+
+        Args:
+            generator (Generator): The generator to run.
+            attr_refs (List[Dict[str, List[str]], Dict[str, List[str]]]): The attribute references.
+
+        Raises:
+            StopIteration: If the generator is exhausted.
+        """
         with contextlib.suppress(StopIteration):
             while True:
                 if result := next(generator):
@@ -524,6 +527,10 @@ class EdgeParser:
         Optional boolian 'gene_gene' specifies if gene_gene interactions will be
         parsed. If not, only gene_regulatory interactions will be parsed.
         Defaults to no.
+
+        tss vs de, p , d
+        p vs e, d, p
+        e vs e, d
         """
         # Load elements
         all_enhancers, distal_enhancers, promoters, dyadic = (
@@ -535,6 +542,11 @@ class EdgeParser:
         )
 
         # Helpers - types of elements connected by loops
+        overlaps = {
+            self.tss: (distal_enhancers, promoters, dyadic),
+            promoters: (all_enhancers, dyadic, promoters),
+            all_enhancers: (all_enhancers, dyadic),
+        }
         overlaps = [
             (self.tss, distal_enhancers, "g_de"),
             (self.tss, promoters, "g_p"),
