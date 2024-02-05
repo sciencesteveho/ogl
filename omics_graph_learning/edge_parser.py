@@ -365,7 +365,7 @@ class EdgeParser:
     def _run_generator_common(
         self,
         generator: Generator,
-        attr_refs: List[Dict[str, List[str]], Dict[str, List[str]]],
+        attr_refs: List[Dict[str, List[str]]],
     ) -> None:
         """Runs a generator and processes its results. Returns nothing.
 
@@ -378,7 +378,7 @@ class EdgeParser:
             for element, attr_ref in zip(result, attr_refs):
                 self._write_node_list(self._add_node_coordinates(element, attr_ref))
 
-    @utils.time_dectorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _process_interaction_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file. Edges
         will be loaded from the text file for subsequent runs to save
@@ -453,7 +453,7 @@ class EdgeParser:
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].unique() + edges_df["edge_1"].unique())
 
-    @utils.time_dectorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _process_loop_edges(
         self,
         first_feature: pybedtools.BedTool,
@@ -512,7 +512,7 @@ class EdgeParser:
             .saveas()
         )
 
-    @utils.time_dectorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def _parse_chromloop_basegraph(self, gene_gene: bool = False) -> None:
         """Performs overlaps and write edges for regulatory features connected
         by chromatin loops. For gene overlaps, anchors are connected if anchors
@@ -587,7 +587,7 @@ class EdgeParser:
 
         return basenodes
 
-    @utils.time_dectorator(print_args=True)
+    @utils.time_decorator(print_args=True)
     def parse_edges(self) -> None:
         """This method parses edges from various sources and constructs the
         interaction base graph. It then adds coordinates to nodes and writes the

@@ -258,16 +258,16 @@ ONEHOT_EDGETYPE = {
 }
 
 
-def time_decorator(
-    print_args: bool = False,
-    display_arg: str = "",
-) -> Callable:
-    """Decorator to time functions
+def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
+    """Decorator to time functions.
 
     Args:
-        print_args (bool, optional): Defaults to False.
-        display_arg (str, optional): Decides wether or not args are printed to
-        stdout. Defaults to "".
+        print_args (bool, optional): Whether to print the function arguments.
+        Defaults to False. display_arg (str, optional): The argument to display
+        in the print statement. Defaults to "".
+
+    Returns:
+        Callable: The decorated function.
     """
 
     def _time_decorator_func(function: Callable) -> Callable:
@@ -275,26 +275,56 @@ def time_decorator(
         def _execute(*args: Any, **kwargs: Any) -> Any:
             start_time = time.monotonic()
             fxn_args = inspect.signature(function).bind(*args, **kwargs).arguments
-            try:
-                result = function(*args, **kwargs)
-                return result
-            except Exception as error:
-                result = str(error)
-                raise
-            finally:
-                end_time = time.monotonic()
-                if print_args:
-                    print(
-                        f"Finished {function.__name__} {list(fxn_args.values())} - Time: {timedelta(seconds=end_time - start_time)}"
-                    )
-                else:
-                    print(
-                        f"Finished {function.__name__} {display_arg} - Time: {timedelta(seconds=end_time - start_time)}"
-                    )
+            result = function(*args, **kwargs)
+            end_time = time.monotonic()
+            args_to_print = list(fxn_args.values()) if print_args else display_arg
+            print(
+                f"Finished {function.__name__} {args_to_print} - Time: {timedelta(seconds=end_time - start_time)}"
+            )
+            return result
 
         return _execute
 
     return _time_decorator_func
+
+
+# def time_decorator(
+#     print_args: bool = False,
+#     display_arg: str = "",
+# ) -> Callable:
+#     """Decorator to time functions
+
+#     Args:
+#         print_args (bool, optional): Defaults to False.
+#         display_arg (str, optional): Decides wether or not args are printed to
+#         stdout. Defaults to "".
+#     """
+
+#     def _time_decorator_func(function: Callable) -> Callable:
+#         @functools.wraps(function)
+#         def _execute(*args: Any, **kwargs: Any) -> Any:
+#             start_time = time.monotonic()
+#             fxn_args = inspect.signature(function).bind(*args, **kwargs).arguments
+#             try:
+#                 result = function(*args, **kwargs)
+#                 return result
+#             except Exception as error:
+#                 result = str(error)
+#                 raise
+#             finally:
+#                 end_time = time.monotonic()
+#                 if print_args:
+#                     print(
+#                         f"Finished {function.__name__} {list(fxn_args.values())} - Time: {timedelta(seconds=end_time - start_time)}"
+#                     )
+#                 else:
+#                     print(
+#                         f"Finished {function.__name__} {display_arg} - Time: {timedelta(seconds=end_time - start_time)}"
+#                     )
+
+#         return _execute
+
+#     return _time_decorator_func
 
 
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
@@ -315,6 +345,16 @@ def check_and_symlink(
     dst: str,
     boolean: bool = False,
 ) -> None:
+    """Check if a symlink exists at the destination path and create a symlink
+    from the source path to the destination path if it doesn't exist.
+
+    Args:
+        src (str): The source path of the symlink. dst (str): The destination
+        path of the symlink. boolean (bool, optional): A boolean flag. If True,
+        the symlink is created only if the source path exists and the
+        destination path doesn't exist. If False, the symlink is created if the
+        destination path doesn't exist. Defaults to False.
+    """
     with suppress(FileExistsError):
         if boolean:
             if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
@@ -341,12 +381,13 @@ def chunk_genes(
     for _ in range(5):
         random.shuffle(genes)
 
-    split_list = lambda l, chunks: [l[n : n + chunks] for n in range(0, len(l), chunks)]
-    split_genes = split_list(genes, chunks)
+    split = lambda l, chunks: [l[n : n + chunks] for n in range(0, len(l), chunks)]
+    split_genes = split(genes, chunks)
     return dict(enumerate(split_genes))
 
 
 def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
+    """Extracts the gene names from a filtered genes BED file."""
     with open(tpm_filtered_genes, newline="") as file:
         return [line[3] for line in csv.reader(file, delimiter="\t")]
 
@@ -366,17 +407,6 @@ def genes_from_gff(gff: str) -> List[str]:
             for line in csv.reader(file, delimiter="\t")
             if line[0] not in ["chrX", "chrY", "chrM"]
         }
-
-
-def genes_from_gencode(gencode_ref) -> Dict[str, str]:
-    """Returns a dict of gencode v26 genes, their ids and associated gene
-    symbols
-    """
-    return {
-        line[9].split(";")[3].split('"')[1]: line[3]
-        for line in gencode_ref
-        if line[0] not in ["chrX", "chrY", "chrM"]
-    }
 
 
 @time_decorator(print_args=True)
@@ -445,8 +475,9 @@ def plot_training_losses(
     learning_rate: float,
     outdir: str,
 ) -> None:
+    """Plots training losses from training log"""
     plt.figure(figsize=(3.125, 2.25))
-    DataVizUtils._set_matplotlib_publication_parameters()
+    _set_matplotlib_publication_parameters()
 
     losses = {"Train": [], "Test": [], "Validation": []}
     with open(log, newline="") as file:
@@ -493,8 +524,9 @@ def plot_predicted_versus_expected(
     learning_rate,
     rmse,
 ):
+    """Plots predicted versus expected values for a given model"""
     plt.figure(figsize=(3.15, 2.95))
-    DataVizUtils._set_matplotlib_publication_parameters()
+    _set_matplotlib_publication_parameters()
 
     sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
     plt.margins(x=0)
@@ -552,11 +584,11 @@ def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
     Args:
         tissue_list (str): _description_
     """
-    graph_list = [
+    graphs = [
         nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
         for tissue in tissue_list
     ]
-    return nx.compose_all(graph_list)
+    return nx.compose_all(graphs)
 
 
 def _combined_graph_arrays(
@@ -582,12 +614,12 @@ def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:
     Returns:
         List[str]: _description_
     """
-    genesymbol_dict = {
+    genesymbols = {
         line[0]: line[7] for line in csv.reader(open(annotation_path), delimiter="\t")
     }
 
     return [
-        (line[0], line[1], line[2], f"tss_{line[3]}_{genesymbol_dict[line[3]]}")
+        (line[0], line[1], line[2], f"tss_{line[3]}_{genesymbols[line[3]]}")
         for line in csv.reader(open(tss_path), delimiter="\t")
     ]
 
@@ -621,19 +653,20 @@ def _n_ego_graph(
 
 
 def filter_target_split(
-    root_dir,
-    tissues,
-    targets,
-):
+    root_dir: str,
+    tissues: Dict[Tuple[str, str]],
+    targets: Dict[str, Dict[str, np.ndarray]],
+) -> Dict[str, Dict[str, np.ndarray]]:
     """Filters and only keeps targets that pass the TPM filter of >1 TPM across
     20% of samples
 
     Args:
-        tissues (Dict[Tuple[str, str]]): _description_
-        targets (Dict[str, Dict[str, np.ndarray]]): _description_
+        root_dir (str): The root directory.
+        tissues (Dict[Tuple[str, str], None]): The tissues.
+        targets (Dict[str, Dict[str, np.ndarray]]): The targets.
 
     Returns:
-        Dict[str, Dict[str, np.ndarray]]: _description_
+        Dict[str, Dict[str, np.ndarray]]: The filtered targets.
     """
 
     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
@@ -648,7 +681,7 @@ def filter_target_split(
             genes += update_genes
 
     genes = set(genes)
-    for key in targets.keys():
+    for key in targets:
         targets[key] = {
             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
         }
@@ -698,7 +731,8 @@ def _combine_and_sort_arrays(edge_index):
     return np.unique(combined)
 
 
-def _open_graph(g_path, indexes, split, targets):
+def _open_graph(g_path: str, indexes: str, split: str, targets: str):
+    """Open pickled graph, indexes, split, and targets"""
     with open(g_path, "rb") as f:
         graph = pickle.load(f)
     with open(indexes, "rb") as f:
@@ -750,3 +784,14 @@ def _get_targets_for_train_list(genes, targets):
 def _save_wrapper(obj, name):
     with open(name, "wb") as f:
         pickle.dump(obj, f)
+
+
+# def genes_from_gencode(gencode_ref) -> Dict[str, str]:
+#     """Returns a dict of gencode v26 genes, their ids and associated gene
+#     symbols
+#     """
+#     return {
+#         line[9].split(";")[3].split('"')[1]: line[3]
+#         for line in gencode_ref
+#         if line[0] not in ["chrX", "chrY", "chrM"]
+#     }

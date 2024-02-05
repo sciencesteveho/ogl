@@ -321,7 +321,7 @@ def main() -> None:
     # check for GPU
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
-        device = torch.device("cuda:" + str(args.device))
+        device = torch.device(f"cuda:{str(args.device)}")
     else:
         device = torch.device("cpu")
 
@@ -490,7 +490,7 @@ def main() -> None:
     # first, load checkpoints
     checkpoint = torch.load(
         f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
-        map_location=torch.device("cuda:" + str(0)),
+        map_location=torch.device("cuda:0"),
     )
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
