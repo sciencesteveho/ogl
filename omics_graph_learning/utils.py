@@ -654,7 +654,7 @@ def _n_ego_graph(
 
 def filter_target_split(
     root_dir: str,
-    tissues: Dict[Tuple[str, str]],
+    tissues: Dict[Tuple[str, str], None],
     targets: Dict[str, Dict[str, np.ndarray]],
 ) -> Dict[str, Dict[str, np.ndarray]]:
     """Filters and only keeps targets that pass the TPM filter of >1 TPM across
