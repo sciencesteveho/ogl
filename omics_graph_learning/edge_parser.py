@@ -145,7 +145,7 @@ class EdgeParser:
         self,
         interaction_file: str,
         tissue: str,
-    ) -> Generator[Tuple[str, str, float, str]]:
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Protein-protein interactions from the Integrated Interactions
         Database v 2021-05"""
         header, reader = self._read_csv_with_header(interaction_file, with_header=True)
@@ -173,7 +173,7 @@ class EdgeParser:
         self,
         target_list: str,
         tissue_active_mirnas: str,
-    ) -> Generator[Tuple[str, str]]:
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.
         """
@@ -190,7 +190,9 @@ class EdgeParser:
                     "mirna",
                 )
 
-    def _tf_markers(self, interaction_file: str) -> Generator[Tuple[str, str]]:
+    def _tf_markers(
+        self, interaction_file: str
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Filters tf markers based on specified conditions.
 
         Args:
@@ -234,7 +236,7 @@ class EdgeParser:
         self,
         interaction_file: str,
         score_filter: int,
-    ) -> Generator[Tuple[str, str, float, str]]:
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
         network is in the following format:
             col_1   TF
@@ -272,7 +274,7 @@ class EdgeParser:
         self,
         tfbinding_file: str,
         footprint_file: str,
-    ) -> Generator[Tuple[str, str, float, str]]:
+    ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Create edges based on whether or not known TF binding from Meuleman
         et al. overlap footprints from Vierstra et al.
 
