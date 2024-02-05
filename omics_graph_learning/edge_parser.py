@@ -321,6 +321,10 @@ class EdgeParser:
 
     def _prepare_interaction_generators(self):
         """Initiate interaction type generators"""
+        ppi_generator = mirna_generator = tf_generator = circuit_generator = (
+            tfbinding_generator
+        ) = iter([])
+
         if "ppis" in self.interaction_types:
             ppi_generator = self._iid_ppi(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
