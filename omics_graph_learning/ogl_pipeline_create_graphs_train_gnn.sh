@@ -152,7 +152,7 @@ if ! [ -f ${final_graph} ]; then
             --parsable \
             ${node_and_edge_generator} \
             ${experiment_yaml} \
-            genomic_graph_mutagenesis/configs/${tissue}.yaml
+            omics_graph_learning/configs/${tissue}.yaml
         )
         pipeline_a_ids+=($ID)
     done

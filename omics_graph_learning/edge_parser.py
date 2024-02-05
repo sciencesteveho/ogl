@@ -370,18 +370,11 @@ class EdgeParser:
         Args:
             generator (Generator): The generator to run.
             attr_refs (List[Dict[str, List[str]], Dict[str, List[str]]]): The attribute references.
-
-        Raises:
-            StopIteration: If the generator is exhausted.
         """
-        with contextlib.suppress(StopIteration):
-            while True:
-                if result := next(generator):
-                    self._write_edges(result)
-                    for element, attr_ref in zip(result, attr_refs):
-                        self._write_node_list(
-                            self._add_node_coordinates(element, attr_ref)
-                        )
+        for result in generator:
+            self._write_edges(result)
+            for element, attr_ref in zip(result, attr_refs):
+                self._write_node_list(self._add_node_coordinates(element, attr_ref))
 
     @utils.time_dectorator(print_args=True)
     def _process_interaction_edges(self) -> None:
