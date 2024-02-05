@@ -309,14 +309,11 @@ class EdgeParser:
         with open(f"{self.local_dir}/gencode_nodes.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(node)
-            
+
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
         dict."""
-        ref_mapping = {
-            "ENGS": self.gencode_attr_ref,
-            "superenhancer": self.se_ref
-        }
+        ref_mapping = {"ENGS": self.gencode_attr_ref, "superenhancer": self.se_ref}
         ref = ref_mapping.get(node, self.regulatory_attr_ref)
         self._write_node_list(self._add_node_coordinates(node, ref))
 
@@ -437,7 +434,7 @@ class EdgeParser:
                 o="collapse",
             )
         )
-        
+
     def _write_loop_edges(
         self,
         edges_df: pd.DataFrame,
@@ -457,7 +454,6 @@ class EdgeParser:
             edges_df = edges_df.apply(_process_edge_nodes, axis=1)
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].unique() + edges_df["edge_1"].unique())
-
 
     @utils.time_dectorator(print_args=True)
     def _process_loop_edges(
@@ -479,7 +475,8 @@ class EdgeParser:
             self.second_anchor, second_feature
         )
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
-        
+
+        # if TSS, set TSS bool
         tss = self.first_anchor is self.tss or self.second_anchor is self.tss
 
         # get edges and write to file
@@ -580,7 +577,7 @@ class EdgeParser:
 
         for _, _, edge_type in overlaps:
             print(f"Processed chrom_loop {edge_type} edges")
-                
+
         return basenodes
 
     @utils.time_dectorator(print_args=True)
@@ -600,7 +597,7 @@ class EdgeParser:
         basenodes = set()
         self._parse_chromloop_basegraphs(gene_gene=self.gene_gene)
         print("Chrom loop edges complete!")
-        
+
         print("Writing node references...")
         for node in basenodes:
             self._write_noderef_combination(node)
