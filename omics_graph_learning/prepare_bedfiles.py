@@ -41,7 +41,7 @@ class GenomeDataPreprocessor:
         Symlink the raw data to a folder within the directory.
     _download_shared_files:
         Download files used by multiple tissues.
-    _add_TAD_id:
+    _add_tad_id:
         Add identification number to each TAD.
     _superenhancers:
         Simple parser to remove superenhancer bed unneeded info.
@@ -141,7 +141,7 @@ class GenomeDataPreprocessor:
     def _download_shared_files(self) -> None:
         """Download shared local features if not already present"""
 
-        def download(url, filename):
+        def download(url: str, filename: str) -> None:
             with open(filename, "wb") as file:
                 response = requests.get(url)
                 file.write(response.content)
@@ -154,7 +154,7 @@ class GenomeDataPreprocessor:
                 )
 
     @utils.time_decorator(print_args=True)
-    def _add_TAD_id(self, bed: str) -> None:
+    def _add_tad_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
             {self.tissue_dir}/unprocessed/{bed} \
@@ -289,7 +289,7 @@ class GenomeDataPreprocessor:
                     dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
                 )
             if "tads" in self.nodes:
-                self._add_TAD_id(self.tissue_specific_nodes["tads"])
+                self._add_tad_id(self.tissue_specific_nodes["tads"])
             if "superenhancers" in self.nodes:
                 self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
             if "tfbindingsites" in self.nodes:

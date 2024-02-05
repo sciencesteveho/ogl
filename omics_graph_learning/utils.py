@@ -392,6 +392,17 @@ def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
         return [line[3] for line in csv.reader(file, delimiter="\t")]
 
 
+def genes_from_gencode(gencode_ref: pybedtools.BedTool) -> Dict[str, str]:
+    """Returns a dict of gencode v26 genes, their ids and associated gene
+    symbols
+    """
+    return {
+        line[9].split(";")[3].split('"')[1]: line[3]
+        for line in gencode_ref
+        if line[0] not in ["chrX", "chrY", "chrM"]
+    }
+
+
 def genes_from_gff(gff: str) -> List[str]:
     """Get list of gtex genes from GFF file
 
@@ -784,14 +795,3 @@ def _get_targets_for_train_list(genes, targets):
 def _save_wrapper(obj, name):
     with open(name, "wb") as f:
         pickle.dump(obj, f)
-
-
-# def genes_from_gencode(gencode_ref) -> Dict[str, str]:
-#     """Returns a dict of gencode v26 genes, their ids and associated gene
-#     symbols
-#     """
-#     return {
-#         line[9].split(";")[3].split('"')[1]: line[3]
-#         for line in gencode_ref
-#         if line[0] not in ["chrX", "chrY", "chrM"]
-#     }
