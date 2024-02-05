@@ -304,11 +304,21 @@ class EdgeParser:
         gene = tss.split("_")[5]
         return self.genesymbol_to_gencode.get(gene, False)
 
-    def _write_gencode_nodes_to_file(self, node: Tuple[Union[str, int]]) -> None:
+    def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
         """Write gencode nodes to file"""
         with open(f"{self.local_dir}/gencode_nodes.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(node)
+            
+    def _write_noderef_combination(self, node: str) -> None:
+        """Writes chr, start, stop, node to a file. Gets coords from ref
+        dict."""
+        ref_mapping = {
+            "ENGS": self.gencode_attr_ref,
+            "superenhancer": self.se_ref
+        }
+        ref = ref_mapping.get(node, self.regulatory_attr_ref)
+        self._write_node_list(self._add_node_coordinates(node, ref))
 
     def _write_edges(self, edge: Tuple[Union[str, int]]) -> None:
         """Write edge to file"""
@@ -369,7 +379,7 @@ class EdgeParser:
                 if result := next(generator):
                     self._write_edges(result)
                     for element, attr_ref in zip(result, attr_refs):
-                        self._write_gene_nodes(
+                        self._write_node_list(
                             self._add_node_coordinates(element, attr_ref)
                         )
 
@@ -427,7 +437,7 @@ class EdgeParser:
                 o="collapse",
             )
         )
-
+        
     def _write_loop_edges(
         self,
         edges_df: pd.DataFrame,
@@ -436,52 +446,18 @@ class EdgeParser:
     ) -> None:
         """Write the edges to a file in bulk."""
 
-        def _process_tss_edge(row):
-            if "tss" in row["edge_0"] and "tss" in row["edge_1"]:
-                if self._check_tss_gene_in_gencode(
-                    row["edge_0"]
-                ) and self._check_tss_gene_in_gencode(row["edge_1"]):
-                    row["edge_0"] = self._check_tss_gene_in_gencode(row["edge_0"])
-                    row["edge_1"] = self._check_tss_gene_in_gencode(row["edge_1"])
-            elif "tss" in row["edge_0"]:
-                if self._check_tss_gene_in_gencode(row["edge_0"]):
-                    row["edge_0"] = self._check_tss_gene_in_gencode(row["edge_0"])
-            elif "tss" in row["edge_1"]:
-                if self._check_tss_gene_in_gencode(row["edge_1"]):
-                    row["edge_1"] = self._check_tss_gene_in_gencode(row["edge_1"])
-            else:
-                pass
+        def _process_edge_nodes(row):
+            for edge in ("edge_0", "edge_1"):
+                if "tss" in row[edge]:
+                    checked_edge = self._check_tss_gene_in_gencode(row[edge])
+                    if checked_edge:
+                        row[edge] = checked_edge
 
         if tss:
-            edges_df = edges_df.apply(_process_tss_edge, axis=1)
+            edges_df = edges_df.apply(_process_edge_nodes, axis=1)
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
+        return set(edges_df["edge_0"].unique() + edges_df["edge_1"].unique())
 
-    def _run_generator_chromloops(self, generator: Generator) -> None:
-        with contextlib.suppress(StopIteration):
-            for result in generator:
-                node, ref = (
-                    (result[0], self.regulatory_attr_ref)
-                    if "ENSG" not in result[0] and "superenhancer" not in result[0]
-                    else (
-                        (result[1], self.regulatory_attr_ref)
-                        if "ENSG" not in result[1] and "superenhancer" not in result[1]
-                        else (
-                            (result[0], self.se_ref)
-                            if "superenhancer" in result[0]
-                            else (
-                                (result[1], self.se_ref)
-                                if "superenhancer" in result[1]
-                                else (
-                                    (result[0], self.gencode_attr_ref)
-                                    if "ENSG" in result[0]
-                                    else (result[1], self.gencode_attr_ref)
-                                )
-                            )
-                        )
-                    )
-                )
-                self._write_edges(result)
-                self._write_gene_nodes(self._add_node_coordinates(node, ref))
 
     @utils.time_dectorator(print_args=True)
     def _process_loop_edges(
@@ -503,21 +479,14 @@ class EdgeParser:
             self.second_anchor, second_feature
         )
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
-
-        # convert to dataframe
-        first_anchor_df = first_anchor_overlaps.to_dataframe()
-        second_anchor_df = second_anchor_overlaps.to_dataframe()
-
-        if self.first_anchor is self.tss or self.second_anchor is self.tss:
-            tss = True
-        else:
-            tss = False
+        
+        tss = self.first_anchor is self.tss or self.second_anchor is self.tss
 
         # get edges and write to file
-        self._write_loop_edges(
+        return self._write_loop_edges(
             edges_df=self._generate_edge_combinations(
-                df1=first_anchor_df,
-                df2=second_anchor_df,
+                df1=first_anchor_overlaps.to_dataframe(),
+                df2=second_anchor_overlaps.to_dataframe(),
                 edge_type=edge_type,
             ),
             file_path=f"{self.interaction_dir}/interaction_edges.txt",
@@ -569,12 +538,10 @@ class EdgeParser:
         )
 
         # Helpers - types of elements connected by loops
-        distance_overlaps = [
+        overlaps = [
             (self.tss, distal_enhancers, "g_de"),
             (self.tss, promoters, "g_p"),
             (self.tss, dyadic, "g_d"),
-        ]
-        direct_overlaps = [
             (promoters, all_enhancers, "p_e"),
             (promoters, dyadic, "p_d"),
             (promoters, promoters, "p_p"),
@@ -582,36 +549,39 @@ class EdgeParser:
             (all_enhancers, dyadic, "e_d"),
         ]
 
-        with contextlib.suppress(TypeError):
-            if "superenhancers" in self.interaction_types:
-                super_enhancers = pybedtools.BedTool(
-                    f"{self.local_dir}/superenhancers_{self.tissue}.bed"
-                )
-                distance_overlaps += [(self.tss, super_enhancers, "g_se")]
-                direct_overlaps += [
-                    (promoters, super_enhancers, "p_se"),
-                    (dyadic, super_enhancers, "d_se"),
-                    (all_enhancers, super_enhancers, "e_se"),
-                    (super_enhancers, super_enhancers, "se_se"),
-                ]
+        if "superenhancers" in self.interaction_types:
+            super_enhancers = pybedtools.BedTool(
+                f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+            )
+            overlaps += [
+                (self.tss, super_enhancers, "g_se"),
+                (promoters, super_enhancers, "p_se"),
+                (dyadic, super_enhancers, "d_se"),
+                (all_enhancers, super_enhancers, "e_se"),
+                (super_enhancers, super_enhancers, "se_se"),
+            ]
 
+        # Add gene_gene interactions if specified
         if gene_gene:
-            distance_overlaps += [(self.tss, self.tss, "g_g")]
+            overlaps.append((self.tss, self.tss, "g_g"))
 
         # perform two sets of overlaps
-        for element in distance_overlaps + direct_overlaps:
-            edge_type = element[2]
-            self._process_loop_edges(
-                first_feature=element[0],
-                second_feature=element[1],
+        basenodes = set()
+        for first_feature, second_feature, edge_type in overlaps:
+            basenodes |= self._process_loop_edges(
+                first_feature=first_feature,
+                second_feature=second_feature,
+                edge_type=edge_type,
+            ) | self._process_loop_edges(
+                first_feature=second_feature,
+                second_feature=first_feature,
                 edge_type=edge_type,
             )
-            self._process_loop_edges(
-                first_feature=element[1],
-                second_feature=element[0],
-                edge_type=edge_type,
-            )
+
+        for _, _, edge_type in overlaps:
             print(f"Processed chrom_loop {edge_type} edges")
+                
+        return basenodes
 
     @utils.time_dectorator(print_args=True)
     def parse_edges(self) -> None:
@@ -627,8 +597,14 @@ class EdgeParser:
         print("Interaction edges complete!")
 
         print("Parsing chrom loop edges...")
+        basenodes = set()
         self._parse_chromloop_basegraphs(gene_gene=self.gene_gene)
         print("Chrom loop edges complete!")
+        
+        print("Writing node references...")
+        for node in basenodes:
+            self._write_noderef_combination(node)
+        print("Node references complete!")
 
     @staticmethod
     def _generate_edge_combinations(
