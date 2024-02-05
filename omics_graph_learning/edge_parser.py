@@ -9,7 +9,7 @@
 
 import contextlib
 import csv
-from typing import Dict, Generator, Iterator, List, Tuple, Union
+from typing import Dict, Generator, Iterator, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -438,7 +438,7 @@ class EdgeParser:
         edges_df: pd.DataFrame,
         file_path: str,
         tss=False,
-    ) -> None:
+    ) -> Set[str]:
         """Write the edges to a file in bulk."""
 
         def _process_edge_nodes(row):
@@ -459,7 +459,7 @@ class EdgeParser:
         first_feature: pybedtools.BedTool,
         second_feature: pybedtools.BedTool,
         edge_type: str,
-    ) -> Generator[Tuple[str, str, float, str]]:
+    ) -> Set[str]:
         """Connects nodes if they are linked by chromatin loops. Can specify if
         the loops should only be done for direct overlaps or if they should
         be within 2mb of a loop anchor for TSS. If using TSS, make sure to
