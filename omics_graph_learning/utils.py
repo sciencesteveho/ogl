@@ -209,6 +209,16 @@ LOOPFILES = {
         "skeletal_muscle": "psoas_muscle_50000000_pixels.hg38",
         "small_intestine": "small_intestine_50000000_pixels.hg38",
     },
+    "deeploop_gte2": {
+        "aorta": "aorta_gte2_pixels.hg38",
+        "hippocampus": "hippocampus_gte2_pixels.hg38",
+        "left_ventricle": "leftventricle_gte2_pixels.hg38",
+        "liver": "liver_gte2_pixels.hg38",
+        "lung": "lung_gte2_pixels.hg38",
+        "pancreas": "pancreas_gte2_pixels.hg38",
+        "skeletal_muscle": "psoas_muscle_gte2_pixels.hg38",
+        "small_intestine": "small_intestine_gte2_pixels.hg38",
+    },
 }
 
 TISSUES = [
