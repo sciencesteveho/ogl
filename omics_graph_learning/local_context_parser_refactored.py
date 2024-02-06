@@ -237,9 +237,9 @@ class LocalContextParser:
         """
         bedinstance_slopped, bedinstance_sorted = {}, {}
         for key, value in bedinstance.items():
-            bedinstance_sorted[key] = bedinstance[key].sort()
+            bedinstance_sorted[key] = value.sort()
             if key not in ATTRIBUTES + self.DIRECT:
-                nodes = bedinstance[key].slop(g=chromfile, b=feat_window).sort()
+                nodes = value.slop(g=chromfile, b=feat_window).sort()
                 newstrings = [
                     str(line_1).split("\n")[0] + "\t" + str(line_2)
                     for line_1, line_2 in zip(nodes, value)
@@ -248,6 +248,24 @@ class LocalContextParser:
                     "".join(newstrings), from_string=True
                 ).sort()
         return bedinstance_sorted, bedinstance_slopped
+
+    def _unix_intersect(
+        self, node_type: str, all_files: str, intersect_type: Optional[str] = None
+    ) -> None:
+        """Intersect and cut relevant columns"""
+        folder = "sorted" if intersect_type == "direct" else "slopped"
+        cut_cmd = "" if intersect_type == "direct" else " | cut -f5,6,7,8,9,10,11,12"
+
+        final_cmd = f"bedtools intersect \
+            -wa \
+            -wb \
+            -sorted \
+            -a {self.parse_dir}/intermediate/{folder}/{node_type}.bed \
+            -b {all_files}"
+
+        with open(f"{self.parse_dir}/edges/{node_type}.bed", "w") as outfile:
+            subprocess.run(final_cmd + cut_cmd, stdout=outfile, shell=True)
+        outfile.close()
 
     @utils.time_decorator(print_args=True)
     def _bed_intersect(
@@ -272,35 +290,7 @@ class LocalContextParser:
         """
         print(f"starting combinations {node_type}")
 
-        def _unix_intersect(node_type: str, type: Optional[str] = None) -> None:
-            """Intersect and cut relevant columns"""
-            if type == "direct":
-                folder = "sorted"
-                cut_cmd = ""
-            else:
-                folder = "slopped"
-                cut_cmd = " | cut -f5,6,7,8,9,10,11,12"
-
-            final_cmd = f"bedtools intersect \
-                -wa \
-                -wb \
-                -sorted \
-                -a {self.parse_dir}/intermediate/{folder}/{node_type}.bed \
-                -b {all_files}"
-
-            with open(f"{self.parse_dir}/edges/{node_type}.bed", "w") as outfile:
-                subprocess.run(final_cmd + cut_cmd, stdout=outfile, shell=True)
-            outfile.close()
-
-        def _filter_duplicate_bed_entries(
-            bedfile: pybedtools.bedtool.BedTool,
-        ) -> pybedtools.bedtool.BedTool:
-            """Filters a bedfile by removing entries that are identical"""
-            return bedfile.filter(
-                lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
-            ).saveas()
-
-        def _add_distance(feature: str) -> str:
+        def _add_distance_8th_feat(feature: str) -> str:
             """Add distance as [8]th field to each overlap interval"""
             feature = extend_fields(feature, 9)
             feature[8] = max(int(feature[1]), int(feature[5])) - min(
@@ -312,18 +302,16 @@ class LocalContextParser:
             """Insulate regions by intersection with chr loops and making sure
             both sides overlap"""
 
-        if node_type in self.DIRECT:
-            _unix_intersect(node_type, type="direct")
-            _filter_duplicate_bed_entries(
-                pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
-            ).sort().saveas(f"{self.parse_dir}/edges/{node_type}_dupes_removed")
-        else:
-            _unix_intersect(node_type)
-            _filter_duplicate_bed_entries(
-                pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
-            ).each(_add_distance).saveas().sort().saveas(
-                f"{self.parse_dir}/edges/{node_type}_dupes_removed"
-            )
+        intersect_type = "direct" if node_type in self.DIRECT else None
+        self._unix_intersect(
+            node_type=node_type, all_files=all_files, type=intersect_type
+        )
+        bedtool = self._filter_duplicate_bed_entries(
+            pybedtools.BedTool(f"{self.parse_dir}/edges/{node_type}.bed")
+        )
+        if intersect_type is None:
+            bedtool = bedtool.each(self._add_distance_8th_feat)
+        bedtool.sort().saveas(f"{self.parse_dir}/edges/{node_type}_dupes_removed")
 
     @utils.time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
@@ -335,16 +323,36 @@ class LocalContextParser:
         """
 
         def add_size(feature: str) -> str:
-            """ """
+            """Add size as 5th field to each feature"""
             feature = extend_fields(feature, 5)
             feature[4] = feature.end - feature.start
             return feature
 
         def sum_gc(feature: str) -> str:
-            """ """
+            """Add sum of gc content as 14th field to each feature"""
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
+        def process_attribute(ref_file, attribute, attribute_params):
+            if attribute == "gc":
+                return (
+                    ref_file.nucleotide_content(fi=self.fasta)
+                    .each(sum_gc)
+                    .sort()
+                    .groupby(g=[1, 2, 3, 4], c=[5, 14], o=["sum"])
+                )
+            else:
+                return (
+                    ref_file.intersect(*attribute_params)
+                    .groupby(
+                        g=[1, 2, 3, 4],
+                        c=[5, attribute_params[2]],
+                        o=["sum", "mean" if attribute == "recombination" else "sum"],
+                    )
+                    .sort()
+                )
+
+        # remove any alt chrs that might be present
         ref_file = pybedtools.BedTool(
             f"{self.parse_dir}/intermediate/sorted/{node_type}.bed"
         )
@@ -352,29 +360,26 @@ class LocalContextParser:
             ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
         )
 
+        attribute_params_map = {
+            "gc": [],
+            "recombination": [
+                f"{self.parse_dir}/intermediate/sorted/recombination.bed",
+                True,
+                9,
+            ],
+        }
+
         for attribute in ATTRIBUTES:
             save_file = (
                 f"{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage"
             )
             print(f"{attribute} for {node_type}")
-            if attribute == "gc":
-                ref_file.nucleotide_content(fi=self.fasta).each(sum_gc).sort().groupby(
-                    g=[1, 2, 3, 4], c=[5, 14], o=["sum"]
-                ).saveas(save_file)
-            elif attribute == "recombination":
-                ref_file.intersect(
-                    f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
-                    wao=True,
-                    sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(
-                    save_file
-                )
-            else:
-                ref_file.intersect(
-                    f"{self.parse_dir}/intermediate/sorted/{attribute}.bed",
-                    wao=True,
-                    sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
+            params = attribute_params_map.get(
+                attribute,
+                [f"{self.parse_dir}/intermediate/sorted/{attribute}.bed", True, 10],
+            )
+            processed_file = process_attribute(ref_file, attribute, params)
+            processed_file.saveas(save_file)
 
     @utils.time_decorator(print_args=True)
     def _generate_edges(self) -> None:
@@ -546,3 +551,12 @@ class LocalContextParser:
         for item in os.listdir(f"{self.parse_dir}/edges"):
             if item not in retain:
                 os.remove(f"{self.parse_dir}/edges/{item}")
+
+    @staticmethod
+    def _filter_duplicate_bed_entries(
+        bedfile: pybedtools.bedtool.BedTool,
+    ) -> pybedtools.bedtool.BedTool:
+        """Filters a bedfile by removing entries that are identical"""
+        return bedfile.filter(
+            lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
+        ).saveas()
