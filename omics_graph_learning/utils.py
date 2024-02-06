@@ -444,9 +444,11 @@ def _filter_low_tpm(
 def _tpm_filter_gene_windows(
     gencode: str,
     tpm_file: str,
+    tpm_filter: Union[float, int],
+    percent_of_samples_filter: float,
 ) -> Tuple[pybedtools.BedTool, List[str]]:
     """
-    Filter out genes in a GTEx tissue with less than 0.1 tpm across 20% of
+    Filter out genes in a GTEx tissue with less than 1 tpm across 20% of
     samples in that tissue. Additionally, we exclude analysis of sex
     chromosomes.
 
@@ -455,8 +457,8 @@ def _tpm_filter_gene_windows(
     """
     df = pd.read_table(tpm_file, index_col=0, header=[2])
     sample_n = len(df.columns)
-    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-    df["result"] = df["total"] >= (0.20 * sample_n)
+    df["total"] = df.select_dtypes(np.number).ge(tpm_filter).sum(axis=1)
+    df["result"] = df["total"] >= (percent_of_samples_filter * sample_n)
     tpm_filtered_genes = list(df.loc[df["result"] == True].index)
 
     genes = pybedtools.BedTool(gencode)
