@@ -305,7 +305,7 @@ class EdgeParser:
 
     def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
         """Write gencode nodes to file"""
-        with open(f"{self.local_dir}/gencode_nodes.txt", "a") as output:
+        with open(f"{self.local_dir}/basenodes_hg38.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(node)
 

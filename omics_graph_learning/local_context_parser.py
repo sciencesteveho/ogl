@@ -85,6 +85,29 @@ class LocalContextParser:
         self._set_directories()
         self._prepare_bed_references()
 
+        # make directories
+        self._make_directories()
+
+    def _set_params(self, params: Dict[str, Dict[str, str]]):
+        """Set parameters from yaml"""
+        self.resources = params["resources"]
+        self.gencode = params["local"]["gencode"]
+        self.tissue = self.resources["tissue"]
+        self.chromfile = self.resources["chromfile"]
+        self.fasta = self.resources["fasta"]
+        self.root_dir = params["dirs"]["root_dir"]
+
+    def _set_directories(self) -> None:
+        """Set directories from yaml"""
+        self.tissue_dir = (
+            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
+        )
+        self.local_dir = f"{self.tissue_dir}/local"
+        self.parse_dir = f"{self.tissue_dir}/parsing"
+        self.attribute_dir = f"{self.parse_dir}/attributes"
+
+    def _prepare_bed_references(self) -> None:
+        """Prepares TPM filtered genes."""
         genes = f"{self.tissue_dir}/tpm_filtered_genes.bed"
         gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
 
@@ -94,29 +117,9 @@ class LocalContextParser:
                 genes=genes,
                 gene_windows=gene_windows,
                 base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
-                gct=f"{params['resources']['tpm']}",
+                gct=f"{self.resources['tpm']}",
             )
 
-        # make directories
-        self._make_directories()
-
-    def _set_params(self, params: Dict[str, Dict[str, str]]):
-        self.resources = params["resources"]
-        self.gencode = params["local"]["gencode"]
-        self.tissue = self.resources["tissue"]
-        self.chromfile = self.resources["chromfile"]
-        self.fasta = self.resources["fasta"]
-        self.root_dir = params["dirs"]["root_dir"]
-
-    def _set_directories(self):
-        self.tissue_dir = (
-            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
-        )
-        self.local_dir = f"{self.tissue_dir}/local"
-        self.parse_dir = f"{self.tissue_dir}/parsing"
-        self.attribute_dir = f"{self.parse_dir}/attributes"
-
-    def _prepare_bed_references(self):
         self.gencode_ref = pybedtools.BedTool(
             f"{self.tissue_dir}/tpm_filtered_genes.bed"
         )
@@ -188,20 +191,20 @@ class LocalContextParser:
             return feature
 
         # prepare data as pybedtools objects
-        bed_dict = {}
+        beds = {}
         prefix = bed.split("_")[0].lower()
-        a = self.gene_windows
-        b = pybedtools.BedTool(f"{self.tissue_dir}/local/{bed}").sort()
-        ab = b.intersect(a, sorted=True, u=True)
+        windows = self.gene_windows
+        local_bed = pybedtools.BedTool(f"{self.tissue_dir}/local/{bed}").sort()
+        ab = local_bed.intersect(windows, sorted=True, u=True)
 
         # take specific windows and format each file
         if prefix in self.nodes and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
-            bed_dict[prefix] = pybedtools.BedTool(str(result), from_string=True)
+            beds[prefix] = pybedtools.BedTool(str(result), from_string=True)
         else:
-            bed_dict[prefix] = ab.cut([0, 1, 2, 3])
+            beds[prefix] = ab.cut([0, 1, 2, 3])
 
-        return bed_dict
+        return beds
 
     @utils.time_decorator(print_args=True)
     def _slop_sort(

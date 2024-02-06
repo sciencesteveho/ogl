@@ -44,8 +44,9 @@ function _extract_from_cooler () {
         head -n ${i} $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_${i}.pixels
     done
 
-    # filter for counts >= 1
+    # filter for counts >= 1 and >= 2
     awk '$7 >= 2' $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_gte2.pixels
+    awk '$7 >= 1' $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_gte1.pixels
 
     # # try balancing
     # cp $2/coolers/${tissue_name}.cool $2/${tissue_name}.cool
