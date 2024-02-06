@@ -303,18 +303,18 @@ class EdgeParser:
         gene = tss.split("_")[5]
         return self.genesymbol_to_gencode.get(gene, False)
 
-    def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
-        """Write gencode nodes to file"""
-        with open(f"{self.local_dir}/basenodes_hg38.txt", "a") as output:
-            writer = csv.writer(output, delimiter="\t")
-            writer.writerow(node)
-
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
         dict."""
         ref_mapping = {"ENGS": self.gencode_attr_ref, "superenhancer": self.se_ref}
         ref = ref_mapping.get(node, self.regulatory_attr_ref)
         self._write_node_list(self._add_node_coordinates(node, ref))
+
+    def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
+        """Write gencode nodes to file"""
+        with open(f"{self.local_dir}/basenodes_hg38.txt", "a") as output:
+            writer = csv.writer(output, delimiter="\t")
+            writer.writerow(node)
 
     def _write_edges(self, edge: Tuple[Union[str, int]]) -> None:
         """Write edge to file"""
@@ -594,8 +594,6 @@ class EdgeParser:
                 second_feature=first_feature,
                 edge_type=edge_type,
             )
-
-        for _, _, edge_type in overlaps:
             print(f"Processed chrom_loop {edge_type} edges")
 
         return basenodes
@@ -614,9 +612,8 @@ class EdgeParser:
         print("Interaction edges complete!")
 
         print("Parsing chrom loop edges...")
-        basenodes = set()
         # self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
-        self._parse_chromloop_basegraph(gene_gene=False)
+        basenodes = self._parse_chromloop_basegraph(gene_gene=False)
         print("Chrom loop edges complete!")
 
         print("Writing node references...")
