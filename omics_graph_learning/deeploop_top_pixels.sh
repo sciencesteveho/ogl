@@ -161,6 +161,19 @@ do
         /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
 done
 
+filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
+for name in ${filenames[@]}; do
+    for addendum in gte2;
+    do
+        echo "Processing ${name}_${addendum}..."
+        deeploop_processing_main \
+            ${name}_${addendum} \
+            /ocean/projects/bio210019p/stevesho/hic/top_pixels \
+            /ocean/projects/bio210019p/stevesho/resources \
+            /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
+    done
+done
+
 end=`date +%s`
 time=$((end-start))
 echo "Finished in $(convertsecs $time)!"
