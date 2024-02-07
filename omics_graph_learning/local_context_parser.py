@@ -21,7 +21,6 @@ import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
 import utils
-from utils import ATTRIBUTES
 
 
 class LocalContextParser:
@@ -54,14 +53,14 @@ class LocalContextParser:
         Parse local genomic data into graph edges.
 
     # Helpers
-        ATTRIBUTES -- list of node attribute types
+        utils.ATTRIBUTES -- list of node attribute types
         DIRECT -- list of datatypes that only get direct overlaps, no slop
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
     """
 
     # list helpers
     DIRECT = ["tads"]
-    NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
+    NODE_FEATS = ["start", "end", "size"] + utils.ATTRIBUTES
 
     # var helpers - for CPU cores
     ATTRIBUTE_PROCESSES = 64
@@ -143,7 +142,7 @@ class LocalContextParser:
         self,
         genes: str,
         # gene_windows: str,
-        base_nodes: str,
+        # base_nodes: str,
         gct: str,
         tpm_filter: Union[float, int],
         percent_of_samples_filter: float,
@@ -171,7 +170,7 @@ class LocalContextParser:
         ]:
             utils.dir_check_make(f"{self.parse_dir}/{directory}")
 
-        for attribute in ATTRIBUTES:
+        for attribute in utils.ATTRIBUTES:
             utils.dir_check_make(f"{self.attribute_dir}/{attribute}")
 
     @utils.time_decorator(print_args=True)
@@ -238,7 +237,7 @@ class LocalContextParser:
         bedinstance_slopped, bedinstance_sorted = {}, {}
         for key, value in bedinstance.items():
             bedinstance_sorted[key] = bedinstance[key].sort()
-            if key not in ATTRIBUTES + self.DIRECT:
+            if key not in utils.ATTRIBUTES + self.DIRECT:
                 nodes = bedinstance[key].slop(g=chromfile, b=feat_window).sort()
                 newstrings = [
                     str(line_1).split("\n")[0] + "\t" + str(line_2)
@@ -352,7 +351,7 @@ class LocalContextParser:
             ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
         )
 
-        for attribute in ATTRIBUTES:
+        for attribute in utils.ATTRIBUTES:
             save_file = (
                 f"{self.attribute_dir}/{attribute}/{node_type}_{attribute}_percentage"
             )
@@ -418,7 +417,7 @@ class LocalContextParser:
             {},
             {},
         )  # dict[gene] = [chr, start, end, size, gc]
-        for attribute in ATTRIBUTES:
+        for attribute in utils.ATTRIBUTES:
             filename = (
                 f"{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage"
             )

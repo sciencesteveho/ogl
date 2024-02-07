@@ -237,36 +237,6 @@ TISSUES = [
     # "npc",
 ]
 
-TISSUES_early_testing = [
-    "aorta",
-    "hippocampus",
-    "left_ventricle",
-    "liver",
-    "lung",
-    "pancreas",
-    "skeletal_muscle",
-    "small_intestine",
-    # "hela",
-    # "k562",
-    # "npc",
-]
-
-ONEHOT_EDGETYPE = {
-    "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
-    "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
-    "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
-    "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
-    "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "promoter-enhancer"
-    "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "promoter-dyadic"
-    "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "promoter-superenhancer"
-    "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "gene-gene"
-    "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "protein-protein"
-    "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "mirna-gene"
-    "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "tf-marker"
-    "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "circuits"
-    "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "local"
-}
-
 
 def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
     """Decorator to time functions.
@@ -296,45 +266,6 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
         return _execute
 
     return _time_decorator_func
-
-
-# def time_decorator(
-#     print_args: bool = False,
-#     display_arg: str = "",
-# ) -> Callable:
-#     """Decorator to time functions
-
-#     Args:
-#         print_args (bool, optional): Defaults to False.
-#         display_arg (str, optional): Decides wether or not args are printed to
-#         stdout. Defaults to "".
-#     """
-
-#     def _time_decorator_func(function: Callable) -> Callable:
-#         @functools.wraps(function)
-#         def _execute(*args: Any, **kwargs: Any) -> Any:
-#             start_time = time.monotonic()
-#             fxn_args = inspect.signature(function).bind(*args, **kwargs).arguments
-#             try:
-#                 result = function(*args, **kwargs)
-#                 return result
-#             except Exception as error:
-#                 result = str(error)
-#                 raise
-#             finally:
-#                 end_time = time.monotonic()
-#                 if print_args:
-#                     print(
-#                         f"Finished {function.__name__} {list(fxn_args.values())} - Time: {timedelta(seconds=end_time - start_time)}"
-#                     )
-#                 else:
-#                     print(
-#                         f"Finished {function.__name__} {display_arg} - Time: {timedelta(seconds=end_time - start_time)}"
-#                     )
-
-#         return _execute
-
-#     return _time_decorator_func
 
 
 def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
@@ -807,3 +738,34 @@ def _get_targets_for_train_list(genes, targets):
 def _save_wrapper(obj, name):
     with open(name, "wb") as f:
         pickle.dump(obj, f)
+
+
+# TISSUES_early_testing = [
+#     "aorta",
+#     "hippocampus",
+#     "left_ventricle",
+#     "liver",
+#     "lung",
+#     "pancreas",
+#     "skeletal_muscle",
+#     "small_intestine",
+#     # "hela",
+#     # "k562",
+#     # "npc",
+# ]
+
+# ONEHOT_EDGETYPE = {
+#     "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
+#     "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
+#     "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
+#     "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
+#     "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "promoter-enhancer"
+#     "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "promoter-dyadic"
+#     "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "promoter-superenhancer"
+#     "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "gene-gene"
+#     "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "protein-protein"
+#     "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "mirna-gene"
+#     "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "tf-marker"
+#     "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "circuits"
+#     "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "local"
+# }

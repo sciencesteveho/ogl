@@ -306,9 +306,16 @@ class EdgeParser:
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
         dict."""
-        ref_mapping = {"ENGS": self.gencode_attr_ref, "superenhancer": self.se_ref}
-        ref = ref_mapping.get(node, self.regulatory_attr_ref)
-        self._write_node_list(self._add_node_coordinates(node, ref))
+        if "ENGS" in node:
+            self._write_node_list(
+                self._add_node_coordinates(node, self.gencode_attr_ref)
+            )
+        elif "superenhancer" in node:
+            self._write_node_list(self._add_node_coordinates(node, self.se_ref))
+        else:
+            self._write_node_list(
+                self._add_node_coordinates(node, self.regulatory_attr_ref)
+            )
 
     def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
         """Write gencode nodes to file"""
@@ -461,9 +468,10 @@ class EdgeParser:
                         if "tss" in row[edge]
                         else row[edge]
                     )
-                    for edge in ("edge_0", "edge_1")
+                    for edge in ("edge_0", "edge_1", "type")
                 ],
                 axis=1,
+                result_type="broadcast",
             )
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
