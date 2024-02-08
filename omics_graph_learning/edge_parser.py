@@ -459,7 +459,7 @@ class EdgeParser:
         tss=False,
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
-
+        print(edges_df)
         if tss:
             edges_df = edges_df.apply(
                 lambda row: [
@@ -638,30 +638,25 @@ class EdgeParser:
         """Merging two DataFrames, generating edge combinations, and writing to
         a file."""
         # merge df
-        df = pd.merge(
-            df1,
-            df2,
-            on=["chrom", "start", "end", "name", "score", "strand"],
-            how="outer",
-        ).dropna()
+        df = (
+            pd.merge(
+                df1,
+                df2,
+                on=["chrom", "start", "end", "name", "score", "strand"],
+                how="outer",
+            )
+            .rename(columns={"thickStart_x": "edge_0", "thickStart_y": "edge_1"})
+            .dropna()
+        )
 
         # get anchored regulatory features
-        df["thickStart_x"] = df["thickStart_x"].str.split(",")
-        df["thickStart_y"] = df["thickStart_y"].str.split(",")
+        df["edge_0"] = df["edge_0"].str.split(",")
+        df["edge_1"] = df["edge_1"].str.split(",")
 
         # explode and remove self loops
-        df = (
-            df.explode("thickStart_x")
-            .explode("thickStart_y")
-            .query("thickStart_x != thickStart_y")
-        )
+        df = df.explode("edge_0").explode("edge_1").query("edge_0 != edge_1")
 
-        return (
-            df[["thickStart_x", "thickStart_y"]]
-            .drop_duplicates()
-            .rename(columns={"thickStart_x": "edge_0", "thickStart_y": "edge_1"})
-            .assign(type=edge_type)
-        )
+        return df[["edge_0", "edge_1"]].drop_duplicates().assign(type=edge_type)
 
     @staticmethod
     def _split_chromatin_loops(
