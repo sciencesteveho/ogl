@@ -30,6 +30,67 @@ NODES = [
 ]
 
 
+def _base_graph(edges: List[str]):
+    """Create a graph from list of edges"""
+    graph = nx.Graph()
+    for tup in edges:
+        graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
+    return graph
+
+
+@utils.time_decorator(print_args=True)
+def _get_edges(
+    edge_file: str,
+    edge_type: str,
+    add_tissue: bool = False,
+    tissue: str = "",
+) -> Generator[str, str, str]:
+    """Get edges from file"""
+    reader = csv.reader(open(edge_file, "r"), delimiter="\t")
+    for tup in reader:
+        if edge_type == "base":
+            if add_tissue:
+                yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
+            else:
+                yield (tup[0], tup[1], tup[3])
+        elif edge_type == "local":
+            if add_tissue:
+                yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
+            else:
+                yield (tup[3], tup[7], "local")
+        else:
+            raise ValueError("Edge type must be 'base' or 'local'")
+
+
+@utils.time_decorator(print_args=False)
+def _prepare_reference_attributes(reference_dir: str) -> Dict[str, Dict[str, Any]]:
+    """Base_node attr are hard coded in as the first type to load. There are
+    duplicate keys in preprocessing but they have the same attributes so
+    they'll overrwrite without issue.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: nested dict of attributes for each node
+    """
+    ref = pickle.load(open(f"{reference_dir}/basenodes_reference.pkl", "rb"))
+    for node in nodes:
+        ref_for_concat = pickle.load(
+            open(f"{reference_dir}/{node}_reference.pkl", "rb")
+        )
+        ref.update(ref_for_concat)
+
+    for key in ref:
+        if "_tf" in key:
+            ref[key]["is_gene"] = 0
+            ref[key]["is_tf"] = 1
+        elif "ENSG" in key:
+            ref[key]["is_gene"] = 1
+            ref[key]["is_tf"] = 0
+        else:
+            ref[key]["is_gene"] = 0
+            ref[key]["is_tf"] = 0
+    return ref
+
+
 @utils.time_decorator(print_args=True)
 def graph_constructor(
     tissue: str,
@@ -55,63 +116,6 @@ def graph_constructor(
     interaction_dir = f"{root_dir}/{tissue}/interaction"
     parse_dir = f"{root_dir}/{tissue}/parsing"
 
-    def _base_graph(edges: List[str]):
-        """Create a graph from list of edges"""
-        G = nx.Graph()
-        for tup in edges:
-            G.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
-        return G
-
-    @utils.time_decorator(print_args=True)
-    def _get_edges(
-        edge_file: str,
-        edge_type: str,
-        add_tissue: bool = False,
-    ) -> Generator[str, str, str]:
-        """Get edges from file"""
-        reader = csv.reader(open(edge_file, "r"), delimiter="\t")
-        for tup in reader:
-            if edge_type == "base":
-                if add_tissue:
-                    yield (f"{tup[0]}_{tissue}", f"{tup[1]}_{tissue}", tup[3])
-                else:
-                    yield (tup[0], tup[1], tup[3])
-            elif edge_type == "local":
-                if add_tissue:
-                    yield (f"{tup[3]}_{tissue}", f"{tup[7]}_{tissue}", "local")
-                else:
-                    yield (tup[3], tup[7], "local")
-            else:
-                raise ValueError("Edge type must be 'base' or 'local'")
-
-    @utils.time_decorator(print_args=False)
-    def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
-        """Base_node attr are hard coded in as the first type to load. There are
-        duplicate keys in preprocessing but they have the same attributes so
-        they'll overrwrite without issue.
-
-        Returns:
-            Dict[str, Dict[str, Any]]: nested dict of attributes for each node
-        """
-        ref = pickle.load(open(f"{parse_dir}/attributes/basenodes_reference.pkl", "rb"))
-        for node in nodes:
-            ref_for_concat = pickle.load(
-                open(f"{parse_dir}/attributes/{node}_reference.pkl", "rb")
-            )
-            ref.update(ref_for_concat)
-
-        for key in ref:
-            if "_tf" in key:
-                ref[key]["is_gene"] = 0
-                ref[key]["is_tf"] = 1
-            elif "ENSG" in key:
-                ref[key]["is_gene"] = 1
-                ref[key]["is_tf"] = 0
-            else:
-                ref[key]["is_gene"] = 0
-                ref[key]["is_tf"] = 0
-        return ref
-
     # get edges
     base_edges = _get_edges(
         edge_file=f"{interaction_dir}/interaction_edges.txt",
@@ -126,7 +130,7 @@ def graph_constructor(
     )
 
     # get attribute reference dictionary
-    ref = _prepare_reference_attributes()
+    ref = _prepare_reference_attributes(reference_dir=f"{parse_dir}/attributes/")
 
     # create graphs
     if graph_type == "full":

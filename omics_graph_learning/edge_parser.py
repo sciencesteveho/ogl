@@ -460,6 +460,9 @@ class EdgeParser:
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
         print(edges_df)
+        edges_df.to_csv(
+            f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
+        )
         if tss:
             edges_df = edges_df.apply(
                 lambda row: [
