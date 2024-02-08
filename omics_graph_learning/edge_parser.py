@@ -500,7 +500,7 @@ class EdgeParser:
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
 
         # if TSS, set TSS bool
-        tss = self.first_anchor is self.tss or self.second_anchor is self.tss
+        tss = first_feature is self.tss or second_feature is self.tss
 
         # get edges and write to file
         return self._write_loop_edges(
