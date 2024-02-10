@@ -3,7 +3,7 @@
 
 """Utilities for omics graph learning modules."""
 
-
+from collections import defaultdict
 from contextlib import suppress
 import csv
 from datetime import timedelta
@@ -12,6 +12,7 @@ import inspect
 import os
 import pickle
 import random
+import subprocess
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -342,6 +343,79 @@ def genes_from_gencode(gencode_ref: pybedtools.BedTool) -> Dict[str, str]:
         for line in gencode_ref
         if line[0] not in ["chrX", "chrY", "chrM"]
     }
+
+
+def _reftss_cut_cols(file: str) -> None:
+    """Cuts the first and eighth columns of the refTSS annotation file to
+    produce a file with only the TSS and gene symbol"""
+    cmd = f"cut -f1,8 {file} > {file}.cut"
+    subprocess.run(cmd, stdout=None, shell=True)
+
+
+def _tss_to_gene_tuples(file: str) -> List[Tuple[str, str]]:
+    """Read refTSS annotation file and return a list of tuples matching TSS to
+    each gene symbol."""
+    with open(file) as f:
+        reader = csv.reader(f, delimiter="\t")
+        next(reader)  # skip header
+        return [(row[0], col) for row in reader for col in row[1].split(" ") if col]
+
+
+def _tss_tuples_to_dict(
+    tss_tuples: List[Tuple[str, str]],
+    genesymbol_to_gencode: Dict[str, str],
+) -> Dict[str, List[str]]:
+    """Map tuples to a dictionary with the first element as the key"""
+    key_mappings = defaultdict(list)
+    for key, value in tss_tuples:
+        if value in genesymbol_to_gencode:
+            key_mappings[key].append(genesymbol_to_gencode[value])
+    return key_mappings
+
+
+def prepare_tss_file(
+    tss_file: str, annotation_file: str, gencode_ref: str, savedir: str
+) -> None:
+    """Prepares parsed TSS file, where each TSS is linked with its gencode gene.
+    If multiple genes are associated with the TSS, the tss is split across
+    multiple lines.
+
+    Args:
+        tss_file (str): The path to the TSS file.
+        annotation_file (str): The path to the annotation file.
+        gencode_ref (str): The path to the GENCODE reference file.
+        savedir (str): The directory to save the output file.
+
+    Returns:
+        None
+
+    Example:
+        prepare_tss_file(
+            tss_file="refTSS_v4.1_human_coordinate.hg38.bed.txt",
+            annotation_file="refTSS_v4.1_human_hg38_annotation.txt",
+            gencode_ref="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
+            savedir="/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss",
+        )
+    """
+    _reftss_cut_cols(annotation_file)
+    genesymbol_to_gencode = genes_from_gencode(pybedtools.BedTool(gencode_ref))
+    tss = pybedtools.BedTool(tss_file)
+    maps = _tss_tuples_to_dict(
+        _tss_to_gene_tuples(f"{annotation_file}.cut"),
+        genesymbol_to_gencode=genesymbol_to_gencode,
+    )
+
+    bed = []
+    for line in tss:
+        if line[3] in maps:
+            bed.extend(
+                [line[0], line[1], line[2], f"tss_{line[3]}_{value}"]
+                for value in maps[line[3]]
+            )
+        else:
+            bed.append([line[0], line[1], line[2], f"tss_{line[3]}"])
+
+    bed = pybedtools.BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
 
 
 def genes_from_gff(gff: str) -> List[str]:

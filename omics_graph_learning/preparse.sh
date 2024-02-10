@@ -222,15 +222,53 @@ function _rbp_sites () {
 }
 
 # transcription start sites for hg38 are downloaded from refTSS v3.3, release
-# 18/08/2021. Gene symbols are added to refTSS names
+# 18/08/2021. First, we create an associate array to store the tss --> gene
+# relationships and then we use them to parse a tss file with each gene symbol
+# annotated. Lastly, we convert the gene symbols to gencode IDs and only keep
+# genes w/ gencode IDs.
 # Arguments:
 #   $1 - 
 #   $2 - 
 function _tss () {
-    cut -f1,8 $1 
-    awk -v OFS='\t' '{print $1,$2,$3,"tss_"$4}' $1 \
-        > $2/tss_parsed_hg38.bed
+    # create associative array
+    declare -A tss_genes
+    while read -r line; do
+        key=$(echo "$line" | cut -f1 -d' ')
+        value=$(echo "$line" | cut -f8 -d' ')
+        tss_genes["$key"]="$value"
+    done < "$1"
+
+    # convert associative array to string
+    tss_string=""
+    for key in "${!tss_genes[@]}"; do
+        tss_string+="$key=${tss_genes[$key]} "
+    done
+
+    # parse tss file and add array values if present
+    awk -v OFS='\t' -v tss_genes="$tss_string" '
+        BEGIN {
+            split(tss_genes, genes, " ")
+            for (i in genes) {
+                split(genes[i], gene_pair, "=")
+                gene = gene_pair[1]
+                value = gene_pair[2]
+                tss_array[gene] = value
+            }
+        }
+        {
+            key = "tss_" $4
+            if (key in tss_array) {
+                print $1, $2, $3, key, tss_array[$4]
+            } else {
+                print $1, $2, $3, key, "NA"
+            }
+        }
+    ' "$1" > "$2/tss_parsed_hg38.bed"
 }
+
+_tss \
+    '/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/refTSS_v4.1_human_hg38_annotation.txt' \
+    /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss
 
 # micro RNA (miRNA) target sites for hg19 are downloaded from TargetScanHuman
 # 8.0, release 09/2021 target sites are lifted over to hg38
