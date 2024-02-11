@@ -464,9 +464,7 @@ class EdgeParser:
         #     f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
         # )
         if tss:
-            edges_df = edges_df.apply(
-                lambda x: [x.split("_")[-1] if "ENSG" in x else x], axis=0
-            )
+            edges_df = edges_df.apply(lambda x: x.split("_")[-1] if "ENSG" in x else x)
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
 
