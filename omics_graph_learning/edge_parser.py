@@ -459,23 +459,19 @@ class EdgeParser:
         tss=False,
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
-        # print(edges_df)
-        # edges_df.to_csv(
-        #     f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
-        # )
-        # if tss:
-        #     edges_df = edges_df.apply(
-        #         lambda row: [
-        #             (
-        #                 self._check_tss_gene_in_gencode(row[edge])
-        #                 if "tss" in row[edge]
-        #                 else row[edge]
-        #             )
-        #             for edge in ("edge_0", "edge_1", "type")
-        #         ],
-        #         axis=1,
-        #         result_type="broadcast",
-        #     )
+        print(edges_df)
+        edges_df.to_csv(
+            f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
+        )
+        if tss:
+            edges_df = edges_df.apply(
+                lambda row: [
+                    (row[edge].split("_")[-1] if "tss" in row[edge] else row[edge])
+                    for edge in ("edge_0", "edge_1", "type")
+                ],
+                axis=1,
+                result_type="broadcast",
+            )
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
 
