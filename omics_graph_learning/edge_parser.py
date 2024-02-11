@@ -298,10 +298,10 @@ class EdgeParser:
                 "tf_binding_footprint",
             )
 
-    def _check_tss_gene_in_gencode(self, tss: str) -> bool:
-        """Check if gene associated with TSS is in gencode v26"""
-        gene = tss.split("_")[5]
-        return self.genesymbol_to_gencode.get(gene, False)
+    # def _check_tss_gene_in_gencode(self, tss: str) -> bool:
+    #     """Check if gene associated with TSS is in gencode v26"""
+    #     gene = tss.split("_")[5]
+    #     return self.genesymbol_to_gencode.get(gene, False)
 
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
@@ -459,23 +459,23 @@ class EdgeParser:
         tss=False,
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
-        print(edges_df)
-        edges_df.to_csv(
-            f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
-        )
-        if tss:
-            edges_df = edges_df.apply(
-                lambda row: [
-                    (
-                        self._check_tss_gene_in_gencode(row[edge])
-                        if "tss" in row[edge]
-                        else row[edge]
-                    )
-                    for edge in ("edge_0", "edge_1", "type")
-                ],
-                axis=1,
-                result_type="broadcast",
-            )
+        # print(edges_df)
+        # edges_df.to_csv(
+        #     f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
+        # )
+        # if tss:
+        #     edges_df = edges_df.apply(
+        #         lambda row: [
+        #             (
+        #                 self._check_tss_gene_in_gencode(row[edge])
+        #                 if "tss" in row[edge]
+        #                 else row[edge]
+        #             )
+        #             for edge in ("edge_0", "edge_1", "type")
+        #         ],
+        #         axis=1,
+        #         result_type="broadcast",
+        #     )
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
 
@@ -529,13 +529,15 @@ class EdgeParser:
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
         Additionally, adds a slop of 2kb to the TSS for downstream overlap.
+        Ignores non-gene TSS by checking the length of the tss name:
+        gene-associated tss are annotated with one extra field.
 
         Returns:
             pybedtools.BedTool - TSS w/ target genes
         """
         tss = pybedtools.BedTool(f"{self.tss}")
         return (
-            tss.filter(lambda x: x[3].split("_")[3] != "")
+            tss.filter(lambda x: len(x[3].split("_")) > 3)
             .slop(g=self.chromfile, b=2000)
             .saveas()
         )
