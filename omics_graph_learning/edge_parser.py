@@ -466,7 +466,7 @@ class EdgeParser:
         if tss:
             edges_df = edges_df.apply(
                 lambda row: [
-                    (row[edge].split("_")[-1] if "tss" in row[edge] else row[edge])
+                    row[edge].split("_")[-1] if "ENSG" in row[edge] else row[edge]
                     for edge in ("edge_0", "edge_1", "type")
                 ],
                 axis=1,
