@@ -459,12 +459,12 @@ class EdgeParser:
         tss=False,
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
-        print(edges_df)
-        edges_df.to_csv(
-            f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
-        )
+        # print(edges_df)
+        # edges_df.to_csv(
+        #     f"{file_path}.testing", sep="\t", mode="a", header=True, index=False
+        # )
         if tss:
-            edges_df = edges_df.apply(
+            df = edges_df.apply(
                 lambda row: [
                     row[edge].split("_")[-1] if "ENSG" in row[edge] else row[edge]
                     for edge in ("edge_0", "edge_1", "type")
@@ -472,8 +472,10 @@ class EdgeParser:
                 axis=1,
                 result_type="broadcast",
             )
-        edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
-        return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
+        else:
+            df = edges_df
+        df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
+        return set(df["edge_0"].append(df["edge_1"]).unique())
 
     @utils.time_decorator(print_args=True)
     def _process_loop_edges(
