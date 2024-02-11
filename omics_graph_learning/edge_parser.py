@@ -306,7 +306,7 @@ class EdgeParser:
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
         dict."""
-        if "ENGS" in node:
+        if "ENSG" in node:
             self._write_node_list(
                 self._add_node_coordinates(node, self.gencode_attr_ref)
             )
