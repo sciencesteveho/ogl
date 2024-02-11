@@ -119,7 +119,7 @@ class LocalContextParser:
             self._prepare_tpm_filtered_genes(
                 genes=genes,
                 # gene_windows=gene_windows,
-                base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
+                # base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
                 gct=f"{self.resources['tpm']}",
                 tpm_filter=tpm_filter,
                 percent_of_samples_filter=percent_of_samples_filter,
