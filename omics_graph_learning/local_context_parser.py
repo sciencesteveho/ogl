@@ -95,6 +95,7 @@ class LocalContextParser:
         self.chromfile = self.resources["chromfile"]
         self.fasta = self.resources["fasta"]
         self.root_dir = params["dirs"]["root_dir"]
+        self.blacklist_file = params["resources"]["blacklist"]
 
     def _set_directories(self) -> None:
         """Set directories from yaml"""
@@ -134,9 +135,7 @@ class LocalContextParser:
         self.genesymbol_to_gencode = utils.genes_from_gencode(
             pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")
         )
-        self.blacklist = pybedtools.BedTool(
-            f"{self.root_dir}/shared_data/hg38-blacklist.v2.bed"
-        )
+        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}")
 
     def _prepare_tpm_filtered_genes(
         self,
@@ -204,7 +203,7 @@ class LocalContextParser:
         beds = {}
         prefix = bed.split("_")[0].lower()
         local_bed = pybedtools.BedTool(f"{self.tissue_dir}/local/{bed}").sort()
-        ab = local_bed.intersect(self.blacklist, sorted=True, u=True, v=True)
+        ab = local_bed.intersect(self.blacklist, sorted=True, v=True)
 
         # take specific windows and format each file
         if prefix in self.nodes and prefix != "gencode":
