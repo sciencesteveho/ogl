@@ -135,7 +135,7 @@ class LocalContextParser:
         self.genesymbol_to_gencode = utils.genes_from_gencode(
             pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")
         )
-        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort.saveas()
+        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
 
     def _prepare_tpm_filtered_genes(
         self,
