@@ -66,6 +66,7 @@ methylation:
   cpg_liftover: false
 
 resources:
+  blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/hg38-blacklist.v2.bed
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
