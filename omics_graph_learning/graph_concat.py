@@ -25,6 +25,8 @@ import utils
 
 def main() -> None:
     # instantiate objects and process graphs
+    max(idxs.values())
+    min(idxs.values())
 
     for idx, tissue in enumerate(params["tissues"]):
         if idx == 0:

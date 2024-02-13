@@ -160,7 +160,12 @@ def _nx_to_tensors(
         graph (nx.Graph)
     """
     graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
-    edges = np.array([[edge[0], edge[1]] for edge in nx.to_edgelist(graph)]).T
+    edges = np.array(
+        [
+            [edge[0], edge[1]]
+            for edge in nx.to_edgelist(graph, nodelist=list(rename.values()))
+        ]
+    ).T
     node_features = np.array(
         [np.array(list(graph.nodes[node].values())) for node in rename.values()]
     )
