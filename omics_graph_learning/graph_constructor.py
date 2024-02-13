@@ -214,4 +214,5 @@ def make_tissue_graph(
         graph_dir=graph_dir,
         graph=graph,
         graph_type=graph_type,
+        tissue=tissue,
     )
