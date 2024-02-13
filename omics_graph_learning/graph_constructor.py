@@ -28,15 +28,15 @@ def _get_edges(
     local: bool = False,
     add_tissue: bool = False,
     tissue: str = "",
-) -> Generator[str, str, str]:
+) -> pd.DataFrame:
     """Get edges from file"""
     df = pd.read_csv(edge_file, sep="\t", header=None)
     suffix = f"_{tissue}" if add_tissue else ""
     if local:
         df = df.drop(columns=[0, 1, 2, 4, 5, 6, 8]).rename(columns={3: 0, 7: 1})
         df[2] = "local"
-    df[0] = df[0].apply(lambda x: x + suffix)
-    df[1] = df[1].apply(lambda x: x + suffix)
+    df[0] = df[0] + suffix
+    df[1] = df[1] + suffix
 
     return df
 
