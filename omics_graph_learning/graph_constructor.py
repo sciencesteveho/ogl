@@ -169,7 +169,7 @@ def _nx_to_tensors(
                     [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                 ),
                 "node_feat": np.array(
-                    [[val for val in graph.nodes[node].values()] for node in nodes]
+                    [np.array(list(graph.nodes[node].values())) for node in nodes]
                 ),
                 "edge_feat": [edge[2][2] for edge in edges],
                 "num_nodes": graph.number_of_nodes(),
