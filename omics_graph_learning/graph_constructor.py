@@ -78,6 +78,9 @@ def _prepare_reference_attributes(
         }
         for key, value in ref.items()
     }
+    save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_gte2/graphs"
+    with open(f"{save_dir}/all_reference.pkl", "wb") as file:
+        pickle.dump(ref, file)
     return ref
 
 
@@ -133,7 +136,8 @@ def graph_constructor(
 
     # add node attributes
     ref = _prepare_reference_attributes(
-        reference_dir=f"{parse_dir}/attributes/", nodes=nodes
+        reference_dir=f"{parse_dir}/attributes/",
+        nodes=nodes,
     )
     nx.set_node_attributes(graph, ref)
 
