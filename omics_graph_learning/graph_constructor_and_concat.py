@@ -133,16 +133,12 @@ def graph_constructor(
     ref = _prepare_reference_attributes(reference_dir=f"{parse_dir}/attributes/")
 
     # create graphs
+    graph = _base_graph(edges=base_edges)
     if graph_type == "full":
-        graph = _base_graph(edges=base_edges)
         for tup in local_context_edges:  # add local context edges to full graph
             graph.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
-        nx.set_node_attributes(graph, ref)
-        return graph
-    else:
-        graph = _base_graph(edges=base_edges)
-        nx.set_node_attributes(graph, ref)
-        return graph
+    nx.set_node_attributes(graph, ref)
+    return graph
 
 
 @utils.time_decorator(print_args=True)

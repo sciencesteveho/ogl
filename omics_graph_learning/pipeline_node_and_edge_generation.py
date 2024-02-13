@@ -14,11 +14,10 @@ import argparse
 from typing import Dict, List, Union
 
 from edge_parser import EdgeParser
+import graph_constructor
 from local_context_parser import LocalContextParser
 from prepare_bedfiles import GenomeDataPreprocessor
 import utils
-from utils import LOOPFILES
-from utils import POSSIBLE_NODES
 
 NODES = [
     "dyadic",
@@ -70,7 +69,7 @@ def parse_edges(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
         working_directory=experiment_params["working_directory"],
-        loop_file=f"{baseloop_directory}/{baseloops}/{LOOPFILES[baseloops][tissue_params['resources']['tissue']]}",
+        loop_file=f"{baseloop_directory}/{baseloops}/{utils.LOOPFILES[baseloops][tissue_params['resources']['tissue']]}",
         params=tissue_params,
     )
 
@@ -93,7 +92,7 @@ def parse_local_context(
     experiment_name = experiment_params["experiment_name"]
     working_directory = experiment_params["working_directory"]
 
-    remove_nodes = [node for node in POSSIBLE_NODES if node not in nodes]
+    remove_nodes = [node for node in utils.POSSIBLE_NODES if node not in nodes]
 
     local_dir = f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local"
     bedfiles = utils._listdir_isfile_wrapper(dir=local_dir)
@@ -112,6 +111,38 @@ def parse_local_context(
 
     localparseObject.parse_context_data()
     print("Local context parser complete!")
+
+
+def create_tissue_graph(
+    experiment_params: Dict[str, Union[str, list]],
+    tissue_params: Dict[str, Union[str, list]],
+    nodes: List[str],
+) -> None:
+    """Creates a graph for the individual tissue. Concatting is dealt with after
+    this initial pipeline.
+
+    Args:
+        experiment_params (Dict[str, Union[str, list]]): _description_
+        tissue_params (Dict[str, Union[str, list]]): _description_
+        nodes (List[str]): _description_
+    """
+    nodes = (
+        experiment_params["nodes"] + NODES
+        if experiment_params["nodes"] is not None
+        else NODES
+    )
+    experiment_name = experiment_params["experiment_name"]
+    working_directory = experiment_params["working_directory"]
+    tissue = tissue_params["resources"]["tissue"]
+
+    graph_constructor.make_tissue_graph(
+        nodes=nodes,
+        experiment_name=experiment_name,
+        working_directory=working_directory,
+        graph_type="full",
+        tissue=tissue,
+    )
+    print(f"Graph for {tissue} created!")
 
 
 def main() -> None:
@@ -141,16 +172,21 @@ def main() -> None:
         dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 
-    preprocess_bedfiles(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
-        nodes=nodes,
-    )
-    parse_edges(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
-    )
-    parse_local_context(
+    # preprocess_bedfiles(
+    #     experiment_params=experiment_params,
+    #     tissue_params=tissue_params,
+    #     nodes=nodes,
+    # )
+    # parse_edges(
+    #     experiment_params=experiment_params,
+    #     tissue_params=tissue_params,
+    # )
+    # parse_local_context(
+    #     experiment_params=experiment_params,
+    #     tissue_params=tissue_params,
+    #     nodes=nodes,
+    # )
+    create_tissue_graph(
         experiment_params=experiment_params,
         tissue_params=tissue_params,
         nodes=nodes,
