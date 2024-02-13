@@ -12,6 +12,7 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
+from array import array
 import pickle
 from typing import Any, Dict, Generator, List
 
@@ -169,7 +170,7 @@ def _nx_to_tensors(
                     [[edge[0] for edge in edges], [edge[1] for edge in edges]]
                 ),
                 "node_feat": np.array(
-                    [np.array(list(graph.nodes[node].values())) for node in nodes]
+                    [array(list(graph.nodes[node].values())) for node in nodes]
                 ),
                 "edge_feat": [edge[2][2] for edge in edges],
                 "num_nodes": graph.number_of_nodes(),
