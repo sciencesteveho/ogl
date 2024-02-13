@@ -12,9 +12,8 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
-from array import array
 import pickle
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, List
 
 import networkx as nx
 import numpy as np
@@ -36,8 +35,8 @@ def _get_edges(
     if local:
         df = df.drop(columns=[0, 1, 2, 4, 5, 6, 8]).rename(columns={3: 0, 7: 1})
         df[2] = "local"
-    df[0] = df[0] + suffix
-    df[1] = df[1] + suffix
+    df[0] += suffix
+    df[1] += suffix
 
     return df
 
@@ -160,19 +159,18 @@ def _nx_to_tensors(
         graph (nx.Graph)
     """
     graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
-    edges = nx.to_edgelist(graph)
-    nodes = sorted(graph.nodes)
+    edges = np.array([[edge[0], edge[1]] for edge in nx.to_edgelist(graph)]).T
+    node_features = np.array(
+        [list(float(graph.nodes[node].values())) for node in sorted(graph.nodes)]
+    )
+    edge_features = [graph[u][v][2] for u, v in edges.T]
 
     with open(f"{graph_dir}/{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
         pickle.dump(
             {
-                "edge_index": np.array(
-                    [[edge[0] for edge in edges], [edge[1] for edge in edges]]
-                ),
-                "node_feat": np.array(
-                    [array(list(graph.nodes[node].values())) for node in nodes]
-                ),
-                "edge_feat": [edge[2][2] for edge in edges],
+                "edge_index": edges,
+                "node_feat": node_features,
+                "edge_feat": edge_features,
                 "num_nodes": graph.number_of_nodes(),
                 "num_edges": graph.number_of_edges(),
                 "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
