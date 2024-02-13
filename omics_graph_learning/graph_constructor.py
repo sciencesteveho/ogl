@@ -114,11 +114,13 @@ def graph_constructor(
                     _get_edges(
                         edge_file=f"{interaction_dir}/interaction_edges.txt",
                         add_tissue=True,
+                        tissue=tissue,
                     ),
                     _get_edges(
                         edge_file=f"{parse_dir}/edges/all_concat_sorted.bed",
-                        add_tissue=True,
                         local=True,
+                        add_tissue=True,
+                        tissue=tissue,
                     ),
                 ],
             )
@@ -128,6 +130,7 @@ def graph_constructor(
             edges=_get_edges(
                 edge_file=f"{interaction_dir}/interaction_edges.txt",
                 add_tissue=True,
+                tissue=tissue,
             )
         )
 
