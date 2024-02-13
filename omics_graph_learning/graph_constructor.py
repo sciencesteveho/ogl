@@ -35,8 +35,8 @@ def _get_edges(
     if local:
         df = df.drop(columns=[0, 1, 2, 4, 5, 6, 8]).rename(columns={3: 0, 7: 1})
         df[2] = "local"
-    df[0] = df[0] + suffix
-    df[1] = df[1] + suffix
+    df[0] = df[0].apply(lambda x: x + suffix)
+    df[1] = df[1].apply(lambda x: x + suffix)
 
     return df
 
@@ -78,9 +78,6 @@ def _prepare_reference_attributes(
         }
         for key, value in ref.items()
     }
-    save_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_gte2/graphs"
-    with open(f"{save_dir}/all_reference.pkl", "wb") as file:
-        pickle.dump(ref, file)
     return ref
 
 
