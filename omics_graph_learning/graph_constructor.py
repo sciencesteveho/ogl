@@ -160,9 +160,7 @@ def _nx_to_tensors(
     """
     graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
     edges = np.array([[edge[0], edge[1]] for edge in nx.to_edgelist(graph)]).T
-    node_features = np.array(
-        [list(map(float, graph.nodes[node].values())) for node in sorted(graph.nodes)]
-    )
+    node_features = nx.attr_matrix(graph, rc_order=sorted(graph.nodes))[0]
     edge_features = [graph[u][v][2] for u, v in edges.T]
 
     with open(f"{graph_dir}/{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
