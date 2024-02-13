@@ -146,10 +146,11 @@ def graph_constructor(
 
 @utils.time_decorator(print_args=True)
 def _nx_to_tensors(
-    prefix: str,
-    graph_dir: str,
     graph: nx.Graph,
+    graph_dir: str,
     graph_type: str,
+    prefix: str,
+    rename: Dict[str, int],
     tissue: str,
 ) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
@@ -158,13 +159,10 @@ def _nx_to_tensors(
     Args:
         graph (nx.Graph)
     """
-    graph = nx.convert_node_labels_to_integers(graph, ordering="sorted")
+    graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
     edges = np.array([[edge[0], edge[1]] for edge in nx.to_edgelist(graph)]).T
     node_features = np.array(
-        [
-            np.array(list(graph.nodes[node].values()), dtype="float64")
-            for node in sorted(graph.nodes)
-        ]
+        [np.array(list(graph.nodes[node].values())) for node in sorted(graph.nodes)]
     )
     edge_features = [graph[u][v][2] for u, v in edges.T]
 
@@ -206,19 +204,18 @@ def make_tissue_graph(
     )
 
     # save indexes before renaming to integers
+    rename = {node: idx for idx, node in enumerate(sorted(graph.nodes))}
     with open(
         f"{graph_dir}/{experiment_name}_{graph_type}_graph_{tissue}_idxs.pkl", "wb"
     ) as output:
-        pickle.dump(
-            {node: idx for idx, node in enumerate(sorted(graph.nodes))},
-            output,
-        )
+        pickle.dump(rename, output)
 
     # save idxs and write to tensors
     _nx_to_tensors(
-        prefix=experiment_name,
-        graph_dir=graph_dir,
         graph=graph,
+        graph_dir=graph_dir,
         graph_type=graph_type,
+        prefix=experiment_name,
+        rename=rename,
         tissue=tissue,
     )
