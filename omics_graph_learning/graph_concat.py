@@ -5,12 +5,8 @@
 # - [ ] remove hardcoded files and add in the proper area, either the yaml or the processing fxn
 # - [ ] add module to create local global nodes for genes
 
-"""Create graphs from parsed edges
-
-This script will create one graph per tissue from the parsed edges. All edges
-are added before being filtered to only keep edges that can traverse back to a
-base node. Attributes are then added for each node.
-"""
+"""Concatenate multiple graphs into a single graph and save their respective
+indexes"""
 
 import argparse
 import pickle
@@ -30,27 +26,69 @@ def _open_graph_and_idxs(prefix: str) -> Tuple[Dict, Dict]:
     return graph, idxs
 
 
-def _reindex_idxs(
-    idxs: Dict[str, int],
-    new_start_idx: int,
-) -> Dict[str, int]:
-    """Reindex nodes to integers by adding the start_idx to each node. Adds 1,
-    since lists are 0-indexed."""
-    # reindex nodes
-    for key, values in idxs.items():
-        idxs[key] = values + new_start_idx + 1
-    return idxs
+def _reindex_idxs(idxs: Dict[str, int], new_start_idx: int) -> Dict[str, int]:
+    """Reindex nodes to integers by adding the start_idx to each node."""
+    return {key: value + new_start_idx for key, value in idxs.items()}
 
 
 def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
     """Reindex edges to integers by adding the start_idx to each node."""
-    return np.array([edges[0] + new_start_idx, edges[1] + new_start_idx])
+    edges += new_start_idx
+    return edges
 
 
-def _renindex_graph(
-    graph: Dict[str, Union[float, int, List[str], np.array]],
-) -> Dict[str, Union[float, int, List[str], np.array]]:
-    """Reindex nodes to integers by adding the start_idx to each node."""
+def concatenate_graphs(
+    pre_prefix: str,
+    tissues: List[str],
+) -> None:
+    """Concatenate multiple graphs into a single graph. The first tissue in the
+    list is used as the base and all subsequent graphs are reindexed then
+    concatenated.
+
+    Args:
+        pre_prefix (str): The prefix of the graph file names.
+        tissues (List[str]): The list of tissue names.
+
+    Returns:
+        None
+    """
+    prefix = f"{pre_prefix}_{tissues[0]}"
+    concat_graph, concat_idxs = _open_graph_and_idxs(prefix)
+    concat_edges = concat_graph["edge_index"]
+    concat_edge_feat = concat_graph["edge_feat"]
+    concat_node_feat = concat_graph["node_feat"]
+    concat_num_nodes = concat_graph["num_nodes"]
+    concat_num_edges = concat_graph["num_edges"]
+
+    for tissue in tissues[1:]:
+        prefix = f"{pre_prefix}_{tissue}"
+        graph, idxs = _open_graph_and_idxs(prefix)
+        end_idx = max(concat_idxs.values()) + 1
+        concat_idxs.update(_reindex_idxs(idxs=idxs, new_start_idx=end_idx))
+        concat_edges = np.hstack(
+            (
+                concat_edges,
+                _reindex_edges(edges=graph["edge_index"], new_start_idx=end_idx),
+            )
+        )
+        concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
+        concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
+        concat_num_nodes += graph["num_nodes"]
+        concat_num_edges += graph["num_edges"]
+
+    with open(f"{prefix}.pkl", "wb") as output:
+        pickle.dump(
+            {
+                "edge_index": concat_edges,
+                "node_feat": concat_node_feat,
+                "edge_feat": concat_edge_feat,
+                "num_nodes": concat_num_nodes,
+                "num_edges": concat_num_edges,
+                "avg_edges": concat_num_edges / concat_num_nodes,
+            },
+            output,
+            protocol=4,
+        )
 
 
 def main() -> None:
@@ -75,43 +113,10 @@ def main() -> None:
     working_directory = params["working_directory"]
     root_dir = f"{working_directory}/{experiment_name}"
     graph_dir = f"{root_dir}/graphs"
-
     pre_prefix = f"{graph_dir}/{experiment_name}_{args.graph_type}_graph"
-    for idx, tissue in enumerate(params["tissues"]):
-        prefix = f"{pre_prefix}_{tissue}"
-        graph, idxs = _open_graph_and_idxs(prefix)
-        if idx == 0:
-            end_idx = _get_idx_max_min(idxs)[0]
-            concat_idxs = idxs
-            concat_edges = graph["edge_index"]
-            concat_edge_feat = graph["edge_feat"]
-            concat_node_feat = graph["node_feat"]
-            concat_num_nodes = graph["num_nodes"]
-            concat_num_edges = graph["num_edges"]
-        else:
-            graph, idxs = _open_graph_and_idxs(prefix)
-            concat_idxs = {**concat_idxs, **_reindex_idxs(idxs, end_idx)}
-            concat_edges = np.hstack(
-                (concat_edges, _reindex_edges(graph["edge_index"], end_idx))
-            )
-            concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
-            concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
-            concat_num_nodes += graph["num_nodes"]
-            concat_num_edges += graph["num_edges"]
 
-    with open(f"{prefix}.pkl", "wb") as output:
-        pickle.dump(
-            {
-                "edge_index": concat_edges,
-                "node_feat": concat_node_feat,
-                "edge_feat": concat_edge_feat,
-                "num_nodes": concat_num_nodes,
-                "num_edges": concat_num_edges,
-                "avg_edges": concat_num_edges / concat_num_nodes,
-            },
-            output,
-            protocol=4,
-        )
+    # concat all graphs! and save to file
+    concatenate_graphs(pre_prefix=pre_prefix, tissue=params["tissues"])
 
 
 if __name__ == "__main__":
@@ -137,10 +142,12 @@ if __name__ == "__main__":
 # # idxs["ENSG00000067840.12_liver"]
 
 # concat_idxs = {**concat_idxs, **_reindex_idxs(idxs=idxs, new_start_idx=end_idx)}
-# concat_edges = np.hstack((concat_edges, _reindex_edges(graph["edge_index"], end_idx)))
-
 # len(concat_edges[0])
 # len(concat_edges[1])
+# concat_edges = np.hstack((concat_edges, _reindex_edges(graph["edge_index"], end_idx)))
+# len(concat_edges[0])
+# len(concat_edges[1])
+
 # concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
 # concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
 # concat_num_nodes += graph["num_nodes"]
