@@ -159,11 +159,12 @@ if ! [ -f ${final_graph} ]; then
 
     # Create graphs from nodes and edges individual tissues and combine into a single
     # representation
-    if [ ${partition} == "EM" ]; then
-        constructor=graph_constructor_and_concat_em.sh
-    else
-        constructor=graph_constructor_and_concat.sh
-    fi
+    # if [ ${partition} == "EM" ]; then
+    #     constructor=graph_constructor_and_concat_em.sh
+    # else
+    #     constructor=graph_constructor_and_concat.sh
+    # fi
+    constructor=graph_concat.sh
 
     construct_id=$(
         sbatch \

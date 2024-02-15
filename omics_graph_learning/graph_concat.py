@@ -121,34 +121,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# graph, idxs = _open_graph_and_idxs(
-#     "regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_gte2_full_graph_aorta"
-# )
-
-# end_idx = max(idxs.values())
-# concat_idxs = idxs
-# concat_edges = graph["edge_index"]
-# concat_edge_feat = graph["edge_feat"]
-# concat_node_feat = graph["node_feat"]
-# concat_num_nodes = graph["num_nodes"]
-# concat_num_edges = graph["num_edges"]
-
-# graph, idxs = _open_graph_and_idxs(
-#     "regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_gte2_full_graph_liver"
-# )
-
-# # idxs["ENSG00000067840.12_liver"]
-
-# concat_idxs = {**concat_idxs, **_reindex_idxs(idxs=idxs, new_start_idx=end_idx)}
-# len(concat_edges[0])
-# len(concat_edges[1])
-# concat_edges = np.hstack((concat_edges, _reindex_edges(graph["edge_index"], end_idx)))
-# len(concat_edges[0])
-# len(concat_edges[1])
-
-# concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
-# concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
-# concat_num_nodes += graph["num_nodes"]
-# concat_num_edges += graph["num_edges"]
