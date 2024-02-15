@@ -116,7 +116,7 @@ def main() -> None:
     pre_prefix = f"{graph_dir}/{experiment_name}_{args.graph_type}_graph"
 
     # concat all graphs! and save to file
-    concatenate_graphs(pre_prefix=pre_prefix, tissue=params["tissues"])
+    concatenate_graphs(pre_prefix=pre_prefix, tissues=params["tissues"])
 
 
 if __name__ == "__main__":
