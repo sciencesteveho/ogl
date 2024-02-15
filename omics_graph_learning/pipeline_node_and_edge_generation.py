@@ -172,20 +172,20 @@ def main() -> None:
         dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
     )
 
-    # preprocess_bedfiles(
-    #     experiment_params=experiment_params,
-    #     tissue_params=tissue_params,
-    #     nodes=nodes,
-    # )
-    # parse_edges(
-    #     experiment_params=experiment_params,
-    #     tissue_params=tissue_params,
-    # )
-    # parse_local_context(
-    #     experiment_params=experiment_params,
-    #     tissue_params=tissue_params,
-    #     nodes=nodes,
-    # )
+    preprocess_bedfiles(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
+        nodes=nodes,
+    )
+    parse_edges(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
+    )
+    parse_local_context(
+        experiment_params=experiment_params,
+        tissue_params=tissue_params,
+        nodes=nodes,
+    )
     create_tissue_graph(
         experiment_params=experiment_params,
         tissue_params=tissue_params,

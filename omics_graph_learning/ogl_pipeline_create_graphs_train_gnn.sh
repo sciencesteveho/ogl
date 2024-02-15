@@ -205,6 +205,7 @@ if ! [ -f ${final_graph} ]; then
         full \
         ${experiment_yaml})
 
+fi
 
 #     # train GNN after scaler job is finished
 #     sbatch \
