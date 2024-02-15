@@ -206,47 +206,47 @@ if ! [ -f ${final_graph} ]; then
         ${experiment_yaml})
 
 
-    # train GNN after scaler job is finished
-    sbatch \
-        --dependency=afterok:${scale_id} \
-        train_gnn.sh \
-        ${experiment_yaml} \
-        ${model} \
-        ${layers} \
-        ${dimensions} \
-        ${epochs} \
-        ${loader} \
-        ${learning_rate} \
-        ${batch_size} \
-        ${idx} \
-        ${graph_type} \
-        ${zero_nodes} \
-        ${randomize_node_feats} \
-        ${early_stop} \
-        ${expression_only} \
-        ${randomize_edges} \
-        ${total_random_edges}
+#     # train GNN after scaler job is finished
+#     sbatch \
+#         --dependency=afterok:${scale_id} \
+#         train_gnn.sh \
+#         ${experiment_yaml} \
+#         ${model} \
+#         ${layers} \
+#         ${dimensions} \
+#         ${epochs} \
+#         ${loader} \
+#         ${learning_rate} \
+#         ${batch_size} \
+#         ${idx} \
+#         ${graph_type} \
+#         ${zero_nodes} \
+#         ${randomize_node_feats} \
+#         ${early_stop} \
+#         ${expression_only} \
+#         ${randomize_edges} \
+#         ${total_random_edges}
 
-else
-    echo "Final graph found. Going straight to GNN training."
-    # Train graph neural network
+# else
+#     echo "Final graph found. Going straight to GNN training."
+#     # Train graph neural network
 
-    sbatch \
-        train_gnn.sh \
-        ${experiment_yaml} \
-        ${model} \
-        ${layers} \
-        ${dimensions} \
-        ${epochs} \
-        ${loader} \
-        ${learning_rate} \
-        ${batch_size} \
-        ${idx} \
-        ${graph_type} \
-        ${zero_nodes} \
-        ${randomize_node_feats} \
-        ${early_stop} \
-        ${expression_only} \
-        ${randomize_edges} \
-        ${total_random_edges}
-fi
+#     sbatch \
+#         train_gnn.sh \
+#         ${experiment_yaml} \
+#         ${model} \
+#         ${layers} \
+#         ${dimensions} \
+#         ${epochs} \
+#         ${loader} \
+#         ${learning_rate} \
+#         ${batch_size} \
+#         ${idx} \
+#         ${graph_type} \
+#         ${zero_nodes} \
+#         ${randomize_node_feats} \
+#         ${early_stop} \
+#         ${expression_only} \
+#         ${randomize_edges} \
+#         ${total_random_edges}
+# fi

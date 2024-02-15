@@ -76,7 +76,7 @@ def concatenate_graphs(
         concat_num_nodes += graph["num_nodes"]
         concat_num_edges += graph["num_edges"]
 
-    with open(f"{prefix}.pkl", "wb") as output:
+    with open(f"{pre_prefix}.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": concat_edges,
