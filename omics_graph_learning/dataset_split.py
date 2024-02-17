@@ -683,121 +683,121 @@ def _save_targets_and_scaled(
     utils._save_pickle(scaled_targets, split_path / "training_targets_scaled.pkl")
 
 
-def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) -> None:
-    """Prepares the GNN training split and targets.
+# def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) -> None:
+#     """Prepares the GNN training split and targets.
 
-    Args:
-        args: The arguments for the function.
-        params: The parameters for the function.
-    """
-    (
-        experiment_name,
-        working_directory,
-        tissues,
-        average_activity_df,
-        config_dir,
-        expression_median_across_all,
-        expression_median_matrix,
-        all_matrix_gct,
-        gencode_gtf,
-        matrix_path,
-        protein_abundance_matrix,
-        protein_abundance_medians,
-        test_chrs,
-        val_chrs,
-    ) = _unpack_params(params)
+#     Args:
+#         args: The arguments for the function.
+#         params: The parameters for the function.
+#     """
+#     (
+#         experiment_name,
+#         working_directory,
+#         tissues,
+#         average_activity_df,
+#         config_dir,
+#         expression_median_across_all,
+#         expression_median_matrix,
+#         all_matrix_gct,
+#         gencode_gtf,
+#         matrix_path,
+#         protein_abundance_matrix,
+#         protein_abundance_medians,
+#         test_chrs,
+#         val_chrs,
+#     ) = _unpack_params(params)
 
-    # check if the matrix with a median across all samples exists
-    _tpm_median_across_all_tissues(
-        median_across_all_file=matrix_path / expression_median_across_all,
-        all_matrix_gct=matrix_path / all_matrix_gct,
-    )
+#     # check if the matrix with a median across all samples exists
+#     _tpm_median_across_all_tissues(
+#         median_across_all_file=matrix_path / expression_median_across_all,
+#         all_matrix_gct=matrix_path / all_matrix_gct,
+#     )
 
-    split_name = utils._dataset_split_name(test_chrs=test_chrs, val_chrs=val_chrs)
-    split_name = (
-        f"tpm_{args.tpm_filter}_samples_{args.percent_of_samples_filter}_{split_name}"
-    )
+#     split_name = utils._dataset_split_name(test_chrs=test_chrs, val_chrs=val_chrs)
+#     split_name = (
+#         f"tpm_{args.tpm_filter}_samples_{args.percent_of_samples_filter}_{split_name}"
+#     )
 
-    graph_dir, split_path = _prepare_directories(
-        working_directory=working_directory,
-        experiment_name=experiment_name,
-        graph_dir=graph_dir,
-        split_name=split_name,
-    )
+#     graph_dir, split_path = _prepare_directories(
+#         working_directory=working_directory,
+#         experiment_name=experiment_name,
+#         graph_dir=graph_dir,
+#         split_name=split_name,
+#     )
 
-    tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
-        config_dir=config_dir,
-        gencode_gtf=gencode_gtf,
-        tissues=tissues,
-        tpm_filter=args.tpm_filter,
-        split_path=split_path,
-        percent_of_samples_filter=args.percent_of_samples_filter,
-    )
+#     tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
+#         config_dir=config_dir,
+#         gencode_gtf=gencode_gtf,
+#         tissues=tissues,
+#         tpm_filter=args.tpm_filter,
+#         split_path=split_path,
+#         percent_of_samples_filter=args.percent_of_samples_filter,
+#     )
 
-    average_activity, expression_median_across_all = _load_dataframes(
-        average_activity_df=average_activity_df,
-        matrix_path=matrix_path,
-        experiment_name=expression_median_across_all,
-    )
+#     average_activity, expression_median_across_all = _load_dataframes(
+#         average_activity_df=average_activity_df,
+#         matrix_path=matrix_path,
+#         experiment_name=expression_median_across_all,
+#     )
 
-    filtered_genes = _get_tpm_filtered_genes(
-        tissue_keywords=tissue_keywords,
-        working_directory=working_directory,
-        experiment_name=experiment_name,
-    )
+#     filtered_genes = _get_tpm_filtered_genes(
+#         tissue_keywords=tissue_keywords,
+#         working_directory=working_directory,
+#         experiment_name=experiment_name,
+#     )
 
-    split, barebones_split = _genes_train_test_val_split(
-        genes=utils.genes_from_gff(gencode_gtf),
-        target_genes=filtered_genes,
-        tissues=tissues,
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-        tissue_append=True,
-    )
+#     split, barebones_split = _genes_train_test_val_split(
+#         genes=utils.genes_from_gff(gencode_gtf),
+#         target_genes=filtered_genes,
+#         tissues=tissues,
+#         test_chrs=test_chrs,
+#         val_chrs=val_chrs,
+#         tissue_append=True,
+#     )
 
-    _save_splits(
-        split=split,
-        barebones_split=barebones_split,
-        split_path=split_path,
-    )
+#     _save_splits(
+#         split=split,
+#         barebones_split=barebones_split,
+#         split_path=split_path,
+#     )
 
-    targets = _tissue_targets_for_training(
-        average_activity=average_activity,
-        expression_median_across_all=expression_median_across_all,
-        expression_median_matrix=matrix_path / expression_median_matrix,
-        protein_abundance_matrix=matrix_path / protein_abundance_matrix,
-        protein_abundance_medians=matrix_path / protein_abundance_medians,
-        pseudocount=0.25,
-        tissue_names=PRO_ABUNDANCE_KEYS,
-        tissue_keywords=tissue_keywords,
-        tpm_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline",
-        split=split,
-    )
-    scaled_targets = _scale_targets(targets)
-    _save_targets_and_scaled(targets, scaled_targets, split_path)
-
-
-def main() -> None:
-    """Main function for dataset_split.py. Parses command line arguments and
-    calls training split fxn.
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--experiment_config",
-        type=str,
-        help="Path to .yaml file with experimental conditions",
-    )
-    parser.add_argument("--tpm_filter", type=float, help="TPM filter for genes")
-    parser.add_argument(
-        "--percent_of_samples_filter",
-        type=float,
-        help="Percent of samples filter for genes (e.g. 0.20)",
-    )
-    args = parser.parse_args()
-    params = utils.parse_yaml(args.experiment_config)
-
-    prepare_gnn_training_split_and_targets(args=args, params=params)
+#     targets = _tissue_targets_for_training(
+#         average_activity=average_activity,
+#         expression_median_across_all=expression_median_across_all,
+#         expression_median_matrix=matrix_path / expression_median_matrix,
+#         protein_abundance_matrix=matrix_path / protein_abundance_matrix,
+#         protein_abundance_medians=matrix_path / protein_abundance_medians,
+#         pseudocount=0.25,
+#         tissue_names=PRO_ABUNDANCE_KEYS,
+#         tissue_keywords=tissue_keywords,
+#         tpm_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline",
+#         split=split,
+#     )
+#     scaled_targets = _scale_targets(targets)
+#     _save_targets_and_scaled(targets, scaled_targets, split_path)
 
 
-if __name__ == "__main__":
-    main()
+# def main() -> None:
+#     """Main function for dataset_split.py. Parses command line arguments and
+#     calls training split fxn.
+#     """
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument(
+#         "--experiment_config",
+#         type=str,
+#         help="Path to .yaml file with experimental conditions",
+#     )
+#     parser.add_argument("--tpm_filter", type=float, help="TPM filter for genes")
+#     parser.add_argument(
+#         "--percent_of_samples_filter",
+#         type=float,
+#         help="Percent of samples filter for genes (e.g. 0.20)",
+#     )
+#     args = parser.parse_args()
+#     params = utils.parse_yaml(args.experiment_config)
+
+#     prepare_gnn_training_split_and_targets(args=args, params=params)
+
+
+# if __name__ == "__main__":
+#     main()
