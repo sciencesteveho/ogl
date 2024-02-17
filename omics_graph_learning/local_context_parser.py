@@ -82,7 +82,7 @@ class LocalContextParser:
 
         self._set_params(params)
         self._set_directories()
-        self._prepare_bed_references(tpm_filter=1, percent_of_samples_filter=0.20)
+        self._prepare_bed_references()
 
         # make directories
         self._make_directories()
@@ -108,54 +108,14 @@ class LocalContextParser:
 
     def _prepare_bed_references(
         self,
-        tpm_filter: Union[float, int],
-        percent_of_samples_filter: float,
     ) -> None:
-        """Prepares TPM filtered genes."""
-        genes = f"{self.tissue_dir}/tpm_filtered_genes.bed"
-        # gene_windows = f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
-
-        # prepare list of genes passing tpm filter
-        if not (os.path.exists(genes) and os.stat(genes).st_size > 0):
-            self._prepare_tpm_filtered_genes(
-                genes=genes,
-                # gene_windows=gene_windows,
-                # base_nodes=f"{self.tissue_dir}/local/basenodes_hg38.txt",
-                gct=f"{self.resources['tpm']}",
-                tpm_filter=tpm_filter,
-                percent_of_samples_filter=percent_of_samples_filter,
-            )
-
-        self.gencode_ref = pybedtools.BedTool(
-            f"{self.tissue_dir}/tpm_filtered_genes.bed"
-        )
-        # self.gene_windows = pybedtools.BedTool(
-        #     f"{self.tissue_dir}/tpm_filtered_gene_regions.bed"
-        # )
+        """Prepares genesymbol to gencode conversion and blacklist as pybedtools
+        objects.
+        """
         self.genesymbol_to_gencode = utils.genes_from_gencode(
             pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")
         )
         self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
-
-    def _prepare_tpm_filtered_genes(
-        self,
-        genes: str,
-        # gene_windows: str,
-        # base_nodes: str,
-        gct: str,
-        tpm_filter: Union[float, int],
-        percent_of_samples_filter: float,
-    ) -> None:
-        """Prepare tpm filtered genes and gene windows"""
-        filtered_genes = utils._tpm_filter_gene_windows(
-            gencode=f"{self.local_dir}/{self.gencode}",
-            tpm_file=gct,
-            tpm_filter=tpm_filter,
-            percent_of_samples_filter=percent_of_samples_filter,
-        )
-        filtered_genes.saveas(genes)
-        # windows = pybedtools.BedTool(base_nodes).slop(g=self.chromfile, b=25000).sort()
-        # windows.saveas(gene_windows)
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""

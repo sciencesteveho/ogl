@@ -239,6 +239,18 @@ TISSUES = [
 ]
 
 
+def _load_pickle(file_path: str) -> Any:
+    """Wrapper to load a pkl"""
+    with open(file_path, "rb") as file:
+        return pickle.load(file)
+
+
+def _save_pickle(data: object, file_path: str) -> Any:
+    """Wrapper to save a pkl"""
+    with open(file_path, "wb") as output:
+        pickle.dump(data, output)
+
+
 def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
     """Decorator to time functions.
 
@@ -435,6 +447,35 @@ def genes_from_gff(gff: str) -> List[str]:
         }
 
 
+def _dataset_split_name(
+    test_chrs: List[int] = None,
+    val_chrs: List[int] = None,
+) -> None:
+    """Save the partitioning split to a file based on provided chromosome
+    information.
+
+    Args:
+        save_dir (str): The directory where the split file will be saved.
+        test_chrs (List[int]): A list of test chromosomes.
+        val_chrs (List[int]): A list of validation chromosomes.
+        split (Dict[str, List[str]]): A dictionary containing the split data.
+
+    Returns:
+        None
+    """
+    chrs = []
+
+    if test_chrs and val_chrs:
+        chrs.append(f"test_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}")
+    elif test_chrs:
+        chrs.append(f"test_{('-').join(test_chrs)}")
+    elif val_chrs:
+        chrs.append(f"val_{('-').join(val_chrs)}")
+    else:
+        chrs.append("random_assign")
+
+    return "".join(chrs).replace("chr", "")
+
 @time_decorator(print_args=True)
 def _filter_low_tpm(
     file: str,
@@ -456,7 +497,7 @@ def _filter_low_tpm(
 
 
 @time_decorator(print_args=True)
-def _tpm_filter_gene_windows(
+def filter_genes_by_tpm(
     gencode: str,
     tpm_file: str,
     tpm_filter: Union[float, int],
@@ -680,42 +721,6 @@ def _n_ego_graph(
     return n_ego_graph
 
 
-def filter_target_split(
-    root_dir: str,
-    tissues: Dict[Tuple[str, str], None],
-    targets: Dict[str, Dict[str, np.ndarray]],
-) -> Dict[str, Dict[str, np.ndarray]]:
-    """Filters and only keeps targets that pass the TPM filter of >1 TPM across
-    20% of samples
-
-    Args:
-        root_dir (str): The root directory.
-        tissues (Dict[Tuple[str, str], None]): The tissues.
-        targets (Dict[str, Dict[str, np.ndarray]]): The targets.
-
-    Returns:
-        Dict[str, Dict[str, np.ndarray]]: The filtered targets.
-    """
-
-    def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-        with open(tpm_filtered_genes, newline="") as file:
-            return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
-
-    for idx, tissue in enumerate(tissues):
-        if idx == 0:
-            genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-        else:
-            update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-            genes += update_genes
-
-    genes = set(genes)
-    for key in targets:
-        targets[key] = {
-            gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
-        }
-    return targets
-
-
 def _convert_coessential_to_gencode(
     coessential: str,
     genesymbol_to_gencode: Dict[str, str],
@@ -809,9 +814,40 @@ def _get_targets_for_train_list(genes, targets):
     return {gene: targets[gene][0] for gene in genes}
 
 
-def _save_wrapper(obj, name):
-    with open(name, "wb") as f:
-        pickle.dump(obj, f)
+# def filter_target_split(
+#     root_dir: str,
+#     tissues: Dict[Tuple[str, str], None],
+#     targets: Dict[str, Dict[str, np.ndarray]],
+# ) -> Dict[str, Dict[str, np.ndarray]]:
+#     """Filters and only keeps targets that pass the TPM filter of >1 TPM across
+#     20% of samples
+
+#     Args:
+#         root_dir (str): The root directory.
+#         tissues (Dict[Tuple[str, str], None]): The tissues.
+#         targets (Dict[str, Dict[str, np.ndarray]]): The targets.
+
+#     Returns:
+#         Dict[str, Dict[str, np.ndarray]]: The filtered targets.
+#     """
+
+#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
+#         with open(tpm_filtered_genes, newline="") as file:
+#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
+
+#     for idx, tissue in enumerate(tissues):
+#         if idx == 0:
+#             genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+#         else:
+#             update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
+#             genes += update_genes
+
+#     genes = set(genes)
+#     for key in targets:
+#         targets[key] = {
+#             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
+#         }
+#     return targets
 
 
 # TISSUES_early_testing = [

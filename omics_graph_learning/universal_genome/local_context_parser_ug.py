@@ -23,7 +23,7 @@ import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
 from utils import utils._listdir_isfile_wrapper
-from utils import utils._tpm_filter_gene_windows
+from utils import utils.filter_genes_by_tpm
 from utils import utils.dir_check_make
 from utils import utils.genes_from_gencode
 from utils import NODES
@@ -725,7 +725,7 @@ class LocalContextParser:
         self, genes: str, gene_windows: str, base_nodes: str
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes = utils._tpm_filter_gene_windows(
+        filtered_genes = utils.filter_genes_by_tpm(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
             tpm_file=self.resources["tpm"],

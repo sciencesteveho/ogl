@@ -28,8 +28,8 @@ NODES = [
 
 
 def preprocess_bedfiles(
-    experiment_params: Dict[str, Union[str, list]],
-    tissue_params: Dict[str, Union[str, list]],
+    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
+    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     nodes: List[str],
 ) -> None:
     """Directory set-up, bedfile symlinking and preprocessing
@@ -52,8 +52,8 @@ def preprocess_bedfiles(
 
 
 def parse_edges(
-    experiment_params: Dict[str, Union[str, list]],
-    tissue_params: Dict[str, Union[str, list]],
+    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
+    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
 ) -> None:
     """Parse nodes and edges to create base graph and for local context
     augmentation
@@ -78,8 +78,8 @@ def parse_edges(
 
 
 def parse_local_context(
-    experiment_params: Dict[str, Union[str, list]],
-    tissue_params: Dict[str, Union[str, list]],
+    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
+    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     nodes: List[str],
 ) -> None:
     """Add local context edges based on basenode input
@@ -114,8 +114,8 @@ def parse_local_context(
 
 
 def create_tissue_graph(
-    experiment_params: Dict[str, Union[str, list]],
-    tissue_params: Dict[str, Union[str, list]],
+    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
+    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     nodes: List[str],
 ) -> None:
     """Creates a graph for the individual tissue. Concatting is dealt with after

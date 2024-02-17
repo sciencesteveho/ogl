@@ -188,9 +188,7 @@ def inference(model, device, data_loader, epoch, gps=False):
     return math.sqrt(float(loss.mean())), outs, labels
 
 
-def main() -> None:
-    """_summary_"""
-    # Parse training settings
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment_config",
@@ -285,8 +283,13 @@ def main() -> None:
         type=int,
         default="0",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main() -> None:
+    """_summary_"""
+    # Parse training settings
+    args = parse_arguments()
     params = utils.parse_yaml(args.experiment_config)
 
     # set up helper variables

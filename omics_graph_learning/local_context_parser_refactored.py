@@ -149,7 +149,7 @@ class LocalContextParser:
         percent_of_samples_filter: float,
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes = utils._tpm_filter_gene_windows(
+        filtered_genes = utils.filter_genes_by_tpm(
             gencode=f"{self.local_dir}/{self.gencode}",
             tpm_file=gct,
             tpm_filter=tpm_filter,
