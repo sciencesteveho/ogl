@@ -110,7 +110,7 @@ def _get_tpm_filtered_genes(
 
 
 def _tpm_median_across_all_tissues(
-    median_across_all_file: str,
+    median_across_all_file: pathlib.PosixPath,
     all_matrix_gct: str,
 ) -> None:
     """Get the median TPM per gene across ALL samples within GTEx V8 GCT and
@@ -121,14 +121,16 @@ def _tpm_median_across_all_tissues(
         median_across_all_file (str): /path/to/median_across_all_file
         all_matrix_gct (str): /path/to/gtex gct file
     """
-    savefile = f"{median_across_all_file}"
     try:
-        median_series = pd.Series(
-            parse(all_matrix_gct).data_df.median(axis=1), name="all_tissues"
-        ).to_frame()
-        median_series.to_pickle(savefile, mode="xb")
+        if not median_across_all_file.exists():
+            median_series = pd.Series(
+                parse(all_matrix_gct).data_df.median(axis=1), name="all_tissues"
+            ).to_frame()
+            median_series.to_pickle(median_across_all_file, mode="xb")
+        else:
+            print("File already exists")
     except FileExistsError:
-        print("File already exists")
+        print("File already exists!")
 
 
 @utils.time_decorator(print_args=False)
@@ -634,7 +636,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         expression_median_matrix,
         all_matrix_gct,
         gencode_gtf,
-        matrix_path,
+        pathlib.Path(matrix_path),
         protein_abundance_matrix,
         protein_abundance_medians,
         test_chrs,
@@ -643,7 +645,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
 
 
 def _prepare_directories(
-    working_directory: str, experiment_name: str, graph_dir: str, split_name: str
+    working_directory: str, experiment_name: str, split_name: str
 ) -> Tuple[pathlib.PosixPath, pathlib.PosixPath]:
     """Prep splite-specific directories for saving data."""
     working_path = pathlib.Path(working_directory)
