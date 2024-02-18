@@ -84,6 +84,7 @@ resources:
   tissue_name: Brain - Hippocampus
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
 
+
 tissue_specific_nodes:
   crms: consensuses.bed
   super_enhancer: SE_02_0351_SE_hg38.bed

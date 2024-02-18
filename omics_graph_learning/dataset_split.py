@@ -57,7 +57,7 @@ def _tpm_filter_genes_and_prepare_keywords(
         matrix_keywords[tissue] = (tpm_keyword, protein_abundance_keyword)
 
         # filter genes here!
-        utils._filter_genes_by_tpm(
+        utils.filter_genes_by_tpm(
             gencode=gencode_gtf,
             tpm_file=tpm_file,
             tpm_filter=tpm_filter,
@@ -166,7 +166,7 @@ def _genes_train_test_val_split(
     """
     # get only genes that are in the filtered genes list
     target_gene_chrs = {
-        gene.split("_")[0]: genes[gene]
+        gene.split("_")[0]: genes[gene.split("_")[0]]
         for gene in target_genes
         if gene.split("_")[0] in genes
     }
@@ -487,7 +487,6 @@ def _tissue_targets_for_training(
     protein_abundance_matrix: str,
     protein_abundance_medians: str,
     pseudocount: float,
-    tissue_names: List[str],
     tissue_keywords: Dict[str, Tuple[str, str]],
     tpm_dir: str,
     split: Dict[str, List[str]],
@@ -522,8 +521,8 @@ def _tissue_targets_for_training(
     # load protein abundance median matrix
     protein_abundance_tissue_matrix = _raw_protein_abundance_matrix(
         protein_abundance_medians=protein_abundance_medians,
-        tissue_names=tissue_names,
-        graph="tissue",
+        tissue_names=[tissue_names[0] for tissue_names in tissue_keywords.values()],
+        graph="protein",
     )
 
     # load protein abundance median across all tissues and samples
@@ -617,7 +616,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
     target_params = params["training_targets"]
     average_activity_df = target_params["average_activity_df"]
     config_dir = target_params["config_dir"]
-    expression_median_across_all = target_params["expression_median_across_all"]
+    expression_median_across_all_df = target_params["expression_median_across_all"]
     expression_median_matrix = target_params["expression_median_matrix"]
     all_matrix_gct = target_params["expression_all_matrix"]
     gencode_gtf = target_params["gencode_gtf"]
@@ -632,7 +631,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         tissues,
         average_activity_df,
         config_dir,
-        expression_median_across_all,
+        expression_median_across_all_df,
         expression_median_matrix,
         all_matrix_gct,
         gencode_gtf,
@@ -656,24 +655,24 @@ def _prepare_directories(
 
 
 def _load_dataframes(
-    average_activity_df: str, matrix_path: str, expression_median_across_all: str
+    matrix_path: str, average_activity_df: str, expression_median_across_all_df: str
 ):
     average_activity = utils._load_pickle(average_activity_df)
     expression_median_across_all = utils._load_pickle(
-        matrix_path / expression_median_across_all
+        matrix_path / expression_median_across_all_df
     )
     return average_activity, expression_median_across_all
 
 
 def _save_splits(
     split: Dict[str, List[str]],
-    barebones_split: Dict[str, List[str]],
+    # barebones_split: Dict[str, List[str]],
     split_path: str,
 ):
     chr_split_dictionary = split_path / "training_targets_split.pkl"
     if not os.path.exists(chr_split_dictionary):
         utils._save_pickle(split, chr_split_dictionary)
-    utils._save_pickle(barebones_split, split_path / "training_split.pkl")
+    # utils._save_pickle(barebones_split, split_path / "training_split.pkl")
 
 
 def _save_targets_and_scaled(

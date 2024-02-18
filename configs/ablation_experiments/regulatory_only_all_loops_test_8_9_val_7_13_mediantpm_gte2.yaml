@@ -32,6 +32,7 @@ training_targets:
   protein_abundance_matrix: protein_relative_abundance_all_gtex.csv
   protein_abundance_medians: protein_relative_abundance_median_gtex.csv
   targets_types: expression_median_only
+  tpm_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline
   test_chrs:
     - chr8
     - chr9
