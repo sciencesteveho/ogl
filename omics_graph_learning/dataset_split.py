@@ -56,13 +56,14 @@ def _tpm_filter_genes_and_prepare_keywords(
         # add to protein tissue keywords
         matrix_keywords[tissue] = (tpm_keyword, protein_abundance_keyword)
 
-        # filter genes here!
-        utils.filter_genes_by_tpm(
-            gencode=gencode_gtf,
-            tpm_file=tpm_file,
-            tpm_filter=tpm_filter,
-            percent_of_samples_filter=percent_of_samples_filter,
-        ).saveas(genes)
+        if not genes.exists():
+            # filter genes here!
+            utils.filter_genes_by_tpm(
+                gencode=gencode_gtf,
+                tpm_file=tpm_file,
+                tpm_filter=tpm_filter,
+                percent_of_samples_filter=percent_of_samples_filter,
+            ).saveas(genes)
 
     return matrix_keywords
 
@@ -78,8 +79,7 @@ def _open_filtered_genes_and_append_tissue(
 
 def _get_tpm_filtered_genes(
     tissue_keywords: Dict[str, Tuple[str, str]],
-    working_directory: str,
-    experiment_name: str,
+    split_path: pathlib.PosixPath,
 ) -> List[str]:
     """Process tissue targets by filtering them based on tissue keywords and
     genes.
@@ -97,9 +97,7 @@ def _get_tpm_filtered_genes(
 
     # Gather unique genes from all tissues
     for tissue in tissue_keywords:
-        tpm_filtered_file = (
-            f"{working_directory}/{experiment_name}/{tissue}/tpm_filtered_genes.bed"
-        )
+        tpm_filtered_file = split_path / f"{tissue}_tpm_filtered_genes.bed"
         tissue_genes = _open_filtered_genes_and_append_tissue(
             tpm_filtered_genes=tpm_filtered_file,
             tissue=tissue,
@@ -223,7 +221,7 @@ def _append_tissues(genes_set, tissues, target_genes):
     ]
 
 
-def _protein_adbunance_median_across_all_tissues(
+def _protein_abundance_median_across_all_tissues(
     protein_abundance_matrix: str,
 ) -> pd.DataFrame:
     """Returns a pandas DataFrame with median protein abundance for each gene
@@ -294,8 +292,9 @@ def _tissue_rename(
         if data_type == "tpm"
         else {" ": "_"}
     )
-    translation_table = str.maketrans(replacements)
-    return tissue.casefold().translate(translation_table)
+    for old, new in replacements.items():
+        tissue = tissue.replace(old, new)
+    return tissue.casefold()
 
 
 @utils.time_decorator(print_args=False)
@@ -327,9 +326,9 @@ def _calculate_foldchange_from_medians(
     df.rename(columns=rename_pairs, inplace=True)
 
     df += pseudocount
-    df[[f"{tissue}_foldchange" for tissue in median_matrix.columns]] = df[
-        median_matrix.columns
-    ].div(df["all_tissues"], axis=0)
+    df[[f"{tissue}_foldchange" for tissue in df.columns]] = df[df.columns].div(
+        df["all_tissues"], axis=0
+    )
 
     return np.log2(df.drop(columns=["all_tissues"]))
 
@@ -340,7 +339,7 @@ def _difference_from_average_activity_per_tissue(
     pseudocount: float,
     tissues: List[str],
     tpm_dir: str,
-) -> pd.DataFrame:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """_summary_
 
     Args:
@@ -349,102 +348,41 @@ def _difference_from_average_activity_per_tissue(
         average_activity (pd.DataFrame): _description_
 
     Returns:
-        pd.DataFrame: _description_
+        Tuple[pd.DataFrame, pd.DataFrame]: difference and fold change against the average
     """
-    dfs = []
+    differences, fold_changes = [], []
     tpm_path = pathlib.Path(tpm_dir)
 
     for file_path in tpm_path.glob("*.tpm.txt"):
-        tissue = file_path.stem
+        tissue = file_path.stem.split(".")[0]
 
-        if any(tissue in keywords for keywords in tissues):
+        if tissue in tissues:
             average_remove_tissue = average_activity.drop(columns=[tissue])
             average_remove_tissue["average"] = average_remove_tissue.mean(axis=1)
 
             df = pd.read_table(file_path, index_col=0, header=[2])
             tissue_average = df.mean(axis=1)
-            difference = tissue_average.subtract(average_remove_tissue["average"])
+
+            difference = abs(tissue_average.subtract(average_remove_tissue["average"]))
             difference.name = f"{tissue}_difference_from_average"
-            dfs.append(difference)
+            differences.append(difference)
 
-    all_tissues = pd.concat(dfs, axis=1)
-    return np.log2(all_tissues + pseudocount)
+            fold_change = tissue_average.divide(average_remove_tissue["average"])
+            fold_change.name = f"{tissue}_foldchange_from_average"
+            fold_changes.append(fold_change)
 
-
-# @utils.time_decorator(print_args=False)
-# def _get_target_values_for_tissues(
-#     diff_from_average_df: pd.DataFrame,
-#     protein_median_and_foldchange_df: pd.DataFrame,
-#     split: Dict[str, List[str]],
-#     split_dataset: str,
-#     tissue_keywords: dict,
-#     tpm_median_and_foldchange_df: pd.DataFrame,
-# ) -> Dict[str, Dict[str, np.ndarray]]:
-#     """Get target values for each tissue.
-
-#     Args:
-#         diff_from_average_df (pd.DataFrame): DataFrame with difference from
-#         average data.
-#         protein_median_and_foldchange_df (pd.DataFrame): DataFrame with protein
-#         median and foldchange data.
-#         split (Dict[str, List[str]]): Split data.
-#         split_dataset (str): Dataset for splitting.
-#         tissue_keywords (Dict[str, Tuple[str, str]]): Tissue keyword mapping.
-#         tpm_median_and_foldchange_df (pd.DataFrame): DataFrame with TPM median
-#         and foldchange data.
-#     """
-
-#     def _get_dict_with_target_array(
-#         tissue: str,
-#         tpmkey: str,
-#         prokey: str,
-#     ) -> Dict[str, np.ndarray]:
-#         """Helper function to get the sub dictionary"""
-#         new = {}
-#         for target in split[split_dataset]:
-#             gene, tissue_name = target.split("_", 1)
-#             if tissue_name == tissue:
-#                 new[target] = np.array(
-#                     [
-#                         tpm_median_and_foldchange_df.loc[gene, tpmkey],
-#                         tpm_median_and_foldchange_df.loc[gene, f"{tpmkey}_foldchange"],
-#                         diff_from_average_df.loc[
-#                             gene, f"{tpmkey}_difference_from_average"
-#                         ],
-#                         (
-#                             protein_median_and_foldchange_df.loc[gene, prokey]
-#                             if gene in protein_median_and_foldchange_df.index
-#                             else -1
-#                         ),
-#                         (
-#                             protein_median_and_foldchange_df.loc[
-#                                 gene, f"{prokey}_foldchange"
-#                             ]
-#                             if gene in protein_median_and_foldchange_df.index
-#                             else -1
-#                         ),
-#                     ]
-#                 )
-#         return new
-
-#     targets = {}
-#     for tissue, (tpmkey, prokey) in tissue_keywords.items():
-#         update_dict = _get_dict_with_target_array(
-#             tissue=tissue,
-#             tpmkey=tpmkey,
-#             prokey=prokey,
-#         )
-#         targets.update(update_dict)
-
-#     return targets
+    return np.log2(pd.concat(differences, axis=1) + pseudocount), np.log2(
+        pd.concat(fold_changes, axis=1) + pseudocount
+    )
 
 
 @utils.time_decorator(print_args=False)
 def _get_target_values_for_tissues(
     diff_from_average_df: pd.DataFrame,
+    foldchange_from_average_df: pd.DataFrame,
     protein_median_and_foldchange_df: pd.DataFrame,
     split: Dict[str, List[str]],
-    split_dataset: str,
+    partition: str,
     tissue_keywords: dict,
     tpm_median_and_foldchange_df: pd.DataFrame,
 ) -> Dict[str, Dict[str, np.ndarray]]:
@@ -452,15 +390,18 @@ def _get_target_values_for_tissues(
 
     targets = {}
     for tissue, (tpmkey, prokey) in tissue_keywords.items():
-        for target in split[split_dataset]:
-            gene = target.split("_", 1)[1]
-            if gene == tissue:
+        for target in split[partition]:
+            gene, gene_tissue = target.split("_", 1)
+            if gene_tissue == tissue:
                 targets[target] = np.array(
                     [
                         tpm_median_and_foldchange_df.loc[gene, tpmkey],
                         tpm_median_and_foldchange_df.loc[gene, f"{tpmkey}_foldchange"],
                         diff_from_average_df.loc[
                             gene, f"{tpmkey}_difference_from_average"
+                        ],
+                        foldchange_from_average_df.loc[
+                            gene, f"{tpmkey}_foldchange_from_average"
                         ],
                         (
                             protein_median_and_foldchange_df.loc[gene, prokey]
@@ -476,7 +417,6 @@ def _get_target_values_for_tissues(
                         ),
                     ]
                 )
-
     return targets
 
 
@@ -526,7 +466,7 @@ def _tissue_targets_for_training(
     )
 
     # load protein abundance median across all tissues and samples
-    protein_abundance_median_across_all = _protein_adbunance_median_across_all_tissues(
+    protein_abundance_median_across_all = _protein_abundance_median_across_all_tissues(
         protein_abundance_matrix=protein_abundance_matrix
     )
 
@@ -534,11 +474,13 @@ def _tissue_targets_for_training(
     # formally, this is defined as the average expression in the tissue minus
     # the average expression in all tissues, and is an absolute value. Uses the
     # first name in the keynames tuple, which are gtex names
-    diff_from_average_df = _difference_from_average_activity_per_tissue(
-        average_activity=average_activity,
-        pseudocount=pseudocount,
-        tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
-        tpm_dir=tpm_dir,
+    diff_from_average_df, foldchange_from_average_df = (
+        _difference_from_average_activity_per_tissue(
+            average_activity=average_activity,
+            pseudocount=pseudocount,
+            tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
+            tpm_dir=tpm_dir,
+        )
     )
 
     # create dataframes with target medians and fold change(median in tissue /
@@ -563,9 +505,10 @@ def _tissue_targets_for_training(
         dataset: _get_target_values_for_tissues(
             tissue_keywords=tissue_keywords,
             split=split,
-            split_dataset=dataset,
+            partition=dataset,
             tpm_median_and_foldchange_df=tpm_median_and_foldchange_df,
             diff_from_average_df=diff_from_average_df,
+            foldchange_from_average_df=foldchange_from_average_df,
             protein_median_and_foldchange_df=protein_median_and_foldchange_df,
         )
         for dataset in split

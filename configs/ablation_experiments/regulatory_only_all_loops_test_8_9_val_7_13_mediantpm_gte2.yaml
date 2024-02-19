@@ -22,7 +22,7 @@ tissues:
   - small_intestine
 
 training_targets:
-  average_activity_df: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/average_activity_all_tissues_df.pkl
+  average_activity_df: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_matrices/average_activity_all_tissues_df.pkl
   config_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs
   expression_median_across_all: gtex_tpm_median_across_all_tissues.pkl
   expression_median_matrix: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
@@ -32,7 +32,7 @@ training_targets:
   protein_abundance_matrix: protein_relative_abundance_all_gtex.csv
   protein_abundance_medians: protein_relative_abundance_median_gtex.csv
   targets_types: expression_median_only
-  tpm_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/baseline
+  tpm_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_matrices/tpms
   test_chrs:
     - chr8
     - chr9
