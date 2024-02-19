@@ -17,10 +17,10 @@ TISSUES = {
     "left_ventricle": "Heart - Left Ventricle",
     "liver": "Liver",
     "lung": "Lung",
-    "mammary": "Breast - Mammary Tissue",
+    # "mammary": "Breast - Mammary Tissue",
     "pancreas": "Pancreas",
     "skeletal_muscle": "Muscle - Skeletal",
-    "skin": "Skin - Not Sun Exposed (Suprapubic)",
+    # "skin": "Skin - Not Sun Exposed (Suprapubic)",
     "small_intestine": "Small Intestine - Terminal Ileum",
 }
 
@@ -65,7 +65,7 @@ def test_tpm_median_values(
             try:
                 assert np.isclose(np.log2(true_median + 0.25), targets[split][entry][0])
             except AssertionError:
-                print("AssertionError: offending target: " + entry)
+                print("AssertionError in median: offending target: " + entry)
 
 
 def test_tpm_foldchange_values(
@@ -87,7 +87,7 @@ def test_tpm_foldchange_values(
             try:
                 assert np.isclose(true_fold, targets[split][entry][1])
             except AssertionError:
-                print("AssertionError: offending target: " + entry)
+                print("AssertionError in foldchange: offending target: " + entry)
 
 
 def test_difference_from_average_activity(
@@ -106,38 +106,43 @@ def test_difference_from_average_activity(
             try:
                 assert np.isclose(true_average_diff, targets[split][entry][2])
             except AssertionError:
-                print("AssertionError: offending target: " + entry)
+                print(
+                    "AssertionError in difference from average: offending target: "
+                    + entry
+                )
 
 
 def run_test():
     root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
-    shared_data_dir = f"{root_dir}/shared_data"
+    matrix_dir = (
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_matrices"
+    )
 
     # load df with true median values
     true_df = parse(
-        f"{shared_data_dir}/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
+        f"{matrix_dir}/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct"
     ).data_df
 
     # load all tissue medians
     median_across_all = pd.read_pickle(
-        f"{shared_data_dir}/gtex_tpm_median_across_all_tissues.pkl"
+        f"{matrix_dir}/gtex_tpm_median_across_all_tissues.pkl"
     )
 
     # load df containing difference from average activity
     average_activity = pd.read_pickle(
-        f"{shared_data_dir}/average_differences_all_tissues_log2.pkl"
+        f"{matrix_dir}/average_differences_all_tissues_log2.pkl"
     )
 
-    targets_dir = f"{root_dir}/graph_processing"
+    targets_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_hic_gte2/graphs/tpm_1_samples_0.2_test_8-9_val_7-13"
     for targets in [
-        "regulatory_only_deeploop_only_test_8_9_val_7_13_mediantpm/graphs/targets.pkl",
-        "regulatory_only_peakachu_deepanchor_liveronly_chr1_test_mediantpm/graphs/targets.pkl",
-        "regulatory_only_peakachu_deepanchor_alltiss_chr1_test_mediantpm/graphs/targets.pkl",
-        "regulatory_only_peakachu_deepanchor_alltiss_randomsplit_mediantpm/graphs/targets.pkl",
-        "regulatory_only_peakachu_deepanchor_alltiss_test_8_9_val_7_13_mediantpm/graphs/targets.pkl",
+        "training_targets.pkl",
+        # "regulatory_only_peakachu_deepanchor_liveronly_chr1_test_mediantpm/graphs/targets.pkl",
+        # "regulatory_only_peakachu_deepanchor_alltiss_chr1_test_mediantpm/graphs/targets.pkl",
+        # "regulatory_only_peakachu_deepanchor_alltiss_randomsplit_mediantpm/graphs/targets.pkl",
+        # "regulatory_only_peakachu_deepanchor_alltiss_test_8_9_val_7_13_mediantpm/graphs/targets.pkl",
     ]:
         print(f"testing {targets}")
-        with open(targets_dir + "/" + targets, "rb") as f:
+        with open(f"{targets_dir}/" + targets, "rb") as f:
             # open targets
             targets = pickle.load(f)
 

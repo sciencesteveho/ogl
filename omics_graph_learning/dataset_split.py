@@ -535,18 +535,15 @@ def _scale_targets(
     # Fit scalers for each type of target data
     for i in range(num_target_types):
         data = np.stack(
-            [
-                scaled_targets["train"][target][:, i]
-                for target in scaled_targets["train"]
-            ]
+            [scaled_targets["train"][target][i] for target in scaled_targets["train"]]
         )
-        target_scalers[i].fit(data)
+        target_scalers[i].fit(data.reshape(-1, 1))
 
     # Scale the targets in all splits
     for split_targets in scaled_targets.values():
         for _, values in split_targets.items():
-            for i, scaler in enumerate(target_scalers):
-                values[:, i] = scaler.transform(values[:, i].reshape(-1, 1)).flatten()
+            for i, scaler in target_scalers.items():
+                values[i] = scaler.transform(values[i].reshape(-1, 1)).flatten()
 
     return scaled_targets
 
@@ -568,6 +565,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
     protein_abundance_medians = target_params["protein_abundance_medians"]
     test_chrs = target_params["test_chrs"]
     val_chrs = target_params["val_chrs"]
+    tpm_dir = target_params["tpm_dir"]
     return (
         experiment_name,
         working_directory,
@@ -583,6 +581,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         protein_abundance_medians,
         test_chrs,
         val_chrs,
+        tpm_dir,
     )
 
 
@@ -618,7 +617,7 @@ def _save_splits(
     # utils._save_pickle(barebones_split, split_path / "training_split.pkl")
 
 
-def _save_targets_and_scaled(
+def _save_targets(
     targets: Dict[str, Dict[str, np.ndarray]],
     scaled_targets: Dict[str, Dict[str, np.ndarray]],
     split_path: str,
