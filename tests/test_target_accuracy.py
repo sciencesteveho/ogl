@@ -113,7 +113,6 @@ def test_difference_from_average_activity(
 
 
 def run_test():
-    root_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess"
     matrix_dir = (
         "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/gtex_matrices"
     )
