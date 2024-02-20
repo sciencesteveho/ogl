@@ -9,6 +9,7 @@
 indexes"""
 
 import argparse
+import pathlib
 import pickle
 from typing import Dict, List, Tuple, Union
 
@@ -38,7 +39,7 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
 
 
 def concatenate_graphs(
-    pre_prefix: str,
+    pre_prefix: pathlib.PosixPath,
     tissues: List[str],
 ) -> None:
     """Concatenate multiple graphs into a single graph. The first tissue in the
@@ -90,6 +91,9 @@ def concatenate_graphs(
             protocol=4,
         )
 
+    with open(f"{pre_prefix}_idxs.pkl", "wb") as output:
+        pickle.dump(concat_idxs, output, protocol=4)
+
 
 def main() -> None:
     """Pipeline to concatenate tissue graphs"""
@@ -111,9 +115,9 @@ def main() -> None:
     # set up variables
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
-    root_dir = f"{working_directory}/{experiment_name}"
-    graph_dir = f"{root_dir}/graphs"
-    pre_prefix = f"{graph_dir}/{experiment_name}_{args.graph_type}_graph"
+    working_dir = pathlib.Path(working_directory)
+    graph_dir = working_dir / experiment_name / "graphs"
+    pre_prefix = graph_dir / f"{experiment_name}_{args.graph_type}_graph"
 
     # concat all graphs! and save to file
     concatenate_graphs(pre_prefix=pre_prefix, tissues=params["tissues"])

@@ -457,6 +457,7 @@ def _tissue_targets_for_training(
         A dictionary with the ["train", "test", "validation"] keys and target
         arrays for each gene/tissue combination.
     """
+    tissue_names = [tissue_names[0] for tissue_names in tissue_keywords.values()]
 
     # load tpm median matrix
     tpm_median_df = parse(expression_median_matrix).data_df
@@ -464,7 +465,7 @@ def _tissue_targets_for_training(
     # load protein abundance median matrix
     protein_abundance_tissue_matrix = _raw_protein_abundance_matrix(
         protein_abundance_medians=protein_abundance_medians,
-        tissue_names=[tissue_names[0] for tissue_names in tissue_keywords.values()],
+        tissue_names=tissue_names,
         graph="protein",
     )
 
@@ -481,7 +482,7 @@ def _tissue_targets_for_training(
         _difference_from_average_activity_per_tissue(
             average_activity=average_activity,
             pseudocount=pseudocount,
-            tissues=[tissue_names[0] for tissue_names in tissue_keywords.values()],
+            tissues=tissue_names,
             tpm_dir=tpm_dir,
         )
     )
@@ -588,7 +589,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
     )
 
 
-def _prepare_directories(
+def _prepare_split_directories(
     working_directory: str, experiment_name: str, split_name: str
 ) -> Tuple[pathlib.PosixPath, pathlib.PosixPath]:
     """Prep splite-specific directories for saving data."""
@@ -660,12 +661,14 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         all_matrix_gct=matrix_path / all_matrix_gct,
     )
 
-    split_name = utils._dataset_split_name(test_chrs=test_chrs, val_chrs=val_chrs)
-    split_name = (
-        f"tpm_{args.tpm_filter}_samples_{args.percent_of_samples_filter}_{split_name}"
+    split_name = utils._dataset_split_name(
+        test_chrs=test_chrs,
+        val_chrs=val_chrs,
+        tpm_filter=args.tpm_filter,
+        percent_of_samples_filter=args.percent_of_samples_filter,
     )
 
-    graph_dir, split_path = _prepare_directories(
+    _, split_path = _prepare_split_directories(
         working_directory=working_directory,
         experiment_name=experiment_name,
         split_name=split_name,

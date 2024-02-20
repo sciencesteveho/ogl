@@ -12,27 +12,27 @@ parse_arguments() {
     experiment_yaml=""
     partition=""
     model=""
+    target=""
+    tpm_filter=""
+    percent_of_samples_filter=""
     layers=""
     dimensions=""
     epochs=""
-    loader=""
     learning_rate=""
     batch_size=""
-    idx=""
     graph_type=""
     zero_nodes=""
     randomize_node_feats=""
     early_stop=""
-    expression_only=""
     randomize_edges=""
     total_random_edges=""
 
     # Use getopt with the additional --options and --longoptions flags
-    options=$(getopt --options "e:p:m:l:d:o:r:b:i:g:z:n:s:h:p" --longoptions "experiment_yaml:,partition:,model:,layers:,dimensions:,epochs:,loader:,learning_rate:,batch_size:,idx:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,expression_only:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
+    options=$(getopt --options "e:p:m:t:x:y:l:d:q:r:b:g:z:n:s:r:p" --longoptions "experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,layers:,dimensions:,epochs:,learning_rate:,batch_size:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
-        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--epochs] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only] [--randomize_edges] [--total_random_edges]"
+        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--layers] [--dimensions] [--epochs] [--learning_rate] [--batch_size] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
         exit 1
     fi
 
@@ -52,6 +52,18 @@ parse_arguments() {
                 model="$2"
                 shift 2
                 ;;
+            -t|--target)
+                target="$2"
+                shift 2
+                ;;
+            -x|--tpm_filter)
+                tpm_filter="$2"
+                shift 2
+                ;;
+            -y|--percent_of_samples_filter)
+                percent_of_samples_filter="$2"
+                shift 2
+                ;;
             -l|--layers)
                 layers="$2"
                 shift 2
@@ -64,20 +76,12 @@ parse_arguments() {
                 epochs="$2"
                 shift 2
                 ;;
-            -o|--loader)
-                loader="$2"
-                shift 2
-                ;;
             -r|--learning_rate)
                 learning_rate="$2"
                 shift 2
                 ;;
             -b|--batch_size)
                 batch_size="$2"
-                shift 2
-                ;;
-            -i|--idx)
-                idx="$2"
                 shift 2
                 ;;
             -g|--graph_type)
@@ -96,20 +100,16 @@ parse_arguments() {
                 early_stop="$2"
                 shift 2
                 ;;
-            -p|--expression_only)
-                expression_only="$2"
-                shift 2
-                ;;
             -r|--randomize_edges)
                 randomize_edges="$2"
                 shift 2
                 ;;
-            -t|--total_random_edges)
+            -p|--total_random_edges)
                 total_random_edges="$2"
                 shift 2
                 ;;
             -h|--help)
-                echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--layers] [--dimensions] [--epochs] [--loader] [--learning_rate] [--batch_size] [--idx] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--expression_only] [--randomize_edges] [--total_random_edges]"
+                echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--layers] [--dimensions] [--epochs] [--learning_rate] [--batch_size] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges]"
                 exit 0
                 ;;
             --)
@@ -127,10 +127,14 @@ parse_arguments "$@"
 module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/gnn
 
-# Check if final graph is already made and set up variables
+# Set up variables and find out if final graph is already made
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
+test_chrs=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['test_chrs'])" | tr -d "[],'"))
+val_chrs=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['val_chrs'])" | tr -d "[],'"))
+
+
 final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_full_graph_scaled.pkl
 
 # start running pipeline!
@@ -205,49 +209,47 @@ if ! [ -f ${final_graph} ]; then
         full \
         ${experiment_yaml})
 
+    # train GNN after scaler job is finished
+    sbatch \
+        --dependency=afterok:${scale_id} \
+        train_gnn.sh \
+        ${experiment_yaml} \
+        ${model} \
+        ${target} \
+        ${tpm_filter} \
+        ${percent_of_samples_filter} \
+        ${layers} \
+        ${dimensions} \
+        ${epochs} \
+        ${learning_rate} \
+        ${batch_size} \
+        ${graph_type} \
+        ${zero_nodes} \
+        ${randomize_node_feats} \
+        ${early_stop} \
+        ${randomize_edges} \
+        ${total_random_edges}
+
+else
+    echo "Final graph found. Going straight to GNN training."
+    # Train graph neural network
+
+    sbatch \
+        train_gnn.sh \
+        ${experiment_yaml} \
+        ${model} \
+        ${target} \
+        ${tpm_filter} \
+        ${percent_of_samples_filter} \
+        ${layers} \
+        ${dimensions} \
+        ${epochs} \
+        ${learning_rate} \
+        ${batch_size} \
+        ${graph_type} \
+        ${zero_nodes} \
+        ${randomize_node_feats} \
+        ${early_stop} \
+        ${randomize_edges} \
+        ${total_random_edges}
 fi
-
-#     # train GNN after scaler job is finished
-#     sbatch \
-#         --dependency=afterok:${scale_id} \
-#         train_gnn.sh \
-#         ${experiment_yaml} \
-#         ${model} \
-#         ${layers} \
-#         ${dimensions} \
-#         ${epochs} \
-#         ${loader} \
-#         ${learning_rate} \
-#         ${batch_size} \
-#         ${idx} \
-#         ${graph_type} \
-#         ${zero_nodes} \
-#         ${randomize_node_feats} \
-#         ${early_stop} \
-#         ${expression_only} \
-#         ${randomize_edges} \
-#         ${total_random_edges}
-
-# else
-#     echo "Final graph found. Going straight to GNN training."
-#     # Train graph neural network
-
-#     sbatch \
-#         train_gnn.sh \
-#         ${experiment_yaml} \
-#         ${model} \
-#         ${layers} \
-#         ${dimensions} \
-#         ${epochs} \
-#         ${loader} \
-#         ${learning_rate} \
-#         ${batch_size} \
-#         ${idx} \
-#         ${graph_type} \
-#         ${zero_nodes} \
-#         ${randomize_node_feats} \
-#         ${early_stop} \
-#         ${expression_only} \
-#         ${randomize_edges} \
-#         ${total_random_edges}
-# fi

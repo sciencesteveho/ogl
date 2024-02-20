@@ -1,8 +1,10 @@
+# sourcery skip: do-not-use-staticmethod
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """Utilities for omics graph learning modules."""
 
+import argparse
 from collections import defaultdict
 from contextlib import suppress
 import csv
@@ -10,6 +12,7 @@ from datetime import timedelta
 import functools
 import inspect
 import os
+import pathlib
 import pickle
 import random
 import subprocess
@@ -239,6 +242,99 @@ TISSUES = [
 ]
 
 
+class ScalerUtils:
+    """Utility class for scaling node features, as the modules for scaling share
+    most of the smae args"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _parse_args():
+        """Get arguments"""
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "-f",
+            "--feat",
+            type=int,
+            default=0,
+            required=True,
+        )
+        parser.add_argument(
+            "-g",
+            "--graph_type",
+            type=str,
+            required=True,
+        )
+        parser.add_argument(
+            "--experiment_config",
+            type=str,
+            help="Path to .yaml file with experimental conditions",
+        )
+        parser.add_argument("--tpm_filter", type=float, help="TPM filter for genes")
+        parser.add_argument(
+            "--percent_of_samples_filter",
+            type=float,
+            help="Percent of samples filter for genes (e.g. 0.20)",
+        )
+        return parser.parse_args()
+
+    @staticmethod
+    def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
+        """Unpack params from the .yaml"""
+        experiment_name = params["experiment_name"]
+        working_directory = params["working_directory"]
+        target_params = params["training_targets"]
+        test_chrs = target_params["test_chrs"]
+        val_chrs = target_params["val_chrs"]
+        return (
+            experiment_name,
+            pathlib.Path(working_directory),
+            test_chrs,
+            val_chrs,
+        )
+
+    @staticmethod
+    def _handle_scaler_prep():
+        """Handle scaler prep"""
+        args = ScalerUtils._parse_args()
+        params = parse_yaml(args.experiment_config)
+        experiment_name, working_directory, test_chrs, val_chrs = (
+            ScalerUtils._unpack_params(params)
+        )
+
+        # get split name
+        split_name = _dataset_split_name(
+            test_chrs=test_chrs,
+            val_chrs=val_chrs,
+            tpm_filter=args.tpm_filter,
+            percent_of_samples_filter=args.percent_of_samples_filter,
+        )
+
+        working_path = pathlib.Path(working_directory)
+        graph_dir = working_path / experiment_name / "graphs"
+        prefix = f"{experiment_name}_{args.graph_type}_graph"
+        return (
+            args.feat,
+            graph_dir / split_name,
+            graph_dir / split_name / "scalers",
+            prefix,
+            graph_dir / prefix,
+        )
+
+    @staticmethod
+    def _load_graph_data(
+        pre_prefix: pathlib.Path,
+    ) -> Tuple[Dict[str, int], Dict[str, Any]]:
+        """Load graph data from files."""
+        graph_file = pre_prefix.with_suffix(".pkl")
+        idxs_file = pre_prefix.with_suffix("_idxs.pkl")
+        with open(idxs_file, "rb") as idxs_file, open(graph_file, "rb") as graph_file:
+            idxs = pickle.load(idxs_file)
+            graph = pickle.load(graph_file)
+        return idxs, graph
+
+
 def _load_pickle(file_path: str) -> Any:
     """Wrapper to load a pkl"""
     with open(file_path, "rb") as file:
@@ -292,6 +388,38 @@ def dir_check_make(dir: str) -> None:
     """Utility to make directories only if they do not already exist"""
     with suppress(FileExistsError):
         os.makedirs(dir)
+
+
+def _dataset_split_name(
+    test_chrs: List[int] = None,
+    val_chrs: List[int] = None,
+    tpm_filter: Union[float, int] = 0.1,
+    percent_of_samples_filter: float = 0.2,
+) -> None:
+    """Save the partitioning split to a file based on provided chromosome
+    information.
+
+    Args:
+        save_dir (str): The directory where the split file will be saved.
+        test_chrs (List[int]): A list of test chromosomes.
+        val_chrs (List[int]): A list of validation chromosomes.
+        split (Dict[str, List[str]]): A dictionary containing the split data.
+
+    Returns:
+        None
+    """
+    chrs = []
+
+    if test_chrs and val_chrs:
+        chrs.append(f"test_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}")
+    elif test_chrs:
+        chrs.append(f"test_{('-').join(test_chrs)}")
+    elif val_chrs:
+        chrs.append(f"val_{('-').join(val_chrs)}")
+    else:
+        chrs.append("random_assign")
+
+    return f"tpm_{tpm_filter}_samples_{percent_of_samples_filter}_{''.join(chrs).replace('chr', '')}"
 
 
 def check_and_symlink(
@@ -445,36 +573,6 @@ def genes_from_gff(gff: str) -> List[str]:
             for line in csv.reader(file, delimiter="\t")
             if line[0] not in ["chrX", "chrY", "chrM"]
         }
-
-
-def _dataset_split_name(
-    test_chrs: List[int] = None,
-    val_chrs: List[int] = None,
-) -> None:
-    """Save the partitioning split to a file based on provided chromosome
-    information.
-
-    Args:
-        save_dir (str): The directory where the split file will be saved.
-        test_chrs (List[int]): A list of test chromosomes.
-        val_chrs (List[int]): A list of validation chromosomes.
-        split (Dict[str, List[str]]): A dictionary containing the split data.
-
-    Returns:
-        None
-    """
-    chrs = []
-
-    if test_chrs and val_chrs:
-        chrs.append(f"test_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}")
-    elif test_chrs:
-        chrs.append(f"test_{('-').join(test_chrs)}")
-    elif val_chrs:
-        chrs.append(f"val_{('-').join(val_chrs)}")
-    else:
-        chrs.append("random_assign")
-
-    return "".join(chrs).replace("chr", "")
 
 
 @time_decorator(print_args=True)

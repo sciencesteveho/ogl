@@ -30,34 +30,43 @@ import utils
 
 
 def create_model(
-    model_type,
-    in_size,
-    embedding_size,
-    out_channels,
-    num_layers,
-    heads=None,
-):
+    model_type: str,
+    in_size: int,
+    embedding_size: int,
+    out_channels: int,
+    gnn_layers: int,
+    linear_layers: int,
+    dropout_rate: float = None,
+    heads: int = None,
+) -> torch.nn.Module:
+    """Prepare specific GNN models for training"""
     if model_type == "GraphSAGE":
         return GraphSAGE(
             in_size=in_size,
             embedding_size=embedding_size,
             out_channels=out_channels,
-            num_layers=num_layers,
+            gnn_layers=gnn_layers,
+            linear_layers=linear_layers,
+            dropout_rate=dropout_rate,
         )
     elif model_type == "GCN":
         return GCN(
             in_size=in_size,
             embedding_size=embedding_size,
             out_channels=out_channels,
-            num_layers=num_layers,
+            gnn_layers=gnn_layers,
+            linear_layers=linear_layers,
+            dropout_rate=dropout_rate,
         )
     elif model_type == "GAT":
         return GATv2(
             in_size=in_size,
             embedding_size=embedding_size,
             out_channels=out_channels,
-            num_layers=num_layers,
+            gnn_layers=gnn_layers,
+            linear_layers=linear_layers,
             heads=heads,
+            dropout_rate=dropout_rate,
         )
     elif model_type == "MLP":
         return MLP(
@@ -70,13 +79,14 @@ def create_model(
             walk_length=20,
             channels=embedding_size,
             pe_dim=8,
-            num_layers=num_layers,
+            gnn_layers=gnn_layers,
         )
     else:
         raise ValueError(f"Invalid model type: {model_type}")
 
 
 def train(model, device, optimizer, train_loader, epoch, gps=False):
+    """Train GNN model on graph data"""
     model.train()
     pbar = tqdm(total=len(train_loader))
     pbar.set_description(f"Training epoch: {epoch:04d}")
@@ -107,6 +117,7 @@ def train(model, device, optimizer, train_loader, epoch, gps=False):
 
 @torch.no_grad()
 def test(model, device, data_loader, epoch, mask, gps=False):
+    """Test GNN model on test set"""
     # spearman = SpearmanCorrCoef(num_outputs=2)
     model.eval()
     pbar = tqdm(total=len(data_loader))
@@ -163,6 +174,7 @@ def test(model, device, data_loader, epoch, mask, gps=False):
 
 @torch.no_grad()
 def inference(model, device, data_loader, epoch, gps=False):
+    """Use model for inference or to evaluate on validation set"""
     model.eval()
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
@@ -189,6 +201,7 @@ def inference(model, device, data_loader, epoch, gps=False):
 
 
 def parse_arguments() -> argparse.Namespace:
+    """Parse args for training GNN"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment_config",
@@ -222,12 +235,6 @@ def parse_arguments() -> argparse.Namespace:
         help="random seed to use (default: 42)",
     )
     parser.add_argument(
-        "--loader",
-        type=str,
-        default="neighbor",
-        help="'neighbor' or 'random' node loader (default: 'random')",
-    )
-    parser.add_argument(
         "--batch_size",
         type=int,
         default=1024,
@@ -236,11 +243,6 @@ def parse_arguments() -> argparse.Namespace:
         "--learning_rate",
         type=float,
         default=1e-4,
-    )
-    parser.add_argument(
-        "--idx",
-        type=str,
-        default="true",
     )
     parser.add_argument(
         "--device",
@@ -297,7 +299,7 @@ def main() -> None:
     print(f"Working directory: {working_directory}")
     root_dir = f"{working_directory}/{params['experiment_name']}"
     # savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
-    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout"
+    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.graph_type}_idx_dropout"
     print(f"savestr: {savestr}")
 
     # adjust log name
@@ -344,40 +346,25 @@ def main() -> None:
     # temporary - to check number of edges for randomization tests
     print(f"Number of edges: {data.num_edges}")
 
-    # # data loaders
-    # if args.loader == "random":
-    #     train_loader = RandomNodeLoader(
-    #         data,
-    #         num_parts=250,
-    #         shuffle=True,
-    #         num_workers=5,
-    #     )
-    #     test_loader = RandomNodeLoader(
-    #         data,
-    #         num_parts=250,
-    #         num_workers=5,
-    #     )
-
-    if args.loader == "neighbor":
-        train_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=args.batch_size,
-            input_nodes=data.train_mask,
-            shuffle=True,
-        )
-        test_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=args.batch_size,
-            input_nodes=data.test_mask,
-        )
-        val_loader = NeighborLoader(
-            data,
-            num_neighbors=[5, 5, 5, 5, 5, 3],
-            batch_size=args.batch_size,
-            input_nodes=data.val_mask,
-        )
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=args.batch_size,
+        input_nodes=data.train_mask,
+        shuffle=True,
+    )
+    test_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=args.batch_size,
+        input_nodes=data.test_mask,
+    )
+    val_loader = NeighborLoader(
+        data,
+        num_neighbors=[5, 5, 5, 5, 5, 3],
+        batch_size=args.batch_size,
+        input_nodes=data.val_mask,
+    )
 
     # CHOOSE YOUR WEAPON
     model = create_model(
@@ -385,7 +372,8 @@ def main() -> None:
         in_size=data.x.shape[1],
         embedding_size=args.dimensions,
         out_channels=1,
-        num_layers=args.layers,
+        gnn_layers=args.gnn_layers,
+        linear_layers=args.linear_layers,
         heads=2 if args.model == "GAT" else None,
     ).to(device)
 

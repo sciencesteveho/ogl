@@ -12,119 +12,228 @@ numbers, saved as a pytorch geometric Data object, and a mask is applied to only
 consider the nodes that pass the TPM filter.
 """
 
-import csv
+import pathlib
 import pickle
-import random
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import torch
 from torch_geometric.data import Data
+
+NODE_PERTURBATION_MAP = {
+    "atac": 4,
+    "cnv": 5,
+    "cpg": 6,
+    "ctcf": 7,
+    "dnase": 8,
+    "h3k27ac": 9,
+    "h3k27me3": 10,
+    "h3k36me3": 11,
+    "h3k4me1": 12,
+    "h3k4me2": 13,
+    "h3k4me3": 14,
+    "h3k79me2": 15,
+    "h3k9ac": 16,
+    "h3k9me3": 17,
+}
 
 
 def _get_mask_idxs(
     index: str,
     split: Dict[str, List[str]],
     percentile_cutoff: int = None,
+    cutoff_file: str = None,
 ) -> np.ndarray:
-    """_summary_
+    """Get the mask indexes for train, test, and validation sets.
 
     Args:
-        index (str): _description_
-        split (_type_): _description_
+        index (str): The path to the index file.
+        split (Dict[str, List[str]]): The split dictionary containing train,
+        test, and validation gene lists.
+        percentile_cutoff (int, optional): The percentile cutoff for test genes.
+        Default is None.
+        cutoff_file (str, optional): The path to the cutoff file. Default is
+        None.
 
     Returns:
-        np.ndarray: _description_
+        np.ndarray: The mask indexes for train, test, validation, and all genes.
     """
-    # load graph indexes
-    with open(index, "rb") as f:
-        graph_index = pickle.load(f)
 
-    def get_tensor_for_genes(gene_list):
+    def get_tensor_for_genes(gene_list: List[str]) -> torch.Tensor:
         return torch.tensor(
             [graph_index[gene] for gene in gene_list if gene in graph_index.keys()],
             dtype=torch.long,
         )
 
+    # load graph indexes
+    with open(index, "rb") as f:
+        graph_index = pickle.load(f)
+
     all_genes = split["train"] + split["test"] + split["validation"]
+    train_tensor = get_tensor_for_genes(split["train"])
+    validation_tensor = get_tensor_for_genes(split["validation"])
+    all_genes_tensor = get_tensor_for_genes(all_genes)
 
     if percentile_cutoff:
         with open(
-            f"/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/test_split_cutoff_{percentile_cutoff}.pkl",
+            f"{cutoff_file}_{percentile_cutoff}.pkl",
             "rb",
         ) as f:
             test_genes = pickle.load(f)
         test_genes = list(test_genes.keys())
-
-        return (
-            graph_index,
-            get_tensor_for_genes(split["train"]),
-            torch.tensor(
-                [gene for gene in test_genes if gene in graph_index.values()],
-                dtype=torch.long,
-            ),
-            get_tensor_for_genes(split["validation"]),
-            get_tensor_for_genes(all_genes),
+        test_tensor = torch.tensor(
+            [graph_index.get(gene, -1) for gene in test_genes],
+            dtype=torch.long,
         )
     else:
-        return (
-            graph_index,
-            get_tensor_for_genes(split["train"]),
-            get_tensor_for_genes(split["test"]),
-            get_tensor_for_genes(split["validation"]),
-            get_tensor_for_genes(all_genes),
-        )
+        test_tensor = get_tensor_for_genes(split["test"])
+
+    return (
+        graph_index,
+        train_tensor,
+        test_tensor,
+        validation_tensor,
+        all_genes_tensor,
+    )
 
 
 def _get_target_values_for_mask(
     targets: str,
-) -> np.ndarray:
-    """_summary_
-
-    Args:
-        targets (str): _description_
-
-    Returns:
-        np.ndarray: _description_
-    """
+) -> Dict[str, np.ndarray]:
+    """Returns a collapsed dictionary of the targets for each split"""
     # load graph indexes
     with open(targets, "rb") as f:
         graph_targets = pickle.load(f)
 
-    all_dict = {}
-    for split in ["train", "test", "validation"]:
-        all_dict |= graph_targets[split]
-
-    return all_dict
+    return {
+        k: v
+        for split in ["train", "test", "validation"]
+        for k, v in graph_targets[split].items()
+    }
 
 
 def _get_masked_tensor(
     num_nodes: int,
     fill_value: int = -1,
 ) -> torch.Tensor:
-    """_summary_
+    """Returns a tensor of size (num_nodes) with fill_value (default -1)"""
+    return torch.full((num_nodes,), fill_value, dtype=torch.float)
+
+
+def create_edge_index(
+    graph_data: dict,
+    node_remove_edges: Optional[List[str]],
+    randomize_edges: bool,
+    total_random_edges: int,
+) -> torch.Tensor:
+    """Create the edge index tesnors for the graph, perturbing if necessary
+    according to args.
 
     Args:
-        num_nodes (int): _description_
+        graph_data (dict): The graph data dictionary. node_remove_edges
+        (Optional[List[str]]): A list of node names to remove edges from.
+        Default is None.
+        randomize_edges (bool): Flag indicating whether to randomize the edges.
+        Default is False.
+        total_random_edges (int): The total number of random edges to generate.
+        Default is 0.
+
+    Returns:
+        torch.Tensor: the edge index tensors
     """
-    return torch.full((num_nodes,), fill_value, dtype=torch.float)
+    if node_remove_edges:
+        return torch.tensor(
+            [
+                np.delete(graph_data["edge_index"][0], node_remove_edges),
+                np.delete(graph_data["edge_index"][1], node_remove_edges),
+            ],
+            dtype=torch.long,
+        )
+    elif randomize_edges:
+        total_range = max(
+            np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1])
+        )
+        total_edges = total_random_edges or len(graph_data["edge_index"][0])
+        return torch.tensor(
+            np.random.randint(0, total_range, (2, total_edges)),
+            dtype=torch.long,
+        )
+    else:
+        return torch.tensor(graph_data["edge_index"], dtype=torch.long)
+
+
+def create_node_tensors(
+    graph_data: dict,
+    node_perturbation: Optional[str],
+    zero_node_feats: bool,
+    randomize_feats: bool,
+) -> torch.Tensor:
+    """Create the node tensors for the graph, perturbing if necessary according
+    to input args
+
+    Args:
+        graph_data (dict): The graph data dictionary.
+        node_perturbation (Optional[str]): The type of node perturbation to
+        apply. Default is None.
+        zero_node_feats (bool): Flag indicating whether to zero out the node
+        features. Default is False.
+        randomize_feats (bool): Flag indicating whether to randomize the node
+        features. Default is False.
+
+    Returns torch.Tensor
+    """
+    if node_perturbation in NODE_PERTURBATION_MAP:
+        graph_data["node_feat"][:, NODE_PERTURBATION_MAP[node_perturbation]] = 0
+    elif zero_node_feats:
+        return torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
+    elif randomize_feats:
+        return torch.rand(graph_data["node_feat"].shape, dtype=torch.float)
+    return torch.tensor(graph_data["node_feat"], dtype=torch.float)
+
+
+def create_mask(num_nodes: int, indices: List[int]) -> torch.Tensor:
+    """Create a boolean mask tensor, so that only gene nodes are regressed
+
+    Args:
+        num_nodes (int): The number of nodes.
+        indices (List[int]): The indices to set to True in the mask.
+
+    Returns:
+        torch.Tensor: The boolean mask tensor.
+    """
+    mask = torch.zeros(num_nodes, dtype=torch.bool)
+    mask[indices] = True
+    return mask
+
+
+def _get_target_indices(regression_target):
+    target_indices = {
+        "expression_median_only": [0],
+        "expression_median_and_foldchange": [0, 1],
+        "difference_from_average": [2],
+        "foldchange_from_average": [3],
+        "protein_targets": [0, 1, 2, 3, 4, 5],
+    }
+    if regression_target not in target_indices:
+        raise ValueError("Invalid regression_target provided.")
+    return target_indices[regression_target]
 
 
 def graph_to_pytorch(
     experiment_name: str,
     graph_type: str,
     root_dir: str,
-    targets_types: str,
-    randomize_feats: str = "false",
-    zero_node_feats: str = "false",
-    node_perturbation: str = None,
-    node_remove_edges: List[str] = None,
-    single_gene: str = None,
-    randomize_edges: str = "false",
+    regression_target: str,
+    randomize_feats: bool = False,
+    zero_node_feats: bool = False,
+    node_perturbation: Optional[str] = None,
+    node_remove_edges: Optional[List[str]] = None,
+    single_gene: Optional[str] = None,
+    randomize_edges: bool = False,
     total_random_edges: int = 0,
     scaled: bool = False,
-    remove_node: str = None,
-    percentile_cutoff: int = None,
+    remove_node: Optional[str] = None,
+    percentile_cutoff: Optional[int] = None,
 ):
     """_summary_
 
@@ -135,7 +244,10 @@ def graph_to_pytorch(
     Returns:
         _type_: _description_
     """
-    graph_dir = f"{root_dir}/graphs"
+
+    graph_dir = pathlib.Path(root_dir) / experiment_name / "graphs"
+    pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_graph"
+
     graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
     index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
@@ -147,50 +259,14 @@ def graph_to_pytorch(
 
     # convert np arrays to torch tensors
     # delete edges if perturbing
-    if node_remove_edges:
-        edge_index = torch.tensor(
-            np.array(
-                [
-                    np.delete(graph_data["edge_index"][0], node_remove_edges),
-                    np.delete(graph_data["edge_index"][1], node_remove_edges),
-                ]
-            ),
-            dtype=torch.long,
-        )
-    elif randomize_edges == "true":
-        total_range = max(
-            np.ptp(graph_data["edge_index"][0]), np.ptp(graph_data["edge_index"][1])
-        )
-        if total_random_edges != 0:
-            total_edges = total_random_edges
-        else:
-            total_edges = len(graph_data["edge_index"][0])
-        edge_index = torch.tensor(
-            np.array(
-                [
-                    np.random.randint(0, total_range, total_edges),
-                    np.random.randint(0, total_range, total_edges),
-                ]
-            ),
-            dtype=torch.long,
-        )
-    else:
-        edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
+    edge_index = create_edge_index(
+        graph_data, node_remove_edges, randomize_edges, total_random_edges
+    )
 
-    # add optional node perturbation
-    if node_perturbation == "h3k27ac":
-        graph_data["node_feat"][:, 9] = 0
-        x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
-    elif node_perturbation == "h3k4me3":
-        graph_data["node_feat"][:, 14] = 0
-        x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
-    if not node_perturbation:
-        if zero_node_feats == "true":
-            x = torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
-        elif randomize_feats == "true":
-            x = torch.rand(graph_data["node_feat"].shape, dtype=torch.float)
-        else:
-            x = torch.tensor(graph_data["node_feat"], dtype=torch.float)
+    # get nodes, perturb if according to args
+    node_tensors = create_node_tensors(
+        graph_data, node_perturbation, zero_node_feats, randomize_feats
+    )
 
     # get mask indexes
     if percentile_cutoff:
@@ -202,45 +278,30 @@ def graph_to_pytorch(
             index=index, split=split
         )
 
-    # get individual if querying for single gene
+    # set up pytorch )geometric Data object
+    data = Data(x=node_tensors, edge_index=edge_index)
+
+    # create masks
+    train_mask = create_mask(data.num_nodes, train)
+    test_mask = create_mask(data.num_nodes, test)
+    val_mask = create_mask(data.num_nodes, val)
+    all_mask = create_mask(data.num_nodes, all_idx)
+
     if single_gene:
         gene_idx = torch.tensor([single_gene], dtype=torch.long)
         gene_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
         gene_mask[gene_idx] = True
+        test_mask = gene_mask
 
-    # set up pytorch geometric Data object
-    data = Data(x=x, edge_index=edge_index)
-
-    # create masks
-    train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    train_mask[train] = True
-
-    test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    test_mask[test] = True
-
-    val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    val_mask[val] = True
-
-    all_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-    all_mask[all_idx] = True
-
-    # get target values. shape should be [num_nodes, 4]
+    # get target values. shape should be [num_nodes, 6]
     if scaled:
         targets = f"{graph_dir}/targets_scaled.pkl"
     else:
         targets = f"{graph_dir}/targets.pkl"
     target_values = _get_target_values_for_mask(targets=targets)
 
-    # handling of targets_types, to only put proper targets into mask
-    target_indices = {
-        "expression_median_only": [0],
-        "expression_median_and_foldchange": [0, 1],
-        "difference_from_average": [2],
-        "protein_targets": [0, 1, 2, 3],
-    }
-
-    if targets_types not in target_indices:
-        raise ValueError("Invalid targets_types provided.")
+    # handling of regression_target, to only put proper targets into mask
+    indices = _get_target_indices(regression_target)
 
     remapped = {
         graph_index[target]: target_values[target]
@@ -248,22 +309,19 @@ def graph_to_pytorch(
         if target in graph_index
     }
 
-    y_tensors = [
-        _get_masked_tensor(data.num_nodes)
-        for _ in range(len(target_indices[targets_types]))
-    ]
+    y_tensors = [_get_masked_tensor(data.num_nodes) for _ in indices]
 
     for idx, tensor in enumerate(y_tensors):
         for key, values in remapped.items():
-            tensor[key] = values[target_indices[targets_types][idx]]
+            tensor[key] = values[indices[idx]]
 
-    y = torch.stack(y_tensors).view(len(y_tensors), -1)
+    y_vals = torch.stack(y_tensors).view(len(y_tensors), -1)
 
     # add mask and target values to data object
     data.train_mask = train_mask
     data.test_mask = gene_mask if single_gene else test_mask
     data.val_mask = val_mask
-    data.y = y.T
+    data.y = y_vals.T
     data.all_mask = all_mask
 
     return data
