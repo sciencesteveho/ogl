@@ -7,12 +7,16 @@
 """Simple script to get split name"""
 
 import argparse
+import sys
+
+sys.path.append("../omics_graph_learning")
 
 import utils
 
 
 def main() -> None:
     """Main function"""
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment_config",
