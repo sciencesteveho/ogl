@@ -52,6 +52,7 @@ def main() -> None:
         scaler_dir,
         _,
         pre_prefix,
+        _,
     ) = ScalerUtils._handle_scaler_prep()
 
     utils.dir_check_make(scaler_dir)

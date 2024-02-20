@@ -313,13 +313,14 @@ class ScalerUtils:
 
         working_path = pathlib.Path(working_directory)
         graph_dir = working_path / experiment_name / "graphs"
-        prefix = f"{experiment_name}_{args.graph_type}_graph"
+        prefix = f"{experiment_name}_{args.graph_type}"
         return (
             args.feat,
             graph_dir / split_name,
             graph_dir / split_name / "scalers",
             prefix,
             graph_dir / prefix,
+            f"{prefix}_tpm_{args.tpm_filter}_samples_{args.percent_of_samples_filter}_{args.graph_type}_graph",
         )
 
     @staticmethod

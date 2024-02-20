@@ -77,6 +77,7 @@ def main() -> None:
         scaler_dir,
         prefix,
         pre_prefix,
+        filename,
     ) = ScalerUtils._handle_scaler_prep()
 
     feat_range = 39  # set up which node feats are continuous, and thus should be scaled
@@ -98,7 +99,7 @@ def main() -> None:
     )
 
     # save scaled graph
-    save_scaled_graph(graph=g, split_path=split_path, prefix=prefix)
+    save_scaled_graph(graph=g, split_path=split_path, prefix=filename)
 
 
 if __name__ == "__main__":
