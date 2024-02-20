@@ -11,22 +11,45 @@ import argparse
 from datetime import datetime
 import logging
 import math
-from typing import Any, Dict, Optional
+import pathlib
+from typing import Any, Dict, List, Optional
 
 import torch
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch_geometric
 from torch_geometric.explain import Explainer
 from torch_geometric.explain import GNNExplainer
 from torch_geometric.loader import NeighborLoader
+from torch_geometric.utils import degree
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
 from models import GATv2
 from models import GCN
-from models import GPSTransformer
 from models import GraphSAGE
 from models import MLP
+from models import PNA
 import utils
+
+
+def _compute_pna_histogram_tensor(train_dataset: Any) -> None:
+    """Adapted from pytorch geometric examples"""
+    # Compute the maximum in-degree in the training data.
+    max_degree = -1
+    for data in train_dataset:
+        computed_degree = degree(
+            data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long
+        )
+        max_degree = max(max_degree, int(computed_degree.max()))
+
+    # Compute the in-degree histogram tensor
+    deg = torch.zeros(max_degree + 1, dtype=torch.long)
+    for data in train_dataset:
+        computed_degree = degree(
+            data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long
+        )
+        deg += torch.bincount(computed_degree, minlength=deg.numel())
 
 
 def create_model(
@@ -36,56 +59,51 @@ def create_model(
     out_channels: int,
     gnn_layers: int,
     linear_layers: int,
+    train_dataset,
     dropout_rate: float = None,
     heads: int = None,
-) -> torch.nn.Module:
-    """Prepare specific GNN models for training"""
-    if model_type == "GraphSAGE":
-        return GraphSAGE(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            out_channels=out_channels,
-            gnn_layers=gnn_layers,
-            linear_layers=linear_layers,
-            dropout_rate=dropout_rate,
-        )
-    elif model_type == "GCN":
-        return GCN(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            out_channels=out_channels,
-            gnn_layers=gnn_layers,
-            linear_layers=linear_layers,
-            dropout_rate=dropout_rate,
-        )
-    elif model_type == "GAT":
-        return GATv2(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            out_channels=out_channels,
-            gnn_layers=gnn_layers,
-            linear_layers=linear_layers,
-            heads=heads,
-            dropout_rate=dropout_rate,
-        )
-    elif model_type == "MLP":
-        return MLP(
-            in_size=in_size, embedding_size=embedding_size, out_channels=out_channels
-        )
-    elif model_type == "GPS":
-        return GPSTransformer(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            walk_length=20,
-            channels=embedding_size,
-            pe_dim=8,
-            gnn_layers=gnn_layers,
-        )
-    else:
+) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
+    """Create GNN model based on model type and parameters"""
+    model_constructors = {
+        "GraphSAGE": GraphSAGE,
+        "GCN": GCN,
+        "GAT": GATv2,
+        "PNA": PNA,
+        "Graphormer": Graphormer,
+        "DeeperGCN": DeeperGCN,
+        "UniMPTransformer": UniMPTransformer,
+        "MLP": MLP,
+    }
+    if model_type not in model_constructors:
         raise ValueError(f"Invalid model type: {model_type}")
+    kwargs = {
+        "in_size": in_size,
+        "embedding_size": embedding_size,
+        "out_channels": out_channels,
+        "gnn_layers": gnn_layers,
+        "linear_layers": linear_layers,
+        "dropout_rate": dropout_rate,
+    }
+    if model_type == "GAT":
+        kwargs["heads"] = heads
+    elif model_type == "GPS":
+        kwargs.update({"walk_length": 20, "channels": embedding_size, "pe_dim": 8})
+        del kwargs["out_channels"]
+        del kwargs["linear_layers"]
+        del kwargs["dropout_rate"]
+    elif model_type == "PNA":
+        kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
+    return model_constructors[model_type](**kwargs)
 
 
-def train(model, device, optimizer, train_loader, epoch, gps=False):
+def train(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    optimizer,
+    train_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+    gps=False,
+):
     """Train GNN model on graph data"""
     model.train()
     pbar = tqdm(total=len(train_loader))
@@ -116,9 +134,15 @@ def train(model, device, optimizer, train_loader, epoch, gps=False):
 
 
 @torch.no_grad()
-def test(model, device, data_loader, epoch, mask, gps=False):
+def test(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+    mask: torch.Tensor,
+    gps: bool = False,
+):
     """Test GNN model on test set"""
-    # spearman = SpearmanCorrCoef(num_outputs=2)
     model.eval()
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
@@ -136,44 +160,21 @@ def test(model, device, data_loader, epoch, mask, gps=False):
         elif mask == "test":
             idx_mask = data.test_mask
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
-        # outs.extend(out[idx_mask])
-        # labels.extend(data.y[idx_mask])
         loss = torch.stack(mse)
         pbar.update(1)
 
-    # loss = torch.stack(mse)  # this might need to be inline...
     pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
     return math.sqrt(float(loss.mean()))
 
 
-# @torch.no_grad()
-# def inference(model, device, data_loader, epoch):
-#     model.eval()
-
-#     pbar = tqdm(total=len(data_loader))
-#     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-
-#     mse, outs, labels = [], [], []
-#     for data in data_loader:
-#         data = data.to(device)
-#         out = model(data.x, data.edge_index)
-
-#         # calculate loss
-#         outs.extend(out[data.test_mask])
-#         labels.extend(data.y[data.test_mask])
-#         mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-#         loss = torch.stack(mse)
-
-#         pbar.update(1)
-
-#     pbar.close()
-#     # print(spearman(torch.stack(outs), torch.stack(labels)))
-#     return math.sqrt(float(loss.mean())), outs, labels
-
-
 @torch.no_grad()
-def inference(model, device, data_loader, epoch, gps=False):
+def inference(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+    gps: bool = False,
+):
     """Use model for inference or to evaluate on validation set"""
     model.eval()
     pbar = tqdm(total=len(data_loader))
@@ -194,8 +195,6 @@ def inference(model, device, data_loader, epoch, gps=False):
         loss = torch.stack(mse)
 
         pbar.update(1)
-
-    # loss = torch.stack(mse)
     pbar.close()
     return math.sqrt(float(loss.mean())), outs, labels
 
@@ -212,6 +211,11 @@ def parse_arguments() -> argparse.Namespace:
         "--model",
         type=str,
         default="GCN",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="expression_median_only",
     )
     parser.add_argument(
         "--layers",
@@ -245,6 +249,11 @@ def parse_arguments() -> argparse.Namespace:
         default=1e-4,
     )
     parser.add_argument(
+        "--dropout",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
         "--device",
         type=int,
         default=0,
@@ -257,28 +266,23 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--zero_nodes",
-        type=str,
-        default="false",
+        type=bool,
+        default=False,
     )
     parser.add_argument(
         "--randomize_node_feats",
-        type=str,
-        default="false",
+        type=bool,
+        default=False,
     )
     parser.add_argument(
         "--early_stop",
-        type=str,
-        default="true",
-    )
-    parser.add_argument(
-        "--expression_only",
-        type=str,
-        default="false",
+        type=bool,
+        default=True,
     )
     parser.add_argument(
         "--randomize_edges",
-        type=str,
-        default="false",
+        type=bool,
+        default=False,
     )
     parser.add_argument(
         "--total_random_edges",
@@ -288,6 +292,54 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
+    """Adds args to specify save string for model and logs"""
+    components = [base_str]
+    if args.dropout > 0.0:
+        components.append(f"dropout_{args.dropout}")
+    if args.randomize_node_feats:
+        components.append("random_node_feats")
+    if args.randomize_edges:
+        components.append("randomize_edges")
+    if args.total_random_edges > 0:
+        components.append(f"totalrandomedges_{args.total_random_edges}")
+    return "_".join(components)
+
+
+def get_loader(
+    data: torch_geometric.data.Data,
+    mask: torch.Tensor,
+    batch_size: int,
+    shuffle: bool = False,
+) -> torch_geometric.data.DataLoader:
+    """Loads data into NeighborLoader for GNN training"""
+    return NeighborLoader(
+        data,
+        num_neighbors=[5] * 5 + [3],
+        batch_size=batch_size,
+        input_nodes=getattr(data, mask),
+        shuffle=shuffle,
+    )
+
+
+def setup_device(args: argparse.Namespace) -> torch.device:
+    """Check for GPU and set device accordingly"""
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+        return torch.device(f"cuda:{args.device}")
+    return torch.device("cpu")
+
+
+def save_model(
+    model: torch.nn.Module,
+    directory: pathlib.PosixPath,
+    filename: str,
+) -> None:
+    """Save model state"""
+    model_path = directory / filename
+    torch.save(model.state_dict(), model_path)
+
+
 def main() -> None:
     """_summary_"""
     # Parse training settings
@@ -295,46 +347,30 @@ def main() -> None:
     params = utils.parse_yaml(args.experiment_config)
 
     # set up helper variables
-    working_directory = params["working_directory"]
-    print(f"Working directory: {working_directory}")
-    root_dir = f"{working_directory}/{params['experiment_name']}"
-    # savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.loader}_{args.graph_type}_idx_dropout_scaled"
-    savestr = f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.graph_type}_idx_dropout"
-    print(f"savestr: {savestr}")
+    working_directory = pathlib.Path(params["working_directory"])
+    root_dir = working_directory / {params["experiment_name"]}
+    savestr = construct_save_string(
+        f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.graph_type}_idx",
+        args,
+    )
 
-    # adjust log name
-    if args.randomize_node_feats == "true":
-        savestr = f"{savestr}_random_node_feats"
-    if args.expression_only == "true":
-        savestr = f"{savestr}_expression_only"
-    if args.randomize_edges == "true":
-        savestr = f"{savestr}_randomize_edges"
-    if args.total_random_edges > 0:
-        savestr = f"{savestr}_totalrandomedges_{args.total_random_edges}"
-
-    print(f"Working directory: {working_directory}")
-    print(f"savestr: {savestr}")
     # make directories and set up training log
-    utils.dir_check_make(f"{working_directory}/models/logs")
-    utils.dir_check_make(f"{working_directory}/models/{savestr}")
+    utils.dir_check_make(working_directory / "models/logs")
+    utils.dir_check_make(working_directory / f"models/{savestr}")
 
     logging.basicConfig(
-        filename=f"{working_directory}/models/logs/{savestr}.log",
+        filename=working_directory / f"models/logs/{savestr}.log",
         level=logging.DEBUG,
     )
 
     # check for GPU
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
-        device = torch.device(f"cuda:{str(args.device)}")
-    else:
-        device = torch.device("cpu")
+    device = setup_device(args)
 
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
         root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
+        regression_target=args.target,
         test_chrs=params["training_targets"]["test_chrs"],
         val_chrs=params["training_targets"]["val_chrs"],
         randomize_feats=args.randomize_node_feats,
@@ -346,27 +382,16 @@ def main() -> None:
     # temporary - to check number of edges for randomization tests
     print(f"Number of edges: {data.num_edges}")
 
-    train_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=args.batch_size,
-        input_nodes=data.train_mask,
-        shuffle=True,
+    # set up data loaders
+    train_loader = get_loader(
+        data=data, mask="train_mask", batch_size=args.batch_size, shuffle=True
     )
-    test_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=args.batch_size,
-        input_nodes=data.test_mask,
-    )
-    val_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=args.batch_size,
-        input_nodes=data.val_mask,
-    )
+    test_loader = get_loader(data=data, mask="test_mask", batch_size=args.batch_size)
+    val_loader = get_loader(data=data, mask="val_mask", batch_size=args.batch_size)
 
     # CHOOSE YOUR WEAPON
+    heads = 2 if args.model == "GAT" else None
+    dropout_rate = args.dropout if args.dropout > 0.0 else None
     model = create_model(
         args.model,
         in_size=data.x.shape[1],
@@ -374,107 +399,82 @@ def main() -> None:
         out_channels=1,
         gnn_layers=args.gnn_layers,
         linear_layers=args.linear_layers,
-        heads=2 if args.model == "GAT" else None,
+        heads=heads,
+        dropout_rate=dropout_rate,
+        train_dataset=args.model == "PNA",
     ).to(device)
 
     # set gradient descent optimizer
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=args.learning_rate,
-        weight_decay=1e-5,
     )
 
-    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20,
-    #                             min_lr=0.00001)
+    # set scheduler to reduce learning rate on plateau
+    scheduler = ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+    )
 
     epochs = args.epochs
     print(f"Training for {epochs} epochs")
     best_validation = stop_counter = 0
     for epoch in range(epochs + 1):
-        if args.model == "GPS":
-            loss = train(
-                model=model,
-                device=device,
-                optimizer=optimizer,
-                train_loader=train_loader,
-                epoch=epoch,
-                gps=True,
-            )
-        else:
-            loss = train(
-                model=model,
-                device=device,
-                optimizer=optimizer,
-                train_loader=train_loader,
-                epoch=epoch,
-            )
-
+        loss = train(
+            model=model,
+            device=device,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            epoch=epoch,
+            gps=args.model == "GPS",
+        )
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
-        # scheduler.step(val_acc)
-        if args.model == "GPS":
-            val_acc = test(
-                model=model,
-                device=device,
-                data_loader=val_loader,
-                epoch=epoch,
-                mask="val",
-                gps=True,
-            )
-            test_acc = test(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="test",
-                gps=True,
-            )
-        else:
-            val_acc = test(
-                model=model,
-                device=device,
-                data_loader=val_loader,
-                epoch=epoch,
-                mask="val",
-            )
-            test_acc = test(
-                model=model,
-                device=device,
-                data_loader=test_loader,
-                epoch=epoch,
-                mask="test",
-            )
-
-        if args.early_stop == "true":
-            if epoch == 0:
-                best_validation = val_acc
-            else:
-                if val_acc < best_validation:
-                    stop_counter = 0
-                    best_validation = val_acc
-                    torch.save(
-                        model.state_dict(),
-                        f"{working_directory}/models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt",
-                    )
-                if best_validation < val_acc:
-                    stop_counter += 1
-                if stop_counter == 15:
-                    print("***********Early stopping!")
-                    break
-
+        val_acc = test(
+            model=model,
+            device=device,
+            data_loader=val_loader,
+            epoch=epoch,
+            mask="val",
+            gps=args.model == "GPS",
+        )
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
 
+        test_acc = test(
+            model=model,
+            device=device,
+            data_loader=test_loader,
+            epoch=epoch,
+            mask="test",
+            gps=args.model == "GPS",
+        )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
 
-    torch.save(
-        model.state_dict(),
-        f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
+        scheduler.step(val_acc)
+        if args.early_stop:
+            if epoch == 0 or val_acc < best_validation:
+                stop_counter = 0
+                best_validation = val_acc
+                model_path = (
+                    working_directory
+                    / f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt"
+                )
+                torch.save(model.state_dict(), model_path)
+            elif best_validation < val_acc:
+                stop_counter += 1
+            if stop_counter == 15:
+                print("***********Early stopping!")
+                break
+
+    save_model(
+        model,
+        working_directory / f"models/{savestr}",
+        f"{savestr}_mse_{best_validation}.pt",
     )
 
-    # set params for plotting
+    # set params for plotting(())
     utils._set_matplotlib_publication_parameters()
 
     # calculate and plot spearmann rho, predictions vs. labels
@@ -487,21 +487,13 @@ def main() -> None:
     model.to(device)
 
     # get predictions
-    if args.model == "GPS":
-        rmse, outs, labels = inference(
-            model=model,
-            device=device,
-            data_loader=test_loader,
-            epoch=0,
-            gps=True,
-        )
-    else:
-        rmse, outs, labels = inference(
-            model=model,
-            device=device,
-            data_loader=test_loader,
-            epoch=0,
-        )
+    rmse, outs, labels = inference(
+        model=model,
+        device=device,
+        data_loader=test_loader,
+        epoch=0,
+        gps=args.model == "GPS",
+    )
 
     predictions_median = utils._tensor_out_to_array(outs, 0)
     labels_median = utils._tensor_out_to_array(labels, 0)

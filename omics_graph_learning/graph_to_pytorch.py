@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import torch
+import torch_geometric
 from torch_geometric.data import Data
 
 NODE_PERTURBATION_MAP = {
@@ -234,7 +235,7 @@ def graph_to_pytorch(
     scaled: bool = False,
     remove_node: Optional[str] = None,
     percentile_cutoff: Optional[int] = None,
-):
+) -> torch_geometric.data.Data:
     """_summary_
 
     Args:

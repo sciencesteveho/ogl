@@ -219,8 +219,6 @@ if [ -f "${final_graph}" ]; then
         "${experiment_yaml}" \
         "${model}" \
         "${target}" \
-        "${tpm_filter}" \
-        "${percent_of_samples_filter}" \
         "${layers}" \
         "${dimensions}" \
         "${epochs}" \
@@ -242,8 +240,6 @@ else
         "${experiment_yaml}" \
         "${model}" \
         "${target}" \
-        "${tpm_filter}" \
-        "${percent_of_samples_filter}" \
         "${layers}" \
         "${dimensions}" \
         "${epochs}" \
