@@ -9,7 +9,7 @@
 import argparse
 import sys
 
-sys.path.append("../omics_graph_learning")
+sys.path.append("../../omics_graph_learning")
 
 import utils
 
