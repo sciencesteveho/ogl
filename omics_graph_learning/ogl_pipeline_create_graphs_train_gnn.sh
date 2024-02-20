@@ -131,8 +131,8 @@ conda activate /ocean/projects/bio210019p/stevesho/gnn
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
-test_chrs=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['test_chrs'])" | tr -d "[],'"))
-val_chrs=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['val_chrs'])" | tr -d "[],'"))
+
+split_name=$(python splitname.py --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
 
 
 final_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_full_graph_scaled.pkl
