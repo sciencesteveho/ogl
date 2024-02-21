@@ -104,13 +104,14 @@ class GCN(torch.nn.Module):
 
         # Create graph convolution layers
         self.convs.append(GCNConv(in_size, embedding_size))
+        self.norms.append(GraphNorm(embedding_size))
         for _ in range(gnn_layers - 1):
             self.convs.append(GCNConv(embedding_size, embedding_size))
             self.norms.append(GraphNorm(embedding_size))
 
         # Create linear layers
         self.linears = _initialize_lazy_linear_layers(
-            embedding_size, out_channels, linear_layers
+            in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
@@ -313,6 +314,7 @@ class GATv2(torch.nn.Module):
         out_channels: int,
         gnn_layers: int,
         linear_layers: int,
+        activation: str,
         heads: int,
         dropout_rate: Optional[float] = 0.5,
     ):
@@ -320,6 +322,7 @@ class GATv2(torch.nn.Module):
         super().__init__()
         self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
+        self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
         self.convs.append(GATv2Conv(in_size, embedding_size, heads))
@@ -361,11 +364,11 @@ class GATv2(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
-            x = F.relu(linear_layer(x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
                 x = F.dropout(x, p=self.dropout_rate)
 
@@ -374,8 +377,8 @@ class GATv2(torch.nn.Module):
 
 # Define/Instantiate GNN models
 class UniMPTransformer(torch.nn.Module):
-    """Model utilizing the graph transformer operator from uniMP, but not the
-    masked lableling task.
+    """Model utilizing the graph transformer operator from UniMP, but not the
+    masked labelling task.
 
     Args:
         in_size: Dimensions of the node features.
@@ -394,6 +397,7 @@ class UniMPTransformer(torch.nn.Module):
         out_channels: int,
         gnn_layers: int,
         linear_layers: int,
+        activation: str,
         heads: int,
         dropout_rate: Optional[float] = 0.5,
     ):
@@ -401,15 +405,41 @@ class UniMPTransformer(torch.nn.Module):
         super().__init__()
         self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
+        self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
+
+        # create graph convoluton layers
+        self.convs.append(
+            TransformerConv(
+                in_channels=in_size,
+                out_channels=embedding_size // heads,
+                heads=heads,
+                concat=True,
+                beat=True,
+                dropout=self.dropout_rate,
+            )
+        )
+        self.norms.append(GraphNorm(embedding_size // heads))
+
+        for _ in range(gnn_layers - 1):
+            conv = TransformerConv(
+                in_channels=in_size,
+                out_channels=embedding_size // heads,
+                heads=heads,
+                concat=True,
+                beat=True,
+                dropout=self.dropout_rate,
+            )
+            self.convs.append(conv)
+            self.norms.append(GraphNorm(embedding_size // heads))
 
         for i in range(1, gnn_layers + 1):
             if i < gnn_layers:
                 out_channels = embedding_size // heads
                 concat = True
             else:
-                out_channels = out_channels
+                out_channels = embedding_size
                 concat = False
             conv = TransformerConv(
                 in_channels=in_size,
@@ -421,11 +451,11 @@ class UniMPTransformer(torch.nn.Module):
             )
             self.convs.append(conv)
             if i < gnn_layers:
-                self.norms.append(GraphNorm(embedding_size))
+                self.norms.append(GraphNorm(embedding_size // heads))
 
         # Create linear layers
         linear_sizes = (
-            [heads * embedding_size]
+            [embedding_size // heads]
             + [embedding_size] * (linear_layers - 1)
             + [out_channels]
         )
@@ -455,11 +485,11 @@ class UniMPTransformer(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
-            x = F.relu(linear_layer(x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
                 x = F.dropout(x, p=self.dropout_rate)
 

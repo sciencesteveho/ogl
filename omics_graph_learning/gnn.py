@@ -62,6 +62,7 @@ def create_model(
     out_channels: int,
     gnn_layers: int,
     linear_layers: int,
+    activation: str,
     train_dataset,
     dropout_rate: float = None,
     heads: int = None,
@@ -85,6 +86,7 @@ def create_model(
         "out_channels": out_channels,
         "gnn_layers": gnn_layers,
         "linear_layers": linear_layers,
+        "activation": activation,
         "dropout_rate": dropout_rate,
     }
     if model_type == "GAT":
