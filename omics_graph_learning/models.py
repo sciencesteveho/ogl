@@ -2,31 +2,53 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# // TO-DO //
-# - [ ] Add number of linear layers as a config param
-# - [ ] Check number of optimal lin layers from gc-merge
 
-"""GNN model architectures!"""
+"""GNN model architectures for node regression. The models include four
+different types of architectures:
 
-from typing import Any, Dict, List, Optional
+(1) Classic message passing neural networks (MPNNs):
+    Graph convolutional networks (GCN)
+    GraphSAGE
+    Principle neighborhood aggregation (PNA - MPNN w/ aggregators and scalers)
+
+(2) Attention-based models:
+    Graph attention networks V2 (GATv2)
+    UniMPTransformer (GCN with UniMP transformer operator)
+
+(3) Deeper and transformer-based models:
+    DeeperGCN
+    Graphormer
+
+(4) Basline:
+    3-layer MLP
+    
+All models are implemented using PyTorch Geometric. Graphormer is adapted from
+https://github.com/leffff/graphormer-pyg.
+"""
+
+from typing import Any, Callable, List, Optional
 
 import torch
-from torch.nn import BatchNorm1d
 from torch.nn import Linear
-from torch.nn import ReLU
-from torch.nn import Sequential
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import BatchNorm
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
-from torch_geometric.nn import GPSConv
 from torch_geometric.nn import GraphNorm
 from torch_geometric.nn import PNAConv
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
-from torch_geometric.nn.attention import PerformerAttention
-import torch_geometric.transforms as T
+
+
+def _define_activation(activation: str) -> Callable[[], Any]:
+    """Defines the activation function according to the given string"""
+    activations = {"gelu": F.gelu, "leakyrelu": F.leaky_relu, "relu": F.relu}
+    if activation in activations:
+        return activations[activation]()
+    else:
+        raise ValueError(
+            "Invalid activation function. Supported: relu, leakyrelu, gelu"
+        )
 
 
 def _initialize_lazy_linear_layers(
@@ -69,12 +91,14 @@ class GCN(torch.nn.Module):
         out_channels: int,
         gnn_layers: int,
         linear_layers: int,
+        activation: str,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
         self.gnn_layers = gnn_layers
         self.dropout_rate = dropout_rate
+        self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
 
@@ -100,11 +124,11 @@ class GCN(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
-            x = F.relu(linear_layer(x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
                 x = F.dropout(x, p=self.dropout_rate)
 
@@ -133,12 +157,14 @@ class GraphSAGE(torch.nn.Module):
         out_channels: int,
         gnn_layers: int,
         linear_layers: int,
+        activation: str,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
         self.dropout_rate = dropout_rate
         self.gnn_layers = gnn_layers
+        self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
         self.aggregator = "mean"
@@ -167,11 +193,11 @@ class GraphSAGE(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
-            x = F.relu(linear_layer(x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
                 x = F.dropout(x, p=self.dropout_rate)
 
@@ -198,6 +224,7 @@ class PNA(torch.nn.Module):
         out_channels: int,
         gnn_layers: int,
         linear_layers: int,
+        activation: str,
         deg: torch.Tensor,
         dropout_rate: Optional[float] = 0.5,
     ):
@@ -205,6 +232,7 @@ class PNA(torch.nn.Module):
         super().__init__()
         self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
+        self.activation = _define_activation(activation)
         self.deg = deg
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
@@ -254,18 +282,17 @@ class PNA(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
-            x = F.relu(linear_layer(x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
                 x = F.dropout(x, p=self.dropout_rate)
 
         return self.linear_layers[-1](x)
 
 
-# Define/Instantiate GNN models
 class GATv2(torch.nn.Module):
     """GATv2 model architecture.
 
@@ -482,14 +509,15 @@ class DeeperGCN(torch.nn.Module):
         )
 
 
-### baseline MLP
 class MLP(torch.nn.Module):
-    """MLP model architecture.
+    """Simple three layer MLP model architecture.
 
     Args:
         in_size: The input size of the MLP model.
         embedding_size: The size of the embedding dimension.
         out_channels: The number of output channels.
+        activation: String specifying the activation function between linear
+        layers.
 
     Returns:
         torch.Tensor: The output tensor.
@@ -497,15 +525,18 @@ class MLP(torch.nn.Module):
 
     def __init__(
         self,
-        in_size,
-        embedding_size,
-        out_channels,
+        in_size: int,
+        embedding_size: int,
+        out_channels: int,
+        activation: str,
     ):
         """Initialize the model"""
         super().__init__()
-        self.lin1 = nn.Linear(in_size, embedding_size)
-        self.lin2 = nn.Linear(embedding_size, embedding_size)
-        self.lin3 = nn.Linear(embedding_size, out_channels)
+        self.linears = nn.ModuleList()
+        self.linears.append(nn.Linear(in_size, embedding_size))
+        self.linears.append(nn.Linear(embedding_size, embedding_size))
+        self.linears.append(nn.Linear(embedding_size, out_channels))
+        self.activation = _define_activation(activation)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the MLP model.
@@ -517,12 +548,10 @@ class MLP(torch.nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = self.lin2(x)
-        x = F.relu(x)
-        x = self.lin3(x)
-        return x
+        for linear in self.linears[:-1]:
+            x = self.activation(linear(x))
+
+        return self.linears[-1](x)
 
 
 # class GPSTransformer(torch.nn.Module):

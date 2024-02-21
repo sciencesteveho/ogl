@@ -33,8 +33,10 @@ from models import PNA
 import utils
 
 
-def _compute_pna_histogram_tensor(train_dataset: Any) -> None:
-    """Adapted from pytorch geometric examples"""
+def _compute_pna_histogram_tensor(
+    train_dataset: torch_geometric.data.DataLoader,
+) -> torch.Tensor:
+    """Adapted from pytorch geometric's PNA example"""
     # Compute the maximum in-degree in the training data.
     max_degree = -1
     for data in train_dataset:
@@ -50,6 +52,7 @@ def _compute_pna_histogram_tensor(train_dataset: Any) -> None:
             data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long
         )
         deg += torch.bincount(computed_degree, minlength=deg.numel())
+    return deg
 
 
 def create_model(
@@ -65,13 +68,13 @@ def create_model(
 ) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
     """Create GNN model based on model type and parameters"""
     model_constructors = {
-        "GraphSAGE": GraphSAGE,
         "GCN": GCN,
-        "GAT": GATv2,
+        "GraphSAGE": GraphSAGE,
         "PNA": PNA,
-        "Graphormer": Graphormer,
-        "DeeperGCN": DeeperGCN,
+        "GAT": GATv2,
         "UniMPTransformer": UniMPTransformer,
+        "DeeperGCN": DeeperGCN,
+        "Graphormer": Graphormer,
         "MLP": MLP,
     }
     if model_type not in model_constructors:
