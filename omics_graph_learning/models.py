@@ -21,9 +21,6 @@ different types of architectures:
 
 (4) Basline:
     3-layer MLP
-    
-All models are implemented using PyTorch Geometric. Graphormer is adapted from
-https://github.com/leffff/graphormer-pyg.
 """
 
 from typing import Any, Callable, List, Optional
