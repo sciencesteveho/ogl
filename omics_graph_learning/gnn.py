@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 #
 # // TO-DO //
-# - [ ] implement tensorboard
-# - [ ] add dropout as arg
+# from torch_geometric.explain import Explainer
+# from torch_geometric.explain import GNNExplainer
 
 """Code to train GNNs on the graph data!"""
 
 import argparse
-from datetime import datetime
 import logging
 import math
 import pathlib
@@ -17,9 +16,8 @@ from typing import Any, Dict, List, Optional
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.tensorboard import SummaryWriter
 import torch_geometric
-from torch_geometric.explain import Explainer
-from torch_geometric.explain import GNNExplainer
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.utils import degree
 from tqdm import tqdm

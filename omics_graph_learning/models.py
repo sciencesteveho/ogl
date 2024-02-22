@@ -15,7 +15,7 @@ different types of architectures:
     Graph attention networks V2 (GATv2)
     UniMPTransformer (GCN with UniMP transformer operator)
 
-(3) Deeper and transformer-based models:
+(3) Large scale models (transformers, or GNN with large number of layers):
     DeeperGCN
     Graphormer
 
@@ -34,10 +34,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GENConv
 from torch_geometric.nn import GraphNorm
+from torch_geometric.nn import LayerNorm
 from torch_geometric.nn import PNAConv
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
+from torch_geometric.nn.models import DeeperGCNLayer
 
 
 def _define_activation(activation: str) -> Callable[[], Any]:
@@ -51,12 +54,47 @@ def _define_activation(activation: str) -> Callable[[], Any]:
         )
 
 
+def _initialize_lazy_gnn_layers(
+    in_size: int,
+    embedding_size: int,
+    gnn_layers: int,
+    operator: Callable,
+) -> nn.ModuleList:
+    """Create gnn layers for models that support lazy initialization.
+
+    Args:
+        in_size (int): Size of the input tensor.
+        embedding_size (int): Size of hidden dimensions.
+        gnn_layers (int): Number of convolutional layers.
+        operator (Callable): The convolutional operator to use.
+
+    Returns:
+        nn.ModuleList: Module list containing the convolutional layers.
+    """
+    convs = nn.ModuleList()
+    norms = nn.ModuleList([GraphNorm(embedding_size) for _ in range(gnn_layers)])
+
+    for i in range(gnn_layers):
+        if operator == SAGEConv:
+            convs.append(
+                operator(
+                    in_size if i == 0 else embedding_size, embedding_size, aggr="mean"
+                )
+            )
+        else:
+            convs.append(
+                operator(in_size if i == 0 else embedding_size, embedding_size)
+            )
+
+    return convs, norms
+
+
 def _initialize_lazy_linear_layers(
     in_size: int,
     out_size: int,
     linear_layers: int,
 ) -> nn.ModuleList:
-    """Create linear layers for models w/ lazy initialization.
+    """Create linear layers for models that support lazy initialization.
 
     Args:
         in_size: The input size of the linear layers.
@@ -69,6 +107,31 @@ def _initialize_lazy_linear_layers(
     layers = [nn.Linear(in_size, in_size) for _ in range(linear_layers - 1)]
     layers.append(nn.Linear(in_size, out_size))
     return nn.ModuleList(layers)
+
+
+def _get_linear_layer_sizes_attn_models(
+    heads: int, embedding_size: int, linear_layers: int, out_channels: int
+) -> List[int]:
+    """Get the sizes of the linear layers for models w/ attention heads."""
+    return (
+        [heads * embedding_size]
+        + [embedding_size] * (linear_layers - 1)
+        + [out_channels]
+    )
+
+
+def _create_linear_layers_attn_models(sizes: List[int]) -> nn.ModuleList:
+    """Create linear layers for models w/ attention heads.
+
+    Args:
+        sizes: A list of sizes for the linear layers.
+
+    Returns:
+        nn.ModuleList: The module list containing the linear layers.
+    """
+    return nn.ModuleList(
+        [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
+    )
 
 
 class GCN(torch.nn.Module):
@@ -96,18 +159,16 @@ class GCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.gnn_layers = gnn_layers
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
 
         # Create graph convolution layers
-        self.convs.append(GCNConv(in_size, embedding_size))
-        self.norms.append(GraphNorm(embedding_size))
-        for _ in range(gnn_layers - 1):
-            self.convs.append(GCNConv(embedding_size, embedding_size))
-            self.norms.append(GraphNorm(embedding_size))
+        self.convs, self.norms = _initialize_lazy_gnn_layers(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            gnn_layers=gnn_layers,
+            operator=GCNConv,
+        )
 
         # Create linear layers
         self.linears = _initialize_lazy_linear_layers(
@@ -164,19 +225,16 @@ class GraphSAGE(torch.nn.Module):
         """Initialize the model"""
         super().__init__()
         self.dropout_rate = dropout_rate
-        self.gnn_layers = gnn_layers
         self.activation = _define_activation(activation)
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
         self.aggregator = "mean"
 
         # Create graph convolution layers
-        self.convs.append(SAGEConv(in_size, embedding_size, aggr=self.aggregator))
-        for _ in range(gnn_layers - 1):
-            self.convs.append(
-                SAGEConv(embedding_size, embedding_size, aggr=self.aggregator)
-            )
-            self.norms.append(GraphNorm(embedding_size))
+        self.convs, self.norms = _initialize_lazy_gnn_layers(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            gnn_layers=gnn_layers,
+            operator=SAGEConv,
+        )
 
         # Create linear layers
         self.linears = _initialize_lazy_linear_layers(
@@ -231,7 +289,6 @@ class PNA(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.deg = deg
@@ -253,6 +310,7 @@ class PNA(torch.nn.Module):
                 divide_input=False,
             )
         )
+        self.norms.append(GraphNorm(embedding_size))
         for _ in range(gnn_layers - 1):
             self.convs.append(
                 PNAConv(
@@ -269,7 +327,7 @@ class PNA(torch.nn.Module):
 
         # Create linear layers
         self.linears = _initialize_lazy_linear_layers(
-            embedding_size, out_channels, linear_layers
+            in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
@@ -320,38 +378,25 @@ class GATv2(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
-        self.convs.append(GATv2Conv(in_size, embedding_size, heads))
 
         # create graph convolution layers
-        for _ in range(gnn_layers - 1):
-            self.convs.append(GATv2Conv(heads * embedding_size, embedding_size, heads))
+        for i in range(gnn_layers):
+            in_channels = in_size if i == 0 else heads * embedding_size
+            self.convs.append(GATv2Conv(in_channels, embedding_size, heads))
             self.norms.append(GraphNorm(heads * embedding_size))
 
         # Create linear layers
-        linear_sizes = (
-            [heads * embedding_size]
-            + [embedding_size] * (linear_layers - 1)
-            + [out_channels]
+        linear_sizes = _get_linear_layer_sizes_attn_models(
+            heads=heads,
+            embedding_size=embedding_size,
+            linear_layers=linear_layers,
+            out_channels=out_channels,
         )
-        self.linear_layers = self.create_linear_layers(linear_sizes)
-
-    def create_linear_layers(self, sizes: List[int]) -> nn.ModuleList:
-        """Create linear layers based on the given sizes.
-
-        Args:
-            sizes: A list of sizes for the linear layers.
-
-        Returns:
-            nn.ModuleList: The module list containing the linear layers.
-        """
-        return nn.ModuleList(
-            [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
-        )
+        self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
@@ -403,76 +448,34 @@ class UniMPTransformer(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.linear_layers = linear_layers
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
 
         # create graph convoluton layers
-        self.convs.append(
-            TransformerConv(
-                in_channels=in_size,
-                out_channels=embedding_size // heads,
-                heads=heads,
-                concat=True,
-                beat=True,
-                dropout=self.dropout_rate,
+        for i in range(gnn_layers):
+            in_channels = in_size if i == 0 else heads * embedding_size
+            concat = i != gnn_layers - 1
+            self.convs.append(
+                TransformerConv(
+                    in_channels=in_channels,
+                    out_channels=embedding_size,
+                    heads=heads,
+                    concat=concat,
+                    beta=True,
+                )
             )
-        )
-        self.norms.append(GraphNorm(embedding_size // heads))
-
-        for _ in range(gnn_layers - 1):
-            conv = TransformerConv(
-                in_channels=in_size,
-                out_channels=embedding_size // heads,
-                heads=heads,
-                concat=True,
-                beat=True,
-                dropout=self.dropout_rate,
-            )
-            self.convs.append(conv)
-            self.norms.append(GraphNorm(embedding_size // heads))
-
-        for i in range(1, gnn_layers + 1):
-            if i < gnn_layers:
-                out_channels = embedding_size // heads
-                concat = True
-            else:
-                out_channels = embedding_size
-                concat = False
-            conv = TransformerConv(
-                in_channels=in_size,
-                out_channels=embedding_size,
-                heads=heads,
-                concat=concat,
-                beat=True,
-                dropout=self.dropout_rate,
-            )
-            self.convs.append(conv)
-            if i < gnn_layers:
-                self.norms.append(GraphNorm(embedding_size // heads))
+            self.norms.append(GraphNorm(embedding_size * heads))
 
         # Create linear layers
-        linear_sizes = (
-            [embedding_size // heads]
-            + [embedding_size] * (linear_layers - 1)
-            + [out_channels]
+        linear_sizes = _get_linear_layer_sizes_attn_models(
+            heads=heads,
+            embedding_size=embedding_size,
+            linear_layers=linear_layers,
+            out_channels=out_channels,
         )
-        self.linear_layers = self.create_linear_layers(linear_sizes)
-
-    def create_linear_layers(self, sizes: List[int]) -> nn.ModuleList:
-        """Create linear layers based on the given sizes.
-
-        Args:
-            sizes: A list of sizes for the linear layers.
-
-        Returns:
-            nn.ModuleList: The module list containing the linear layers.
-        """
-        return nn.ModuleList(
-            [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
-        )
+        self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
@@ -497,46 +500,81 @@ class UniMPTransformer(torch.nn.Module):
 
 
 class DeeperGCN(torch.nn.Module):
-    def __init__(self):
+    """DeeperGCN model architecture.
+
+    Args:
+        in_size: The input size of the DeeperGCN model.
+        embedding_size: The size of the embedding dimension.
+        out_channels: The number of output channels.
+        gnn_layers: The number of GATv2 layers.
+        linear_layers: The number of linear layers.
+        activation: The activation function.
+        dropout_rate: The dropout rate.
+    """
+
+    def __init__(
+        self,
+        in_size: int,
+        embedding_size: int,
+        out_channels: int,
+        gnn_layers: int,
+        linear_layers: int,
+        activation: str,
+        dropout_rate: Optional[float] = 0.5,
+    ):
+        """Initialize the model"""
         super().__init__()
-        self.linear_layers = linear_layers
+        self.activation = _define_activation(activation)
         self.dropout_rate = dropout_rate
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
         self.layers = nn.ModuleList()
-        self.convs.append(
-            GENConv(
-                in_channels=in_size,
+
+        for i in range(gnn_layers):
+            in_channels = in_size if i == 0 else embedding_size
+            conv = GENConv(
+                in_channels=in_channels,
                 out_channels=embedding_size,
                 aggr="softmax",
                 t=1.0,
                 learn_t=True,
                 num_layers=2,
-                norm="batch",
+                norm="layer",
             )
-        )
-
-        for _ in range(gnn_layers - 1):
-            self.convs.append(
-                GENConv(
-                    in_channels=embedding_size,
-                    out_channels=embedding_size,
-                    aggr="softmax",
-                    t=1.0,
-                    learn_t=True,
-                    norm="batch",
-                )
-            )
-            self.norms.append(GraphNorm(embedding_size))
+            norm = LayerNorm(embedding_size)
+            act = self.activation(inplace=True)
             layer = DeeperGCNLayer(
-                conv,
-                norm,
+                conv=conv,
+                norm=norm,
+                act=act,
+                block="res+",
+                dropout=0.1,
+                ckpt_grad=i % 3,
             )
+            self.layers.append(layer)
 
         # Create linear layers
         self.linears = _initialize_lazy_linear_layers(
             embedding_size, out_channels, linear_layers
         )
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the DeeperGCN model.
+
+        Args:
+            x: The input tensor.
+            edge_index: The edge index tensor.
+
+        Returns:
+            torch.Tensor: The output tensor."""
+        for layer in self.layers:
+            x = layer(x, edge_index)
+
+        apply_dropout = isinstance(self.dropout_rate, float)
+        for linear_layer in self.linears[:-1]:
+            x = self.activation(linear_layer(x))
+            if apply_dropout:
+                x = F.dropout(x, p=self.dropout_rate)
+
+        return self.linears[-1](x)
 
 
 class MLP(torch.nn.Module):
@@ -562,10 +600,13 @@ class MLP(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.linears = nn.ModuleList()
-        self.linears.append(nn.Linear(in_size, embedding_size))
-        self.linears.append(nn.Linear(embedding_size, embedding_size))
-        self.linears.append(nn.Linear(embedding_size, out_channels))
+        self.linears = nn.ModuleList(
+            [
+                nn.Linear(in_size, embedding_size),
+                nn.Linear(embedding_size, embedding_size),
+                nn.Linear(embedding_size, out_channels),
+            ]
+        )
         self.activation = _define_activation(activation)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
