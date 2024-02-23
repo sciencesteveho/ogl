@@ -17,7 +17,7 @@ different types of architectures:
 
 (3) Large scale models (transformers, or GNN with large number of layers):
     DeeperGCN
-    Graphormer
+    Transformer based? To be implemented
 
 (4) Basline:
     3-layer MLP
@@ -152,10 +152,12 @@ class GCN(torch.nn.Module):
         gnn_layers: int,
         linear_layers: int,
         activation: str,
+        residual: bool = False,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
+        self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
 
@@ -183,15 +185,18 @@ class GCN(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = self.activation(batch_norm(conv(x, edge_index)))
+            if self.residual:
+                x = self.activation(batch_norm(conv(x, edge_index))) + x
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
-            x = self.activation(linear_layer(x))
+            batch_x = self.activation(linear_layer(batch_x))
             if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
+                batch_x = F.dropout(batch_x, p=self.dropout_rate)
 
-        return self.linears[-1](x)
+        return self.linears[-1](batch_x)
 
 
 class GraphSAGE(torch.nn.Module):
@@ -217,10 +222,12 @@ class GraphSAGE(torch.nn.Module):
         gnn_layers: int,
         linear_layers: int,
         activation: str,
+        residual: bool = False,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
+        self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.aggregator = "mean"
@@ -249,7 +256,10 @@ class GraphSAGE(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = self.activation(batch_norm(conv(x, edge_index)))
+            if self.residual:
+                x = self.activation(batch_norm(conv(x, edge_index))) + x
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
@@ -282,10 +292,12 @@ class PNA(torch.nn.Module):
         linear_layers: int,
         activation: str,
         deg: torch.Tensor,
+        residual: bool = False,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
+        self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.deg = deg
@@ -338,15 +350,18 @@ class PNA(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = self.activation(batch_norm(conv(x, edge_index)))
+            if self.residual:
+                x = self.activation(batch_norm(conv(x, edge_index))) + x
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
-            x = self.activation(linear_layer(x))
+            batch_x = self.activation(linear_layer(batch_x))
             if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
+                batch_x = F.dropout(batch_x, p=self.dropout_rate)
 
-        return self.linear_layers[-1](x)
+        return self.linear_layers[-1](batch_x)
 
 
 class GATv2(torch.nn.Module):
@@ -371,10 +386,12 @@ class GATv2(torch.nn.Module):
         linear_layers: int,
         activation: str,
         heads: int,
+        residual: bool = False,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
+        self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
@@ -406,7 +423,10 @@ class GATv2(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = self.activation(batch_norm(conv(x, edge_index)))
+            if self.residual:
+                x = self.activation(batch_norm(conv(x, edge_index))) + x
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
@@ -441,10 +461,12 @@ class UniMPTransformer(torch.nn.Module):
         linear_layers: int,
         activation: str,
         heads: int,
+        residual: bool = False,
         dropout_rate: Optional[float] = 0.5,
     ):
         """Initialize the model"""
         super().__init__()
+        self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
         self.convs = nn.ModuleList()
@@ -485,7 +507,10 @@ class UniMPTransformer(torch.nn.Module):
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
-            x = self.activation(batch_norm(conv(x, edge_index)))
+            if self.residual:
+                x = self.activation(batch_norm(conv(x, edge_index))) + x
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:

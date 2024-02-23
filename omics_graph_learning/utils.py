@@ -17,9 +17,8 @@ import pickle
 import random
 import subprocess
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
-from cmapPy.pandasGEXpress.parse_gct import parse
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -245,9 +244,6 @@ TISSUES = [
 class ScalerUtils:
     """Utility class for scaling node features, as the modules for scaling share
     most of the smae args"""
-
-    def __init__(self):
-        pass
 
     @staticmethod
     def _parse_args():
@@ -635,14 +631,9 @@ def _set_matplotlib_publication_parameters() -> None:
 
 @time_decorator(print_args=True)
 def plot_training_losses(
+    args: argparse.Namespace,
+    outfile: str,
     log: str,
-    experiment_name: str,
-    model: str,
-    layers: int,
-    width: int,
-    batch_size: int,
-    learning_rate: float,
-    outdir: str,
 ) -> None:
     """Plots training losses from training log"""
     plt.figure(figsize=(3.125, 2.25))
@@ -673,24 +664,16 @@ def plot_training_losses(
         fontsize=7,
     )
     plt.tight_layout()
-    plt.savefig(
-        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_loss.png",
-        dpi=300,
-    )
+    plt.savefig(outfile, dpi=300)
     plt.close()
 
 
 @time_decorator(print_args=True)
 def plot_predicted_versus_expected(
-    expected,
+    args,
+    outfile,
     predicted,
-    outdir,
-    experiment_name,
-    model,
-    layers,
-    width,
-    batch_size,
-    learning_rate,
+    expected,
     rmse,
 ):
     """Plots predicted versus expected values for a given model"""
@@ -707,10 +690,7 @@ def plot_predicted_versus_expected(
         fontsize=7,
     )
     plt.tight_layout()
-    plt.savefig(
-        f"{outdir}/{experiment_name}_{model}_{layers}_{width}_{batch_size}_{learning_rate}_dropout_performance.png",
-        dpi=300,
-    )
+    plt.savefig(outfile, dpi=300)
     plt.close()
 
 

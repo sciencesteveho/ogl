@@ -11,10 +11,13 @@ import argparse
 import logging
 import math
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import torch
+from torch.nn import Parameter
 import torch.nn.functional as F
+from torch.optim import Optimizer
+import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric
@@ -23,12 +26,56 @@ from torch_geometric.utils import degree
 from tqdm import tqdm
 
 from graph_to_pytorch import graph_to_pytorch
+from models import DeeperGCN
 from models import GATv2
 from models import GCN
 from models import GraphSAGE
 from models import MLP
 from models import PNA
+from models import UniMPTransformer
 import utils
+
+
+def get_cosine_schedule_with_warmup(
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: float = 0.5,
+    last_epoch: int = -1,
+):
+    """
+    Implementation by Huggingface:
+    https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
+
+    Create a schedule with a learning rate that decreases following the values
+    of the cosine function between the initial lr set in the optimizer to 0,
+    after a warmup period during which it increases linearly between 0 and the
+    initial lr set in the optimizer.
+    Args:
+        optimizer ([`~torch.optim.Optimizer`]):
+            The optimizer for which to schedule the learning rate.
+        num_warmup_steps (`int`):
+            The number of steps for the warmup phase.
+        num_training_steps (`int`):
+            The total number of training steps.
+        num_cycles (`float`, *optional*, defaults to 0.5):
+            The number of waves in the cosine schedule (the defaults is to just
+            decrease from the max value to 0 following a half-cosine).
+        last_epoch (`int`, *optional*, defaults to -1):
+            The index of the last epoch when resuming training.
+    Return:
+        `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+    """
+
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return max(1e-6, float(current_step) / float(max(1, num_warmup_steps)))
+        progress = float(current_step - num_warmup_steps) / float(
+            max(1, num_training_steps - num_warmup_steps)
+        )
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * num_cycles * 2.0 * progress)))
+
+    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def _compute_pna_histogram_tensor(
@@ -61,9 +108,10 @@ def create_model(
     gnn_layers: int,
     linear_layers: int,
     activation: str,
-    train_dataset,
+    residual: bool = False,
     dropout_rate: float = None,
     heads: int = None,
+    train_dataset: torch_geometric.data.DataLoader = None,
 ) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
     """Create GNN model based on model type and parameters"""
     model_constructors = {
@@ -73,7 +121,6 @@ def create_model(
         "GAT": GATv2,
         "UniMPTransformer": UniMPTransformer,
         "DeeperGCN": DeeperGCN,
-        "Graphormer": Graphormer,
         "MLP": MLP,
     }
     if model_type not in model_constructors:
@@ -86,16 +133,14 @@ def create_model(
         "linear_layers": linear_layers,
         "activation": activation,
         "dropout_rate": dropout_rate,
+        "residual": residual,
     }
-    if model_type == "GAT":
+    if model_type in {"GAT", "UniMPTransformer"}:
         kwargs["heads"] = heads
-    elif model_type == "GPS":
-        kwargs.update({"walk_length": 20, "channels": embedding_size, "pe_dim": 8})
-        del kwargs["out_channels"]
-        del kwargs["linear_layers"]
-        del kwargs["dropout_rate"]
     elif model_type == "PNA":
         kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
+    elif model_type == "DeeperGCN":
+        del kwargs["residual"]
     return model_constructors[model_type](**kwargs)
 
 
@@ -202,113 +247,6 @@ def inference(
     return math.sqrt(float(loss.mean())), outs, labels
 
 
-def parse_arguments() -> argparse.Namespace:
-    """Parse args for training GNN"""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--experiment_config",
-        type=str,
-        help="Path to .yaml file with experimental conditions",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="GCN",
-    )
-    parser.add_argument(
-        "--target",
-        type=str,
-        default="expression_median_only",
-    )
-    parser.add_argument(
-        "--layers",
-        type=int,
-        default="2",
-    )
-    parser.add_argument(
-        "--dimensions",
-        type=int,
-        default="600",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default="50",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="random seed to use (default: 42)",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=1024,
-    )
-    parser.add_argument(
-        "--learning_rate",
-        type=float,
-        default=1e-4,
-    )
-    parser.add_argument(
-        "--dropout",
-        type=float,
-        default=0.0,
-    )
-    parser.add_argument(
-        "--device",
-        type=int,
-        default=0,
-        help="which gpu to use if any (default: 0)",
-    )
-    parser.add_argument(
-        "--graph_type",
-        type=str,
-        default="full",
-    )
-    parser.add_argument(
-        "--zero_nodes",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--randomize_node_feats",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--early_stop",
-        type=bool,
-        default=True,
-    )
-    parser.add_argument(
-        "--randomize_edges",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--total_random_edges",
-        type=int,
-        default="0",
-    )
-    return parser.parse_args()
-
-
-def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
-    """Adds args to specify save string for model and logs"""
-    components = [base_str]
-    if args.dropout > 0.0:
-        components.append(f"dropout_{args.dropout}")
-    if args.randomize_node_feats:
-        components.append("random_node_feats")
-    if args.randomize_edges:
-        components.append("randomize_edges")
-    if args.total_random_edges > 0:
-        components.append(f"totalrandomedges_{args.total_random_edges}")
-    return "_".join(components)
-
-
 def get_loader(
     data: torch_geometric.data.Data,
     mask: torch.Tensor,
@@ -343,8 +281,162 @@ def save_model(
     torch.save(model.state_dict(), model_path)
 
 
+def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
+    """Choose optimizer"""
+    # set gradient descent optimizer
+    if args.optimizer == "Adam":
+        optimizer = torch.optim.Adam(
+            model_params,
+            lr=args.learning_rate,
+        )
+        scheduler = ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+        )
+    elif args.optimizer == "AdamW":
+        optimizer = torch.optim.AdamW(
+            model_params,
+            lr=args.learning_rate,
+        )
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer=optimizer,
+            num_warmup_steps=5,
+            num_training_steps=args.epochs,
+        )
+    return optimizer, scheduler
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse args for training GNN"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--experiment_config",
+        type=str,
+        help="Path to .yaml file with experimental conditions",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="GCN",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="expression_median_only",
+    )
+    parser.add_argument(
+        "--gnn_layers",
+        type=int,
+        default="2",
+    )
+    parser.add_argument(
+        "--linear_layers",
+        type=int,
+        default="2",
+    )
+    parser.add_argument(
+        "--activation",
+        type=str,
+        default="relu",
+        choices=["relu", "leaky_relu", "gelu"],
+        help="Activation function to use. Options: relu, leaky_relu, gelu (default: relu).",
+    )
+    parser.add_argument(
+        "--dimensions",
+        type=int,
+        default="256",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default="100",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="random seed to use (default: 42)",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=256,
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=1e-4,
+    )
+    parser.add_argument(
+        "--optimizer",
+        type=str,
+        default="AdamW",
+        help="Which optimizer to use for learning. Options: AdamW or Adam (default: AdamW)",
+    )
+    parser.add_argument(
+        "--residual",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument("--dropout", type=float)
+    parser.add_argument("--heads", type=int)
+    parser.add_argument(
+        "--device",
+        type=int,
+        default=0,
+        help="which gpu to use if any (default: 0)",
+    )
+    parser.add_argument(
+        "--graph_type",
+        type=str,
+        default="full",
+    )
+    parser.add_argument(
+        "--zero_nodes",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--randomize_node_feats",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--early_stop",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--randomize_edges",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--total_random_edges",
+        type=int,
+    )
+    return parser.parse_args()
+
+
+def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
+    """Adds args to specify save string for model and logs"""
+    components = [base_str]
+    if args.residual:
+        components.append("_residual")
+    if args.heads:
+        components.append(f"_heads{args.heads}")
+    if args.dropout > 0.0:
+        components.append(f"_dropout{args.dropout}")
+    if args.randomize_node_feats:
+        components.append("_randomnodefeats")
+    if args.zero_nodes:
+        components.append("_zeronodefeats")
+    if args.total_random_edges:
+        components.append(f"_totalrandomedges{args.total_random_edges}")
+    return "_".join(components)
+
+
 def main() -> None:
-    """_summary_"""
+    """Main function to train GNN on graph data!"""
     # Parse training settings
     args = parse_arguments()
     params = utils.parse_yaml(args.experiment_config)
@@ -353,22 +445,32 @@ def main() -> None:
     working_directory = pathlib.Path(params["working_directory"])
     root_dir = working_directory / {params["experiment_name"]}
     savestr = construct_save_string(
-        f"{params['experiment_name']}_{args.model}_{args.layers}_{args.dimensions}_{args.learning_rate}_batch{args.batch_size}_{args.graph_type}_idx",
+        f"{params['experiment_name']} \
+            _{args.model}\
+            _target-{args.target}\
+            _gnnlayers{args.gnn_layers}\
+            _linlayers{args.linear_layers}\
+            _{args.activation}\
+            _dim{args.dimensions}\
+            _batch{args.batch_size}\
+            _{args.optimizer}",
         args,
     )
+    model_dir = working_directory / "models" / f"{savestr}"
 
     # make directories and set up training log
-    utils.dir_check_make(working_directory / "models/logs")
-    utils.dir_check_make(working_directory / f"models/{savestr}")
+    for folder in ["logs", "plots"]:
+        utils.dir_check_make(model_dir / folder)
 
     logging.basicConfig(
-        filename=working_directory / f"models/logs/{savestr}.log",
+        filename=model_dir / "log" / "training_log.txt",
         level=logging.DEBUG,
     )
 
-    # check for GPU
+    # check for GPU(())
     device = setup_device(args)
 
+    # get graph data
     data = graph_to_pytorch(
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
@@ -393,31 +495,24 @@ def main() -> None:
     val_loader = get_loader(data=data, mask="val_mask", batch_size=args.batch_size)
 
     # CHOOSE YOUR WEAPON
-    heads = 2 if args.model == "GAT" else None
-    dropout_rate = args.dropout if args.dropout > 0.0 else None
     model = create_model(
-        args.model,
+        model=args.model,
         in_size=data.x.shape[1],
         embedding_size=args.dimensions,
         out_channels=1,
         gnn_layers=args.gnn_layers,
         linear_layers=args.linear_layers,
-        heads=heads,
-        dropout_rate=dropout_rate,
+        activation=args.activation,
+        dropout_rate=args.dropout_rate,
+        heads=args.heads,
         train_dataset=args.model == "PNA",
     ).to(device)
 
-    # set gradient descent optimizer
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=args.learning_rate,
-    )
+    # set up optimizer & scheduler
+    optimizer, scheduler = _set_optimizer(args=args, model_params=model.parameters())
 
-    # set scheduler to reduce learning rate on plateau
-    scheduler = ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
-    )
-
+    # start model training
+    writer = SummaryWriter()
     epochs = args.epochs
     print(f"Training for {epochs} epochs")
     best_validation = stop_counter = 0
@@ -431,6 +526,7 @@ def main() -> None:
             gps=args.model == "GPS",
         )
         print(f"Epoch: {epoch:03d}, Train: {loss}")
+        writer.add_scalar("Training loss", loss, epoch)
         logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         val_acc = test(
@@ -443,6 +539,7 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        writer.add_scalar("Validation RMSE", val_acc, epoch)
 
         test_acc = test(
             model=model,
@@ -454,6 +551,7 @@ def main() -> None:
         )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        writer.add_scalar("Test RMSE", test_acc, epoch)
 
         scheduler.step(val_acc)
         if args.early_stop:
@@ -461,8 +559,9 @@ def main() -> None:
                 stop_counter = 0
                 best_validation = val_acc
                 model_path = (
-                    working_directory
-                    / f"models/{savestr}/{savestr}_early_epoch_{epoch}_mse_{best_validation}.pt"
+                    model_dir
+                    / "models"
+                    / f"{args.model}_{epoch}_mse_{best_validation}.pt"
                 )
                 torch.save(model.state_dict(), model_path)
             elif best_validation < val_acc:
@@ -471,10 +570,13 @@ def main() -> None:
                 print("***********Early stopping!")
                 break
 
+    writer.flush()
+
+    # Save final model
     save_model(
-        model,
-        working_directory / f"models/{savestr}",
-        f"{savestr}_mse_{best_validation}.pt",
+        model=model,
+        directory=model_dir / "models",
+        filename=f"{args.model}_final_mse_{best_validation}.pt",
     )
 
     # set params for plotting(())
@@ -483,7 +585,7 @@ def main() -> None:
     # calculate and plot spearmann rho, predictions vs. labels
     # first, load checkpoints
     checkpoint = torch.load(
-        f"{working_directory}/models/{savestr}/{savestr}_mse_{best_validation}.pt",
+        model_dir / "models" / f"{args.model}_mse_{best_validation}.pt",
         map_location=torch.device("cuda:0"),
     )
     model.load_state_dict(checkpoint, strict=False)
@@ -495,48 +597,25 @@ def main() -> None:
         device=device,
         data_loader=test_loader,
         epoch=0,
-        gps=args.model == "GPS",
     )
 
     predictions_median = utils._tensor_out_to_array(outs, 0)
     labels_median = utils._tensor_out_to_array(labels, 0)
 
-    experiment_name = params["experiment_name"]
-    if args.randomize_node_feats == "true":
-        experiment_name = f"{experiment_name}_random_node_feats"
-    if args.zero_nodes == "true":
-        experiment_name = f"{experiment_name}_zero_node_feats"
-    if args.randomize_edges == "true":
-        experiment_name = f"{experiment_name}_randomize_edges"
-    if args.total_random_edges > 0:
-        experiment_name = (
-            f"{experiment_name}_totalrandomedges_{args.total_random_edges}"
-        )
+    # plot training losses
+    utils.plot_training_losses(
+        args=args,
+        outfile=model_dir / "plots" / f"{savestr}_loss.png",
+        log=model_dir / "log" / "training_log.txt",
+    )
 
     # plot performance
     utils.plot_predicted_versus_expected(
-        expected=labels_median,
+        args=args,
+        outfile=model_dir / "plots" / f"{savestr}_performance.png",
         predicted=predictions_median,
-        experiment_name=experiment_name,
-        model=args.model,
-        layers=args.layers,
-        width=args.dimensions,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        outdir=f"{working_directory}/models/plots",
+        expected=labels_median,
         rmse=rmse,
-    )
-
-    # plot training losses
-    utils.plot_training_losses(
-        log=f"{working_directory}/models/logs/{savestr}.log",
-        experiment_name=experiment_name,
-        model=args.model,
-        layers=args.layers,
-        width=args.dimensions,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        outdir=f"{working_directory}/models/plots",
     )
 
     # # GNN Explainer!
