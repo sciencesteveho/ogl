@@ -435,6 +435,66 @@ def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
     return "_".join(components)
 
 
+# def _log_gradients(model: torch.nn.Module, logger: ) -> None:
+#     """Log gradients for model"""
+#     for name, param in model.named_parameters():
+#         if param.grad is not None:
+#             logger.add_histogram(f"{name}.grad", param.grad, epoch)
+
+
+def _plot_loss_and_performance(
+    args: argparse.Namespace,
+    device: torch.cuda.device,
+    data_loader: torch_geometric.data.DataLoader,
+    model_dir: pathlib.PosixPath,
+    savestr: str,
+    model: Optional[torch.nn.Module],
+    best_validation: Optional[float] = None,
+) -> None:
+    """Plot training losses and performance"""
+    # set params for plotting
+    utils._set_matplotlib_publication_parameters()
+
+    # plot either final model or best validation model
+    if best_validation:
+        models_dir = model_dir / "models"
+        best_checkpoint = models_dir.glob(f"*{best_validation}")
+        checkpoint = torch.load(best_checkpoint, map_location=device)
+        model.load_state_dict(checkpoint, strict=False)
+        model.to(device)
+        savestr += "_best_"
+    elif model:
+        model.to(device)
+        savestr += "_final_"
+
+    # get predictions
+    rmse, outs, labels = inference(
+        model=model,
+        device=device,
+        data_loader=data_loader,
+        epoch=0,
+    )
+
+    predictions_median = utils._tensor_out_to_array(outs, 0)
+    labels_median = utils._tensor_out_to_array(labels, 0)
+
+    # plot training losses
+    utils.plot_training_losses(
+        outfile=model_dir / "plots" / f"{savestr}_loss.png",
+        savestr=savestr,
+        log=model_dir / "log" / "training_log.txt",
+    )
+
+    # plot performance
+    utils.plot_predicted_versus_expected(
+        outfile=model_dir / "plots" / f"{savestr}_performance.png",
+        savestr=savestr,
+        predicted=predictions_median,
+        expected=labels_median,
+        rmse=rmse,
+    )
+
+
 def main() -> None:
     """Main function to train GNN on graph data!"""
     # Parse training settings
@@ -467,7 +527,7 @@ def main() -> None:
         level=logging.DEBUG,
     )
 
-    # check for GPU(())
+    # check for GPU
     device = setup_device(args)
 
     # get graph data
@@ -511,11 +571,24 @@ def main() -> None:
     # set up optimizer & scheduler
     optimizer, scheduler = _set_optimizer(args=args, model_params=model.parameters())
 
-    # start model training
-    writer = SummaryWriter()
+    # start model training and initialize tensorboard utilities
+    writer = SummaryWriter(model_dir / "log")
     epochs = args.epochs
-    print(f"Training for {epochs} epochs")
     best_validation = stop_counter = 0
+    prof = torch.profiler.profile(
+        # activities=[
+        #     torch.profiler.ProfilerActivity.CPU,
+        #     torch.profiler.ProfilerActivity.CUDA,
+        # ],
+        schedule=torch.profiler.schedule(wait=1, warmup=4, active=3, repeat=1),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(model_dir / "log"),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True,
+    )
+
+    prof.start()
+    print(f"Training for {epochs} epochs")
     for epoch in range(epochs + 1):
         loss = train(
             model=model,
@@ -568,54 +641,28 @@ def main() -> None:
                 stop_counter += 1
             if stop_counter == 15:
                 print("***********Early stopping!")
+                final_acc = val_acc
                 break
 
+    # close out tensorboard utilities
     writer.flush()
+    prof.stop()
 
     # Save final model
     save_model(
         model=model,
         directory=model_dir / "models",
-        filename=f"{args.model}_final_mse_{best_validation}.pt",
+        filename=f"{args.model}_final_mse_{val_acc}.pt",
     )
 
-    # set params for plotting(())
-    utils._set_matplotlib_publication_parameters()
-
-    # calculate and plot spearmann rho, predictions vs. labels
-    # first, load checkpoints
-    checkpoint = torch.load(
-        model_dir / "models" / f"{args.model}_mse_{best_validation}.pt",
-        map_location=torch.device("cuda:0"),
-    )
-    model.load_state_dict(checkpoint, strict=False)
-    model.to(device)
-
-    # get predictions
-    rmse, outs, labels = inference(
+    # plot final model
+    _plot_loss_and_performance(
+        args=args,
         model=model,
         device=device,
         data_loader=test_loader,
-        epoch=0,
-    )
-
-    predictions_median = utils._tensor_out_to_array(outs, 0)
-    labels_median = utils._tensor_out_to_array(labels, 0)
-
-    # plot training losses
-    utils.plot_training_losses(
-        args=args,
-        outfile=model_dir / "plots" / f"{savestr}_loss.png",
-        log=model_dir / "log" / "training_log.txt",
-    )
-
-    # plot performance
-    utils.plot_predicted_versus_expected(
-        args=args,
-        outfile=model_dir / "plots" / f"{savestr}_performance.png",
-        predicted=predictions_median,
-        expected=labels_median,
-        rmse=rmse,
+        model_dir=model_dir,
+        savestr=savestr,
     )
 
     # # GNN Explainer!

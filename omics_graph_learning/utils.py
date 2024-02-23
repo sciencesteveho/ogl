@@ -631,8 +631,8 @@ def _set_matplotlib_publication_parameters() -> None:
 
 @time_decorator(print_args=True)
 def plot_training_losses(
-    args: argparse.Namespace,
     outfile: str,
+    savestr: str,
     log: str,
 ) -> None:
     """Plots training losses from training log"""
@@ -659,7 +659,7 @@ def plot_training_losses(
     plt.xlabel("Epoch", fontsize=7)
     plt.ylabel("MSE Loss", fontsize=7)
     plt.title(
-        f"Training loss for {experiment_name}, {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}",
+        f"Training loss for {savestr}",
         wrap=True,
         fontsize=7,
     )
@@ -670,8 +670,8 @@ def plot_training_losses(
 
 @time_decorator(print_args=True)
 def plot_predicted_versus_expected(
-    args,
     outfile,
+    savestr,
     predicted,
     expected,
     rmse,
@@ -685,7 +685,10 @@ def plot_predicted_versus_expected(
     plt.xlabel("Expected Log2 TPM", fontsize=7)
     plt.ylabel("Predicted Log2 TPM", fontsize=7)
     plt.title(
-        f"Expected versus predicted for {experiment_name,} {model}, {layers} layers, lr {learning_rate}, batch size {batch_size}, dimensions {width}\nRMSE: {rmse}\nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\nPearson: {stats.pearsonr(expected, predicted)[0]}",
+        f"Expected versus predicted for {savestr}\
+            \nRMSE: {rmse}\
+            \nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\
+            \nPearson: {stats.pearsonr(expected, predicted)[0]}",
         wrap=True,
         fontsize=7,
     )
