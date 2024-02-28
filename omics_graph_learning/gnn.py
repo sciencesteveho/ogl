@@ -350,6 +350,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")
     parser.add_argument("--total_random_edges", type=int)
+    parser.add_argument("--split_name", type=str)
     return parser.parse_args()
 
 
@@ -441,7 +442,8 @@ def main() -> None:
             _{args.activation}\
             _dim{args.dimensions}\
             _batch{args.batch_size}\
-            _{args.optimizer}",
+            _{args.optimizer},\
+            _{args.split_name}",
         args,
     )
     model_dir = working_directory / "models" / f"{savestr}"
@@ -463,6 +465,7 @@ def main() -> None:
         experiment_name=params["experiment_name"],
         graph_type=args.graph_type,
         root_dir=root_dir,
+        split_name=args.split_name,
         regression_target=args.target,
         test_chrs=params["training_targets"]["test_chrs"],
         val_chrs=params["training_targets"]["val_chrs"],

@@ -661,17 +661,10 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         all_matrix_gct=matrix_path / all_matrix_gct,
     )
 
-    split_name = utils._dataset_split_name(
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-        tpm_filter=args.tpm_filter,
-        percent_of_samples_filter=args.percent_of_samples_filter,
-    )
-
     _, split_path = _prepare_split_directories(
         working_directory=working_directory,
         experiment_name=experiment_name,
-        split_name=split_name,
+        split_name=args.split_name,
     )
 
     tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
@@ -740,6 +733,7 @@ def main() -> None:
         type=float,
         help="Percent of samples filter for genes (e.g. 0.20)",
     )
+    parser.add_argument("--split_name", type=str, help="Name of the split")
     args = parser.parse_args()
     params = utils.parse_yaml(args.experiment_config)
 

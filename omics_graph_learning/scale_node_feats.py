@@ -76,7 +76,7 @@ def main() -> None:
         split_path,
         scaler_dir,
         prefix,
-        pre_prefix,
+        graphdir_prefix,
         filename,
     ) = ScalerUtils._handle_scaler_prep()
 
@@ -89,7 +89,7 @@ def main() -> None:
     )
 
     # load all tissue graph
-    _, g = ScalerUtils._load_graph_data(pre_prefix=pre_prefix)
+    _, g = ScalerUtils._load_graph_data(graphdir_prefix=graphdir_prefix)
 
     # scale node features
     g["node_feat"] = scale_node_features(

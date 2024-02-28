@@ -150,10 +150,11 @@ module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/gnn
 
 # Set up variables and find out if final graph is already made
+splitname_script=omics_graph_learning/omics_graph_learning/splitname.py
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
-split_name=$(python splitname.py --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
+split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
 
 # set up variables for graph checking
 final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_tpm_${tpm_filter}_percent_of_samples_${percent_of_samples_filter}_${graph_type}_graph_scaled.pkl
@@ -221,7 +222,8 @@ if [ -f "${final_graph}" ]; then
                 make_scaler.sh \
                 "${num}" \
                 full \
-                "${experiment_yaml}"
+                "${experiment_yaml}" \
+                "${split_name}"
         )
         slurmids+=("${ID}")
     done
@@ -232,7 +234,8 @@ if [ -f "${final_graph}" ]; then
             --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
             scale_node_feats.sh \
             full \
-            "${experiment_yaml}"
+            "${experiment_yaml}" \
+            "${split_name}"
     )
 
     # Train GNN after scaler job is finished
@@ -257,7 +260,8 @@ if [ -f "${final_graph}" ]; then
         "${randomize_node_feats}" \
         "${early_stop}" \
         "${randomize_edges}" \
-        "${total_random_edges}"
+        "${total_random_edges}" \
+        "${split_name}"
 
 else
     echo "Final graph found. Going straight to GNN training."
@@ -284,5 +288,6 @@ else
         "${randomize_node_feats}" \
         "${early_stop}" \
         "${randomize_edges}" \
-        "${total_random_edges}"
+        "${total_random_edges}" \
+        "${split_name}"
 fi

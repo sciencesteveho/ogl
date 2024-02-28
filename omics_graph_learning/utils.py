@@ -250,19 +250,14 @@ class ScalerUtils:
     def _parse_args():
         """Get arguments"""
         parser = argparse.ArgumentParser()
-        parser.add_argument("-f", "--feat", type=int, default=0, required=True)
-        parser.add_argument("-g", "--graph_type", type=str, required=True)
+        parser.add_argument("-f", "--feat", type=int, default=0)
+        parser.add_argument("-g", "--graph_type", type=str)
         parser.add_argument(
             "--experiment_config",
             type=str,
             help="Path to .yaml file with experimental conditions",
         )
-        parser.add_argument("--tpm_filter", type=float, help="TPM filter for genes")
-        parser.add_argument(
-            "--percent_of_samples_filter",
-            type=float,
-            help="Percent of samples filter for genes (e.g. 0.20)",
-        )
+        parser.add_argument("--split_name", type=str)
         return parser.parse_args()
 
     @staticmethod
@@ -270,14 +265,10 @@ class ScalerUtils:
         """Unpack params from the .yaml"""
         experiment_name = params["experiment_name"]
         working_directory = params["working_directory"]
-        target_params = params["training_targets"]
-        test_chrs = target_params["test_chrs"]
-        val_chrs = target_params["val_chrs"]
+        # target_params = params["training_targets"]
         return (
             experiment_name,
             pathlib.Path(working_directory),
-            test_chrs,
-            val_chrs,
         )
 
     @staticmethod
@@ -285,37 +276,27 @@ class ScalerUtils:
         """Handle scaler prep"""
         args = ScalerUtils._parse_args()
         params = parse_yaml(args.experiment_config)
-        experiment_name, working_directory, test_chrs, val_chrs = (
-            ScalerUtils._unpack_params(params)
-        )
-
-        # get split name
-        split_name = _dataset_split_name(
-            test_chrs=test_chrs,
-            val_chrs=val_chrs,
-            tpm_filter=args.tpm_filter,
-            percent_of_samples_filter=args.percent_of_samples_filter,
-        )
+        experiment_name, working_directory = ScalerUtils._unpack_params(params)
 
         working_path = pathlib.Path(working_directory)
         graph_dir = working_path / experiment_name / "graphs"
         prefix = f"{experiment_name}_{args.graph_type}"
         return (
             args.feat,
-            graph_dir / split_name,
-            graph_dir / split_name / "scalers",
+            graph_dir / args.split_name,
+            graph_dir / args.split_name / "scalers",
             prefix,
             graph_dir / prefix,
-            f"{prefix}_tpm_{args.tpm_filter}_samples_{args.percent_of_samples_filter}_{args.graph_type}_graph",
+            f"{prefix}_{args.split_name}_graph",
         )
 
     @staticmethod
     def _load_graph_data(
-        pre_prefix: pathlib.Path,
+        graphdir_prefix: pathlib.Path,
     ) -> Tuple[Dict[str, int], Dict[str, Any]]:
         """Load graph data from files."""
-        graph_file = pre_prefix.with_suffix(".pkl")
-        idxs_file = pre_prefix.with_suffix("_idxs.pkl")
+        graph_file = graphdir_prefix.with_suffix(".pkl")
+        idxs_file = graphdir_prefix.with_suffix("_idxs.pkl")
         with open(idxs_file, "rb") as idxs_file, open(graph_file, "rb") as graph_file:
             idxs = pickle.load(idxs_file)
             graph = pickle.load(graph_file)

@@ -220,10 +220,36 @@ def _get_target_indices(regression_target):
     return target_indices[regression_target]
 
 
+def _load_data_object_prerequisites(
+    experiment_name: str,
+    graph_type: str,
+    root_dir: str,
+    split_name: str,
+    scaled: bool = False,
+):
+    """Load specific files needed to make the PyG Data object"""
+    graph_dir = pathlib.Path(root_dir) / experiment_name / "graphs" / split_name
+    pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_{split_name}_graph"
+
+    with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
+        split = pickle.load(f)
+
+    with open(f"{pre_prefix}_scaled.pkl", "rb") as file:
+        graph_data = pickle.load(file)
+
+    if scaled:
+        targets = f"{graph_dir}/training_targets.pkl"
+    else:
+        targets = f"{graph_dir}/training_targets_scaled.pkl"
+
+    return f"{pre_prefix}_idxs.pkl", split, graph_data, targets
+
+
 def graph_to_pytorch(
     experiment_name: str,
     graph_type: str,
     root_dir: str,
+    split_name: str,
     regression_target: str,
     randomize_feats: bool = False,
     zero_node_feats: bool = False,
@@ -246,17 +272,13 @@ def graph_to_pytorch(
         _type_: _description_
     """
 
-    graph_dir = pathlib.Path(root_dir) / experiment_name / "graphs"
-    pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_graph"
-
-    graph = f"{pre_prefix}_scaled.pkl"
-    index = f"{pre_prefix}_idxs.pkl"
-
-    with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
-        split = pickle.load(f)
-
-    with open(graph, "rb") as file:
-        graph_data = pickle.load(file)
+    index, split, graph_data, targets = _load_data_object_prerequisites(
+        experiment_name=experiment_name,
+        graph_type=graph_type,
+        root_dir=root_dir,
+        split_name=split_name,
+        scaled=scaled,
+    )
 
     # convert np arrays to torch tensors
     # delete edges if perturbing
@@ -279,7 +301,7 @@ def graph_to_pytorch(
             index=index, split=split
         )
 
-    # set up pytorch )geometric Data object
+    # set up pytorch geometric Data object
     data = Data(x=node_tensors, edge_index=edge_index)
 
     # create masks
@@ -295,10 +317,6 @@ def graph_to_pytorch(
         test_mask = gene_mask
 
     # get target values. shape should be [num_nodes, 6]
-    if scaled:
-        targets = f"{graph_dir}/targets_scaled.pkl"
-    else:
-        targets = f"{graph_dir}/targets.pkl"
     target_values = _get_target_values_for_mask(targets=targets)
 
     # handling of regression_target, to only put proper targets into mask
