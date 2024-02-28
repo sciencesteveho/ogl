@@ -99,11 +99,7 @@ def main() -> None:
     """Pipeline to concatenate tissue graphs"""
     # parse argument
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--graph_type",
-        type=str,
-        default="full",
-    )
+    parser.add_argument("--graph_type", type=str, default="full")
     parser.add_argument(
         "--experiment_config",
         type=str,

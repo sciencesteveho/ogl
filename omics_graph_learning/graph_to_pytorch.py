@@ -21,7 +21,7 @@ import torch
 import torch_geometric
 from torch_geometric.data import Data
 
-NODE_PERTURBATION_MAP = {
+NODE_FEATURE_IDXS = {
     "atac": 4,
     "cnv": 5,
     "cpg": 6,
@@ -183,8 +183,8 @@ def create_node_tensors(
 
     Returns torch.Tensor
     """
-    if node_perturbation in NODE_PERTURBATION_MAP:
-        graph_data["node_feat"][:, NODE_PERTURBATION_MAP[node_perturbation]] = 0
+    if node_perturbation in NODE_FEATURE_IDXS:
+        graph_data["node_feat"][:, NODE_FEATURE_IDXS[node_perturbation]] = 0
     elif zero_node_feats:
         return torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
     elif randomize_feats:
@@ -249,8 +249,8 @@ def graph_to_pytorch(
     graph_dir = pathlib.Path(root_dir) / experiment_name / "graphs"
     pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_graph"
 
-    graph = f"{graph_dir}/{experiment_name}_{graph_type}_graph_scaled.pkl"
-    index = f"{graph_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
+    graph = f"{pre_prefix}_scaled.pkl"
+    index = f"{pre_prefix}_idxs.pkl"
 
     with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
         split = pickle.load(f)

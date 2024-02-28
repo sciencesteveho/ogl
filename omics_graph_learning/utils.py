@@ -26,6 +26,7 @@ import pandas as pd
 import pybedtools
 from scipy import stats
 import seaborn as sns
+import torch
 import yaml
 
 ATTRIBUTES = [
@@ -249,19 +250,8 @@ class ScalerUtils:
     def _parse_args():
         """Get arguments"""
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "-f",
-            "--feat",
-            type=int,
-            default=0,
-            required=True,
-        )
-        parser.add_argument(
-            "-g",
-            "--graph_type",
-            type=str,
-            required=True,
-        )
+        parser.add_argument("-f", "--feat", type=int, default=0, required=True)
+        parser.add_argument("-g", "--graph_type", type=str, required=True)
         parser.add_argument(
             "--experiment_config",
             type=str,
@@ -670,12 +660,12 @@ def plot_training_losses(
 
 @time_decorator(print_args=True)
 def plot_predicted_versus_expected(
-    outfile,
-    savestr,
-    predicted,
-    expected,
-    rmse,
-):
+    outfile: str,
+    savestr: str,
+    predicted: torch.Tensor,
+    expected: torch.Tensor,
+    rmse: torch.Tensor,
+) -> None:
     """Plots predicted versus expected values for a given model"""
     plt.figure(figsize=(3.15, 2.95))
     _set_matplotlib_publication_parameters()
@@ -841,7 +831,7 @@ def _string_list(arg):
     return arg.split(",")
 
 
-def _combine_and_sort_arrays(edge_index):
+def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
     """Combines stored edge index and returns dedupe'd array of nodes"""
     combined = np.concatenate((edge_index[0], edge_index[1]))
     return np.unique(combined)
@@ -860,25 +850,22 @@ def _open_graph(g_path: str, indexes: str, split: str, targets: str):
     return graph, indexes, split, targets
 
 
-def _get_split_indexes(split, indexes):
+def _get_indexes(
+    split: List[str], indexes: Dict[str, int]
+) -> Tuple[List[int], List[str]]:
+    present = [indexes[i] for i in split if i in indexes]
+    not_present = [i for i in split if i not in indexes]
+    return present, not_present
+
+
+def _get_split_indexes(
+    split: Dict[str, List[str]], indexes: Dict[str, int]
+) -> Tuple[List[int], List[int], List[int], List[str], List[str], List[str]]:
     """Lorem Ipsum"""
-    train = split["train"]
-    val = split["validation"]
-    test = split["test"]
-    train_idx = [indexes[i] for i in train if i in indexes]
-    val_idx = [indexes[i] for i in val if i in indexes]
-    test_idx = [indexes[i] for i in test if i in indexes]
-    train_not_present = [i for i in train if i not in indexes]
-    val_not_present = [i for i in val if i not in indexes]
-    test_not_present = [i for i in test if i not in indexes]
-    return (
-        train_idx,
-        val_idx,
-        test_idx,
-        train_not_present,
-        val_not_present,
-        test_not_present,
-    )
+    results = []
+    for key in ("train", "validation", "test"):
+        results.extend(_get_indexes(split[key], indexes))
+    return tuple(results)
 
 
 def _get_dict_subset_by_split(idxs, count_dict):

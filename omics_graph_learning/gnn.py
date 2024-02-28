@@ -18,6 +18,7 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 from torch.optim import Optimizer
 import torch.optim as optim
+from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric
@@ -42,7 +43,7 @@ def get_cosine_schedule_with_warmup(
     num_training_steps: int,
     num_cycles: float = 0.5,
     last_epoch: int = -1,
-):
+) -> LRScheduler:
     """
     Implementation by Huggingface:
     https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
@@ -67,7 +68,7 @@ def get_cosine_schedule_with_warmup(
         `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
     """
 
-    def lr_lambda(current_step):
+    def lr_lambda(current_step: int) -> float:
         if current_step < num_warmup_steps:
             return max(1e-6, float(current_step) / float(max(1, num_warmup_steps)))
         progress = float(current_step - num_warmup_steps) / float(
@@ -313,26 +314,10 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         help="Path to .yaml file with experimental conditions",
     )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="GCN",
-    )
-    parser.add_argument(
-        "--target",
-        type=str,
-        default="expression_median_only",
-    )
-    parser.add_argument(
-        "--gnn_layers",
-        type=int,
-        default="2",
-    )
-    parser.add_argument(
-        "--linear_layers",
-        type=int,
-        default="2",
-    )
+    parser.add_argument("--model", type=str, default="GCN")
+    parser.add_argument("--target", type=str, default="expression_median_only")
+    parser.add_argument("--gnn_layers", type=int, default="2")
+    parser.add_argument("--linear_layers", type=int, default="2")
     parser.add_argument(
         "--activation",
         type=str,
@@ -340,80 +325,31 @@ def parse_arguments() -> argparse.Namespace:
         choices=["relu", "leaky_relu", "gelu"],
         help="Activation function to use. Options: relu, leaky_relu, gelu (default: relu).",
     )
+    parser.add_argument("--dimensions", type=int, default="256")
+    parser.add_argument("--epochs", type=int, default="100")
     parser.add_argument(
-        "--dimensions",
-        type=int,
-        default="256",
+        "--seed", type=int, default=42, help="random seed to use (default: 42)"
     )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default="100",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="random seed to use (default: 42)",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=256,
-    )
-    parser.add_argument(
-        "--learning_rate",
-        type=float,
-        default=1e-4,
-    )
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--learning_rate", type=float, default=1e-4)
     parser.add_argument(
         "--optimizer",
         type=str,
         default="AdamW",
         help="Which optimizer to use for learning. Options: AdamW or Adam (default: AdamW)",
     )
-    parser.add_argument(
-        "--residual",
-        type=bool,
-        default=False,
-    )
     parser.add_argument("--dropout", type=float)
     parser.add_argument("--heads", type=int)
     parser.add_argument(
-        "--device",
-        type=int,
-        default=0,
-        help="which gpu to use if any (default: 0)",
+        "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
     )
-    parser.add_argument(
-        "--graph_type",
-        type=str,
-        default="full",
-    )
-    parser.add_argument(
-        "--zero_nodes",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--randomize_node_feats",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--early_stop",
-        type=bool,
-        default=True,
-    )
-    parser.add_argument(
-        "--randomize_edges",
-        type=bool,
-        default=False,
-    )
-    parser.add_argument(
-        "--total_random_edges",
-        type=int,
-    )
+    parser.add_argument("--graph_type", type=str, default="full")
+    parser.add_argument("--residual", action="store_true")
+    parser.add_argument("--zero_nodes", action="store_true")
+    parser.add_argument("--randomize_node_feats", action="store_true")
+    parser.add_argument("--early_stop", action="store_true")
+    parser.add_argument("--randomize_edges", action="store_true")
+    parser.add_argument("--total_random_edges", type=int)
     return parser.parse_args()
 
 
@@ -435,15 +371,7 @@ def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
     return "_".join(components)
 
 
-# def _log_gradients(model: torch.nn.Module, logger: ) -> None:
-#     """Log gradients for model"""
-#     for name, param in model.named_parameters():
-#         if param.grad is not None:
-#             logger.add_histogram(f"{name}.grad", param.grad, epoch)
-
-
 def _plot_loss_and_performance(
-    args: argparse.Namespace,
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     model_dir: pathlib.PosixPath,
@@ -505,7 +433,7 @@ def main() -> None:
     working_directory = pathlib.Path(params["working_directory"])
     root_dir = working_directory / {params["experiment_name"]}
     savestr = construct_save_string(
-        f"{params['experiment_name']} \
+        f"{params['experiment_name']}\
             _{args.model}\
             _target-{args.target}\
             _gnnlayers{args.gnn_layers}\
@@ -657,7 +585,6 @@ def main() -> None:
 
     # plot final model
     _plot_loss_and_performance(
-        args=args,
         model=model,
         device=device,
         data_loader=test_loader,

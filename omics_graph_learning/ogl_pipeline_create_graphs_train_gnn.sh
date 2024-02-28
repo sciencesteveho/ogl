@@ -22,11 +22,11 @@ parse_arguments() {
     epochs=""
     learning_rate=""
     optimizer=""
-    residual=""
     dropout=""
     heads=""
     batch_size=""
     graph_type=""
+    residual=""
     zero_nodes=""
     randomize_node_feats=""
     early_stop=""
@@ -34,11 +34,11 @@ parse_arguments() {
     total_random_edges=""
 
     # Use getopt with the additional --options and --longoptions flags
-    options=$(getopt --options "e:p:m:t:x:y:l:d:q:r:b:g:z:n:s:r:p" --longoptions "experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,layers:,dimensions:,epochs:,learning_rate:,batch_size:,graph_type:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
+    options=$(getopt --options "q:w:e:r:t:y:u:i:o:p:a:s:d:g:n:f:j:k:l:z:x:h" --longoptions "experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layer:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
-        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--layers] [--dimensions] [--epochs] [--learning_rate] [--batch_size] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
+        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
         exit 1
     fi
 
@@ -46,23 +46,23 @@ parse_arguments() {
 
     while true; do
         case "$1" in
-        -e | --experiment_yaml)
+        -q | --experiment_yaml)
             experiment_yaml="$2"
             shift 2
             ;;
-        -p | --partition)
+        -w | --partition)
             partition="$2"
             shift 2
             ;;
-        -m | --model)
+        -e | --model)
             model="$2"
             shift 2
             ;;
-        -t | --target)
+        -r | --target)
             target="$2"
             shift 2
             ;;
-        -x | --tpm_filter)
+        -t | --tpm_filter)
             tpm_filter="$2"
             shift 2
             ;;
@@ -70,52 +70,68 @@ parse_arguments() {
             percent_of_samples_filter="$2"
             shift 2
             ;;
-        -l | --layers)
-            layers="$2"
+        -u | --gnn_layers)
+            gnn_layers="$2"
             shift 2
             ;;
-        -d | --dimensions)
+        -i | --linear_layers)
+            linear_layers="$2"
+            shift 2
+            ;;
+        -o | --activation)
+            activation="$2"
+            shift 2
+            ;;
+        -p | --dimensions)
             dimensions="$2"
             shift 2
             ;;
-        -q | --epochs)
+        -a | --epochs)
             epochs="$2"
             shift 2
             ;;
-        -r | --learning_rate)
+        -s | --learning_rate)
             learning_rate="$2"
             shift 2
             ;;
-        -b | --batch_size)
+        -d | --optimizer)
+            optimizer="$2"
+            shift 2
+            ;;
+        -g | --batch_size)
             batch_size="$2"
             shift 2
             ;;
-        -g | --graph_type)
+        -n | --graph_type)
             graph_type="$2"
             shift 2
             ;;
-        -z | --zero_nodes)
-            zero_nodes="$2"
-            shift 2
+        -f | --residual)
+            residual="--residual"
+            shift
             ;;
-        -n | --randomize_node_feats)
-            randomize_node_feats="$2"
-            shift 2
+        -j | --zero_nodes)
+            zero_nodes="--zero_nodes"
+            shift
             ;;
-        -s | --early_stop)
-            early_stop="$2"
-            shift 2
+        -k | --randomize_node_feats)
+            randomize_node_feats="--randomize_node_feats"
+            shift
             ;;
-        -r | --randomize_edges)
-            randomize_edges="$2"
-            shift 2
+        -l | --early_stop)
+            early_stop="--early_stop"
+            shift
             ;;
-        -p | --total_random_edges)
+        -z | --randomize_edges)
+            randomize_edges="--randomize_edges"
+            shift
+            ;;
+        -x | --total_random_edges)
             total_random_edges="$2"
             shift 2
             ;;
         -h | --help)
-            echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--layers] [--dimensions] [--epochs] [--learning_rate] [--batch_size] [--graph_type] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges]"
+            echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges"
             exit 0
             ;;
         --)
@@ -225,12 +241,18 @@ if [ -f "${final_graph}" ]; then
         "${experiment_yaml}" \
         "${model}" \
         "${target}" \
-        "${layers}" \
+        "${gnn_layers}" \
+        "${linear_layers}" \
+        "${activation}" \
         "${dimensions}" \
         "${epochs}" \
-        "${learning_rate}" \
         "${batch_size}" \
+        "${learning_rate}" \
+        "${optimizer}" \
+        "${dropout}" \
+        "${heads}" \
         "${graph_type}" \
+        "${residual}" \
         "${zero_nodes}" \
         "${randomize_node_feats}" \
         "${early_stop}" \
@@ -246,12 +268,18 @@ else
         "${experiment_yaml}" \
         "${model}" \
         "${target}" \
-        "${layers}" \
+        "${gnn_layers}" \
+        "${linear_layers}" \
+        "${activation}" \
         "${dimensions}" \
         "${epochs}" \
-        "${learning_rate}" \
         "${batch_size}" \
+        "${learning_rate}" \
+        "${optimizer}" \
+        "${dropout}" \
+        "${heads}" \
         "${graph_type}" \
+        "${residual}" \
         "${zero_nodes}" \
         "${randomize_node_feats}" \
         "${early_stop}" \
