@@ -339,7 +339,7 @@ def parse_arguments() -> argparse.Namespace:
         help="Which optimizer to use for learning. Options: AdamW or Adam (default: AdamW)",
     )
     parser.add_argument("--dropout", type=float)
-    parser.add_argument("--heads", type=int)
+    parser.add_argument("--heads", type=int, required=False)
     parser.add_argument(
         "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
     )
@@ -349,7 +349,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--randomize_node_feats", action="store_true")
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")
-    parser.add_argument("--total_random_edges", type=int)
+    parser.add_argument("--total_random_edges", type=int, required=False)
     parser.add_argument("--split_name", type=str)
     return parser.parse_args()
 
@@ -367,7 +367,7 @@ def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
         components.append("_randomnodefeats")
     if args.zero_nodes:
         components.append("_zeronodefeats")
-    if args.total_random_edges:
+    if args.total_random_edges > 0:
         components.append(f"_totalrandomedges{args.total_random_edges}")
     return "_".join(components)
 
@@ -472,7 +472,9 @@ def main() -> None:
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,
-        total_random_edges=args.total_random_edges,
+        total_random_edges=(
+            args.total_random_edges if args.randomize_edges > 0 else None
+        ),
     )
 
     # temporary - to check number of edges for randomization tests

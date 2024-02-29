@@ -1,10 +1,15 @@
 #!/bin/bash
 #
 # Submit jobs for graph construction, graph concatenation, scaler creation,
-# feature scaling, and gnn training. This script will first check if a final,
-# scaled graph is already present. If it is, it will skip all jobs and move
-# straight to GNN training. If it is not, it will submit all jobs in the
-# pipeline.
+# feature scaling, and gnn training. This script will perform checks for
+# intermediate and final graphs before running the pipeline and submit jobs as
+# necessary.
+
+# Logging function to track progress
+log_progress() {
+    local message="$1"
+    echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] $message"
+}
 
 # Parse command-line arguments for GNN training
 parse_arguments() {
@@ -34,7 +39,7 @@ parse_arguments() {
     total_random_edges=""
 
     # Use getopt with the additional --options and --longoptions flags
-    options=$(getopt --options "q:w:e:r:t:y:u:i:o:p:a:s:d:g:n:f:j:k:l:z:x:h" --longoptions "experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layer:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
+    options=$(getopt --options "q:w:e:r:t:y:u:i:o:p:a:s:d:g:n:f:j:k:l:z:x:h" --longoptions "experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help:" --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
@@ -144,6 +149,7 @@ parse_arguments() {
 
 # Call the function to parse command-line arguments
 parse_arguments "$@"
+log_progress "Command-line arguments parsed."
 
 # Set conda environment
 module load anaconda3/2022.10
@@ -159,11 +165,14 @@ split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} -
 # set up variables for graph checking
 final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_tpm_${tpm_filter}_percent_of_samples_${percent_of_samples_filter}_${graph_type}_graph_scaled.pkl
 intermediate_graphs=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}.pkl
+log_progress "Conda environment and python arguments parsed."
 
 # Start running pipeline
+log_progress "Checking for final graph: ${final_graph}"
 if [ -f "${final_graph}" ]; then
+    log_progress "Checking for intermediate graph: ${intermediate_graphs}"
     if [ -f "${intermediate_graph}" ]; then
-        echo "Intermediate graph found. Running dataset split, scaler, and training."
+        log_progress "Intermediate graph found. Running dataset split, scaler, and training."
 
         # Get training targets by splitting dataset (genes)
         split_id=$(
@@ -173,7 +182,7 @@ if [ -f "${final_graph}" ]; then
         )
 
     else
-        echo "No intermediates found. Running entire pipeline!"
+        log_progress "No intermediates found. Running entire pipeline!"
 
         # Determine node and edge generator script
         if [ "${partition}" == "EM" ]; then
@@ -209,7 +218,10 @@ if [ -f "${final_graph}" ]; then
             sbatch --parsable \
                 --dependency=afterok:"${construct_id}" \
                 get_training_targets.sh \
-                "${experiment_yaml}"
+                "${experiment_yaml}" \
+                "${tpm_filter}" \
+                "${percent_of_samples_filter}" \
+                "${split_name}"
         )
     fi
 
@@ -260,11 +272,10 @@ if [ -f "${final_graph}" ]; then
         "${randomize_node_feats}" \
         "${early_stop}" \
         "${randomize_edges}" \
-        "${total_random_edges}" \
         "${split_name}"
 
 else
-    echo "Final graph found. Going straight to GNN training."
+    log_progress "Final graph found. Going straight to GNN training."
 
     # Train graph neural network
     sbatch \
@@ -288,6 +299,5 @@ else
         "${randomize_node_feats}" \
         "${early_stop}" \
         "${randomize_edges}" \
-        "${total_random_edges}" \
         "${split_name}"
 fi
