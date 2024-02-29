@@ -16,7 +16,8 @@ import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from gnn import create_model
+from gnn import _create_model
+from gnn import _set_optimizer
 from gnn import get_cosine_schedule_with_warmup
 from gnn import test
 from gnn import train
@@ -24,28 +25,16 @@ from graph_to_pytorch import graph_to_pytorch
 import utils
 
 
-def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
-    """Choose optimizer"""
-    # set gradient descent optimizer
-    if args.optimizer == "Adam":
-        optimizer = torch.optim.Adam(
-            model_params,
-            lr=args.learning_rate,
-        )
-        scheduler = ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
-        )
-    elif args.optimizer == "AdamW":
-        optimizer = torch.optim.AdamW(
-            model_params,
-            lr=args.learning_rate,
-        )
-        scheduler = get_cosine_schedule_with_warmup(
-            optimizer=optimizer,
-            num_warmup_steps=5,
-            num_training_steps=args.epochs,
-        )
-    return optimizer, scheduler
+def _get_dataloaders():
+    data = graph_to_pytorch(
+        experiment_name=params["experiment_name"],
+        graph_type=args.graph_type,
+        root_dir=root_dir,
+        split_name=args.split_name,
+        regression_target=args.target,
+        test_chrs=params["training_targets"]["test_chrs"],
+        val_chrs=params["training_targets"]["val_chrs"],
+    )
 
 
 def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
@@ -61,7 +50,6 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         optimizer type, dropout rate, whether to use residual skip connections,
         and number of attention heads if the model uses them
     """
-
     # define range of values for hyperparameter testing
     model = trial.suggest_categorical(
         "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN", "UniMPTransformer"]
@@ -79,7 +67,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     residual = trial.suggest_categorical("residual", [True, False])
     heads = trial.suggest_int("heads", 1, 2, 3)
 
-    # dataloader
+    # get dataloader
 
     # define model and get optimizer
     model = _create_model(
@@ -92,10 +80,11 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         activation=activation,
         residual=residual,
         dropout_rate=dropout,
-        heads=heads,
-        train_dataset=train_dataset,
+        heads=heads if model in ("GATv2", "UniMPTransformer") else None,
+        train_dataset=train_dataset if model == "PNA" else None,
     )
 
+    # set optimizer
     optimizer = _set_optimizer(optimizer, learning_rate)
 
     for epoch in range(args.epochs):
