@@ -6,8 +6,13 @@
 # necessary.
 
 # Logging function to track progress
+# log_progress() {
+#     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
+# }
+
 log_progress() {
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1" | tee /dev/tty
+    # Using 'tee /dev/tty' will write to the terminal (tty) directly.
 }
 
 # Parse command-line arguments for GNN training
@@ -295,7 +300,7 @@ if [ ! -f "${final_graph}" ]; then
     log_progress "Node feature scaling job submitted."
 
     # Train GNN after scaler job is finished
-    sbatch --dependency=afterok:"${scale_id} ${train}"
+    sbatch --dependency=afterok:${scale_id} ${train}
     log_progress "GNN training job submitted."
 else
     log_progress "Final graph found. Going straight to GNN training."
