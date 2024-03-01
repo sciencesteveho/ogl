@@ -11,7 +11,7 @@
 # }
 
 log_progress() {
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1" | tee /dev/tty
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
     # Using 'tee /dev/tty' will write to the terminal (tty) directly.
 }
 
