@@ -464,10 +464,7 @@ class EdgeParser:
                 mask = edges_df[col].str.contains("ENSG")
                 edges_df.loc[mask, col] = edges_df.loc[mask, col].str.split("_").str[-1]
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
-        try:
-            return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
-        except AttributeError:
-            print(edges_df)
+        return set(edges_df["edge_0"].append(edges_df["edge_1"]).unique())
 
     @utils.time_decorator(print_args=True)
     def _process_loop_edges(
