@@ -175,6 +175,27 @@ final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${exper
 intermediate_graphs=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}.pkl
 log_progress "Conda environment and python arguments parsed."
 
+# set up training script
+train="train_gnn.sh \
+    ${experiment_yaml} \
+    ${gnn_layers} \
+    ${linear_layers} \
+    ${activation} \
+    ${dimensions} \
+    ${epochs} \
+    ${batch_size} \
+    ${learning_rate} \
+    ${optimizer} \
+    ${dropout} \
+    ${heads} \
+    ${graph_type} \
+    ${split_name} \
+    ${bool_flags}"
+
+if [[ -n $total_random_edges ]]; then
+    train="${train} ${total_random_edges}"
+fi
+
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}"
 if [ -f "${final_graph}" ]; then
@@ -259,47 +280,11 @@ if [ -f "${final_graph}" ]; then
     )
 
     # Train GNN after scaler job is finished
-    sbatch --dependency=afterok:"${scale_id}" \
-        train_gnn.sh \
-        "${experiment_yaml}" \
-        "${model}" \
-        "${target}" \
-        "${gnn_layers}" \
-        "${linear_layers}" \
-        "${activation}" \
-        "${dimensions}" \
-        "${epochs}" \
-        "${batch_size}" \
-        "${learning_rate}" \
-        "${optimizer}" \
-        "${dropout}" \
-        "${heads}" \
-        "${graph_type}" \
-        "${split_name}" \
-        "${total_random_edges}" \
-        "${bool_flags}"
+    sbatch --dependency=afterok:"${scale_id} ${train}"
 
 else
     log_progress "Final graph found. Going straight to GNN training."
 
     # Train graph neural network
-    sbatch \
-        train_gnn.sh \
-        "${experiment_yaml}" \
-        "${model}" \
-        "${target}" \
-        "${gnn_layers}" \
-        "${linear_layers}" \
-        "${activation}" \
-        "${dimensions}" \
-        "${epochs}" \
-        "${batch_size}" \
-        "${learning_rate}" \
-        "${optimizer}" \
-        "${dropout}" \
-        "${heads}" \
-        "${graph_type}" \
-        "${split_name}" \
-        "${total_random_edges}" \
-        "${bool_flags}"
+    sbatch ${train}
 fi
