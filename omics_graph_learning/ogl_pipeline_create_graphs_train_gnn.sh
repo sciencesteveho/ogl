@@ -8,7 +8,7 @@
 # Logging function to track progress
 log_progress() {
     local message="$1"
-    echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] $message"
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $message"
 }
 
 # Parse command-line arguments for GNN training
@@ -231,19 +231,9 @@ fi
 
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}"
-if [ -f "${final_graph}" ]; then
-    log_progress "Checking for intermediate graph: ${intermediate_graphs}"
-    if [ -f "${intermediate_graph}" ]; then
-        log_progress "Intermediate graph found. Running dataset split, scaler, and training."
-
-        # Get training targets by splitting dataset (genes)
-        split_id=$(
-            sbatch --parsable \
-                get_training_targets.sh \
-                ${experiment_yaml}
-        )
-
-    else
+if [ ! -f "${final_graph}" ]; then
+    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graphs}"
+    if [ ! -f "${intermediate_graph}" ]; then
         log_progress "No intermediates found. Running entire pipeline!"
 
         # Determine node and edge generator script
@@ -285,6 +275,14 @@ if [ -f "${final_graph}" ]; then
                 "${percent_of_samples_filter}" \
                 "${split_name}"
         )
+    else
+        log_progress "Intermediate graph found. Running dataset split, scaler, and training."
+        # Get training targets by splitting dataset (genes)
+        split_id=$(
+            sbatch --parsable \
+                get_training_targets.sh \
+                ${experiment_yaml}
+        )
     fi
 
     # Create scalers after concat is finished. One scaler per node feature.
@@ -314,7 +312,6 @@ if [ -f "${final_graph}" ]; then
 
     # Train GNN after scaler job is finished
     sbatch --dependency=afterok:"${scale_id} ${train}"
-
 else
     log_progress "Final graph found. Going straight to GNN training."
     sbatch ${train}  # Train graph neural network
