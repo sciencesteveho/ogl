@@ -339,7 +339,7 @@ def parse_arguments() -> argparse.Namespace:
         help="Which optimizer to use for learning. Options: AdamW or Adam (default: AdamW)",
     )
     parser.add_argument("--dropout", type=float)
-    parser.add_argument("--heads", type=int, required=False)
+    parser.add_argument("--heads", type=int, default=None)
     parser.add_argument(
         "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
     )
