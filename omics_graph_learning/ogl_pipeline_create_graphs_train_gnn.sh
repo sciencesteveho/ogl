@@ -33,7 +33,7 @@ parse_arguments() {
     graph_type=""
 
     # Use getopt with adjusted flags for optional boolean arguments
-    options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:g:n:h: --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,help: --name "$0" -- "$@")
+    options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:g:n:f:z:x:c:v:b:h: --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual:,zero_nodes:,randomize_node_feats:,early_stop:,randomize_edges:,total_random_edges:,help: --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
