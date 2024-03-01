@@ -183,7 +183,7 @@ parse_arguments "$@"
 log_progress "Command-line arguments parsed, with boolean flags: ${bool_flags}"
 
 # Set conda environment
-module load anaconda
+module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/ogl
 
 # Set up variables and find out if final graph is already made
