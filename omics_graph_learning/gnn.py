@@ -343,14 +343,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
     )
+    parser.add_argument("--split_name", type=str)
+    parser.add_argument("--total_random_edges", type=int, required=False, default=None)
     parser.add_argument("--graph_type", type=str, default="full")
     parser.add_argument("--residual", action="store_true")
     parser.add_argument("--zero_nodes", action="store_true")
     parser.add_argument("--randomize_node_feats", action="store_true")
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")
-    parser.add_argument("--total_random_edges", type=int, required=False)
-    parser.add_argument("--split_name", type=str)
     return parser.parse_args()
 
 
@@ -367,7 +367,7 @@ def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
         components.append("_randomnodefeats")
     if args.zero_nodes:
         components.append("_zeronodefeats")
-    if args.total_random_edges > 0:
+    if args.total_random_edges:
         components.append(f"_totalrandomedges{args.total_random_edges}")
     return "_".join(components)
 
