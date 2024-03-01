@@ -7,37 +7,23 @@
 
 # Logging function to track progress
 log_progress() {
-    local message="$1"
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $message"
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
 }
 
 # Parse command-line arguments for GNN training
 parse_arguments() {
-    # Initialize variables with default values
-    experiment_yaml=""
-    partition=""
-    model=""
-    target=""
-    tpm_filter=""
-    percent_of_samples_filter=""
-    gnn_layers=""
-    linear_layers=""
-    activation=""
-    dimensions=""
-    epochs=""
-    learning_rate=""
-    optimizer=""
-    dropout=""
-    heads=""
-    batch_size=""
-    graph_type=""
+    # # Initialize variables with default values
+    # experiment_yaml="" partition="" model="" target="" tpm_filter=""
+    # percent_of_samples_filter="" gnn_layers="" linear_layers="" activation=""
+    # dimensions="" epochs="" learning_rate="" optimizer="" dropout="" heads=""
+    # batch_size="" graph_type=""
 
     # Use getopt with adjusted flags for optional boolean arguments
     options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:f:g:k:ljzxcvbh --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual,zero_nodes,randomize_node_feats,early_stop,randomize_edges,total_random_edges,help --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
-        echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
+        echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
         exit 1
     fi
 
@@ -168,7 +154,7 @@ parse_arguments() {
             shift 2
             ;;
         -h | --help)
-            echo "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges"
+            echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges"
             exit 0
             ;;
         --)
@@ -193,7 +179,7 @@ log_progress "Command-line arguments parsed, with boolean flags: ${bool_flags}"
 
 # Set conda environment
 module load anaconda3/2022.10
-conda activate /ocean/projects/bio210019p/stevesho/gnn
+conda activate /ocean/projects/bio210019p/stevesho/ogl
 
 # Set up variables and find out if final graph is already made
 splitname_script=omics_graph_learning/omics_graph_learning/splitname.py
@@ -201,11 +187,11 @@ working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experim
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
 split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
-log_progress "Working directory: ${working_directory}\nExperiment name: ${experiment_name}\nTissues: ${tissues[*]}\nSplit name: ${split_name}"
+log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}"
 
 # set up variables for graph checking
 final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_tpm_${tpm_filter}_percent_of_samples_${percent_of_samples_filter}_${graph_type}_graph_scaled.pkl
-intermediate_graphs=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}.pkl
+intermediate_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}.pkl
 log_progress "Conda environment and python arguments parsed."
 
 # set up training script
@@ -229,10 +215,11 @@ if [[ -n $total_random_edges ]]; then
     train="${train} ${total_random_edges}"
 fi
 
+
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}"
 if [ ! -f "${final_graph}" ]; then
-    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graphs}"
+    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graph}"
     if [ ! -f "${intermediate_graph}" ]; then
         log_progress "No intermediates found. Running entire pipeline!"
 
@@ -254,6 +241,7 @@ if [ ! -f "${final_graph}" ]; then
             )
             pipeline_a_ids+=("${ID}")
         done
+        log_progress "Node and edge generation jobs submitted."
 
         # Concatenate graphs
         constructor=graph_concat.sh
@@ -264,25 +252,19 @@ if [ ! -f "${final_graph}" ]; then
                 full \
                 "${experiment_yaml}"
         )
+        log_progress "Graph concatenation job submitted."
 
-        # Get training targets after graph construction
-        split_id=$(
-            sbatch --parsable \
-                --dependency=afterok:"${construct_id}" \
-                get_training_targets.sh \
-                "${experiment_yaml}" \
-                "${tpm_filter}" \
-                "${percent_of_samples_filter}" \
-                "${split_name}"
-        )
+        get_splits() {
+            # Get training targets after graph construction
+            sbatch --parsable --dependency=afterok:"${1}" get_training_targets.sh "${experiment_yaml}" "${tpm_filter}" "${percent_of_samples_filter}" "${split_name}"
+        }
+        split_id=$(get_splits "${construct_id}")
+        log_progress "Training target job submitted."
     else
         log_progress "Intermediate graph found. Running dataset split, scaler, and training."
         # Get training targets by splitting dataset (genes)
-        split_id=$(
-            sbatch --parsable \
-                get_training_targets.sh \
-                ${experiment_yaml}
-        )
+        split_id=$(get_splits -1)
+        log_progress "Training target job submitted."
     fi
 
     # Create scalers after concat is finished. One scaler per node feature.
@@ -299,6 +281,7 @@ if [ ! -f "${final_graph}" ]; then
         )
         slurmids+=("${ID}")
     done
+    log_progress "Scaler jobs submitted."
 
     # Scale node feats after every scaler job is finished
     scale_id=$(
@@ -309,10 +292,13 @@ if [ ! -f "${final_graph}" ]; then
             "${experiment_yaml}" \
             "${split_name}"
     )
+    log_progress "Node feature scaling job submitted."
 
     # Train GNN after scaler job is finished
     sbatch --dependency=afterok:"${scale_id} ${train}"
+    log_progress "GNN training job submitted."
 else
     log_progress "Final graph found. Going straight to GNN training."
     sbatch ${train}  # Train graph neural network
+    log_progress "GNN training job submitted."
 fi
