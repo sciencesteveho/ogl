@@ -8,7 +8,7 @@
 
 # Function to echo script progress to stdout
 log_progress() {
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1\n"
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
 }
 
 # Parse command-line arguments for GNN training
@@ -170,7 +170,7 @@ parse_arguments() {
 
 # Call the function to parse command-line arguments
 parse_arguments "$@"
-log_progress "Command-line arguments parsed, with boolean flags: ${bool_flags}"
+log_progress "Command-line arguments parsed, with boolean flags: ${bool_flags}\n"
 
 # Set conda environment
 module load anaconda3/2022.10
@@ -182,12 +182,12 @@ working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experim
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
 split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
-log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}"
+log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}\n"
 
 # Set up variables for graph checking
 final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_${graph_type}_${split_name}_graph_scaled.pkl
 intermediate_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}_graph.pkl
-log_progress "Conda environment and python arguments parsed."
+log_progress "Conda environment and python arguments parsed.\n"
 
 # Function to get training targets after graph construction
 get_splits() {
@@ -197,6 +197,8 @@ get_splits() {
 # Set up GNN training script
 train="train_gnn.sh \
     ${experiment_yaml} \
+    ${model} \
+    ${target} \
     ${gnn_layers} \
     ${linear_layers} \
     ${activation} \
@@ -216,11 +218,11 @@ if [[ -n $total_random_edges ]]; then
 fi
 
 # Start running pipeline
-log_progress "Checking for final graph: ${final_graph}"
+log_progress "Checking for final graph: ${final_graph}\n"
 if [ ! -f "${final_graph}" ]; then
-    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graph}"
+    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graph}\n"
     if [ ! -f "${intermediate_graph}" ]; then
-        log_progress "No intermediates found. Running entire pipeline!"
+        log_progress "No intermediates found. Running entire pipeline!\n"
 
         # Determine node and edge generator script
         if [ "${partition}" == "EM" ]; then
@@ -240,7 +242,7 @@ if [ ! -f "${final_graph}" ]; then
             )
             pipeline_a_ids+=("${ID}")
         done
-        log_progress "Node and edge generation jobs submitted."
+        log_progress "Node and edge generation jobs submitted.\n"
 
         # Concatenate graphs
         constructor=graph_concat.sh
@@ -251,14 +253,14 @@ if [ ! -f "${final_graph}" ]; then
                 full \
                 "${experiment_yaml}"
         )
-        log_progress "Graph concatenation job submitted."
+        log_progress "Graph concatenation job submitted.\n"
 
         split_id=$(get_splits "${construct_id}")
-        log_progress "Training target job submitted."
+        log_progress "Training target job submitted.\n"
     else
-        log_progress "Intermediate graph found. Running dataset split, scaler, and training."
+        log_progress "Intermediate graph found. Running dataset split, scaler, and training.\n"
         split_id=$(get_splits -1)
-        log_progress "Training target job submitted."
+        log_progress "Training target job submitted.\n"
     fi
     # Create scalers after concat is finished. One scaler per node feature.
     slurmids=()
@@ -274,7 +276,7 @@ if [ ! -f "${final_graph}" ]; then
         )
         slurmids+=("${ID}")
     done
-    log_progress "Scaler jobs submitted."
+    log_progress "Scaler jobs submitted.\n"
 
     # Scale node feats after every scaler job is finished
     scale_id=$(
@@ -285,13 +287,13 @@ if [ ! -f "${final_graph}" ]; then
             "${experiment_yaml}" \
             "${split_name}"
     )
-    log_progress "Node feature scaling job submitted."
+    log_progress "Node feature scaling job submitted.\n"
 
     # Train GNN after scaler job is finished
     sbatch --dependency=afterok:${scale_id} ${train}
-    log_progress "GNN training job submitted."
+    log_progress "GNN training job submitted.\n"
 else
-    log_progress "Final graph found. Going straight to GNN training."
+    log_progress "Final graph found. Going straight to GNN training.\n"
     sbatch ${train}  # Train graph neural network
-    log_progress "GNN training job submitted."
+    log_progress "GNN training job submitted.\n"
 fi

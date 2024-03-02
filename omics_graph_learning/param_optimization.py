@@ -8,6 +8,7 @@
 """Code to train GNNs on the graph data!"""
 
 import argparse
+import gc
 from typing import Any, Dict, Iterator, List, Optional
 
 import optuna
