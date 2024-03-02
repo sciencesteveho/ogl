@@ -37,7 +37,7 @@ from torch_geometric.nn import LayerNorm
 from torch_geometric.nn import PNAConv
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
-from torch_geometric.nn.models import DeeperGCNLayer
+from torch_geometric.nn.models import DeepGCNLayer
 
 
 def _define_activation(activation: str) -> Callable[[], Any]:
@@ -563,7 +563,7 @@ class DeeperGCN(torch.nn.Module):
             )
             norm = LayerNorm(embedding_size)
             act = self.activation(inplace=True)
-            layer = DeeperGCNLayer(
+            layer = DeepGCNLayer(
                 conv=conv,
                 norm=norm,
                 act=act,
