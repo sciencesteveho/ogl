@@ -35,7 +35,7 @@ def _set_directories(
     return graph_dir, interaction_dir, parse_dir
 
 
-@utils.time_decorator(print_args=True)
+@utils.time_decorator(print_args=False)
 def _get_edges(
     edge_file: str,
     local: bool = False,
@@ -105,7 +105,7 @@ def _remove_blacklist_nodes(
     return graph
 
 
-@utils.time_decorator(print_args=True)
+@utils.time_decorator(print_args=False)
 def graph_constructor(
     tissue: str,
     interaction_dir: pathlib.PosixPath,
@@ -168,7 +168,7 @@ def graph_constructor(
     return graph
 
 
-@utils.time_decorator(print_args=True)
+@utils.time_decorator(print_args=False)
 def _nx_to_tensors(
     graph: nx.Graph,
     graph_dir: pathlib.PosixPath,
