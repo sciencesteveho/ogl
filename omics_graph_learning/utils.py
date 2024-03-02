@@ -280,7 +280,7 @@ class ScalerUtils:
 
         working_path = pathlib.Path(working_directory)
         graph_dir = working_path / experiment_name / "graphs"
-        prefix = f"{experiment_name}_{args.graph_type}"
+        prefix = f"{experiment_name}_{args.graph_type}_graph"
         return (
             args.feat,
             graph_dir / args.split_name,
