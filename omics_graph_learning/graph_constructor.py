@@ -95,11 +95,13 @@ def _prepare_reference_attributes(
 
 
 def _remove_blacklist_nodes(
-    graph: nx.Graph, ref: Dict[str, Dict[str, Any]]
+    graph: nx.Graph,
 ) -> nx.Graph:
-    """Remove nodes from graph, if they have no attributes. These nodes have no attributes because they overlap the encode blacklist"""
-    blacklist = [key for key, value in ref.items() if len(value) == 0]
+    """Remove nodes from graph, if they have no attributes. These nodes have no
+    attributes because they overlap the encode blacklist."""
+    blacklist = [node for node, attrs in graph.nodes(data=True) if len(attrs) == 0]
     graph.remove_nodes_from(blacklist)
+    print(f"Removed {len(blacklist)} nodes from graph")
     return graph
 
 
@@ -158,8 +160,11 @@ def graph_constructor(
         reference_dir=parse_dir / "attributes",
         nodes=nodes,
     )
-    graph = _remove_blacklist_nodes(graph, ref)
+    # graph = _remove_blacklist_nodes(graph, ref)
     nx.set_node_attributes(graph, ref)
+
+    # remove nodes without attributes
+    graph = _remove_blacklist_nodes(graph)
     return graph
 
 
