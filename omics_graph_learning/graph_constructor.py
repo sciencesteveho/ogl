@@ -177,7 +177,7 @@ def _nx_to_tensors(
         ]
     ).T
     node_features = np.array(
-        [np.array(graph.nodes[node].values()) for node in rename.values()]
+        [np.array(list(graph.nodes[node].values())) for node in rename.values()]
     )
     edge_features = [graph[u][v][2] for u, v in edges.T]
 
