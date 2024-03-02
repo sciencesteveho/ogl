@@ -5,24 +5,14 @@
 # intermediate and final graphs before running the pipeline and submit jobs as
 # necessary.
 
-# Logging function to track progress
-# log_progress() {
-#     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
-# }
 
+# Function to echo script progress to stdout
 log_progress() {
     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
-    # Using 'tee /dev/tty' will write to the terminal (tty) directly.
 }
 
 # Parse command-line arguments for GNN training
 parse_arguments() {
-    # # Initialize variables with default values
-    # experiment_yaml="" partition="" model="" target="" tpm_filter=""
-    # percent_of_samples_filter="" gnn_layers="" linear_layers="" activation=""
-    # dimensions="" epochs="" learning_rate="" optimizer="" dropout="" heads=""
-    # batch_size="" graph_type=""
-
     # Use getopt with adjusted flags for optional boolean arguments
     options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:f:g:k:ljzxcvbh --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual,zero_nodes,randomize_node_feats,early_stop,randomize_edges,total_random_edges,help --name "$0" -- "$@")
 
@@ -194,12 +184,17 @@ tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}
 split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
 log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}"
 
-# set up variables for graph checking
+# Set up variables for graph checking
 final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_tpm_${tpm_filter}_percent_of_samples_${percent_of_samples_filter}_${graph_type}_graph_scaled.pkl
 intermediate_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}_graph.pkl
 log_progress "Conda environment and python arguments parsed."
 
-# set up training script
+# Function to get training targets after graph construction
+get_splits() {
+    sbatch --parsable --dependency=afterok:"${1}" get_training_targets.sh "${experiment_yaml}" "${tpm_filter}" "${percent_of_samples_filter}" "${split_name}"
+}
+
+# Set up GNN training script
 train="train_gnn.sh \
     ${experiment_yaml} \
     ${gnn_layers} \
@@ -215,11 +210,10 @@ train="train_gnn.sh \
     ${graph_type} \
     ${split_name} \
     ${bool_flags}"
-
+# Add total random edges if passed, as final arg
 if [[ -n $total_random_edges ]]; then
     train="${train} ${total_random_edges}"
 fi
-
 
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}"
@@ -259,10 +253,6 @@ if [ ! -f "${final_graph}" ]; then
         )
         log_progress "Graph concatenation job submitted."
 
-        get_splits() {
-            # Get training targets after graph construction
-            sbatch --parsable --dependency=afterok:"${1}" get_training_targets.sh "${experiment_yaml}" "${tpm_filter}" "${percent_of_samples_filter}" "${split_name}"
-        }
         split_id=$(get_splits "${construct_id}")
         log_progress "Training target job submitted."
     else
