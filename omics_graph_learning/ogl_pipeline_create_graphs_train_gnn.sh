@@ -185,7 +185,7 @@ split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} -
 log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}"
 
 # Set up variables for graph checking
-final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_tpm_${tpm_filter}_percent_of_samples_${percent_of_samples_filter}_${graph_type}_graph_scaled.pkl
+final_graph=${working_directory}/${experiment_name}/graphs/${split_name}/${experiment_name}_${graph_type}_${split_name}_graph_scaled.pkl
 intermediate_graph=${working_directory}/${experiment_name}/graphs/${experiment_name}_${graph_type}_graph.pkl
 log_progress "Conda environment and python arguments parsed."
 
