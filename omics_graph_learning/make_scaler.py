@@ -58,7 +58,7 @@ def main() -> None:
     utils.dir_check_make(scaler_dir)
 
     # set up other vars from functions
-    split = load_training_split(parition=split_path / "training_targets_split.pkl")
+    split = load_training_split(partition=split_path / "training_targets_split.pkl")
     exclude = split["validation"] + split["test"]
     idxs, g = ScalerUtils._load_graph_data(graphdir_prefix=graphdir_prefix)
     skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
