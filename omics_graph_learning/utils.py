@@ -280,7 +280,7 @@ class ScalerUtils:
 
         working_path = pathlib.Path(working_directory)
         graph_dir = working_path / experiment_name / "graphs"
-        prefix = f"{experiment_name}_{args.graph_type}_graph"
+        prefix = f"{experiment_name}_{args.graph_type}"
         return (
             args.feat,
             graph_dir / args.split_name,
@@ -292,10 +292,10 @@ class ScalerUtils:
 
     @staticmethod
     def _load_graph_data(
-        graphdir_prefix: pathlib.Path,
+        graphdir_prefix: str,
     ) -> Tuple[Dict[str, int], Dict[str, Any]]:
         """Load graph data from files."""
-        graph_file_path = graphdir_prefix.with_suffix(".pkl")
+        graph_file_path = f"{graphdir_prefix}.pkl"
         idxs_file_path = f"{graphdir_prefix}_idxs.pkl"
         with open(idxs_file_path, "rb") as idxs_file, open(
             graph_file_path, "rb"

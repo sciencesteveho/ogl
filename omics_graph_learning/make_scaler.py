@@ -60,7 +60,7 @@ def main() -> None:
     # set up other vars from functions
     split = load_training_split(partition=split_path / "training_targets_split.pkl")
     exclude = split["validation"] + split["test"]
-    idxs, g = ScalerUtils._load_graph_data(graphdir_prefix=graphdir_prefix)
+    idxs, g = ScalerUtils._load_graph_data(graphdir_prefix=f"{graphdir_prefix}_graph")
     skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
     node_features = g["node_feat"]
 

@@ -12,7 +12,6 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-import utils
 from utils import ScalerUtils
 
 

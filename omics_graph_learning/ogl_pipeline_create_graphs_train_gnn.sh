@@ -8,7 +8,7 @@
 
 # Function to echo script progress to stdout
 log_progress() {
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1\n"
 }
 
 # Parse command-line arguments for GNN training
