@@ -295,9 +295,11 @@ class ScalerUtils:
         graphdir_prefix: pathlib.Path,
     ) -> Tuple[Dict[str, int], Dict[str, Any]]:
         """Load graph data from files."""
-        graph_file = graphdir_prefix.with_suffix(".pkl")
-        idxs_file = graphdir_prefix + "_idxs.pkl"
-        with open(idxs_file, "rb") as idxs_file, open(graph_file, "rb") as graph_file:
+        graph_file_path = graphdir_prefix.with_suffix(".pkl")
+        idxs_file_path = f"{graphdir_prefix}_idxs.pkl"
+        with open(idxs_file_path, "rb") as idxs_file, open(
+            graph_file_path, "rb"
+        ) as graph_file:
             idxs = pickle.load(idxs_file)
             graph = pickle.load(graph_file)
         return idxs, graph
