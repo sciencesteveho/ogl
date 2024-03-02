@@ -267,44 +267,42 @@ if [ ! -f "${final_graph}" ]; then
         log_progress "Training target job submitted."
     else
         log_progress "Intermediate graph found. Running dataset split, scaler, and training."
-        # Get training targets by splitting dataset (genes)
-        # split_id=$(get_splits -1)
-        # log_progress "Training target job submitted."
-        echo "works!"
+        Get training targets by splitting dataset (genes)
+        split_id=$(get_splits -1)
+        log_progress "Training target job submitted."
     fi
+    # Create scalers after concat is finished. One scaler per node feature.
+    slurmids=()
+    for num in {0..38}; do
+        ID=$(
+            sbatch --parsable \
+                --dependency=afterok:"${split_id}" \
+                make_scaler.sh \
+                "${num}" \
+                full \
+                "${experiment_yaml}" \
+                "${split_name}"
+        )
+        slurmids+=("${ID}")
+    done
+    log_progress "Scaler jobs submitted."
+
+    # Scale node feats after every scaler job is finished
+    scale_id=$(
+        sbatch --parsable \
+            --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
+            scale_node_feats.sh \
+            full \
+            "${experiment_yaml}" \
+            "${split_name}"
+    )
+    log_progress "Node feature scaling job submitted."
+
+    # Train GNN after scaler job is finished
+    sbatch --dependency=afterok:${scale_id} ${train}
+    log_progress "GNN training job submitted."
+else
+    log_progress "Final graph found. Going straight to GNN training."
+    sbatch ${train}  # Train graph neural network
+    log_progress "GNN training job submitted."
 fi
-#     # Create scalers after concat is finished. One scaler per node feature.
-#     slurmids=()
-#     for num in {0..38}; do
-#         ID=$(
-#             sbatch --parsable \
-#                 --dependency=afterok:"${split_id}" \
-#                 make_scaler.sh \
-#                 "${num}" \
-#                 full \
-#                 "${experiment_yaml}" \
-#                 "${split_name}"
-#         )
-#         slurmids+=("${ID}")
-#     done
-#     log_progress "Scaler jobs submitted."
-
-#     # Scale node feats after every scaler job is finished
-#     scale_id=$(
-#         sbatch --parsable \
-#             --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
-#             scale_node_feats.sh \
-#             full \
-#             "${experiment_yaml}" \
-#             "${split_name}"
-#     )
-#     log_progress "Node feature scaling job submitted."
-
-#     # Train GNN after scaler job is finished
-#     sbatch --dependency=afterok:${scale_id} ${train}
-#     log_progress "GNN training job submitted."
-# else
-#     log_progress "Final graph found. Going straight to GNN training."
-#     sbatch ${train}  # Train graph neural network
-#     log_progress "GNN training job submitted."
-# fi
