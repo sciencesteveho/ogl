@@ -12,14 +12,27 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
+import pathlib
 import pickle
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
 import utils
+
+
+def _set_directories(
+    working_directory: str, experiment_name: str, tissue: str
+) -> Tuple[pathlib.PosixPath, pathlib.PosixPath, pathlib.PosixPath]:
+    """Create directories for the experiment"""
+    root_dir = pathlib.Path(f"{working_directory}/{experiment_name}")
+    graph_dir = root_dir / "graphs"
+    interaction_dir = root_dir / tissue / "interaction"
+    parse_dir = root_dir / tissue / "parsing"
+    utils.dir_check_make(graph_dir)
+    return graph_dir, interaction_dir, parse_dir
 
 
 @utils.time_decorator(print_args=True)
@@ -84,7 +97,8 @@ def _prepare_reference_attributes(
 @utils.time_decorator(print_args=True)
 def graph_constructor(
     tissue: str,
-    root_dir: str,
+    interaction_dir: pathlib.PosixPath,
+    parse_dir: pathlib.PosixPath,
     graph_type: str,
     nodes: List[str],
 ) -> nx.Graph:
@@ -102,22 +116,18 @@ def graph_constructor(
     Returns:
         nx.Graph: _description_
     """
-    # housekeeping
-    interaction_dir = f"{root_dir}/{tissue}/interaction"
-    parse_dir = f"{root_dir}/{tissue}/parsing"
-
     # create base graph
     if graph_type == "full":
         graph = _base_graph(
             edges=pd.concat(
                 [
                     _get_edges(
-                        edge_file=f"{interaction_dir}/interaction_edges.txt",
+                        edge_file=interaction_dir / "interaction_edges.txt",
                         add_tissue=True,
                         tissue=tissue,
                     ),
                     _get_edges(
-                        edge_file=f"{parse_dir}/edges/all_concat_sorted.bed",
+                        edge_file=parse_dir / "edges" / "all_concat_sorted.bed",
                         local=True,
                         add_tissue=True,
                         tissue=tissue,
@@ -128,7 +138,7 @@ def graph_constructor(
     else:
         graph = _base_graph(
             edges=_get_edges(
-                edge_file=f"{interaction_dir}/interaction_edges.txt",
+                edge_file=interaction_dir / "interaction_edges.txt",
                 add_tissue=True,
                 tissue=tissue,
             )
@@ -136,7 +146,7 @@ def graph_constructor(
 
     # add node attributes
     ref = _prepare_reference_attributes(
-        reference_dir=f"{parse_dir}/attributes/",
+        reference_dir=parse_dir / "attributes",
         nodes=nodes,
     )
     nx.set_node_attributes(graph, ref)
@@ -147,7 +157,7 @@ def graph_constructor(
 @utils.time_decorator(print_args=True)
 def _nx_to_tensors(
     graph: nx.Graph,
-    graph_dir: str,
+    graph_dir: pathlib.PosixPath,
     graph_type: str,
     prefix: str,
     rename: Dict[str, int],
@@ -167,11 +177,11 @@ def _nx_to_tensors(
         ]
     ).T
     node_features = np.array(
-        [np.array(list(graph.nodes[node].values())) for node in rename.values()]
+        [np.array(graph.nodes[node].values()) for node in rename.values()]
     )
     edge_features = [graph[u][v][2] for u, v in edges.T]
 
-    with open(f"{graph_dir}/{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
+    with open(graph_dir / f"{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": edges,
@@ -195,14 +205,23 @@ def make_tissue_graph(
 ) -> None:
     """Pipeline to generate individual graphs"""
 
-    # create primary graph directory
-    root_dir = f"{working_directory}/{experiment_name}"
-    graph_dir = f"{root_dir}/graphs"
-    utils.dir_check_make(graph_dir)
+    # working_directory = (
+    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing"
+    # )
+    # tissue = "aorta"
+    # experiment_name = "regulatory_only_hic_gte2"
+
+    # get directories
+    graph_dir, interaction_dir, parse_dir = _set_directories(
+        working_directory=working_directory,
+        experiment_name=experiment_name,
+        tissue=tissue,
+    )
 
     # instantiate objects and process graphs
     graph = graph_constructor(
-        root_dir=root_dir,
+        interaction_dir=interaction_dir,
+        parse_dir=parse_dir,
         graph_type=graph_type,
         tissue=tissue,
         nodes=nodes,
@@ -211,7 +230,7 @@ def make_tissue_graph(
     # save indexes before renaming to integers
     rename = {node: idx for idx, node in enumerate(sorted(graph.nodes))}
     with open(
-        f"{graph_dir}/{experiment_name}_{graph_type}_graph_{tissue}_idxs.pkl", "wb"
+        graph_dir / f"{experiment_name}_{graph_type}_graph_{tissue}_idxs.pkl", "wb"
     ) as output:
         pickle.dump(rename, output)
 
