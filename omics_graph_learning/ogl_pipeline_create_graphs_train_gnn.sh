@@ -267,7 +267,6 @@ if [ ! -f "${final_graph}" ]; then
         log_progress "Training target job submitted."
     else
         log_progress "Intermediate graph found. Running dataset split, scaler, and training."
-        Get training targets by splitting dataset (genes)
         split_id=$(get_splits -1)
         log_progress "Training target job submitted."
     fi
