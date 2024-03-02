@@ -371,47 +371,35 @@ class LocalContextParser:
         from interaction data
         """
 
-        attr_dict, attr_dict_nochr, set_dict = (
-            {},
-            {},
-            {},
-        )  # dict[gene] = [chr, start, end, size, gc]
+        stored_attributed, bedfile_lines = {}, {}
         for attribute in utils.ATTRIBUTES:
             filename = (
                 f"{self.parse_dir}/attributes/{attribute}/{node}_{attribute}_percentage"
             )
             with open(filename, "r") as file:
                 lines = [tuple(line.rstrip().split("\t")) for line in file]
-                set_dict[attribute] = set(lines)
-            for line in set_dict[attribute]:
+                bedfile_lines[attribute] = set(lines)
+            for line in bedfile_lines[attribute]:
                 if attribute == "gc":
-                    attr_dict[f"{line[3]}_{self.tissue}"] = {
+                    stored_attributed[f"{line[3]}_{self.tissue}"] = {
                         "chr": line[0].replace("chr", ""),
                     }
-                    for dictionary in [attr_dict, attr_dict_nochr]:
-                        dictionary[f"{line[3]}_{self.tissue}"] = {
-                            "start": float(line[1]),
-                            "end": float(line[2]),
-                            "size": float(line[4]),
-                            "gc": float(line[5]),
-                        }
+                    stored_attributed[f"{line[3]}_{self.tissue}"] = {
+                        "start": float(line[1]),
+                        "end": float(line[2]),
+                        "size": float(line[4]),
+                        "gc": float(line[5]),
+                    }
                 else:
                     try:
-                        for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = float(
-                                line[5]
-                            )
+                        stored_attributed[f"{line[3]}_{self.tissue}"][attribute] = (
+                            float(line[5])
+                        )
                     except ValueError:
-                        for dictionary in [attr_dict, attr_dict_nochr]:
-                            dictionary[f"{line[3]}_{self.tissue}"][attribute] = 0
+                        stored_attributed[f"{line[3]}_{self.tissue}"][attribute] = 0
 
         with open(f"{self.parse_dir}/attributes/{node}_reference.pkl", "wb") as output:
-            pickle.dump(attr_dict, output)
-
-        # with open(
-        #     f"{self.parse_dir}/attributes/{node}_reference_nochr.pkl", "wb"
-        # ) as output:
-        #     pickle.dump(attr_dict_nochr, output)
+            pickle.dump(stored_attributed, output)
 
     @utils.time_decorator(print_args=True)
     def parse_context_data(self) -> None:
