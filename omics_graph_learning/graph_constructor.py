@@ -99,7 +99,8 @@ def _remove_blacklist_nodes(
 ) -> nx.Graph:
     """Remove nodes from graph, if they have no attributes. These nodes have no attributes because they overlap the encode blacklist"""
     blacklist = [key for key, value in ref.items() if len(value) == 0]
-    return graph.remove_nodes_from(blacklist)
+    graph.remove_nodes_from(blacklist)
+    return graph
 
 
 @utils.time_decorator(print_args=True)
