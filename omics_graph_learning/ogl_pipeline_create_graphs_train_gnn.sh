@@ -272,7 +272,7 @@ if [ ! -f "${final_graph}" ]; then
         # log_progress "Training target job submitted."
         echo "works!"
     fi
-
+fi
 #     # Create scalers after concat is finished. One scaler per node feature.
 #     slurmids=()
 #     for num in {0..38}; do
