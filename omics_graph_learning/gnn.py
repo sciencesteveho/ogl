@@ -258,14 +258,6 @@ def setup_device(args: argparse.Namespace) -> torch.device:
     return torch.device("cpu")
 
 
-def save_model(
-    model: torch.nn.Module,
-    directory: pathlib.PosixPath,
-) -> None:
-    """Save model state"""
-    torch.save(model.state_dict(), directory)
-
-
 def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
     """Choose optimizer"""
     # set gradient descent optimizer
@@ -558,13 +550,10 @@ def main() -> None:
     prof.stop()
 
     # Save final model
-    save_model(
-        model=model,
-        directory=model_dir / "models",
-        filename=f"{args.model}_final_mse_{val_acc}.pt",
-    )
+    model_path = model_dir / f"{args.model}_final_mse_{val_acc}.pt"
+    torch.save(model.state_dict(), model_path)
 
-    # plot final model
+    # generate loss and prediction plots
     _plot_loss_and_performance(
         model=model,
         device=device,
