@@ -411,7 +411,7 @@ def _plot_loss_and_performance(
     utils.plot_training_losses(
         outfile=model_dir / "plots" / f"{savestr}_loss.png",
         savestr=savestr,
-        log=model_dir / "log" / "training_log.txt",
+        log=model_dir / "logs" / "training_log.txt",
     )
 
     # plot performance
@@ -507,7 +507,7 @@ def main() -> None:
     optimizer, scheduler = _set_optimizer(args=args, model_params=model.parameters())
 
     # start model training and initialize tensorboard utilities
-    writer = SummaryWriter(model_dir / "log")
+    writer = SummaryWriter(model_dir / "logs")
     epochs = args.epochs
     best_validation = stop_counter = 0
     prof = torch.profiler.profile(
@@ -516,7 +516,7 @@ def main() -> None:
         #     torch.profiler.ProfilerActivity.CUDA,
         # ],
         schedule=torch.profiler.schedule(wait=1, warmup=4, active=3, repeat=1),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler(model_dir / "log"),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(model_dir / "logs"),
         record_shapes=True,
         profile_memory=True,
         with_stack=True,
