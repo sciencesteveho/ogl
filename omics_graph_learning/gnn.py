@@ -481,7 +481,7 @@ def main() -> None:
         activation=args.activation,
         dropout_rate=args.dropout_rate if args.dropout else None,
         heads=args.heads,
-        train_dataset=args.model == "PNA",
+        train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 
     # set up optimizer & scheduler

@@ -160,7 +160,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         residual=residual,
         dropout_rate=dropout,
         heads=heads if model in ("GATv2", "UniMPTransformer") else None,
-        train_dataset=train_dataset if model == "PNA" else None,
+        train_dataset=train_loader if model == "PNA" else None,
     )
     model = model.to(device)
 

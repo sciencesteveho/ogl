@@ -40,11 +40,11 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer
 
 
-def _define_activation(activation: str) -> Callable[[], Any]:
+def _define_activation(activation: str) -> Callable:
     """Defines the activation function according to the given string"""
     activations = {"gelu": F.gelu, "leakyrelu": F.leaky_relu, "relu": F.relu}
     if activation in activations:
-        return activations[activation]()
+        return activations[activation]
     else:
         raise ValueError(
             "Invalid activation function. Supported: relu, leakyrelu, gelu"
