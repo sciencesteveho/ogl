@@ -229,18 +229,23 @@ def _load_data_object_prerequisites(
 ):
     """Load specific files needed to make the PyG Data object"""
     graph_dir = pathlib.Path(root_dir) / "graphs" / split_name
-    pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_{split_name}_graph"
 
+    # get training split
     with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
         split = pickle.load(f)
 
-    with open(f"{graph_dir}/{pre_prefix}_scaled.pkl", "rb") as file:
-        graph_data = pickle.load(file)
-
+    # get training targets
     if scaled:
         targets = f"{graph_dir}/training_targets.pkl"
     else:
         targets = f"{graph_dir}/training_targets_scaled.pkl"
+
+    # load the graph!
+    with open(
+        f"{graph_dir}/{experiment_name}_{graph_type}_{split_name}_graph_scaled.pkl",
+        "rb",
+    ) as file:
+        graph_data = pickle.load(file)
 
     return (
         f"{root_dir}/graphs/{experiment_name}_{graph_type}_idxs.pkl",
