@@ -261,11 +261,9 @@ def setup_device(args: argparse.Namespace) -> torch.device:
 def save_model(
     model: torch.nn.Module,
     directory: pathlib.PosixPath,
-    filename: str,
 ) -> None:
     """Save model state"""
-    model_path = directory / filename
-    torch.save(model.state_dict(), model_path)
+    torch.save(model.state_dict(), directory)
 
 
 def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
