@@ -189,7 +189,6 @@ def test(
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
     mask: torch.Tensor,
-    gps: bool = False,
 ):
     """Test GNN model on test set"""
     model.eval()
@@ -199,10 +198,7 @@ def test(
     mse = []
     for data in data_loader:
         data = data.to(device)
-        if gps:
-            out = model(data.x, data.pe, data.edge_index, data.batch)
-        else:
-            out = model(data.x, data.edge_index)
+        out = model(data.x, data.edge_index)
 
         if mask == "val":
             idx_mask = data.val_mask
@@ -222,7 +218,6 @@ def inference(
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
-    gps: bool = False,
 ):
     """Use model for inference or to evaluate on validation set"""
     model.eval()
@@ -232,10 +227,7 @@ def inference(
     mse, outs, labels = [], [], []
     for data in data_loader:
         data = data.to(device)
-        if gps:
-            out = model(data.x, data.pe, data.edge_index, data.batch)
-        else:
-            out = model(data.x, data.edge_index)
+        out = model(data.x, data.edge_index)
 
         outs.extend(out[data.test_mask])
         labels.extend(data.y[data.test_mask])
@@ -455,7 +447,7 @@ def main() -> None:
         utils.dir_check_make(model_dir / folder)
 
     logging.basicConfig(
-        filename=model_dir / "log" / "training_log.txt",
+        filename=model_dir / "logs" / "training_log.txt",
         level=logging.DEBUG,
     )
 

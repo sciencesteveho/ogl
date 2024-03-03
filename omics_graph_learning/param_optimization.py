@@ -9,6 +9,7 @@
 
 import argparse
 import gc
+import math
 from typing import Any, Dict, Iterator, List, Optional
 
 import optuna
@@ -16,6 +17,8 @@ from optuna.trial import TrialState
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch_geometric
+from tqdm import tqdm
 
 from gnn import _create_model
 from gnn import _set_optimizer
@@ -24,6 +27,70 @@ from gnn import test
 from gnn import train
 from graph_to_pytorch import graph_to_pytorch
 import utils
+
+EPOCHS = 50
+RANDOM_SEED = 42
+
+
+def train(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    optimizer,
+    train_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+):
+    """Train GNN model on graph data"""
+    model.train()
+    pbar = tqdm(total=len(train_loader))
+    pbar.set_description(f"Training epoch: {epoch:04d}")
+
+    total_loss = total_examples = 0
+    for data in train_loader:
+        optimizer.zero_grad()
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
+        loss.backward()
+        optimizer.step()
+
+        total_loss += float(loss) * int(data.train_mask.sum())
+        total_examples += int(data.train_mask.sum())
+
+        pbar.update(1)
+
+    pbar.close()
+    return total_loss / total_examples
+
+
+@torch.no_grad()
+def test(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+    mask: torch.Tensor,
+):
+    """Test GNN model on test set"""
+    model.eval()
+    pbar = tqdm(total=len(data_loader))
+    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+
+    mse = []
+    for data in data_loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index)
+
+        if mask == "val":
+            idx_mask = data.val_mask
+        elif mask == "test":
+            idx_mask = data.test_mask
+        mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
+        loss = torch.stack(mse)
+        pbar.update(1)
+
+    pbar.close()
+    return math.sqrt(float(loss.mean()))
 
 
 def _get_dataloaders():
@@ -88,7 +155,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     # set optimizer
     optimizer = _set_optimizer(optimizer, learning_rate)
 
-    for epoch in range(args.epochs):
+    for epoch in range(EPOCHS):
         train(model, optimizer)  # Train the model
         mse = test(model)  # Evaluate the model
 
@@ -109,9 +176,6 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    n_epochs = 10
-    main_train_examples = 500 * batch_size
-    random_seed = 1
 
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=100)
