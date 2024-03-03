@@ -354,21 +354,21 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def construct_save_string(base_str: List[str], args: argparse.Namespace) -> str:
+def construct_save_string(components: List[str], args: argparse.Namespace) -> str:
     """Adds args to specify save string for model and logs"""
-    components = [base_str]
+    print(components)
     if args.residual:
-        components.append("_residual")
+        components.append("residual")
     if args.heads:
-        components.append(f"_heads{args.heads}")
+        components.append(f"heads{args.heads}")
     if args.dropout > 0.0:
-        components.append(f"_dropout{args.dropout}")
+        components.append(f"dropout{args.dropout}")
     if args.randomize_node_feats:
-        components.append("_randomnodefeats")
+        components.append("randomnodefeats")
     if args.zero_nodes:
-        components.append("_zeronodefeats")
+        components.append("zeronodefeats")
     if args.total_random_edges:
-        components.append(f"_totalrandomedges{args.total_random_edges}")
+        components.append(f"totalrandomedges{args.total_random_edges}")
     return "_".join(components)
 
 
@@ -435,16 +435,16 @@ def main() -> None:
     root_dir = working_directory / params["experiment_name"]
     savestr = construct_save_string(
         [
-            f"{params['experiment_name']}_",
-            f"{args.model}_",
-            f"_target-{args.target}_",
-            f"gnnlayers{args.gnn_layers}_",
-            f"linlayers{args.linear_layers}_",
-            f"{args.activation}_",
-            f"dim{args.dimensions}_",
-            f"batch{args.batch_size}_",
-            f"{args.optimizer}_",
-            f"{args.split_name}_",
+            f"{params['experiment_name']}",
+            f"{args.model}",
+            f"target-{args.target}",
+            f"gnnlayers{args.gnn_layers}",
+            f"linlayers{args.linear_layers}",
+            f"{args.activation}",
+            f"dim{args.dimensions}",
+            f"batch{args.batch_size}",
+            f"{args.optimizer}",
+            f"{args.split_name}",
         ],
         args,
     )

@@ -11,7 +11,9 @@ log_progress() {
     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1"
 }
 
-# Parse command-line arguments for GNN training
+# =============================================================================
+# Parse command-line arguments
+# =============================================================================
 parse_arguments() {
     # Use getopt with adjusted flags for optional boolean arguments
     options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:f:g:k:ljzxcvbh --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual,zero_nodes,randomize_node_feats,early_stop,randomize_edges,total_random_edges,help --name "$0" -- "$@")
@@ -176,7 +178,10 @@ log_progress "Command-line arguments parsed, with boolean flags: ${bool_flags}\n
 module load anaconda3/2022.10
 conda activate /ocean/projects/bio210019p/stevesho/ogl
 
-# Set up variables and find out if final graph is already made
+# =============================================================================
+# Set up necessary scripts and variables
+# =============================================================================
+# See if final graph is already made
 splitname_script=omics_graph_learning/omics_graph_learning/splitname.py
 working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['working_directory'])")
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
@@ -228,7 +233,9 @@ fi
 train="${train} ${train_args}"
 log_progress "GNN training script and arguments set:\t${train}\n"
 
-# Start running pipeline
+# =============================================================================
+# Start running pipeline!
+# =============================================================================
 log_progress "Checking for final graph: ${final_graph}\n"
 if [ ! -f "${final_graph}" ]; then
     log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graph}\n"
