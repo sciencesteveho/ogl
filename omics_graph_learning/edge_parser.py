@@ -134,14 +134,11 @@ class EdgeParser:
             return {}
 
     def _read_csv_wrapper(
-        self, file_path: str, with_header: bool = True
+        self, file_path: str
     ) -> Union[Tuple[List[str], Iterator[List[str]]], Iterator[List[str]]]:
         """Wrapper function to read a CSV file."""
         with open(file_path, newline="") as file:
             reader = csv.reader(file, delimiter="\t")
-            if with_header:
-                header = next(reader)
-                return header, reader
             return reader
 
     def _iid_ppi(
@@ -151,7 +148,8 @@ class EdgeParser:
     ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Protein-protein interactions from the Integrated Interactions
         Database v 2021-05"""
-        header, reader = self._read_csv_wrapper(interaction_file, with_header=True)
+        reader = self._read_csv_wrapper(interaction_file)
+        header = next(reader)
         idxs = {
             key: header.index(key)
             for key in ["symbol1", "symbol2", "evidence_type", "n_methods", tissue]
@@ -205,7 +203,8 @@ class EdgeParser:
             List[Tuple[str, str]]: A list of filtered tf marker interactions.
         """
         tf_keep = ["TF", "I Marker", "TFMarker"]
-        _, reader = self._read_csv_wrapper(interaction_file, with_header=True)
+        reader = self._read_csv_wrapper(interaction_file)
+        next(reader)
 
         tf_markers = []
         for line in reader:
