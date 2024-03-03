@@ -23,13 +23,34 @@ from tqdm import tqdm
 from gnn import _create_model
 from gnn import _set_optimizer
 from gnn import get_cosine_schedule_with_warmup
-from gnn import test
-from gnn import train
+from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 import utils
 
 EPOCHS = 50
 RANDOM_SEED = 42
+
+
+# get graph data
+def _test(batch_size):
+    data = graph_to_pytorch(
+        experiment_name=params["experiment_name"],
+        graph_type="full",
+        root_dir=root_dir,
+        split_name=args.split_name,
+        regression_target=args.target,
+    )
+
+    # temporary - to check number of edges for randomization tests
+    print(f"Number of edges: {data.num_edges}")
+
+    # set up data loaders
+    train_loader = get_loader(
+        data=data, mask="train_mask", batch_size=batch_size, shuffle=True
+    )
+    test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
+    val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
+    return train_loader, test_loader, val_loader
 
 
 def train(
@@ -91,18 +112,6 @@ def test(
 
     pbar.close()
     return math.sqrt(float(loss.mean()))
-
-
-def _get_dataloaders():
-    data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type=args.graph_type,
-        root_dir=root_dir,
-        split_name=args.split_name,
-        regression_target=args.target,
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-    )
 
 
 def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:

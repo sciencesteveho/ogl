@@ -228,13 +228,13 @@ def _load_data_object_prerequisites(
     scaled: bool = False,
 ):
     """Load specific files needed to make the PyG Data object"""
-    graph_dir = pathlib.Path(root_dir) / experiment_name / "graphs" / split_name
+    graph_dir = pathlib.Path(root_dir) / "graphs" / split_name
     pre_prefix = graph_dir / f"{experiment_name}_{graph_type}_{split_name}_graph"
 
     with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
         split = pickle.load(f)
 
-    with open(f"{pre_prefix}_scaled.pkl", "rb") as file:
+    with open(f"{graph_dir}/{pre_prefix}_scaled.pkl", "rb") as file:
         graph_data = pickle.load(file)
 
     if scaled:
@@ -242,7 +242,12 @@ def _load_data_object_prerequisites(
     else:
         targets = f"{graph_dir}/training_targets_scaled.pkl"
 
-    return f"{pre_prefix}_idxs.pkl", split, graph_data, targets
+    return (
+        f"{root_dir}/graphs/{experiment_name}_{graph_type}_idxs.pkl",
+        split,
+        graph_data,
+        targets,
+    )
 
 
 def graph_to_pytorch(
