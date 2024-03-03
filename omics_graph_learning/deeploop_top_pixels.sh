@@ -151,7 +151,7 @@ deeploop_processing_main () {
 # filenames=(Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine)
 # filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
 # for name in ${filenames[@]};
-for addendum in 5000000 10000000 50000000;
+for addendum in 2000000 3000000 4000000 5000000 10000000 50000000;
 do
     echo "Processing ${name}_${addendum}..."
     deeploop_processing_main \
