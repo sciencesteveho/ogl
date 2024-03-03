@@ -195,8 +195,8 @@ get_splits() {
 }
 
 # Set up GNN training script
-train="train_gnn.sh \
-    ${experiment_yaml} \
+train="train_gnn.sh"
+train_args="${experiment_yaml} \
     ${model} \
     ${target} \
     ${gnn_layers} \
@@ -208,14 +208,24 @@ train="train_gnn.sh \
     ${learning_rate} \
     ${optimizer} \
     ${dropout} \
-    ${heads} \
     ${graph_type} \
     ${split_name} \
     ${bool_flags}"
-# Add total random edges if passed, as final arg
-if [[ -n $total_random_edges ]]; then
-    train="${train} ${total_random_edges}"
+
+# Add optional args
+if [[ -n $heads ]]; then
+    train="${train} true false"
+    train_args="${train_args} ${heads}"
+    if [[ -n $total_random_edges ]]; then
+        train="${train} true true"
+        train_args="${train_args} ${total_random_edges}"
+    else
+        train="${train} true false"
+    fi
+else
+    train="${train} false false"
 fi
+train="${train} ${train_args}"
 
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}\n"
