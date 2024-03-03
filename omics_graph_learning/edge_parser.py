@@ -178,18 +178,20 @@ class EdgeParser:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.
         """
-        active_mirna_reader = self._read_csv_wrapper(tissue_active_mirnas)
-        active_mirna = {line[3] for line in active_mirna_reader}
+        with open(tissue_active_mirnas, newline="") as file:
+            active_mirna_reader = csv.reader(file, delimiter="\t")
+            active_mirna = {line[3] for line in active_mirna_reader}
 
-        target_reader = self._read_csv_wrapper(target_list)
-        for line in target_reader:
-            if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode:
-                yield (
-                    line[0],
-                    self.genesymbol_to_gencode[line[1]],
-                    # -1,
-                    "mirna",
-                )
+        with open(target_list, newline="") as file:
+            target_reader = csv.reader(file, delimiter="\t")
+            for line in target_reader:
+                if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode:
+                    yield (
+                        line[0],
+                        self.genesymbol_to_gencode[line[1]],
+                        # -1,
+                        "mirna",
+                    )
 
     def _tf_markers(
         self, interaction_file: str
@@ -203,24 +205,25 @@ class EdgeParser:
             List[Tuple[str, str]]: A list of filtered tf marker interactions.
         """
         tf_keep = ["TF", "I Marker", "TFMarker"]
-        reader = self._read_csv_wrapper(interaction_file)
-        next(reader)
+        with open(interaction_file, newline="") as file:
+            reader = csv.reader(file, delimiter="\t")
+            next(reader)  # Skip header
 
-        tf_markers = []
-        for line in reader:
-            if line[2] in tf_keep and line[5] == self.marker_name:
-                with contextlib.suppress(IndexError):
-                    if ";" in line[10]:
-                        genes = line[10].split(";")
-                        for gene in genes:
-                            if line[2] == "I Marker":
-                                tf_markers.append((gene, line[1]))
-                            else:
-                                tf_markers.append((line[1], gene))
-                    elif line[2] == "I Marker":
-                        tf_markers.append((line[10], line[1]))
-                    else:
-                        tf_markers.append((line[1], line[10]))
+            tf_markers = []
+            for line in reader:
+                if line[2] in tf_keep and line[5] == self.marker_name:
+                    with contextlib.suppress(IndexError):
+                        if ";" in line[10]:
+                            genes = line[10].split(";")
+                            for gene in genes:
+                                if line[2] == "I Marker":
+                                    tf_markers.append((gene, line[1]))
+                                else:
+                                    tf_markers.append((line[1], gene))
+                        elif line[2] == "I Marker":
+                            tf_markers.append((line[10], line[1]))
+                        else:
+                            tf_markers.append((line[1], line[10]))
 
         for tup in tf_markers:
             if (

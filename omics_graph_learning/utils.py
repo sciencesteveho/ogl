@@ -295,8 +295,8 @@ class ScalerUtils:
         graphdir_prefix: str,
     ) -> Tuple[Dict[str, int], Dict[str, Any]]:
         """Load graph data from files."""
-        graph_file_path = f"{graphdir_prefix}.pkl"
-        idxs_file_path = f"{graphdir_prefix}_idxs.pkl"
+        idxs_file_path = f"{graphdir_prefix}_graph_idxs.pkl"
+        graph_file_path = f"{graphdir_prefix}_graph.pkl"
         with open(idxs_file_path, "rb") as idxs_file, open(
             graph_file_path, "rb"
         ) as graph_file:
