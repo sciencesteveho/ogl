@@ -73,7 +73,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     # define model and get optimizer
     model = _create_model(
         model=model,
-        in_size=1,
+        in_size=41,
         embedding_size=dimensions,
         out_channels=1,
         gnn_layers=gnn_layers,

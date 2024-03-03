@@ -226,6 +226,7 @@ else
     train="${train} false false"
 fi
 train="${train} ${train_args}"
+log_progress "GNN training script and arguments set:\t${train}\n"
 
 # Start running pipeline
 log_progress "Checking for final graph: ${final_graph}\n"

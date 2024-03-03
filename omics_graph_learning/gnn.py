@@ -432,7 +432,7 @@ def main() -> None:
 
     # set up helper variables
     working_directory = pathlib.Path(params["working_directory"])
-    root_dir = working_directory / {params["experiment_name"]}
+    root_dir = working_directory / params["experiment_name"]
     savestr = construct_save_string(
         f"{params['experiment_name']}\
             _{args.model}\
