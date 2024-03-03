@@ -29,7 +29,10 @@ import utils
 
 EPOCHS = 50
 RANDOM_SEED = 42
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_hic_gte2/"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13"
+TARGET = "expression_median_only"
 
 
 def train(
@@ -107,29 +110,6 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         and number of attention heads if the model uses them
     """
     # define range of values for hyperparameter testing
-
-    def _load_data(batch_size):
-        data = graph_to_pytorch(
-            experiment_name=params["experiment_name"],
-            graph_type="full",
-            root_dir=root_dir,
-            split_name=args.split_name,
-            regression_target=args.target,
-        )
-
-        # temporary - to check number of edges for randomization tests
-        print(f"Number of edges: {data.num_edges}")
-
-        # set up data loaders
-        train_loader = get_loader(
-            data=data, mask="train_mask", batch_size=batch_size, shuffle=True
-        )
-        test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
-        val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
-        return train_loader, test_loader, val_loader
-
-    train_loader, test_loader, val_loader = _load_data(batch_size=64)
-
     model = trial.suggest_categorical(
         "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN", "UniMPTransformer"]
     )
@@ -146,7 +126,28 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     residual = trial.suggest_categorical("residual", [True, False])
     heads = trial.suggest_int("heads", 1, 2, 3)
 
-    # get dataloader
+    # get dataloaders
+    def _load_data(batch_size):
+        data = graph_to_pytorch(
+            experiment_name="regulatory_only_hic_gte2",
+            graph_type="full",
+            root_dir=ROOT_DIR,
+            split_name=SPLIT_NAME,
+            regression_target=TARGET,
+        )
+
+        # temporary - to check number of edges for randomization tests
+        print(f"Number of edges: {data.num_edges}")
+
+        # set up data loaders
+        train_loader = get_loader(
+            data=data, mask="train_mask", batch_size=batch_size, shuffle=True
+        )
+        test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
+        val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
+        return train_loader, test_loader, val_loader
+
+    train_loader, test_loader, val_loader = _load_data(batch_size=64)
 
     # define model and get optimizer
     model = _create_model(
@@ -162,7 +163,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         heads=heads if model in ("GATv2", "UniMPTransformer") else None,
         train_dataset=train_loader if model == "PNA" else None,
     )
-    model = model.to(device)
+    model = model.to(DEVICE)
 
     # set optimizer
     optimizer = _set_optimizer(optimizer, learning_rate)

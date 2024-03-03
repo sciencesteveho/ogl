@@ -192,11 +192,11 @@ class GCN(torch.nn.Module):
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
-            batch_x = self.activation(linear_layer(batch_x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
-                batch_x = F.dropout(batch_x, p=self.dropout_rate)
+                x = F.dropout(x, p=self.dropout_rate)
 
-        return self.linears[-1](batch_x)
+        return self.linears[-1](x)
 
 
 class GraphSAGE(torch.nn.Module):
@@ -357,11 +357,11 @@ class PNA(torch.nn.Module):
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
-            batch_x = self.activation(linear_layer(batch_x))
+            x = self.activation(linear_layer(x))
             if apply_dropout:
-                batch_x = F.dropout(batch_x, p=self.dropout_rate)
+                x = F.dropout(x, p=self.dropout_rate)
 
-        return self.linear_layers[-1](batch_x)
+        return self.linear_layers[-1](x)
 
 
 class GATv2(torch.nn.Module):
