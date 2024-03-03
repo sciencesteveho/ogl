@@ -312,7 +312,7 @@ def graph_to_pytorch(
         )
 
     # set up pytorch geometric Data object
-    data = Data(x=node_tensors, edge_index=edge_index)
+    data = Data(x=node_tensors.contiguous(), edge_index=edge_index.contiguous())
 
     # create masks
     train_mask = create_mask(data.num_nodes, train)
@@ -347,10 +347,10 @@ def graph_to_pytorch(
     y_vals = torch.stack(y_tensors).view(len(y_tensors), -1)
 
     # add mask and target values to data object
-    data.train_mask = train_mask
-    data.test_mask = gene_mask if single_gene else test_mask
-    data.val_mask = val_mask
-    data.y = y_vals.T
-    data.all_mask = all_mask
+    data.train_mask = train_mask.contiguous()
+    data.test_mask = gene_mask.contiguous() if single_gene else test_mask.contiguous()
+    data.val_mask = val_mask.contiguous()
+    data.y = y_vals.T.contiguous()
+    data.all_mask = all_mask.contiguous()
 
     return data
