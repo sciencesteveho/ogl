@@ -461,8 +461,6 @@ def main() -> None:
         root_dir=root_dir,
         split_name=args.split_name,
         regression_target=args.target,
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,
