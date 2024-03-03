@@ -1,3 +1,4 @@
+# sourcery skip: avoid-single-character-names-variables
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
@@ -147,7 +148,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
         return train_loader, test_loader, val_loader
 
-    train_loader, test_loader, val_loader = _load_data(batch_size=64)
+    train_loader, _, val_loader = _load_data(batch_size=64)
 
     # define model and get optimizer
     model = _create_model(
@@ -168,12 +169,31 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     # set optimizer
     optimizer = _set_optimizer(optimizer, learning_rate)
 
+    # use a subset of examples
+    N_TRAIN_EXAMPLES = batch_size * 60
+    N_VALID_EXAMPLES = batch_size * 20
+
     for epoch in range(EPOCHS):
-        train(model, optimizer)  # Train the model
-        mse = test(model)  # Evaluate the model
+        # train
+        _ = train(
+            model=model,
+            device=DEVICE,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            epoch=epoch,
+        )
+        # validation
+        mse = test(
+            model=model,
+            device=DEVICE,
+            data_loader=val_loader,
+            epoch=epoch,
+            mask="val",
+        )
 
         # For pruning (stops trial early if not promising)
         trial.report(mse, epoch)
+
         # Handle pruning based on the intermediate value.
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()

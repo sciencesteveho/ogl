@@ -543,9 +543,7 @@ def main() -> None:
                 stop_counter = 0
                 best_validation = val_acc
                 model_path = (
-                    model_dir
-                    / "models"
-                    / f"{args.model}_{epoch}_mse_{best_validation}.pt"
+                    model_dir / f"{args.model}_{epoch}_mse_{best_validation}.pt"
                 )
                 torch.save(model.state_dict(), model_path)
             elif best_validation < val_acc:
