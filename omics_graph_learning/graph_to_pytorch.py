@@ -248,7 +248,7 @@ def _load_data_object_prerequisites(
         graph_data = pickle.load(file)
 
     return (
-        f"{root_dir}/graphs/{experiment_name}_{graph_type}_idxs.pkl",
+        f"{root_dir}/graphs/{experiment_name}_{graph_type}_graph_idxs.pkl",
         split,
         graph_data,
         targets,

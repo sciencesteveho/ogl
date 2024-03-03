@@ -29,28 +29,7 @@ import utils
 
 EPOCHS = 50
 RANDOM_SEED = 42
-
-
-# get graph data
-def _test(batch_size):
-    data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type="full",
-        root_dir=root_dir,
-        split_name=args.split_name,
-        regression_target=args.target,
-    )
-
-    # temporary - to check number of edges for randomization tests
-    print(f"Number of edges: {data.num_edges}")
-
-    # set up data loaders
-    train_loader = get_loader(
-        data=data, mask="train_mask", batch_size=batch_size, shuffle=True
-    )
-    test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
-    val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
-    return train_loader, test_loader, val_loader
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def train(
@@ -128,6 +107,29 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         and number of attention heads if the model uses them
     """
     # define range of values for hyperparameter testing
+
+    def _load_data(batch_size):
+        data = graph_to_pytorch(
+            experiment_name=params["experiment_name"],
+            graph_type="full",
+            root_dir=root_dir,
+            split_name=args.split_name,
+            regression_target=args.target,
+        )
+
+        # temporary - to check number of edges for randomization tests
+        print(f"Number of edges: {data.num_edges}")
+
+        # set up data loaders
+        train_loader = get_loader(
+            data=data, mask="train_mask", batch_size=batch_size, shuffle=True
+        )
+        test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
+        val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
+        return train_loader, test_loader, val_loader
+
+    train_loader, test_loader, val_loader = _load_data(batch_size=64)
+
     model = trial.suggest_categorical(
         "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN", "UniMPTransformer"]
     )
@@ -160,6 +162,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         heads=heads if model in ("GATv2", "UniMPTransformer") else None,
         train_dataset=train_dataset if model == "PNA" else None,
     )
+    model = model.to(device)
 
     # set optimizer
     optimizer = _set_optimizer(optimizer, learning_rate)
@@ -184,8 +187,6 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=100)
 
