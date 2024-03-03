@@ -434,16 +434,18 @@ def main() -> None:
     working_directory = pathlib.Path(params["working_directory"])
     root_dir = working_directory / params["experiment_name"]
     savestr = construct_save_string(
-        f"{params['experiment_name']}\
-            _{args.model}\
-            _target-{args.target}\
-            _gnnlayers{args.gnn_layers}\
-            _linlayers{args.linear_layers}\
-            _{args.activation}\
-            _dim{args.dimensions}\
-            _batch{args.batch_size}\
-            _{args.optimizer},\
-            _{args.split_name}",
+        [
+            f"{params['experiment_name']}_",
+            f"{args.model}_",
+            f"_target-{args.target}_",
+            f"gnnlayers{args.gnn_layers}_",
+            f"linlayers{args.linear_layers}_",
+            f"{args.activation}_",
+            f"dim{args.dimensions}_",
+            f"batch{args.batch_size}_",
+            f"{args.optimizer}_",
+            f"{args.split_name}_",
+        ],
         args,
     )
     model_dir = working_directory / "models" / f"{savestr}"
