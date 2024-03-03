@@ -138,7 +138,7 @@ class EdgeParser:
     ) -> Union[Tuple[List[str], Iterator[List[str]]], Iterator[List[str]]]:
         """Wrapper function to read a CSV file."""
         with open(file_path, newline="") as file:
-            reader = csv.reader(file, delimiter="=\t")
+            reader = csv.reader(file, delimiter="\t")
             if with_header:
                 header = next(reader)
                 return header, reader
