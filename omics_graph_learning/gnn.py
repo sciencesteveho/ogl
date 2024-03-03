@@ -102,7 +102,7 @@ def _compute_pna_histogram_tensor(
 
 
 def create_model(
-    model_type: str,
+    model: str,
     in_size: int,
     embedding_size: int,
     out_channels: int,
@@ -124,8 +124,8 @@ def create_model(
         "DeeperGCN": DeeperGCN,
         "MLP": MLP,
     }
-    if model_type not in model_constructors:
-        raise ValueError(f"Invalid model type: {model_type}")
+    if model not in model_constructors:
+        raise ValueError(f"Invalid model type: {model}")
     kwargs = {
         "in_size": in_size,
         "embedding_size": embedding_size,
@@ -136,13 +136,13 @@ def create_model(
         "dropout_rate": dropout_rate,
         "residual": residual,
     }
-    if model_type in {"GAT", "UniMPTransformer"}:
+    if model in {"GAT", "UniMPTransformer"}:
         kwargs["heads"] = heads
-    elif model_type == "PNA":
+    elif model == "PNA":
         kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
-    elif model_type == "DeeperGCN":
+    elif model == "DeeperGCN":
         del kwargs["residual"]
-    return model_constructors[model_type](**kwargs)
+    return model_constructors[model](**kwargs)
 
 
 def train(

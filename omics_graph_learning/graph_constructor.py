@@ -43,11 +43,14 @@ def _get_edges(
     tissue: str = "",
 ) -> pd.DataFrame:
     """Get edges from file"""
-    df = pd.read_csv(edge_file, sep="\t", header=None)
-    suffix = f"_{tissue}" if add_tissue else ""
     if local:
-        df = df.drop(columns=[0, 1, 2, 4, 5, 6, 8]).rename(columns={3: 0, 7: 1})
+        df = pd.read_csv(edge_file, sep="\t", header=None, usecols=[3, 7]).rename(
+            columns={3: 0, 7: 1}
+        )
         df[2] = "local"
+    else:
+        df = pd.read_csv(edge_file, sep="\t", header=None)
+    suffix = f"_{tissue}" if add_tissue else ""
     df[0] += suffix
     df[1] += suffix
 
