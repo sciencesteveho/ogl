@@ -249,7 +249,7 @@ def get_loader(
     """Loads data into NeighborLoader for GNN training"""
     return NeighborLoader(
         data,
-        num_neighbors=[5] * 5 + [3],
+        num_neighbors=[5, 5, 5, 5, 5, 3],
         batch_size=batch_size,
         input_nodes=getattr(data, mask),
         shuffle=shuffle,
@@ -468,9 +468,6 @@ def main() -> None:
             args.total_random_edges if args.randomize_edges > 0 else None
         ),
     )
-
-    # temporary - to check number of edges for randomization tests
-    print(f"Number of edges: {data.num_edges}")
 
     # set up data loaders
     train_loader = get_loader(
