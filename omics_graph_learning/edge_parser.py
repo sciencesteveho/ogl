@@ -151,7 +151,7 @@ class EdgeParser:
     ) -> Generator[Tuple[str, str, float, str], None, None]:
         """Protein-protein interactions from the Integrated Interactions
         Database v 2021-05"""
-        header, reader = self._read_csv_with_header(interaction_file, with_header=True)
+        header, reader = self._read_csv_wrapper(interaction_file, with_header=True)
         idxs = {
             key: header.index(key)
             for key in ["symbol1", "symbol2", "evidence_type", "n_methods", tissue]
@@ -180,10 +180,10 @@ class EdgeParser:
         """Filters all miRNA -> target interactions from miRTarBase and only
         keeps the miRNAs that are active in the given tissue from mirDIP.
         """
-        active_mirna_reader = self._read_csv_with_header(tissue_active_mirnas)
+        active_mirna_reader = self._read_csv_wrapper(tissue_active_mirnas)
         active_mirna = {line[3] for line in active_mirna_reader}
 
-        target_reader = self._read_csv_with_header(target_list)
+        target_reader = self._read_csv_wrapper(target_list)
         for line in target_reader:
             if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode:
                 yield (
@@ -205,7 +205,7 @@ class EdgeParser:
             List[Tuple[str, str]]: A list of filtered tf marker interactions.
         """
         tf_keep = ["TF", "I Marker", "TFMarker"]
-        _, reader = self._read_csv_with_header(interaction_file)
+        _, reader = self._read_csv_wrapper(interaction_file)
 
         tf_markers = []
         for line in reader:
@@ -246,7 +246,7 @@ class EdgeParser:
             col_2   Target gene
             col_3   Edge weight
         """
-        reader = self._read_csv_with_header(interaction_file)
+        reader = self._read_csv_wrapper(interaction_file)
 
         scores = [
             float(line[2])
@@ -258,7 +258,7 @@ class EdgeParser:
         ]
         cutoff = np.percentile(scores, score_filter)
 
-        reader = self._read_csv_with_header(interaction_file)  # Re-read the file
+        reader = self._read_csv_wrapper(interaction_file)  # Re-read the file
         for line in reader:
             tf, target_gene, weight = line[0], line[1], float(line[2])
             if (
