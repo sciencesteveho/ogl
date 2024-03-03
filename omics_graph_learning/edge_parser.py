@@ -205,7 +205,7 @@ class EdgeParser:
             List[Tuple[str, str]]: A list of filtered tf marker interactions.
         """
         tf_keep = ["TF", "I Marker", "TFMarker"]
-        _, reader = self._read_csv_wrapper(interaction_file)
+        _, reader = self._read_csv_wrapper(interaction_file, with_header=True)
 
         tf_markers = []
         for line in reader:
