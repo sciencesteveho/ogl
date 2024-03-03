@@ -151,7 +151,6 @@ def train(
     optimizer,
     train_loader: torch_geometric.data.DataLoader,
     epoch: int,
-    gps=False,
 ):
     """Train GNN model on graph data"""
     model.train()
@@ -162,12 +161,7 @@ def train(
     for data in train_loader:
         optimizer.zero_grad()
         data = data.to(device)
-
-        if gps:
-            model.redraw_projection.redraw_projections()
-            out = model(data.x, data.pe, data.edge_index, data.batch)
-        else:
-            out = model(data.x, data.edge_index)
+        out = model(data.x, data.edge_index)
 
         loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
@@ -518,7 +512,6 @@ def main() -> None:
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
-            gps=args.model == "GPS",
         )
         print(f"Epoch: {epoch:03d}, Train: {loss}")
         writer.add_scalar("Training loss", loss, epoch)
@@ -530,7 +523,6 @@ def main() -> None:
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
-            gps=args.model == "GPS",
         )
         print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
@@ -542,7 +534,6 @@ def main() -> None:
             data_loader=test_loader,
             epoch=epoch,
             mask="test",
-            gps=args.model == "GPS",
         )
         print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
