@@ -238,7 +238,7 @@ log_progress "GNN training script and arguments set:\t${train}\n"
 # =============================================================================
 log_progress "Checking for final graph: ${final_graph}\n"
 if [ ! -f "${final_graph}" ]; then
-    log_progress "Final graph not found.\nChecking for intermediate graph: ${intermediate_graph}\n"
+    log_progress "Final graph not found. Checking for intermediate graph: ${intermediate_graph}\n"
     if [ ! -f "${intermediate_graph}" ]; then
         log_progress "No intermediates found. Running entire pipeline!\n"
 

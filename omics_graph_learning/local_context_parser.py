@@ -164,6 +164,7 @@ class LocalContextParser:
         prefix = bed.split("_")[0].lower()
         local_bed = pybedtools.BedTool(f"{self.tissue_dir}/local/{bed}").sort()
         ab = local_bed.intersect(self.blacklist, sorted=True, v=True)
+        ab = self._remove_alt_configs(ab)  # remove alt contigs
 
         # take specific windows and format each file
         if prefix in self.nodes and prefix != "gencode":
@@ -492,3 +493,10 @@ class LocalContextParser:
         for item in os.listdir(f"{self.parse_dir}/edges"):
             if item not in retain:
                 os.remove(f"{self.parse_dir}/edges/{item}")
+
+    @staticmethod
+    def _remove_alt_configs(
+        bed: pybedtools.bedtool.BedTool,
+    ) -> pybedtools.bedtool.BedTool:
+        """Remove alternate chromosomes from bedfile"""
+        return bed.filter(lambda x: "_" not in x[0]).saveas()
