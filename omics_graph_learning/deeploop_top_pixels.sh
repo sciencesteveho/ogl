@@ -29,12 +29,12 @@ function _extract_from_cooler () {
     tissue_name=$1
     tissue=$(echo $tissue_name | awk '{print tolower($0)}')
 
-    # get pixels from cooler
-    cooler dump \
-        -t pixels \
-        --join \
-        -o $2/top_pixels/${tissue}.pixels \
-        $2/coolers/${tissue_name}.cool
+    # # get pixels from cooler
+    # cooler dump \
+    #     -t pixels \
+    #     --join \
+    #     -o $2/top_pixels/${tissue}.pixels \
+    #     $2/coolers/${tissue_name}.cool
     
     # sort by intensity
     sort --parallel=8 -S 60% -k7,7nr $2/top_pixels/${tissue}.pixels > $2/top_pixels/${tissue}.pixels.sorted
@@ -127,10 +127,6 @@ deeploop_processing_main () {
         mkdir ${loop_dir}/tmp
     fi
 
-    _extract_from_cooler \
-        $filename \
-        /ocean/projects/bio210019p/stevesho/hic \
-
     _liftover_deeploop_bedpe \
         $loop_dir \
         $filename \
@@ -147,9 +143,21 @@ deeploop_processing_main () {
         $tmp_dir
 }
 
-# run main functions!
+
+
+### First, process top pixels ###
+cd /ocean/projects/bio210019p/stevesho/hic
+
 filenames=(Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine)
-# filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
+for name in ${filenames[@]}; do
+    echo "Processing ${name}..."
+    _extract_from_cooler \
+        ${name} $PWD
+done
+
+
+### run main functions! ###
+filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
 for name in ${filenames[@]}; do
     for addendum in 2000000 3000000 4000000 5000000 10000000 50000000;
     do
