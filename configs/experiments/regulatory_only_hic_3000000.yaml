@@ -1,15 +1,15 @@
 ---
 baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
 
-baseloops: deeploop_gte2
+baseloops: deeploop_3000000
 
-experiment_name: regulatory_only_hic_gte2
+experiment_name: regulatory_only_hic_3000000
 
 gene_gene: False
 
 interaction_types: null
 
-loop_resolution: gte2
+loop_resolution: 1000000
 
 nodes: null
 

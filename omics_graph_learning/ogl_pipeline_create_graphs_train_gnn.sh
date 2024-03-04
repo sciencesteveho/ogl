@@ -201,29 +201,29 @@ get_splits() {
 
 # Set up GNN training script
 train="train_gnn.sh"
-train_args="${experiment_yaml} \
-    ${model} \
-    ${target} \
-    ${gnn_layers} \
-    ${linear_layers} \
-    ${activation} \
-    ${dimensions} \
-    ${epochs} \
-    ${batch_size} \
-    ${learning_rate} \
-    ${optimizer} \
-    ${dropout} \
-    ${graph_type} \
-    ${split_name} \
-    ${bool_flags}"
+train_args="--experiment_config ${experiment_yaml} \
+    --model ${model} \
+    --target ${target} \
+    --gnn_layers ${gnn_layers} \
+    --linear_layers ${linear_layers} \
+    --activation ${activation} \
+    --dimensions ${dimensions} \
+    --epochs ${epochs} \
+    --batch_size ${batch_size} \
+    --learning_rate ${learning_rate} \
+    --optimizer ${optimizer} \
+    --dropout ${dropout} \
+    --graph_type ${graph_type} \
+    --split_name ${split_name} \
+    --bool_flags ${bool_flags}"
 
 # Add optional args
 if [[ -n $heads ]]; then
     train="${train} true false"
-    train_args="${train_args} ${heads}"
+    train_args="${train_args} --heads ${heads}"
     if [[ -n $total_random_edges ]]; then
         train="${train} true true"
-        train_args="${train_args} ${total_random_edges}"
+        train_args="${train_args} --total_random_edges ${total_random_edges}"
     else
         train="${train} true false"
     fi

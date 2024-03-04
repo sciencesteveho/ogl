@@ -11,6 +11,8 @@ interaction_types:
   - tf_marker
   - tf_binding
 
+loop_resolution: gte2
+
 nodes:
   - cpgislands
   - ctcfccre

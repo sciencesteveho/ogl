@@ -64,12 +64,16 @@ def parse_edges(
     """
     baseloop_directory = experiment_params["baseloop_directory"]
     baseloops = experiment_params["baseloops"]
+    loopfiles = utils._generate_deeploop_dict(
+        resolution=experiment_params["loop_resolution"]
+    )
+    loopfile = loopfiles[tissue_params["resources"]["tissue"]]
 
     edgeparserObject = EdgeParser(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
         working_directory=experiment_params["working_directory"],
-        loop_file=f"{baseloop_directory}/{baseloops}/{utils.LOOPFILES[baseloops][tissue_params['resources']['tissue']]}",
+        loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
         params=tissue_params,
     )
 
