@@ -84,6 +84,7 @@ def train(
     optimizer,
     train_loader: torch_geometric.data.DataLoader,
     epoch: int,
+    subset_batches: int = None,
 ):
     """Train GNN model on graph data"""
     model.train()
@@ -91,7 +92,11 @@ def train(
     pbar.set_description(f"Training epoch: {epoch:04d}")
 
     total_loss = total_examples = 0
-    for data in train_loader:
+    for batch_idx, data in enumerate(train_loader):
+        # Break out of the loop if subset_batches is set and reached.
+        if subset_batches and batch_idx >= subset_batches:
+            break
+
         optimizer.zero_grad()
         data = data.to(device)
         out = model(data.x, data.edge_index)
@@ -116,6 +121,7 @@ def test(
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
     mask: torch.Tensor,
+    subset_batches: int = None,
 ):
     """Test GNN model on test set"""
     model.eval()
@@ -123,7 +129,11 @@ def test(
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
     mse = []
-    for data in data_loader:
+    for batch_idx, data in enumerate(data_loader):
+        # Break out of the loop if subset_batches is set and reached.
+        if subset_batches and batch_idx >= subset_batches:
+            break
+
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
@@ -257,6 +267,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
+            subset_batches=100,
         )
         # validation
         mse = test(
@@ -265,6 +276,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
+            subset_batches=30,
         )
         scheduler.step(mse)
 
