@@ -219,17 +219,12 @@ train_args="--experiment_config ${experiment_yaml} \
 
 # Add optional args
 if [[ -n $heads ]]; then
-    train="${train} true false"
     train_args="${train_args} --heads ${heads}"
-    if [[ -n $total_random_edges ]]; then
-        train="${train} true true"
-        train_args="${train_args} --total_random_edges ${total_random_edges}"
-    else
-        train="${train} true false"
-    fi
-else
-    train="${train} false false"
 fi
+if [[ -n $total_random_edges ]]; then
+    train_args="${train_args} --total_random_edges ${total_random_edges}"
+fi
+
 train="${train} ${train_args}"
 log_progress "GNN training script and arguments set:\t${train}\n"
 
