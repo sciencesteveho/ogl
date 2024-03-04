@@ -112,7 +112,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     """
     # define range of values for hyperparameter testing
     model = trial.suggest_categorical(
-        "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN", "UniMPTransformer"]
+        "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "UniMPTransformer"]
     )
     gnn_layers = trial.suggest_int("gnn_layers", 2, 3, 6, 8, 10)
     linear_layers = trial.suggest_int("linear_layers", 1, 2, 3)

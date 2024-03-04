@@ -335,7 +335,7 @@ class PNA(torch.nn.Module):
             self.norms.append(GraphNorm(embedding_size))
 
         # Create linear layers
-        self.linears = _initialize_lazy_linear_layers(
+        self.linear_layers = _initialize_lazy_linear_layers(
             in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
@@ -553,7 +553,7 @@ class DeeperGCN(torch.nn.Module):
         for i in range(gnn_layers):
             in_channels = in_size if i == 0 else embedding_size
             conv = GENConv(
-                in_channels=in_channels,
+                in_channels=-1,
                 out_channels=embedding_size,
                 aggr="softmax",
                 t=1.0,
