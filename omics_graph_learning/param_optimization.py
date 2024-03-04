@@ -28,7 +28,7 @@ from gnn import create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
-EPOCHS = 20
+EPOCHS = 25
 RANDOM_SEED = 42
 ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_hic_gte2/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -139,7 +139,7 @@ def test(
     return math.sqrt(float(loss.mean()))
 
 
-def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
+def objective(trial: optuna.Trial) -> torch.Tensor:
     """Objective function, optimized by Optuna
 
     Hyperparameters are based off a mix of ancedotal results and from Tönshoff
@@ -193,7 +193,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     train_loader, _, val_loader = _load_data(batch_size=batch_size)
 
     # define model and get optimizer
-    model = _create_model(
+    model = create_model(
         model=model,
         in_size=41,
         embedding_size=dimensions,
@@ -212,23 +212,23 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     def _set_optimizer(learning_rate, model_params):
         """Choose optimizer"""
         # set gradient descent optimizer
-        if args.optimizer == "Adam":
+        if optimizer == "Adam":
             optimizer = torch.optim.Adam(
                 model_params,
-                lr=args.learning_rate,
+                lr=learning_rate,
             )
             scheduler = ReduceLROnPlateau(
                 optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
             )
-        elif args.optimizer == "AdamW":
+        elif optimizer == "AdamW":
             optimizer = torch.optim.AdamW(
                 model_params,
-                lr=args.learning_rate,
+                lr=learning_rate,
             )
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer=optimizer,
                 num_warmup_steps=5,
-                num_training_steps=args.epochs,
+                num_training_steps=EPOCHS,
             )
         return optimizer, scheduler
 

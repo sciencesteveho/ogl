@@ -143,6 +143,10 @@ TISSUES = [
 
 def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
     """Generate a dictionary of deeploop filenames for a given resolution"""
+    special_tissues = {
+        "left_ventricle": "leftventricle",
+        "skeletal_muscle": "psoas_muscle",
+    }
     tissues = [
         "aorta",
         "hippocampus",
@@ -154,7 +158,7 @@ def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
         "small_intestine",
     ]
     return {
-        tissue: f"{tissue if tissue != 'left_ventricle' else 'leftventricle' if tissue != 'skeletal_muscle' else 'psoas_muscle'}_{resolution}_pixels.hg38"
+        tissue: f"{special_tissues.get(tissue, tissue)}_{resolution}_pixels.hg38"
         for tissue in tissues
     }
 
