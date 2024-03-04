@@ -68,49 +68,47 @@ ATTRIBUTES = [
     "snp",
 ]
 
-NODE_FEAT_IDXS = (
-    {
-        "start": 0,
-        "end": 1,
-        "size": 2,
-        "gc": 3,
-        "atac": 4,
-        "cnv": 5,
-        "cpg": 6,
-        "ctcf": 7,
-        "dnase": 8,
-        "h3k27ac": 9,
-        "h3k27me3": 10,
-        "h3k36me3": 11,
-        "h3k4me1": 12,
-        "h3k4me2": 13,
-        "h3k4me3": 14,
-        "h3k79me2": 15,
-        "h3k9ac": 16,
-        "h3k9me3": 17,
-        "indels": 18,
-        "line": 19,
-        "ltr": 20,
-        "microsatellites": 21,
-        "phastcons": 22,
-        "polr2a": 23,
-        "polyasites": 24,
-        "rad21": 25,
-        "rbpbindingsites": 26,
-        "recombination": 27,
-        "repg1b": 28,
-        "repg2": 29,
-        "reps1": 30,
-        "reps2": 31,
-        "reps3": 32,
-        "reps4": 33,
-        "rnarepeat": 34,
-        "simplerepeats": 35,
-        "sine": 36,
-        "smc3": 37,
-        "snp": 38,
-    },
-)
+NODE_FEAT_IDXS = {
+    "start": 0,
+    "end": 1,
+    "size": 2,
+    "gc": 3,
+    "atac": 4,
+    "cnv": 5,
+    "cpg": 6,
+    "ctcf": 7,
+    "dnase": 8,
+    "h3k27ac": 9,
+    "h3k27me3": 10,
+    "h3k36me3": 11,
+    "h3k4me1": 12,
+    "h3k4me2": 13,
+    "h3k4me3": 14,
+    "h3k79me2": 15,
+    "h3k9ac": 16,
+    "h3k9me3": 17,
+    "indels": 18,
+    "line": 19,
+    "ltr": 20,
+    "microsatellites": 21,
+    "phastcons": 22,
+    "polr2a": 23,
+    "polyasites": 24,
+    "rad21": 25,
+    "rbpbindingsites": 26,
+    "recombination": 27,
+    "repg1b": 28,
+    "repg2": 29,
+    "reps1": 30,
+    "reps2": 31,
+    "reps3": 32,
+    "reps4": 33,
+    "rnarepeat": 34,
+    "simplerepeats": 35,
+    "sine": 36,
+    "smc3": 37,
+    "snp": 38,
+}
 
 POSSIBLE_NODES = [
     "cpgislands",
@@ -125,7 +123,6 @@ POSSIBLE_NODES = [
     "tfbindingsites",
     "tss",
 ]
-
 
 TISSUES = [
     "aorta",
@@ -157,7 +154,7 @@ def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
         "small_intestine",
     ]
     return {
-        tissue: f"{tissue if tissue != 'left_ventricle' else 'leftventricle'}_{resolution}_pixels.hg38"
+        tissue: f"{tissue if tissue != 'left_ventricle' else 'leftventricle' if tissue != 'skeletal_muscle' else 'psoas_muscle'}_{resolution}_pixels.hg38"
         for tissue in tissues
     }
 

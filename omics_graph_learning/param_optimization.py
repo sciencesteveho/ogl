@@ -24,7 +24,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric
 from tqdm import tqdm
 
-from gnn import _create_model
+from gnn import create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
@@ -190,7 +190,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
         val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
         return train_loader, test_loader, val_loader
 
-    train_loader, _, val_loader = _load_data(batch_size=64)
+    train_loader, _, val_loader = _load_data(batch_size=batch_size)
 
     # define model and get optimizer
     model = _create_model(
