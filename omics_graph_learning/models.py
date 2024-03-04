@@ -157,6 +157,7 @@ class GCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
@@ -186,7 +187,12 @@ class GCN(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                x = self.activation(batch_norm(conv(x, edge_index))) + x
+                try:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                except RuntimeError:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
+                        x, self.embedding_size
+                    )(x)
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
 
