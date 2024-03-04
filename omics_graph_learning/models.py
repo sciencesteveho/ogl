@@ -546,7 +546,7 @@ class DeeperGCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.activation = self._define_activation_nonfunctional(activation)
+        self.activation = _define_activation(activation)
         self.dropout_rate = dropout_rate
         self.layers = nn.ModuleList()
         self.node_encoder = Linear(in_size, embedding_size)
@@ -562,7 +562,7 @@ class DeeperGCN(torch.nn.Module):
                 norm="layer",
             )
             norm = LayerNorm(embedding_size)
-            act = self.activation(inplace=True)
+            act = self._define_activation_nonfunctional(inplace=True)
             layer = DeepGCNLayer(
                 conv=conv,
                 norm=norm,
@@ -577,20 +577,6 @@ class DeeperGCN(torch.nn.Module):
         self.linears = _initialize_lazy_linear_layers(
             embedding_size, out_channels, linear_layers
         )
-
-    def _define_activation_nonfunctional(self, activation: str) -> Callable:
-        """Defines the activation function according to the given string"""
-        activations = {
-            "gelu": torch.nn.GELU,
-            "leakyrelu": torch.nn.LeakyReLU,
-            "relu": torch.nn.ReLU,
-        }
-        if activation in activations:
-            return activations[activation]
-        else:
-            raise ValueError(
-                "Invalid activation function. Supported: relu, leakyrelu, gelu"
-            )
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the DeeperGCN model.
@@ -612,6 +598,21 @@ class DeeperGCN(torch.nn.Module):
                 x = F.dropout(x, p=self.dropout_rate)
 
         return self.linears[-1](x)
+
+    @staticmethod
+    def _define_activation_nonfunctional(activation: str) -> Callable:
+        """Defines the activation function according to the given string"""
+        activations = {
+            "gelu": torch.nn.GELU,
+            "leakyrelu": torch.nn.LeakyReLU,
+            "relu": torch.nn.ReLU,
+        }
+        if activation in activations:
+            return activations[activation]
+        else:
+            raise ValueError(
+                "Invalid activation function. Supported: relu, leakyrelu, gelu"
+            )
 
 
 class MLP(torch.nn.Module):
