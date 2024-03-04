@@ -233,6 +233,7 @@ class GraphSAGE(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
@@ -306,6 +307,7 @@ class PNA(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
@@ -403,6 +405,7 @@ class GATv2(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
@@ -481,6 +484,7 @@ class UniMPTransformer(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
