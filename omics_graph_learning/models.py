@@ -315,7 +315,7 @@ class PNA(torch.nn.Module):
                 aggregators=aggregators,
                 scalers=scalers,
                 deg=deg,
-                towers=5,  # double check this
+                towers=2,  # double check this
                 divide_input=False,
             )
         )
@@ -328,7 +328,7 @@ class PNA(torch.nn.Module):
                     aggregators=aggregators,
                     scalers=scalers,
                     deg=deg,
-                    towers=5,
+                    towers=2,
                     divide_input=False,
                 )
             )
@@ -546,7 +546,7 @@ class DeeperGCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.activation = _define_activation(activation)
+        self.activation = self._define_activation_nonfunctional(activation)
         self.dropout_rate = dropout_rate
         self.layers = nn.ModuleList()
 
@@ -577,6 +577,20 @@ class DeeperGCN(torch.nn.Module):
         self.linears = _initialize_lazy_linear_layers(
             embedding_size, out_channels, linear_layers
         )
+
+    def _define_activation_nonfunctional(self, activation: str) -> Callable:
+        """Defines the activation function according to the given string"""
+        activations = {
+            "gelu": torch.nn.GELU,
+            "leakyrelu": torch.nn.LeakyReLU,
+            "relu": torch.nn.ReLU,
+        }
+        if activation in activations:
+            return activations[activation]
+        else:
+            raise ValueError(
+                "Invalid activation function. Supported: relu, leakyrelu, gelu"
+            )
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the DeeperGCN model.
