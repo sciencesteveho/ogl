@@ -172,7 +172,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     learning_rate = trial.suggest_float(
         name="learning_rate", low=1e-5, high=1e-5, log=True
     )
-    optimizer = trial.suggest_categorical("optimizer", ["Adam", "AdamW"])
+    optimizer_type = trial.suggest_categorical("optimizer_type", ["Adam", "AdamW"])
     residual = trial.suggest_categorical("residual", [True, False])
     dropout = trial.suggest_float(name="dropout", low=0.0, high=0.2, step=0.05)
     heads = trial.suggest_int(name="heads", low=1, high=3, step=1)
@@ -219,10 +219,10 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     model = model.to(DEVICE)
 
     # set optimizer
-    def _set_optimizer(learning_rate, model_params):
+    def _set_optimizer(optimizer_type, learning_rate, model_params):
         """Choose optimizer"""
         # set gradient descent optimizer
-        if optimizer == "Adam":
+        if optimizer_type == "Adam":
             optimizer = torch.optim.Adam(
                 model_params,
                 lr=learning_rate,
@@ -230,7 +230,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             scheduler = ReduceLROnPlateau(
                 optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
             )
-        elif optimizer == "AdamW":
+        elif optimizer_type == "AdamW":
             optimizer = torch.optim.AdamW(
                 model_params,
                 lr=learning_rate,
@@ -243,7 +243,9 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         return optimizer, scheduler
 
     optimizer, scheduler = _set_optimizer(
-        learning_rate=learning_rate, model_params=model.parameters()
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        model_params=model.parameters(),
     )
 
     for epoch in range(EPOCHS):
