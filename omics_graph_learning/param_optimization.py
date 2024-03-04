@@ -156,7 +156,8 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # model = trial.suggest_categorical(
     #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
     # )
-    model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
+    # model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
+    model = trial.suggest_categorical("model", ["GCN", "GraphSAGE", "PNA"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
