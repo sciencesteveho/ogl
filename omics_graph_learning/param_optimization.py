@@ -17,16 +17,13 @@ import optuna
 from optuna.trial import TrialState
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric
 from tqdm import tqdm
 
 from gnn import _create_model
 from gnn import _set_optimizer
-from gnn import get_cosine_schedule_with_warmup
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
-import utils
 
 EPOCHS = 50
 RANDOM_SEED = 42
@@ -249,6 +246,9 @@ def main() -> None:
     print("\nMost important hyperparameters:")
     for key, value in most_important_parameters.items():
         print("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
+
+    # Plot and save importances to file
+    optuna.visualization.plot_param_importances(study=study).write_image()
 
 
 if __name__ == "__main__":
