@@ -549,11 +549,11 @@ class DeeperGCN(torch.nn.Module):
         self.activation = self._define_activation_nonfunctional(activation)
         self.dropout_rate = dropout_rate
         self.layers = nn.ModuleList()
+        self.node_encoder = Linear(in_size, embedding_size)
 
         for i in range(gnn_layers):
-            in_channels = in_size if i == 0 else embedding_size
             conv = GENConv(
-                in_channels=-1,
+                in_channels=embedding_size,
                 out_channels=embedding_size,
                 aggr="softmax",
                 t=1.0,
@@ -601,6 +601,7 @@ class DeeperGCN(torch.nn.Module):
 
         Returns:
             torch.Tensor: The output tensor."""
+        x = self.node_encoder(x)
         for layer in self.layers:
             x = layer(x, edge_index)
 
