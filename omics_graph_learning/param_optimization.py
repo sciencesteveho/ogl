@@ -156,18 +156,28 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     model = trial.suggest_categorical(
         "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN"]
     )
-    gnn_layers = trial.suggest_int("gnn_layers", 2, 3, 6, 8, 10)
-    linear_layers = trial.suggest_int("linear_layers", 1, 2, 3)
+    gnn_layers = trial.suggest_int(
+        name="gnn_layers",
+        low=2,
+        high=6,
+        step=1,
+    )
+    linear_layers = trial.suggest_int(
+        name="linear_layers",
+        low=1,
+        high=3,
+        step=1,
+    )
     activation = trial.suggest_categorical("activation", ["relu", "leaky_relu", "gelu"])
-    dimensions = trial.suggest_int("dimensions", 64, 128, 256, 512)
-    batch_size = trial.suggest_int("batch_size", 64, 128, 256, 512)
     learning_rate = trial.suggest_float(
-        "learning_rate", 1e-3, 5e-4, 1e-4, 1e-5, log=True
+        name="learning_rate", low=1e-5, high=1e-5, log=True
     )
     optimizer = trial.suggest_categorical("optimizer", ["Adam", "AdamW"])
-    dropout = trial.suggest_float("dropout", 0, 0.1, 0.2)
     residual = trial.suggest_categorical("residual", [True, False])
-    heads = trial.suggest_int("heads", 1, 2, 3)
+    dropout = trial.suggest_float(name="dropout", low=0.0, high=0.2, step=0.05)
+    heads = trial.suggest_int(name="heads", low=1, high=3, step=1)
+    dimensions = trial.suggest_int("dimensions", low=32, high=512, step=32)
+    batch_size = trial.suggest_int("batch_size", low=32, high=512, step=32)
 
     # get dataloaders
     def _load_data(batch_size):
