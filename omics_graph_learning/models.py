@@ -157,7 +157,6 @@ class GCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.embedding_size = embedding_size
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
@@ -175,6 +174,9 @@ class GCN(torch.nn.Module):
             in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
+        # Create linear projection for skip connection
+        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GCN model.
 
@@ -187,12 +189,12 @@ class GCN(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                try:
+                if conv == self.convs[0]:
+                    x = self.activation(
+                        batch_norm(conv(x, edge_index))
+                    ) + self.linear_projection(x)
+                else:
                     x = self.activation(batch_norm(conv(x, edge_index))) + x
-                except RuntimeError:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
-                        x, self.embedding_size
-                    )(x)
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
 
@@ -252,6 +254,9 @@ class GraphSAGE(torch.nn.Module):
             embedding_size, out_channels, linear_layers
         )
 
+        # Create linear projection for skip connection
+        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GraphSAGE model.
 
@@ -264,12 +269,14 @@ class GraphSAGE(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                try:
+                if conv == self.convs[0]:
+                    x = self.activation(
+                        batch_norm(conv(x, edge_index))
+                    ) + self.linear_projection(x)
+                else:
                     x = self.activation(batch_norm(conv(x, edge_index))) + x
-                except RuntimeError:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
-                        x, self.embedding_size
-                    )(x)
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
@@ -350,6 +357,9 @@ class PNA(torch.nn.Module):
             in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
+        # Create linear projection for skip connection
+        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
 
@@ -362,12 +372,14 @@ class PNA(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                try:
+                if conv == self.convs[0]:
+                    x = self.activation(
+                        batch_norm(conv(x, edge_index))
+                    ) + self.linear_projection(x)
+                else:
                     x = self.activation(batch_norm(conv(x, edge_index))) + x
-                except RuntimeError:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
-                        x, self.embedding_size
-                    )(x)
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
@@ -427,6 +439,9 @@ class GATv2(torch.nn.Module):
         )
         self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
+        # Create linear projection for skip connection
+        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
 
@@ -439,12 +454,14 @@ class GATv2(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                try:
+                if conv == self.convs[0]:
+                    x = self.activation(
+                        batch_norm(conv(x, edge_index))
+                    ) + self.linear_projection(x)
+                else:
                     x = self.activation(batch_norm(conv(x, edge_index))) + x
-                except RuntimeError:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
-                        x, self.embedding_size
-                    )(x)
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
@@ -515,6 +532,9 @@ class UniMPTransformer(torch.nn.Module):
         )
         self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
+        # Create linear projection for skip connection
+        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
 
@@ -527,12 +547,14 @@ class UniMPTransformer(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                try:
+                if conv == self.convs[0]:
+                    x = self.activation(
+                        batch_norm(conv(x, edge_index))
+                    ) + self.linear_projection(x)
+                else:
                     x = self.activation(batch_norm(conv(x, edge_index))) + x
-                except RuntimeError:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
-                        x, self.embedding_size
-                    )(x)
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
