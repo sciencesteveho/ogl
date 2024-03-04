@@ -4,7 +4,7 @@
 # deeploop. Also convolves the matrix with a small Gaussian filter as an option.
 
 # """
-# 
+#
 # for tissue in Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine;
 # do
 #     sbatch top_pixels.sh $tissue
@@ -35,17 +35,16 @@ function _extract_from_cooler () {
     #     --join \
     #     -o $2/top_pixels/${tissue}.pixels \
     #     $2/coolers/${tissue_name}.cool
-    
+
     # sort by intensity
-    sort --parallel=8 -S 60% -k7,7nr $2/top_pixels/${tissue}.pixels > $2/top_pixels/${tissue}.pixels.sorted
+    sort --parallel=8 -S 80% -k7,7nr $2/top_pixels/${tissue}.pixels > $2/top_pixels/${tissue}.pixels.sorted
 
     # take top 5M, 10M, 50M pixels
-    for i in 1000000 2000000 3000000 4000000 5000000 10000000 50000000; do
+    for i in 1000000 2000000 3000000 4000000 5000000 10000000; do
         head -n ${i} $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_${i}.pixels
     done
 
-    # filter for counts >= 1 and >= 2
-    awk '$7 >= 2' $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_gte2.pixels
+    # filter for counts >= 1
     awk '$7 >= 1' $2/top_pixels/${tissue}.pixels.sorted > $2/top_pixels/${tissue}_gte1.pixels
 
     # # try balancing
@@ -63,7 +62,7 @@ function _extract_from_cooler () {
 #   $3 - directory of liftover and liftover chain
 #   $4 - tmp directory to process files
 function _liftover_deeploop_bedpe () {
-        
+
     awk -v OFS='\t' '{print $1,$2,$3,NR}' $1/$2.pixels > $4/$2.pixels_1
     awk -v OFS='\t' '{print $4,$5,$6,NR}' $1/$2.pixels > $4/$2.pixels_2
 
@@ -74,7 +73,7 @@ function _liftover_deeploop_bedpe () {
             $3/hg19ToHg38.over.chain.gz \
             $4/$2.${file}.hg38 \
             $4/$2.${file}.unmapped
-        
+
         sort -k4,4 -o $4/$2.${file}.hg38 $4/$2.${file}.hg38
     done
 }
@@ -143,60 +142,26 @@ deeploop_processing_main () {
         $tmp_dir
 }
 
+# run main functions!
+# filenames=(Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine)
+_extract_from_cooler \
+    ${1} \
+    /ocean/projects/bio210019p/stevesho/hic
 
-
-### First, process top pixels ###
-cd /ocean/projects/bio210019p/stevesho/hic
-
-filenames=(Aorta Hippocampus LeftVentricle Liver Lung Pancreas Psoas_Muscle Small_Intestine)
-for name in ${filenames[@]}; do
-    echo "Processing ${name}..."
-    _extract_from_cooler \
-        ${name} $PWD
+# filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
+# for name in ${filenames[@]}; do
+tissue_name=$(echo $1 | awk '{print tolower($0)}')
+for addendum in 1000000 2000000 3000000 4000000 5000000 10000000;
+do
+    echo "Processing ${name}_${addendum}..."
+    deeploop_processing_main \
+        ${tissue_name}_${addendum} \
+        /ocean/projects/bio210019p/stevesho/hic/top_pixels \
+        /ocean/projects/bio210019p/stevesho/resources \
+        /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
 done
-
-
-### run main functions! ###
-filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
-for name in ${filenames[@]}; do
-    for addendum in 2000000 3000000 4000000 5000000 10000000 50000000;
-    do
-        echo "Processing ${name}_${addendum}..."
-        deeploop_processing_main \
-            ${name}_${addendum} \
-            /ocean/projects/bio210019p/stevesho/hic/top_pixels \
-            /ocean/projects/bio210019p/stevesho/resources \
-            /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
-    done
-done
-
-filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
-for name in ${filenames[@]}; do
-    for addendum in gte2;
-    do
-        echo "Processing ${name}_${addendum}..."
-        deeploop_processing_main \
-            ${name}_${addendum} \
-            /ocean/projects/bio210019p/stevesho/hic/top_pixels \
-            /ocean/projects/bio210019p/stevesho/resources \
-            /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
-    done
-done
+# done
 
 end=`date +%s`
 time=$((end-start))
-echo "Finished in $(convertsecs $time)!"
-
-
-# working_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
-# for addendum in 1000000 2000000 3000000 4000000;
-# do
-#     for file in *; do
-#         tissue=$(echo ${file} | cut -d'5' -f1)
-#         tissue=${tissue::-1}
-#         echo "Processing ${file}"
-#         echo "tissue: ${tissue}"
-#         head -n ${addendum} ${file} > ../deeploop_${addendum}/${tissue}_${addendum}_pixels.hg38
-#     done
-# done
-
+echo "Finished! in $(convertsecs $time)"
