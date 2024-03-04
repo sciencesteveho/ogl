@@ -263,9 +263,12 @@ class GraphSAGE(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+                try:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                except RuntimeError:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
+                        x, self.embedding_size
+                    )(x)
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linears[:-1]:
@@ -357,9 +360,12 @@ class PNA(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+                try:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                except RuntimeError:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
+                        x, self.embedding_size
+                    )(x)
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
@@ -430,9 +436,12 @@ class GATv2(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+                try:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                except RuntimeError:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
+                        x, self.embedding_size
+                    )(x)
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
@@ -514,9 +523,12 @@ class UniMPTransformer(torch.nn.Module):
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+                try:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                except RuntimeError:
+                    x = self.activation(batch_norm(conv(x, edge_index))) + nn.Linear(
+                        x, self.embedding_size
+                    )(x)
 
         apply_dropout = isinstance(self.dropout_rate, float)
         for linear_layer in self.linear_layers[:-1]:
