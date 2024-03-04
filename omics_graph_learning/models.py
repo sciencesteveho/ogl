@@ -474,7 +474,7 @@ class UniMPTransformer(torch.nn.Module):
 
         # create graph convoluton layers
         for i in range(gnn_layers):
-            in_channels = in_size if i == 0 else heads * embedding_size
+            in_channels = in_size if i == 0 else embedding_size
             concat = i != gnn_layers - 1
             self.convs.append(
                 TransformerConv(
@@ -485,7 +485,7 @@ class UniMPTransformer(torch.nn.Module):
                     beta=True,
                 )
             )
-            self.norms.append(GraphNorm(embedding_size * heads))
+            self.norms.append(GraphNorm(embedding_size))
 
         # Create linear layers
         linear_sizes = _get_linear_layer_sizes_attn_models(
@@ -551,6 +551,8 @@ class DeeperGCN(torch.nn.Module):
         self.layers = nn.ModuleList()
         self.node_encoder = Linear(in_size, embedding_size)
 
+        layer_act = self._define_activation_nonfunctional(activation)
+
         for i in range(gnn_layers):
             conv = GENConv(
                 in_channels=embedding_size,
@@ -562,7 +564,7 @@ class DeeperGCN(torch.nn.Module):
                 norm="layer",
             )
             norm = LayerNorm(embedding_size)
-            act = self._define_activation_nonfunctional(inplace=True)
+            act = layer_act(inplace=True)
             layer = DeepGCNLayer(
                 conv=conv,
                 norm=norm,

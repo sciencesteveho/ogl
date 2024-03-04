@@ -17,11 +17,14 @@ import optuna
 from optuna.trial import TrialState
 import torch
 import torch.nn.functional as F
+from torch.optim import Optimizer
+import torch.optim as optim
+from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric
 from tqdm import tqdm
 
 from gnn import _create_model
-from gnn import _set_optimizer
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
@@ -31,6 +34,48 @@ ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13"
 TARGET = "expression_median_only"
+
+
+def get_cosine_schedule_with_warmup(
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    num_cycles: float = 0.5,
+    last_epoch: int = -1,
+) -> LRScheduler:
+    """
+    Implementation by Huggingface:
+    https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
+
+    Create a schedule with a learning rate that decreases following the values
+    of the cosine function between the initial lr set in the optimizer to 0,
+    after a warmup period during which it increases linearly between 0 and the
+    initial lr set in the optimizer.
+    Args:
+        optimizer ([`~torch.optim.Optimizer`]):
+            The optimizer for which to schedule the learning rate.
+        num_warmup_steps (`int`):
+            The number of steps for the warmup phase.
+        num_training_steps (`int`):
+            The total number of training steps.
+        num_cycles (`float`, *optional*, defaults to 0.5):
+            The number of waves in the cosine schedule (the defaults is to just
+            decrease from the max value to 0 following a half-cosine).
+        last_epoch (`int`, *optional*, defaults to -1):
+            The index of the last epoch when resuming training.
+    Return:
+        `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+    """
+
+    def lr_lambda(current_step: int) -> float:
+        if current_step < num_warmup_steps:
+            return max(1e-6, float(current_step) / float(max(1, num_warmup_steps)))
+        progress = float(current_step - num_warmup_steps) / float(
+            max(1, num_training_steps - num_warmup_steps)
+        )
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * num_cycles * 2.0 * progress)))
+
+    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def train(
@@ -164,7 +209,32 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     model = model.to(DEVICE)
 
     # set optimizer
-    optimizer = _set_optimizer(optimizer, learning_rate)
+    def _set_optimizer(learning_rate, model_params):
+        """Choose optimizer"""
+        # set gradient descent optimizer
+        if args.optimizer == "Adam":
+            optimizer = torch.optim.Adam(
+                model_params,
+                lr=args.learning_rate,
+            )
+            scheduler = ReduceLROnPlateau(
+                optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+            )
+        elif args.optimizer == "AdamW":
+            optimizer = torch.optim.AdamW(
+                model_params,
+                lr=args.learning_rate,
+            )
+            scheduler = get_cosine_schedule_with_warmup(
+                optimizer=optimizer,
+                num_warmup_steps=5,
+                num_training_steps=args.epochs,
+            )
+        return optimizer, scheduler
+
+    optimizer, scheduler = _set_optimizer(
+        learning_rate=learning_rate, model_params=model.parameters()
+    )
 
     # use a subset of examples
     N_TRAIN_EXAMPLES = batch_size * 60
@@ -187,6 +257,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
             epoch=epoch,
             mask="val",
         )
+        scheduler.step(mse)
 
         # For pruning (stops trial early if not promising)
         trial.report(mse, epoch)
@@ -248,7 +319,14 @@ def main() -> None:
         print("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
     # Plot and save importances to file
-    optuna.visualization.plot_param_importances(study=study).write_image()
+    plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
+    optuna.visualization.plot_optimization_history(study).write_image(
+        f"{plot_dir}/history.png"
+    )
+    optuna.visualization.plot_param_importances(study=study).write_image(
+        f"{plot_dir}/importances.png"
+    )
+    optuna.visualization.plot_slice(study=study).write_image(f"{plot_dir}/slice.png")
 
 
 if __name__ == "__main__":
