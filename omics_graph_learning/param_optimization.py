@@ -168,7 +168,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         high=3,
         step=1,
     )
-    activation = trial.suggest_categorical("activation", ["relu", "leaky_relu", "gelu"])
+    activation = trial.suggest_categorical("activation", ["relu", "leakyrelu", "gelu"])
     learning_rate = trial.suggest_float(
         name="learning_rate", low=1e-5, high=1e-5, log=True
     )
