@@ -28,7 +28,7 @@ from gnn import _create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
-EPOCHS = 50
+EPOCHS = 20
 RANDOM_SEED = 42
 ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_hic_gte2/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -154,7 +154,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     """
     # define range of values for hyperparameter testing
     model = trial.suggest_categorical(
-        "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "UniMPTransformer"]
+        "model", ["GCN", "GATv2", "GraphSAGE", "PNA", "DeeperGCN"]
     )
     gnn_layers = trial.suggest_int("gnn_layers", 2, 3, 6, 8, 10)
     linear_layers = trial.suggest_int("linear_layers", 1, 2, 3)
@@ -235,10 +235,6 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> torch.Tensor:
     optimizer, scheduler = _set_optimizer(
         learning_rate=learning_rate, model_params=model.parameters()
     )
-
-    # use a subset of examples
-    N_TRAIN_EXAMPLES = batch_size * 60
-    N_VALID_EXAMPLES = batch_size * 20
 
     for epoch in range(EPOCHS):
         # train
