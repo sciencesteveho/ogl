@@ -485,7 +485,7 @@ class UniMPTransformer(torch.nn.Module):
                     beta=True,
                 )
             )
-            self.norms.append(GraphNorm(embedding_size))
+            self.norms.append(GraphNorm(embedding_size * heads))
 
         # Create linear layers
         linear_sizes = _get_linear_layer_sizes_attn_models(
