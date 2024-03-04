@@ -9,7 +9,7 @@ gene_gene: False
 
 interaction_types: null
 
-loop_resolution: 1000000
+loop_resolution: 5000000
 
 nodes: null
 
