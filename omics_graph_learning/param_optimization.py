@@ -153,9 +153,10 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         and number of attention heads if the model uses them
     """
     # define range of values for hyperparameter testing
-    model = trial.suggest_categorical(
-        "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
-    )
+    # model = trial.suggest_categorical(
+    #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
+    # )
+    model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
