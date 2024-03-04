@@ -469,7 +469,7 @@ def main() -> None:
         gnn_layers=args.gnn_layers,
         linear_layers=args.linear_layers,
         activation=args.activation,
-        dropout_rate=args.dropout_rate if args.dropout else None,
+        dropout_rate=args.dropout or None,
         heads=args.heads,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
