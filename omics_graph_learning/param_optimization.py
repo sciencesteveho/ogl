@@ -289,9 +289,9 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             raise optuna.exceptions.TrialPruned()
 
     # clear memory to avoid OOM errors
-    del model
-    torch.cuda.empty_cache()
-    gc.collect()
+    # del model
+    # torch.cuda.empty_cache()
+    # gc.collect()
 
     return mse
 
@@ -299,7 +299,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=100, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

@@ -17,11 +17,15 @@ Much of the code is adapted from:
 
 import argparse
 import contextlib
+import csv
 import os
 from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+
+# global variables, hg38
+CHR_LIST = [f"chr{str(i)}" for i in range(1, 23)]  # autosomes only
 
 CHR_LENS = [
     248950000,
@@ -49,7 +53,42 @@ CHR_LENS = [
     156035000,
 ]
 
-CHR_LIST = [f"chr{str(i)}" for i in range(1, 23)]  # autosomes only
+
+def _split_hicdcplus_to_chrs(qvalue_cutoff: float) -> None:
+    """Lorem"""
+    # Open the input file
+    with open("input_data.txt", "r") as input_file:
+        # Create a csv reader object assuming the file is tab-delimited
+        reader = csv.DictReader(input_file, delimiter="\t")
+
+        # Keep track of opened files for each chromosome to avoid reopening
+        opened_files = {}
+
+        # Process each line in the input file
+        for row in reader:
+            # Check if the current row's qvalue is below the cutoff
+            if float(row["qvalue"]) <= qvalue_cutoff:
+                # Determine filename based on the chromosome
+                chr_file_name = f"chr{row['chrI']}.txt"
+
+                # Open the chromosome's file for appending if not already open
+                if chr_file_name not in opened_files:
+                    opened_files[chr_file_name] = open(chr_file_name, "w")
+
+                    # Write header to file
+                    header = "\t".join(reader.fieldnames) + "\n"
+                    opened_files[chr_file_name].write(header)
+
+                # Write the current row to the appropriate file
+                opened_files[chr_file_name].write("\t".join(row.values()) + "\n")
+
+    # Close all opened files
+    for file in opened_files.values():
+        file.close()
+
+    print(
+        "Data processing complete. Files have been written for each chromosome with qvalues at or below the cutoff."
+    )
 
 
 def _create_ref_length_matrix(chr_list: List[str], chr_lens: List[int]) -> None:
@@ -74,11 +113,6 @@ def _create_ref_length_matrix(chr_list: List[str], chr_lens: List[int]) -> None:
         df.to_csv(
             f"ref_length_matrix_chr{idx}.csv", index=False, header=False, sep="\t"
         )
-
-
-def _split_hicdcplus_to_chrs() -> None:
-    """Lorem"""
-    pass
 
 
 def _filter_interactions_by_fdr() -> None:
