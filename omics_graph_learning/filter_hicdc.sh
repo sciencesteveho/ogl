@@ -6,13 +6,13 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=4
 
 # Partition
 #SBATCH -p RM-shared
 
 # Request time
-#SBATCH -t 24:00:00
+#SBATCH -t 12:00:00
 
 # output to a designated folder
 #SBATCH -o slurm_outputs/%x_%j.out
@@ -21,8 +21,9 @@
 set -x
 
 
-# sort --parallel=8 -S 80%
-
+# =============================================================================
+# Write files out to separate chromosomes
+# =============================================================================
 # Set your qvalue cutoff here
 QVALUE_CUTOFF=$1
 INPUT_FILE=$2
@@ -47,3 +48,28 @@ tail -n +2 "$INPUT_FILE" | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFI
 }' header="$HEADER"
 
 echo "Files have been created for each chromosome with qvalue below $QVALUE_CUTOFF."
+
+# for qval in 0.1 0.01 0.001; do
+#     sbatch filter_hicdc.sh $qval leftventricle_result.txt leftventricle
+# done
+
+# # =============================================================================
+# # Concat to get counts
+# # =============================================================================
+# # Define arrays or space-separated strings of all unique prefixes and q-values
+# # prefixes=("leftventricle")  # Add all possible prefixes
+# prefixes=("k562")  # Add all possible prefixes
+# qvals=("0.001" "0.01")  # Add all possible q-values
+
+# # Loop through each prefix
+# for prefix in "${prefixes[@]}"; do
+#     # Loop through each q-value
+#     for qval in "${qvals[@]}"; do
+#         output_file="${prefix}_all_chr_${qval}.tsv"
+#         # Loop through files and concatenate without headers
+#         for file in ${prefix}_chr*_"${qval}".tsv; do
+#             tail -n +2 "$file"  # Skip header of every file
+#         done | sort -k1,1 -k2,2n -V | cut -f1,2,3,4,5,6 > "${output_file}"
+#     done
+# done
+# # Add executable permissions to the script if needed

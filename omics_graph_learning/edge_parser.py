@@ -68,6 +68,8 @@ class EdgeParser:
         interaction_types: List[str],
         working_directory: str,
         loop_file: str,
+        regulatory: str,
+        regulatory_attr: str,
         params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
@@ -75,6 +77,8 @@ class EdgeParser:
         self.interaction_types = interaction_types
         self.working_directory = working_directory
         self.loop_file = loop_file
+        self.regulatory = regulatory
+        self.regulatory_attr = regulatory_attr
 
         self._initialize_directories_and_vars(params)
         self._initialize_references(params)
@@ -105,13 +109,16 @@ class EdgeParser:
 
     def _initialize_references(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize reference dictionaries"""
-        self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
+        self.gencode_ref = (
+            pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
+            .cut([0, 1, 2, 3])
+            .saveas()
+        )
+
         self.genesymbol_to_gencode = utils.genes_from_gencode(
             gencode_ref=self.gencode_ref
         )
-        self.gencode_attr_ref = self._create_reference_dict(
-            params["resources"]["gencode_attr"]
-        )
+        self.gencode_attr_ref = self._create_reference_dict(self.regulatory_attr)
         self.regulatory_attr_ref = self._create_reference_dict(
             params["resources"]["reg_ref"]
         )
@@ -140,6 +147,38 @@ class EdgeParser:
         with open(file_path, newline="") as file:
             reader = csv.reader(file, delimiter="\t")
             return reader
+
+    def _prepare_regulatory_elements(self):
+        """Simple wrapper to load regulatory elements and return BedTools"""
+        reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
+        bedtools_objects = {
+            key: pybedtools.BedTool(f"{self.local_dir}/{value}")
+            for key, value in reg_elements.items()
+            if key in ["enhancers", "promoters", "dyadic"]
+        }
+
+        if self.regulatory == "encode":
+            bedtools_objects["dyadic"] = None
+
+        # Code for filtering distal enhancers. Ignoring for now.
+        # if self.regulatory in ["encode", "intersect"]:
+        #     bedtools_objects["distal_enhancers"] = (
+        #         bedtools_objects["enhancers"].filter(lambda x: x[3] == "dELS").saveas()
+        #     )
+        # else:
+        #     bedtools_objects["distal_enhancers"] = None
+
+        # return (
+        #     bedtools_objects["enhancers"],
+        #     bedtools_objects["distal_enhancers"],
+        #     bedtools_objects["promoters"],
+        #     bedtools_objects["dyadic"],
+        # )
+        return (
+            bedtools_objects["enhancers"],
+            bedtools_objects["promoters"],
+            bedtools_objects["dyadic"],
+        )
 
     def _iid_ppi(
         self,
@@ -493,6 +532,7 @@ class EdgeParser:
 
         # if TSS, set TSS bool
         tss = first_feature is self.tss or second_feature is self.tss
+        tss = first_feature is self.gencode_ref or second_feature is self.gencode_ref
 
         # get edges and write to file
         return self._write_loop_edges(
@@ -504,16 +544,6 @@ class EdgeParser:
             file_path=f"{self.interaction_dir}/interaction_edges.txt",
             tss=tss,
         )
-
-    def _prepare_regulatory_elements(self):
-        """Simple wrapper to load regulatory elements and return BedTools"""
-        all_enhancers = pybedtools.BedTool(
-            f"{self.local_dir}/{self.shared['enhancers']}"
-        )
-        distal_enhancers = all_enhancers.filter(lambda x: x[3] == "dELS").saveas()
-        promoters = pybedtools.BedTool(f"{self.local_dir}/{self.shared['promoters']}")
-        dyadic = pybedtools.BedTool(f"{self.local_dir}/{self.shared['dyadic']}")
-        return all_enhancers, distal_enhancers, promoters, dyadic
 
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
@@ -550,17 +580,26 @@ class EdgeParser:
         e vs e, d
         """
         # Load elements
-        all_enhancers, distal_enhancers, promoters, dyadic = (
-            self._prepare_regulatory_elements()
-        )
+        all_enhancers, promoters, dyadic = self._prepare_regulatory_elements()
         self.tss = self._load_tss()
         self.first_anchor, self.second_anchor = self._split_chromatin_loops(
             self.loop_file
         )
 
         # Helpers - types of elements connected by loops
+        # overlaps = [
+        #     (self.tss, distal_enhancers, "g_de"),
+        #     (self.tss, promoters, "g_p"),
+        #     (self.tss, dyadic, "g_d"),
+        #     (promoters, all_enhancers, "p_e"),
+        #     (promoters, dyadic, "p_d"),
+        #     (promoters, promoters, "p_p"),
+        #     (all_enhancers, all_enhancers, "e_e"),
+        #     (all_enhancers, dyadic, "e_d"),
+        # ]
         overlaps = [
-            (self.tss, distal_enhancers, "g_de"),
+            (self.gencode_ref, self.gencode_ref, "g_g"),
+            (self.tss, all_enhancers, "g_e"),
             (self.tss, promoters, "g_p"),
             (self.tss, dyadic, "g_d"),
             (promoters, all_enhancers, "p_e"),

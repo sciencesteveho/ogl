@@ -734,6 +734,9 @@ def main() -> None:
         help="Percent of samples filter for genes (e.g. 0.20)",
     )
     parser.add_argument("--split_name", type=str, help="Name of the split")
+    parser.add_argument(
+        "--rna-seq", action="store_true", help="Use RNA-seq data as target"
+    )
     args = parser.parse_args()
     params = utils.parse_yaml(args.experiment_config)
 

@@ -5,6 +5,8 @@ baseloops: deeploop_gte2
 
 experiment_name: regulatory_only_hic_gte2
 
+feat_window: 2000
+
 gene_gene: False
 
 interaction_types: null
@@ -12,6 +14,8 @@ interaction_types: null
 loop_resolution: gte2
 
 nodes: null
+
+regulatory: epimap
 
 tissues:
   - aorta

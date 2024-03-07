@@ -36,8 +36,6 @@ local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
   ctcfccre: ctcfccre_parsed_hg38.bed
-  dyadic: dyadic_epimap_screen_overlap.bed
-  enhancers: enhancers_epimap_screen_overlap.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
@@ -45,7 +43,6 @@ local:
   microsatellites: microsatellites_hg38_parsed.bed
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
-  promoters: promoters_epimap_screen_overlap.bed
   rbpbindingistes: rbpbindingsites_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
@@ -83,6 +80,7 @@ resources:
   tissue: left_ventricle
   tissue_name: Heart - Left Ventricle
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt
+  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/left_ventricle_ENCFF370RMR_0.05.tsv
 
 tissue_specific_nodes:
   crms: consensuses.bed

@@ -21,7 +21,7 @@ features:
   SMC3: SMC3_narrow_merged.bed
 
 interaction:
-  gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct #TODO
+  gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
 
@@ -29,8 +29,6 @@ local:
   cnv: cnv_hg38.bed
   cpgislands: cpgislands_hg38_parsed.bed
   ctcfccre: ctcfccre_parsed_hg38.bed
-  dyadic: dyadic_epimap_screen_overlap.bed
-  enhancers: enhancers_epimap_screen_overlap.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
@@ -38,7 +36,6 @@ local:
   microsatellites: microsatellites_hg38_parsed.bed
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
-  promoters: promoters_epimap_screen_overlap.bed
   rbpbindingistes: rbpbindingsites_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
@@ -54,9 +51,9 @@ local:
   tss: tss_parsed_hg38.bed
 
 methylation:
-  cpg: CpgMethly_hippocampus_GSE46644.bed  # TODO
-  cpg_filetype: ENCODE # TODO
-  cpg_liftover: true # TODO
+  cpg: cpg_methyl_ENCFF660IHA.bed
+  cpg_filetype: ENCODE
+  cpg_liftover: false
 
 resources:
   blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/hg38-blacklist.v2.bed
@@ -66,10 +63,10 @@ resources:
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
   se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt  #TODO 
+  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt 
+  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/k562_ENCFF611MXW_0.05.tsv
 
 resources:
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt

@@ -140,6 +140,29 @@ TISSUES = [
     # "npc",
 ]
 
+REGULATORY_ELEMENTS = {
+    "intersect": {
+        "enhancers": "enhancers_epimap_screen_overlap.bed",
+        "promoters": "promoters_epimap_screen_overlap.bed",
+        "dyadic": "dyadic_epimap_screen_overlap.bed",
+    },
+    "union": {
+        "enhancers": "enhancers_all_union_hg38.bed",
+        "promoters": "promoters_all_union_hg38.bed",
+        "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
+    },
+    "epimap": {
+        "enhancers": "ENH_masterlist_locations._lifted_hg38.bed",
+        "promoters": "PROM_masterlist_locations._lifted_hg38.bed",
+        "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
+    },
+    "encode": {
+        "enhancers": "GRCh38-ELS.bed",
+        "promoters": "GRCh38-PLS.bed",
+        "dyadic": None,
+    },
+}
+
 
 def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
     """Generate a dictionary of deeploop filenames for a given resolution"""

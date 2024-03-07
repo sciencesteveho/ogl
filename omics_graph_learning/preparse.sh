@@ -3,12 +3,16 @@
 # tissue-specific and are stored in a common directory, other than the
 # tissue-specific mirDIP files, which are pre-parsed to individual tissues.
 
-# function to liftover 
-# wget link/to/liftOvertool
+
+# =============================================================================
+# Utility function to perform reference liftover
+# To download liftover, use `wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver`
+# To download the liftover chain, use `wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz`
 # Arguments:
 #   $1 -
 #   $2 - 
 #   $3 - 
+# =============================================================================
 function _liftover_19_to_38 () {
     $1/liftOver \
         $2/${3}.bed \
@@ -20,14 +24,16 @@ function _liftover_19_to_38 () {
     rm $2/${3}.unlifted
 }
 
+# =============================================================================
 # function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
 # Done for both enhancers and promoters.
 # Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
-#   $4 - 
-#   $5 - 
+#   $1 - path/to/your working directory
+#   $2 - path/to/where your bedfiles are stored
+#   $3 - name of epimap masterlist file
+#   $4 - name of encode regulatory element file
+#   $5 - naming convention for the regulatory element
+# =============================================================================
 function _overlap_regulatory_regions () {
     _liftover_19_to_38 \
         $1 \
@@ -51,13 +57,16 @@ function _overlap_regulatory_regions () {
     fi
 }
 
+
+# =============================================================================
 # function to overlap SCREEN regulatory regions with EpiMap dyadic regions
 # Arguments:
-#   $1 -
-#   $2 - 
-#   $3 - 
-#   $4 - 
-#   $5 - 
+#   $1 - path/to/your working directory
+#   $2 - path/to/where your bedfiles are stored
+#   $3 - name of epimap masterlist file
+#   $4 - name of encode regulatory element file
+#   $5 - naming convention for the regulatory element
+# =============================================================================
 function _overlap_dyadic_elements () {
     _liftover_19_to_38 \
         $1 \
@@ -122,16 +131,21 @@ _make_ref_for_regulatory_elements \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/universalgenome \
     /ocean/projects/bio210019p/stevesho/resources
 
+
+# =============================================================================
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
 # "gene" entries. Additionally, make a lookup table top convert from gencode to
 # genesymbol.
 # wget https://storage.googleapis.com/gtex_analysis_v8/reference/gencode.v26.GRCh38.genes.gtf 
 # Arguments:
+# =============================================================================
 function _gencode_bed () {
     gtf2bed <  $1/$2 | awk '$8 == "gene"' | grep -v miR > $3/local/gencode_v26_genes_only_with_GTEx_targets.bed
     cut -f4,10 $3/local/gencode_v26_genes_only_with_GTEx_targets.bed | sed 's/;/\t/g' | cut -f1,5 | sed -e 's/ gene_name //g' -e 's/\"//g' > $3/interaction/gencode_to_genesymbol_lookup_table.txt
 }
 
+
+# =============================================================================
 # save alternative names for gencode entries. This is for parsing node features
 # downstream of graph construction
 # Arguments:
@@ -142,6 +156,8 @@ function _gencode_nodetype_featsaver () {
         > $1/gencode_v26_node_attr.bed 
 }
 
+
+# =============================================================================
 # Parse mirDIP database v5.2 in tissue-specific files of active miRNAs. Requires
 # "mirDIP_ZA_TISSUE_MIRS.txt" from "All data / TSV" and "final_data.gff",
 # "All data / GFF". miRNA targets are downloaded from miRTarBase v9.0 and
@@ -151,6 +167,7 @@ function _gencode_nodetype_featsaver () {
 #   $1 - 
 #   $2 - 
 #   $3 - 
+# =============================================================================
 function _active_mirna () {
     cd $1
 
@@ -168,6 +185,8 @@ function _active_mirna () {
         | awk -v OFS="\t" '($6 == 1) { print>"tissues/"$5}'
 }
 
+
+# =============================================================================
 # DEPRECATED 
 # Encode SCREEN enhancer cCREs downloaded from FENRIR. Enhancers are lifted over
 # to hg38 from hg19 and an index for each enhancer is kept for easier
@@ -188,18 +207,24 @@ function _active_mirna () {
 
 #     awk -v OFS=FS='\t' '{print $1":"$2"-"$3, $4}' enhancer_regions_lifted.txt > $4/enhancer_indexes.txt
 # }
+# =============================================================================
 
+
+# =============================================================================
 # poly-(A) target sites for hg38 are downloaded from PolyASite, homo sapiens
 # v2.0, release 21/04/2020
 # Arguments:
 #   $1 - 
 #   $2 - 
 #   $3 - 
+# =============================================================================
 function _poly_a () {
     awk -v OFS='\t' '{print "chr"$1,$2,$3,"polya_"$4_$10}' $1/$2 \
         > $3/polyasites_filtered_hg38.bed
 }
 
+
+# =============================================================================
 # RNA Binding protein sites were downloaded from POSTAR 3. We first merged
 # adjacent sites to create RBP binding site clusters. We keep sites present in
 # at least 20% of the sampes (8)
@@ -207,6 +232,7 @@ function _poly_a () {
 #   $1 - 
 #   $2 - 
 #   $3 - 
+# =============================================================================
 function _rbp_sites () {
     awk '$6 != "RBP_occupancy"' $1/$2 | \
         bedtools merge \
@@ -221,6 +247,8 @@ function _rbp_sites () {
         > $3/rbpbindingsites_parsed_hg38.bed
 }
 
+
+# =============================================================================
 # transcription start sites for hg38 are downloaded from refTSS v3.3, release
 # 18/08/2021. First, we create an associate array to store the tss --> gene
 # relationships and then we use them to parse a tss file with each gene symbol
@@ -229,6 +257,7 @@ function _rbp_sites () {
 # Arguments:
 #   $1 - 
 #   $2 - 
+# =============================================================================
 function _tss () {
     # create associative array
     declare -A tss_genes
@@ -270,6 +299,8 @@ _tss \
     '/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss/refTSS_v4.1_human_hg38_annotation.txt' \
     /ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss
 
+
+# =============================================================================
 # micro RNA (miRNA) target sites for hg19 are downloaded from TargetScanHuman
 # 8.0, release 09/2021 target sites are lifted over to hg38
 # Arguments:
@@ -277,6 +308,7 @@ _tss \
 #   $2 - 
 #   $3 - 
 #   $4 - 
+# =============================================================================
 function _target_scan () {
     _liftover_19_to_38 \
         $1 \
@@ -289,26 +321,33 @@ function _target_scan () {
 }
 
 
+# =============================================================================
 # ENCODE SCREEN candidate promoters from SCREEN registry of cCREs V3
 # Arguments:
 #   $1 - path to promotoer file
 #   $2 - directory to save parsed files
+# =============================================================================
 function _screen_promoters () {
     awk -v OFS='\t' '{print $1,$2,$3,"promoter"}' $1 \
         > $2/promoters_parsed_hg38.bed
 }
 
+
+# =============================================================================
 # ENCODE SCREEN CTCF-only cCREs from SCREEN V3
 # Arguments:
 #   $1 - path to ctcf file
 #   $2 - cCRE file
 #   $3 - directory to save parsed files
+# =============================================================================
 function _screen_ctcf () {
     grep CTCF-only $1/$2 \
         | awk -v OFS='\t' '{print $1,$2,$3,"ctcfccre"}' $2 \
         > $3/ctcfccre_parsed_hg38.bed
 }
 
+
+# =============================================================================
 # Genomic variant hotspots from Long & Xue, Human Genomics, 2021. First, expand
 # hotspot clusers to their individual mutation type. Then, file is split into
 # CNVs, indels, and SNPs.
@@ -317,6 +356,7 @@ function _screen_ctcf () {
 #   $1 - name of hotspot file
 #   $2 - path to liftOver and liftover chain
 #   $3 - directory to save parsed files
+# =============================================================================
 function _var_hotspots () {
     tail -n +2 $1/$2 \
         | awk '$4 == "Cluster"' \
@@ -342,6 +382,8 @@ function _var_hotspots () {
     done
 }
 
+
+# =============================================================================
 # Replication hotspots from Long & Xue, Human Genomics, 2021. Each phase is
 # split into a separate file for node attributes.
 # Arguments:
@@ -349,6 +391,7 @@ function _var_hotspots () {
 #   $2 - 
 #   $3 - 
 #   $4 - 
+# =============================================================================
 function _replication_hotspots () {
     awk -v string='Replication' '$4 ~ string' $1/$2 \
         | awk -v OFS='\t' '{print $1, $2, $3, "rep"$6}' \
@@ -370,6 +413,8 @@ function _replication_hotspots () {
     done
 }
 
+
+# =============================================================================
 # Average recombination rate from deCODE - Halldorsson et al, Science, 2019.
 # BigWig is converted to Wig then to .bed via BEDOPS.
 # Arguments:
@@ -377,23 +422,30 @@ function _replication_hotspots () {
 #   $2 - 
 #   $3 - 
 #   $4 - 
+# =============================================================================
 function _recombination () {
     $1/bigWigToWig ${2}/${3}.bw ${2}/${3}.wig
     wig2bed < ${2}/${3}.wig > tmp
     awk -v OFS="\t" '{print $1, $2, $3, $5, $4}' tmp > ${4}/recombination_hg38.bed
 }
 
+
+# =============================================================================
 # TF-interactions from TFMarker. The file was not properly delimited so some
 # columns were cleaned up in excel first. We filter and only keep TF
 # interactions present in normal cells (not cancer cells).
+# =============================================================================
 function _tf_marker () {
     sed 's/ /_/g' $1 | awk '$5 == "Normal_cell"' > $2/tf_marker.txt
 }
 
+
+# =============================================================================
 # Concatenate tf binding locations to single file and annotate each binding
 # location with the tf name. Tf binding locations are from Meuleman et al.,
 # Nature, 2020. Each site corresponds to a DHS with an overlapping DNase
 # footprint and contains known binding motifs.
+# =============================================================================
 function _tf_binding_dnase () {
     # awk -v OFS="\t" '{print $0,FILENAME}' $1/* > $2/tf_binding_sites.bed
     awk -v OFS="\t" '{n=split(FILENAME, array,"/"); print $0,array[n]}' $1/* \
@@ -403,19 +455,25 @@ function _tf_binding_dnase () {
         > $2/tfbinding_footprints.bed
 }
 
+
+# =============================================================================
 # Simple function to clean up intermediate files
+# =============================================================================
 function _cleanup () {
     for file in hotspots_expanded_hg18.bed hotspots_lifted_hg38.bed hotspots_unlifted miRNAtargets_lifted_hg38.bed mirRNA_unlifted enhancer_regions_unlifted.txt rep_formatted_hg18.bed rep_lifted_hg38.bed rep_unlifted recombAvg.wig; do
         rm $file
     done
 }
 
+
+# =============================================================================
 # Main function to run all preparsing
 # Arguments:
 #   $1 - 
 #   $1 - 
 #   $2 - 
 #   $3 - 
+# =============================================================================
 function main() {
     _gencode_bed \
         /ocean/projects/bio210019p/stevesho/data/bedfile_preparse \

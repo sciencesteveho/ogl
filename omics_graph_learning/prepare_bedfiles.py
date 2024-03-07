@@ -58,6 +58,7 @@ class GenomeDataPreprocessor:
         experiment_name: str,
         interaction_types: List[str],
         nodes: List[str],
+        regulatory: str,
         working_directory: str,
         params: Dict[str, Dict[str, str]],
     ) -> None:
@@ -65,6 +66,7 @@ class GenomeDataPreprocessor:
         self.experiment_name = experiment_name
         self.interaction_types = interaction_types
         self.nodes = nodes
+        self.regulatory = regulatory
         self.working_directory = working_directory
 
         self.dirs = params["dirs"]
@@ -78,6 +80,7 @@ class GenomeDataPreprocessor:
         self.tissue = self.resources["tissue"]
         self.root_dir = self.dirs["root_dir"]
         self.shared_data_dir = f"{self.root_dir}/shared_data"
+        self.reg_dir = f"{self.shared_data_dir}/regulatory_elements"
         self.tissue_dir = (
             f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
         )
@@ -267,11 +270,20 @@ class GenomeDataPreprocessor:
                     src=src,
                     dst=dst,
                 )
+
         ### Make symlinks for histone marks
         for datatype in self.features:
             utils.check_and_symlink(
                 src=f"{self.data_dir}/{self.features[datatype]}",
                 dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
+            )
+
+        ### Make symlinks for regulatory data
+        reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
+        for element in reg_elements:
+            utils.check_and_symlink(
+                src=f"{self.reg_dir}/{reg_elements[element]}",
+                dst=f"{self.tissue_dir}/local/{element}_{self.tissue}.bed",
             )
 
         ### Make symlink for cpg

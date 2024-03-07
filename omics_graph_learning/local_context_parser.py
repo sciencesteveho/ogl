@@ -70,6 +70,7 @@ class LocalContextParser:
         experiment_name: str,
         nodes: List[str],
         working_directory: str,
+        feat_window: int,
         bedfiles: List[str],
         params: Dict[str, Dict[str, str]],
     ):
@@ -77,6 +78,7 @@ class LocalContextParser:
         self.bedfiles = bedfiles
         self.experiment_name = experiment_name
         self.nodes = nodes
+        self.feat_window = feat_window
         self.working_directory = working_directory
         self.node_processes = len(nodes) + 1  # 12
 
@@ -180,7 +182,7 @@ class LocalContextParser:
         self,
         bedinstance: Dict[str, str],
         chromfile: str,
-        feat_window: int = 2000,
+        feat_window: int,
     ) -> Tuple[
         Dict[str, pybedtools.bedtool.BedTool], Dict[str, pybedtools.bedtool.BedTool]
     ]:
@@ -459,7 +461,7 @@ class LocalContextParser:
         bedinstance_sorted, bedinstance_slopped = self._slop_sort(
             bedinstance=bedinstance,
             chromfile=self.chromfile,
-            feat_window=2000,
+            feat_window=self.feat_window,
         )
 
         # save intermediate files

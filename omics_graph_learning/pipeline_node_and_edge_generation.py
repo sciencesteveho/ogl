@@ -27,6 +27,18 @@ NODES = [
 ]
 
 
+def _get_regulatory_element_references(regulatory: str) -> str:
+    """Returns the filename corresponding to the given regulatory element
+    scheme."""
+    regulatory_map = {
+        "intersect": "intersect_node_attr.bed",
+        "union": "union_node_attr.bed",
+        "epimap": "epimap_node_attr.bed",
+        "gencode": "gencode_node_attr.bed",
+    }
+    return regulatory_map.get(regulatory)
+
+
 def preprocess_bedfiles(
     experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
@@ -43,6 +55,7 @@ def preprocess_bedfiles(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
         nodes=nodes,
+        regulatory=experiment_params["regulatory"],
         working_directory=experiment_params["working_directory"],
         params=tissue_params,
     )
@@ -62,6 +75,13 @@ def parse_edges(
         experiment_params (Dict[str, Union[str, list]]): experiment config
         tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
     """
+    resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
+    regulatory_attr = (
+        resource_dir
+        + "/"
+        + _get_regulatory_element_references(experiment_params["regulatory"])
+    )
+
     baseloop_directory = experiment_params["baseloop_directory"]
     baseloops = experiment_params["baseloops"]
     loopfiles = utils._generate_deeploop_dict(
@@ -74,6 +94,8 @@ def parse_edges(
         interaction_types=experiment_params["interaction_types"],
         working_directory=experiment_params["working_directory"],
         loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
+        regulatory=experiment_params["regulatory"],
+        regulatory_attr=regulatory_attr,
         params=tissue_params,
     )
 
@@ -109,6 +131,7 @@ def parse_local_context(
         experiment_name=experiment_name,
         nodes=nodes,
         working_directory=working_directory,
+        feat_window=experiment_params["feat_window"],
         bedfiles=adjusted_bedfiles,
         params=tissue_params,
     )

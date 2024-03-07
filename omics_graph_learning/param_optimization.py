@@ -186,8 +186,8 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     )
     optimizer_type = trial.suggest_categorical("optimizer_type", ["Adam", "AdamW"])
     residual = trial.suggest_categorical("residual", [True, False])
-    dropout = trial.suggest_float(name="dropout", low=0.0, high=0.2, step=0.05)
-    heads = trial.suggest_int(name="heads", low=1, high=3, step=1)
+    dropout = trial.suggest_float(name="dropout", low=0.0, high=0.5, step=0.1)
+    heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
     dimensions = trial.suggest_int("dimensions", low=32, high=512, step=32)
     batch_size = trial.suggest_int("batch_size", low=32, high=512, step=32)
 
