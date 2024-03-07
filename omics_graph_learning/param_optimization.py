@@ -313,10 +313,6 @@ def main() -> None:
     print("Best trial:")
     trial = study.best_trial
     print("  Value: ", trial.value)
-    print("  Params: ")
-    for key, value in trial.params.items():
-        print(f"    {key}: {value}\n")
-
     print("Best params:")
     for key, value in study.best_params.items():
         print(f"\t{key}: {value}")
@@ -328,7 +324,7 @@ def main() -> None:
     df = df.loc[df["state"] == "COMPLETE"]  # Keep only results that did not prune
     df = df.drop("state", axis=1)  # Exclude state column
     df = df.sort_values("value")  # Sort based on accuracy
-    df.to_csv("plot_dir/optuna_results.csv", index=False)  # Save to csv file
+    df.to_csv(f"{plot_dir}/optuna_results.csv", index=False)  # Save to csv file
 
     # Display results in a dataframe
     print(f"\nOverall Results (ordered by accuracy):\n {df}")
