@@ -19,8 +19,10 @@ import argparse
 import contextlib
 import csv
 import os
-from typing import List, Tuple
 
+from typing import List, Tuple
+import csv
+from contextlib import ExitStack
 import numpy as np
 import pandas as pd
 
@@ -54,41 +56,31 @@ CHR_LENS = [
 ]
 
 
+QVAL_CUTOFFS = {
+    0.1: 1,
+    0.01: 01,
+    0.001: 001,
+}
+
+
 def _split_hicdcplus_to_chrs(qvalue_cutoff: float) -> None:
     """Lorem"""
-    # Open the input file
-    with open("input_data.txt", "r") as input_file:
-        # Create a csv reader object assuming the file is tab-delimited
+    with open("input_data.txt", "r") as input_file, ExitStack() as stack:
         reader = csv.DictReader(input_file, delimiter="\t")
-
-        # Keep track of opened files for each chromosome to avoid reopening
         opened_files = {}
-
-        # Process each line in the input file
         for row in reader:
-            # Check if the current row's qvalue is below the cutoff
             if float(row["qvalue"]) <= qvalue_cutoff:
-                # Determine filename based on the chromosome
                 chr_file_name = f"chr{row['chrI']}.txt"
-
-                # Open the chromosome's file for appending if not already open
                 if chr_file_name not in opened_files:
-                    opened_files[chr_file_name] = open(chr_file_name, "w")
-
-                    # Write header to file
-                    header = "\t".join(reader.fieldnames) + "\n"
-                    opened_files[chr_file_name].write(header)
-
-                # Write the current row to the appropriate file
-                opened_files[chr_file_name].write("\t".join(row.values()) + "\n")
-
-    # Close all opened files
-    for file in opened_files.values():
-        file.close()
+                    file_handle = stack.enter_context(open(chr_file_name, "w"))
+                    opened_files[chr_file_name] = csv.writer(file_handle, delimiter="\t")
+                    opened_files[chr_file_name].writerow(reader.fieldnames)
+                opened_files[chr_file_name].writerow(row.values())
 
     print(
         "Data processing complete. Files have been written for each chromosome with qvalues at or below the cutoff."
     )
+
 
 
 def _create_ref_length_matrix(chr_list: List[str], chr_lens: List[int]) -> None:
@@ -115,7 +107,7 @@ def _create_ref_length_matrix(chr_list: List[str], chr_lens: List[int]) -> None:
         )
 
 
-def _filter_interactions_by_fdr() -> None:
+def process_hic_matrix() -> None:
     """Lorem"""
     pass
 

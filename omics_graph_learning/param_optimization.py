@@ -15,6 +15,7 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import optuna
 from optuna.trial import TrialState
+import plotly
 import torch
 import torch.nn.functional as F
 from torch.optim import Optimizer
@@ -166,8 +167,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # model = trial.suggest_categorical(
     #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
     # )
-    # model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
-    model = trial.suggest_categorical("model", ["GCN", "GraphSAGE", "PNA"])
+    model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
@@ -225,7 +225,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         activation=activation,
         residual=residual,
         dropout_rate=dropout,
-        heads=heads if model in ("GATv2", "UniMPTransformer") else None,
+        heads=heads if model in ("GAT", "UniMPTransformer") else None,
         train_dataset=train_loader if model == "PNA" else None,
     )
     model = model.to(DEVICE)
@@ -268,7 +268,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
-            subset_batches=100,
+            subset_batches=500,
         )
         # validation
         mse = test(
@@ -277,7 +277,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
-            subset_batches=30,
+            subset_batches=150,
         )
         scheduler.step(mse)
 
@@ -298,8 +298,9 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
+    plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=100, gc_after_trial=True)
+    study.optimize(objective, n_trials=250, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
@@ -311,12 +312,14 @@ def main() -> None:
 
     print("Best trial:")
     trial = study.best_trial
-
     print("  Value: ", trial.value)
-
     print("  Params: ")
     for key, value in trial.params.items():
-        print(f"    {key}: {value}")
+        print(f"    {key}: {value}\n")
+
+    print("Best params:")
+    for key, value in study.best_params.items():
+        print(f"\t{key}: {value}")
 
     # Save results to csv file
     df = study.trials_dataframe().drop(
@@ -325,7 +328,7 @@ def main() -> None:
     df = df.loc[df["state"] == "COMPLETE"]  # Keep only results that did not prune
     df = df.drop("state", axis=1)  # Exclude state column
     df = df.sort_values("value")  # Sort based on accuracy
-    df.to_csv("optuna_results.csv", index=False)  # Save to csv file
+    df.to_csv("plot_dir/optuna_results.csv", index=False)  # Save to csv file
 
     # Display results in a dataframe
     print(f"\nOverall Results (ordered by accuracy):\n {df}")
@@ -341,7 +344,6 @@ def main() -> None:
         print("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
     # Plot and save importances to file
-    plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     optuna.visualization.plot_optimization_history(study).write_image(
         f"{plot_dir}/history.png"
     )
