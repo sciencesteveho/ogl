@@ -63,9 +63,9 @@ QVAL_CUTOFFS = {
 }
 
 
-def _split_hicdcplus_to_chrs(qvalue_cutoff: float) -> None:
+def _split_hicdcplus_to_chrs(input: str, qvalue_cutoff: float) -> None:
     """Lorem"""
-    with open("input_data.txt", "r") as input_file, ExitStack() as stack:
+    with open(input, "r") as input_file, ExitStack() as stack:
         reader = csv.DictReader(input_file, delimiter="\t")
         opened_files = {}
         for row in reader:

@@ -440,7 +440,7 @@ class GATv2(torch.nn.Module):
         self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
         # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+        self.linear_projection = nn.Linear(in_size, embedding_size * heads, bias=False)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
@@ -533,7 +533,7 @@ class UniMPTransformer(torch.nn.Module):
         self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
 
         # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
+        self.linear_projection = nn.Linear(in_size, embedding_size * heads, bias=False)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """Forward pass of the GATv2 model.
