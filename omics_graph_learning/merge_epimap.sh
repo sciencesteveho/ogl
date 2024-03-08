@@ -77,7 +77,7 @@ function _merge_bedgraphs () {
         echo "Merging ${feature} bedgraphs"
 
         bedtools unionbedg -i <(sort -k1,1 -k2,2n "${files[0]}") <(sort -k1,1 -k2,2n "${files[1]}") <(sort -k1,1 -k2,2n "${files[2]}") \
-            | awk '{sum=$4+$5+$6; print $1, $2, $3, sum / 3}' | tail -n +2 > "${feature}_merged.bedGraph"
+            | awk '{sum=$4+$5+$6; print $1, $2, $3, sum / 3}' > "${feature}_merged.bedGraph"
         echo "Merged ${feature} bedgraphs"
 
         echo "calling peaks with cutoff ${cutoffs[$feature]}"
@@ -89,6 +89,7 @@ function _merge_bedgraphs () {
             -g 100
 
         cd ../merged_bedgraph
+        tail -n +2 ${feature}_merged.narrow.bed > tmpfile && mv tmpfile ${feature}_merged.narrow.bed
         echo "liftover ${feature} to hg38"
         _liftover \
             /ocean/projects/bio210019p/stevesho/resources \

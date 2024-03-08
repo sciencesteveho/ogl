@@ -31,10 +31,10 @@ from graph_to_pytorch import graph_to_pytorch
 
 EPOCHS = 25
 RANDOM_SEED = 42
-ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_hic_gte2/"
+ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_leftventricle_fdr001/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13"
-TARGET = "expression_median_only"
+SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13_rna_seq"
+TARGET = "rna_seq"
 
 
 def get_cosine_schedule_with_warmup(
@@ -182,13 +182,13 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     )
     activation = trial.suggest_categorical("activation", ["relu", "leakyrelu", "gelu"])
     learning_rate = trial.suggest_float(
-        name="learning_rate", low=1e-5, high=1e-5, log=True
+        name="learning_rate", low=1e-5, high=1e-2, log=True
     )
     optimizer_type = trial.suggest_categorical("optimizer_type", ["Adam", "AdamW"])
     residual = trial.suggest_categorical("residual", [True, False])
     dropout = trial.suggest_float(name="dropout", low=0.0, high=0.5, step=0.1)
     heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
-    dimensions = trial.suggest_int("dimensions", low=32, high=512, step=32)
+    dimensions = trial.suggest_int("dimensions", low=32, high=1024, step=32)
     batch_size = trial.suggest_int("batch_size", low=32, high=512, step=32)
 
     # get dataloaders
@@ -268,7 +268,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
-            subset_batches=500,
+            subset_batches=750,
         )
         # validation
         mse = test(
@@ -277,7 +277,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
-            subset_batches=150,
+            subset_batches=225,
         )
         scheduler.step(mse)
 

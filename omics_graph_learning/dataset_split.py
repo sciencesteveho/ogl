@@ -134,12 +134,13 @@ def _tpm_median_across_all_tissues(
 
 @utils.time_decorator(print_args=False)
 def _genes_train_test_val_split(
-    genes: Dict[str, str],
+    genes: Union[Dict[str, str], List[str]],
     target_genes: List[str],
     tissues: List[str] = None,
     tissue_append: bool = True,
     test_chrs: List[int] = None,
     val_chrs: List[int] = None,
+    rna: bool = False,
 ) -> Dict[str, List[str]]:
     """Creates training, test, and validation splits for genes based on
     chromosome. Adds tissues to each label to differentiate targets between
@@ -164,14 +165,16 @@ def _genes_train_test_val_split(
         validation.
     """
     # get only genes that are in the filtered genes list
-    target_gene_chrs = {
-        gene.split("_")[0]: genes[gene.split("_")[0]]
-        for gene in target_genes
-        if gene.split("_")[0] in genes
-    }
+    if rna:
+        all_genes = genes
+    else:
+        target_gene_chrs = {
+            gene.split("_")[0]: genes[gene.split("_")[0]]
+            for gene in target_genes
+            if gene.split("_")[0] in genes
+        }
+        all_genes = list(target_gene_chrs.keys())
 
-    # shuffle
-    all_genes = list(target_gene_chrs.keys())
     test_genes, val_genes = [], []
     for gene in all_genes:
         if genes[gene] in test_chrs:
