@@ -2,6 +2,7 @@
 dirs:
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/k562
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
+  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
 
 features:
   ATAC: ATAC-seq_narrow_merged.bed
@@ -21,9 +22,15 @@ features:
   SMC3: SMC3_narrow_merged.bed
 
 interaction:
+  circuits: None
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
+  mirdip: None
+  mirnatargets: None
+  ppis: None
+  tf_binding: None
+  tf_marker: None
 
 local:
   cnv: cnv_hg38.bed
