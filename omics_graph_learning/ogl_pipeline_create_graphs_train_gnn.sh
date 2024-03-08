@@ -319,11 +319,11 @@ if [ ! -f "${final_graph}" ]; then
     )
     log_progress "Node feature scaling job submitted.\n"
 
-    # # Train GNN after scaler job is finished
-    # sbatch --dependency=afterok:${scale_id} ${train}
-    # log_progress "GNN training job submitted.\n"
+    # Train GNN after scaler job is finished
+    sbatch --dependency=afterok:${scale_id} ${train}
+    log_progress "GNN training job submitted.\n"
 else
     log_progress "Final graph found. Going straight to GNN training.\n"
-    # sbatch ${train}  # Train graph neural network
-    # log_progress "GNN training job submitted.\n"
+    sbatch ${train}  # Train graph neural network
+    log_progress "GNN training job submitted.\n"
 fi
