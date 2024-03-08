@@ -83,11 +83,11 @@ resources:
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name:
-  ppi_tissue: hippocampal formation
+  ppi_tissue: k562
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: hippocampus
-  tissue_name: Brain - Hippocampus
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/brain_hippocampus.tpm.txt
+  tissue: k562
+  tissue_name: k562
+  tpm: None
 
 
 tissue_specific_nodes:
