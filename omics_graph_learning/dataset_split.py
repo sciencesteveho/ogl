@@ -136,10 +136,10 @@ def _tpm_median_across_all_tissues(
 def _genes_train_test_val_split(
     genes: Dict[str, str],
     target_genes: List[str],
-    tissues: List[str] = [],
+    tissues: List[str] = None,
     tissue_append: bool = True,
-    test_chrs: List[int] = [],
-    val_chrs: List[int] = [],
+    test_chrs: List[int] = None,
+    val_chrs: List[int] = None,
 ) -> Dict[str, List[str]]:
     """Creates training, test, and validation splits for genes based on
     chromosome. Adds tissues to each label to differentiate targets between
@@ -683,31 +683,9 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
     )
 
     if args.rna_seq:
-        for tissue in tissues:
-            params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
-            rna = params["resources"]["rna"]
-
-        with open(rna, "r") as f:
-            rna_quantifications = {
-                line[0]: np.log2(float(line[1]))
-                for line in csv.reader(f, delimiter="\t")
-            }
-
-        split = _genes_train_test_val_split(
-            genes=utils.genes_from_gff(gencode_gtf),
-            target_genes=rna_quantifications.keys(),
-            tissues=tissues,
-            test_chrs=test_chrs,
-            val_chrs=val_chrs,
-            tissue_append=True,
+        _extracted_from_prepare_gnn_training_split_and_targets_39(
+            tissues, config_dir, gencode_gtf, split_path
         )
-
-        targets = _get_targets_from_rna_seq(
-            expression_quantifications=rna_quantifications, split=split
-        )
-
-        _save_splits(split=split, split_path=split_path)
-        _save_targets(targets=targets, split_path=split_path)
     else:
         tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
             config_dir=config_dir,
@@ -754,6 +732,33 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         _save_targets(
             targets=targets, scaled_targets=scaled_targets, split_path=split_path
         )
+
+
+def _extracted_from_prepare_gnn_training_split_and_targets_39(
+    tissues, config_dir, gencode_gtf, split_path
+):
+    for tissue in tissues:
+        params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
+        rna = params["resources"]["rna"]
+
+    with open(rna, "r") as f:
+        rna_quantifications = {
+            line[0]: np.log2(float(line[1])) for line in csv.reader(f, delimiter="\t")
+        }
+
+    split = _genes_train_test_val_split(
+        genes=list(rna_quantifications.keys()),
+        target_genes=rna_quantifications.keys(),
+        tissues=tissues,
+        tissue_append=True,
+    )
+
+    targets = _get_targets_from_rna_seq(
+        expression_quantifications=rna_quantifications, split=split
+    )
+
+    _save_splits(split=split, split_path=split_path)
+    _save_targets(targets=targets, split_path=split_path)
 
 
 def main() -> None:

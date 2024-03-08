@@ -61,7 +61,8 @@ function _merge_bedgraphs () {
 	cutoffs["RAD21"]=2
 	cutoffs["SMC3"]=2
 
-    for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
+    # for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
+    for feature in CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
         # Collect files into an array
         files=( $(ls | grep "${feature}") )
@@ -74,9 +75,9 @@ function _merge_bedgraphs () {
         
         # Sum the coverage values using bedtools unionbedg and awk
         echo "Merging ${feature} bedgraphs"
-        bedtools unionbedg -i "${files[0]}" "${files[1]}" "${files[2]}" \
-        | awk 'BEGIN {OFS="\t"} {sum = 0; for (i = 4; i <= NF; i++) sum += $i; print $1, $2, $3, sum}' \
-        > "${feature}_merged.bedGraph"
+
+        bedtools unionbedg -i <(sort -k1,1 -k2,2n "${files[0]}") <(sort -k1,1 -k2,2n "${files[1]}") <(sort -k1,1 -k2,2n "${files[2]}") \
+            | awk '{sum=$4+$5+$6; print $1, $2, $3, sum / 3}' | tail -n +2 > "${feature}_merged.bedGraph"
         echo "Merged ${feature} bedgraphs"
 
         echo "calling peaks with cutoff ${cutoffs[$feature]}"
@@ -92,6 +93,7 @@ function _merge_bedgraphs () {
         _liftover \
             /ocean/projects/bio210019p/stevesho/resources \
             ${feature}
+        cd -
     done
 }
 
