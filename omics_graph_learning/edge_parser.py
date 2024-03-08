@@ -148,7 +148,7 @@ class EdgeParser:
         """Simple wrapper to load regulatory elements and return BedTools"""
         reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
         bedtools_objects = {
-            key: pybedtools.BedTool(f"{self.local_dir}/{value}")
+            key: pybedtools.BedTool(f"{self.local_dir}/{key}_{self.tissue}.bed")
             for key, value in reg_elements.items()
             if key in ["enhancers", "promoters", "dyadic"]
         }
