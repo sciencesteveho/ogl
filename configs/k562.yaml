@@ -73,6 +73,7 @@ resources:
   se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt 
+  tissue: k562
   rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/k562_ENCFF611MXW_0.05.tsv
 
 tissue_specific_nodes:
