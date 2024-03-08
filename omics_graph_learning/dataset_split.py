@@ -754,6 +754,7 @@ def _extracted_from_prepare_gnn_training_split_and_targets_39(
         target_genes=rna_quantifications.keys(),
         tissues=tissues,
         tissue_append=True,
+        rna=True,
     )
 
     targets = _get_targets_from_rna_seq(

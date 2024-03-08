@@ -62,11 +62,16 @@ function _merge_bedgraphs () {
             echo "Error: Expected 3 files for feature ${feature}, but found ${#files[@]}."
             continue
         fi
+
+        # Sort files once and store them
+        for i in {0..2}; do
+            sorted_files[$i]="${files[$i]}.sorted"
+            sort -k1,1 -k2,2n "${files[$i]}" > "${sorted_files[$i]}"
+        done
         
         # Sum the coverage values using bedtools unionbedg and awk
         echo "Merging ${feature} bedgraphs"
-
-        bedtools unionbedg -i <(sort -k1,1 -k2,2n "${files[0]}") <(sort -k1,1 -k2,2n "${files[1]}") <(sort -k1,1 -k2,2n "${files[2]}") \
+        bedtools unionbedg -i "${sorted_files[@]}" \
             | awk '{sum=$4+$5+$6; print $1, $2, $3, sum / 3}' > "${feature}_merged.bedGraph"
         echo "Merged ${feature} bedgraphs"
 
