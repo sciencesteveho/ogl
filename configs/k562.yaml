@@ -75,21 +75,6 @@ resources:
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt 
   rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/k562_ENCFF611MXW_0.05.tsv
 
-resources:
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  key_protein_abundance:
-  key_tpm:
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
-  marker_name:
-  ppi_tissue: k562
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tissue: k562
-  tissue_name: k562
-  tpm: None
-
-
 tissue_specific_nodes:
   crms:
   super_enhancer:
