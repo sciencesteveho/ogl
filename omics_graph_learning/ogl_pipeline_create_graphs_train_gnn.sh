@@ -292,32 +292,32 @@ if [ ! -f "${final_graph}" ]; then
         split_id=$(get_splits -1)
         log_progress "Training target job submitted.\n"
     fi
-    # # Create scalers after concat is finished. One scaler per node feature.
-    # slurmids=()
-    # for num in {0..38}; do
-    #     ID=$(
-    #         sbatch --parsable \
-    #             --dependency=afterok:"${split_id}" \
-    #             make_scaler.sh \
-    #             "${num}" \
-    #             full \
-    #             "${experiment_yaml}" \
-    #             "${split_name}"
-    #     )
-    #     slurmids+=("${ID}")
-    # done
-    # log_progress "Scaler jobs submitted.\n"
+    # Create scalers after concat is finished. One scaler per node feature.
+    slurmids=()
+    for num in {0..38}; do
+        ID=$(
+            sbatch --parsable \
+                --dependency=afterok:"${split_id}" \
+                make_scaler.sh \
+                "${num}" \
+                full \
+                "${experiment_yaml}" \
+                "${split_name}"
+        )
+        slurmids+=("${ID}")
+    done
+    log_progress "Scaler jobs submitted.\n"
 
-    # # Scale node feats after every scaler job is finished
-    # scale_id=$(
-    #     sbatch --parsable \
-    #         --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
-    #         scale_node_feats.sh \
-    #         full \
-    #         "${experiment_yaml}" \
-    #         "${split_name}"
-    # )
-    # log_progress "Node feature scaling job submitted.\n"
+    # Scale node feats after every scaler job is finished
+    scale_id=$(
+        sbatch --parsable \
+            --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
+            scale_node_feats.sh \
+            full \
+            "${experiment_yaml}" \
+            "${split_name}"
+    )
+    log_progress "Node feature scaling job submitted.\n"
 
     # # Train GNN after scaler job is finished
     # sbatch --dependency=afterok:${scale_id} ${train}
