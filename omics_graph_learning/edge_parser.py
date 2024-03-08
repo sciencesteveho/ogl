@@ -114,9 +114,9 @@ class EdgeParser:
             gencode_ref=self.gencode_ref
         )
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
-        self.gencode_attr_ref = self._create_reference_dict(self.regulatory_attr)
+        self.gencode_attr_ref = self._create_reference_dict(params["resources"]["gencode_attr"])
         self.regulatory_attr_ref = self._create_reference_dict(
-            params["resources"]["reg_ref"]
+            self.regulatory_attr
         )
         self.se_ref = self._create_reference_dict(params["resources"]["se_ref"])
         self.mirna_ref = self._create_reference_dict(
