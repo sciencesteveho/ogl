@@ -377,6 +377,20 @@ def _difference_from_average_activity_per_tissue(
     )
 
 
+def _get_targets_from_rna_seq(
+    expression_quantifications: Dict[str, float],
+    split: Dict[str, List[str]],
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Get target values for each tissue."""
+    return {
+        part: {
+            gene: np.array([expression_quantifications[gene.split("_")[0]]])
+            for gene in split[part]
+        }
+        for part in split
+    }
+
+
 @utils.time_decorator(print_args=False)
 def _get_targets_per_partition(
     diff_from_average_df: pd.DataFrame,
@@ -570,6 +584,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
     test_chrs = target_params["test_chrs"]
     val_chrs = target_params["val_chrs"]
     tpm_dir = target_params["tpm_dir"]
+    rna = params["rna"]
     return (
         experiment_name,
         working_directory,
@@ -586,6 +601,7 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         test_chrs,
         val_chrs,
         tpm_dir,
+        rna,
     )
 
 
@@ -614,7 +630,7 @@ def _save_splits(
     split: Dict[str, List[str]],
     # barebones_split: Dict[str, List[str]],
     split_path: str,
-):
+) -> None:
     chr_split_dictionary = split_path / "training_targets_split.pkl"
     if not os.path.exists(chr_split_dictionary):
         utils._save_pickle(split, chr_split_dictionary)
@@ -623,11 +639,12 @@ def _save_splits(
 
 def _save_targets(
     targets: Dict[str, Dict[str, np.ndarray]],
-    scaled_targets: Dict[str, Dict[str, np.ndarray]],
     split_path: str,
-):
+    scaled_targets: Dict[str, Dict[str, np.ndarray]] = None,
+) -> None:
     utils._save_pickle(targets, split_path / "training_targets.pkl")
-    utils._save_pickle(scaled_targets, split_path / "training_targets_scaled.pkl")
+    if scaled_targets:
+        utils._save_pickle(scaled_targets, split_path / "training_targets_scaled.pkl")
 
 
 def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) -> None:
@@ -653,6 +670,7 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         test_chrs,
         val_chrs,
         tpm_dir,
+        rna,
     ) = _unpack_params(params)
 
     # check if the matrix with a median across all samples exists
@@ -667,54 +685,73 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         split_name=args.split_name,
     )
 
-    tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
-        config_dir=config_dir,
-        gencode_gtf=gencode_gtf,
-        tissues=tissues,
-        tpm_filter=args.tpm_filter,
-        split_path=split_path,
-        percent_of_samples_filter=args.percent_of_samples_filter,
-    )
+    if args.rna_seq:
+        with open(rna, "r") as f:
+            rna_quantifications = {
+                line[0]: np.log2(int(line[1])) for line in csv.reader(f, delimiter="\t")
+            }
 
-    average_activity, expression_median_across_all = _load_dataframes(
-        matrix_path=matrix_path,
-        average_activity_df=average_activity_df,
-        expression_median_across_all_df=expression_median_across_all_df,
-    )
+        split = _genes_train_test_val_split(
+            genes=utils.genes_from_gff(gencode_gtf),
+            target_genes=rna_quantifications.keys(),
+            tissues=tissues,
+            test_chrs=test_chrs,
+            val_chrs=val_chrs,
+            tissue_append=True,
+        )
 
-    filtered_genes = _get_tpm_filtered_genes(
-        tissue_keywords=tissue_keywords,
-        split_path=split_path,
-    )
+        targets = _get_targets_from_rna_seq(
+            expression_quantifications=rna_quantifications, split=split
+        )
 
-    split = _genes_train_test_val_split(
-        genes=utils.genes_from_gff(gencode_gtf),
-        target_genes=filtered_genes,
-        tissues=tissues,
-        test_chrs=test_chrs,
-        val_chrs=val_chrs,
-        tissue_append=True,
-    )
+        _save_splits(split=split, split_path=split_path)
+        _save_targets(targets=targets, split_path=split_path)
+    else:
+        tissue_keywords = _tpm_filter_genes_and_prepare_keywords(
+            config_dir=config_dir,
+            gencode_gtf=gencode_gtf,
+            tissues=tissues,
+            tpm_filter=args.tpm_filter,
+            split_path=split_path,
+            percent_of_samples_filter=args.percent_of_samples_filter,
+        )
 
-    _save_splits(
-        split=split,
-        split_path=split_path,
-    )
+        average_activity, expression_median_across_all = _load_dataframes(
+            matrix_path=matrix_path,
+            average_activity_df=average_activity_df,
+            expression_median_across_all_df=expression_median_across_all_df,
+        )
 
-    targets = _tissue_targets_for_training(
-        average_activity=average_activity,
-        expression_median_across_all=expression_median_across_all,
-        expression_median_matrix=matrix_path / expression_median_matrix,
-        protein_abundance_matrix=matrix_path / protein_abundance_matrix,
-        protein_abundance_medians=matrix_path / protein_abundance_medians,
-        pseudocount=0.25,
-        tissue_keywords=tissue_keywords,
-        tpm_dir=tpm_dir,
-        split=split,
-    )
+        filtered_genes = _get_tpm_filtered_genes(
+            tissue_keywords=tissue_keywords, split_path=split_path
+        )
 
-    scaled_targets = _scale_targets(targets)
-    _save_targets(targets=targets, scaled_targets=scaled_targets, split_path=split_path)
+        split = _genes_train_test_val_split(
+            genes=utils.genes_from_gff(gencode_gtf),
+            target_genes=filtered_genes,
+            tissues=tissues,
+            test_chrs=test_chrs,
+            val_chrs=val_chrs,
+            tissue_append=True,
+        )
+
+        _save_splits(split=split, split_path=split_path)
+
+        targets = _tissue_targets_for_training(
+            average_activity=average_activity,
+            expression_median_across_all=expression_median_across_all,
+            expression_median_matrix=matrix_path / expression_median_matrix,
+            protein_abundance_matrix=matrix_path / protein_abundance_matrix,
+            protein_abundance_medians=matrix_path / protein_abundance_medians,
+            pseudocount=0.25,
+            tissue_keywords=tissue_keywords,
+            tpm_dir=tpm_dir,
+            split=split,
+        )
+        scaled_targets = _scale_targets(targets)
+        _save_targets(
+            targets=targets, scaled_targets=scaled_targets, split_path=split_path
+        )
 
 
 def main() -> None:
@@ -735,7 +772,9 @@ def main() -> None:
     )
     parser.add_argument("--split_name", type=str, help="Name of the split")
     parser.add_argument(
-        "--rna-seq", action="store_true", help="Use RNA-seq data as target"
+        "--rna_seq",
+        action="store_true",
+        help="Whether to use RNA-seq data for targets",
     )
     args = parser.parse_args()
     params = utils.parse_yaml(args.experiment_config)

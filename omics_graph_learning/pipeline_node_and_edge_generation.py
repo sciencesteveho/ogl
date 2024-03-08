@@ -11,6 +11,7 @@ perform part 1 of the pipeline. Takes config to tell the next 3 steps which
 arguments to use."""
 
 import argparse
+import pathlib
 from typing import Dict, List, Union
 
 from edge_parser import EdgeParser
@@ -84,7 +85,7 @@ def parse_edges(
 
     baseloop_directory = experiment_params["baseloop_directory"]
     baseloops = experiment_params["baseloops"]
-    loopfiles = utils._generate_deeploop_dict(
+    loopfiles = utils._generate_hic_dict(
         resolution=experiment_params["loop_resolution"]
     )
     loopfile = loopfiles[tissue_params["resources"]["tissue"]]

@@ -16,11 +16,11 @@ log_progress() {
 # =============================================================================
 parse_arguments() {
     # Use getopt with adjusted flags for optional boolean arguments
-    options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:f:g:k:ljzxcvbh --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual,zero_nodes,randomize_node_feats,early_stop,randomize_edges,total_random_edges,help --name "$0" -- "$@")
+    options=$(getopt --options q:w:e:r:t:y:u:i:o:p:a:s:d:f:g:k:ljzxcvbnh --longoptions experiment_yaml:,partition:,model:,target:,tpm_filter:,percent_of_samples_filter:,gnn_layers:,linear_layers:,activation:,dimensions:,epochs:,learning_rate:,optimizer:,dropout:,heads:,batch_size:,graph_type:,residual,zero_nodes,randomize_node_feats,early_stop,randomize_edges,rna_seq,total_random_edges,help --name "$0" -- "$@")
 
     # Check for getopt errors
     if [ $? -ne 0 ]; then
-        echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop]  [--randomize_edges] [--total_random_edges]"
+        echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--rna_seq] [--total_random_edges]"
         exit 1
     fi
 
@@ -145,13 +145,18 @@ parse_arguments() {
             log_progress "Setting randomize_edges"
             shift
             ;;
-        -b | --total_random_edges)
+        -b | --rna_seq)
+            rna_seq=true
+            log_progress "Using rna_seq targets"
+            shift
+            ;;
+        -n | --total_random_edges)
             total_random_edges="$2"
             log_progress "Setting total_random_edges to $2"
             shift 2
             ;;
         -h | --help)
-            echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--total_random_edges"
+            echo -e "Usage: $0 [--experiment_yaml] [--partition] [--model] [--target] [--tpm_filter] [--percent_of_samples_filter] [--gnn_layers] [--linear_layers] [--dimensions] [--epochs] [--learning_rate] [--optimizer] [--dropout] [--heads] [--batch_size] [--graph_type] [--residual] [--zero_nodes] [--randomize_node_feats] [--early_stop] [--randomize_edges] [--rna_seq] [--total_random_edges]"
             exit 0
             ;;
         --)
@@ -168,6 +173,7 @@ parse_arguments() {
     if [[ $randomize_node_feats = true ]]; then bool_flags="--randomize_node_feats $bool_flags"; fi
     if [[ $early_stop = true ]]; then bool_flags="--early_stop $bool_flags"; fi
     if [[ $randomize_edges = true ]]; then bool_flags="--randomize_edges $bool_flags"; fi
+    if [[ $rna_seq = true ]]; then bool_flags="--rna_seq $bool_flags"; fi
 }
 
 # Call the function to parse command-line arguments
@@ -187,6 +193,9 @@ working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experim
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
 split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
+if [[ -n $rna_seq]]; then
+    split_name="${split_name}_rna_seq"
+fi
 log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}\n"
 
 # Set up variables for graph checking
@@ -275,38 +284,38 @@ if [ ! -f "${final_graph}" ]; then
         split_id=$(get_splits -1)
         log_progress "Training target job submitted.\n"
     fi
-    # Create scalers after concat is finished. One scaler per node feature.
-    slurmids=()
-    for num in {0..38}; do
-        ID=$(
-            sbatch --parsable \
-                --dependency=afterok:"${split_id}" \
-                make_scaler.sh \
-                "${num}" \
-                full \
-                "${experiment_yaml}" \
-                "${split_name}"
-        )
-        slurmids+=("${ID}")
-    done
-    log_progress "Scaler jobs submitted.\n"
+    # # Create scalers after concat is finished. One scaler per node feature.
+    # slurmids=()
+    # for num in {0..38}; do
+    #     ID=$(
+    #         sbatch --parsable \
+    #             --dependency=afterok:"${split_id}" \
+    #             make_scaler.sh \
+    #             "${num}" \
+    #             full \
+    #             "${experiment_yaml}" \
+    #             "${split_name}"
+    #     )
+    #     slurmids+=("${ID}")
+    # done
+    # log_progress "Scaler jobs submitted.\n"
 
-    # Scale node feats after every scaler job is finished
-    scale_id=$(
-        sbatch --parsable \
-            --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
-            scale_node_feats.sh \
-            full \
-            "${experiment_yaml}" \
-            "${split_name}"
-    )
-    log_progress "Node feature scaling job submitted.\n"
+    # # Scale node feats after every scaler job is finished
+    # scale_id=$(
+    #     sbatch --parsable \
+    #         --dependency=afterok:"$(echo "${slurmids[*]}" | tr ' ' ':')" \
+    #         scale_node_feats.sh \
+    #         full \
+    #         "${experiment_yaml}" \
+    #         "${split_name}"
+    # )
+    # log_progress "Node feature scaling job submitted.\n"
 
-    # Train GNN after scaler job is finished
-    sbatch --dependency=afterok:${scale_id} ${train}
-    log_progress "GNN training job submitted.\n"
+    # # Train GNN after scaler job is finished
+    # sbatch --dependency=afterok:${scale_id} ${train}
+    # log_progress "GNN training job submitted.\n"
 else
     log_progress "Final graph found. Going straight to GNN training.\n"
-    sbatch ${train}  # Train graph neural network
-    log_progress "GNN training job submitted.\n"
+    # sbatch ${train}  # Train graph neural network
+    # log_progress "GNN training job submitted.\n"
 fi

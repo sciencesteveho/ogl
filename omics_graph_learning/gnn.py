@@ -327,6 +327,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--randomize_node_feats", action="store_true")
     parser.add_argument("--early_stop", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")
+    parser.add_argument("--rna_seq", action="store_true")
     return parser.parse_args()
 
 
@@ -444,7 +445,7 @@ def main() -> None:
         graph_type=args.graph_type,
         root_dir=root_dir,
         split_name=args.split_name,
-        regression_target=args.target,
+        regression_target="rna_seq" if args.rna_seq else args.target,
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,

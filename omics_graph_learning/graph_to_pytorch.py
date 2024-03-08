@@ -214,6 +214,7 @@ def _get_target_indices(regression_target):
         "difference_from_average": [2],
         "foldchange_from_average": [3],
         "protein_targets": [0, 1, 2, 3, 4, 5],
+        "rna_seq": [0],
     }
     if regression_target not in target_indices:
         raise ValueError("Invalid regression_target provided.")

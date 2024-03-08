@@ -186,6 +186,18 @@ def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
     }
 
 
+def _generate_hic_dict(resolution: float) -> Dict[str, str]:
+    """Generate a dictionary of Hi-C filenames for a given resolution"""
+    special_tissues = {
+        "left_ventricle": "leftventricle",
+    }
+    tissues = ["left_ventricle", "k562"]
+    return {
+        tissue: f"{special_tissues.get(tissue, tissue)}_all_chr_{resolution}.tsv"
+        for tissue in tissues
+    }
+
+
 class ScalerUtils:
     """Utility class for scaling node features, as the modules for scaling share
     most of the smae args"""
