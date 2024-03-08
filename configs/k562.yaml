@@ -75,6 +75,8 @@ resources:
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt 
   tissue: k562
   rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/k562_ENCFF611MXW_0.05.tsv
+  marker_name: K562
+  ppi_tissue: K562
 
 tissue_specific_nodes:
   crms:
