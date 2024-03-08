@@ -689,7 +689,7 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
 
         with open(rna, "r") as f:
             rna_quantifications = {
-                line[0]: np.log2(int(line[1])) for line in csv.reader(f, delimiter="\t")
+                line[0]: np.log2(float(line[1])) for line in csv.reader(f, delimiter="\t")
             }
 
         split = _genes_train_test_val_split(
