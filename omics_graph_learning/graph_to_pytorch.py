@@ -237,9 +237,9 @@ def _load_data_object_prerequisites(
 
     # get training targets
     if scaled:
-        targets = f"{graph_dir}/training_targets.pkl"
-    else:
         targets = f"{graph_dir}/training_targets_scaled.pkl"
+    else:
+        targets = f"{graph_dir}/training_targets.pkl"
 
     # load the graph!
     with open(

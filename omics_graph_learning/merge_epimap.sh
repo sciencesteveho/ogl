@@ -25,6 +25,78 @@ function _liftover_19_to_38 () {
 }
 
 
+function _merge_bedgraphs () {
+    function _liftover () {
+        $1/liftOver \
+            ${2}_merged.narrow.bed \
+            $1/hg19ToHg38.over.chain.gz \
+            ${2}_merged.narrow.hg38.bed \
+            ${2}.unlifted
+
+        # cleanup
+        rm ${2}.unlifted
+    }
+
+    # set up cutoff array
+    mkdir merged_bedgraph
+    cd tmp
+    rm *narrow.bed*
+
+    declare -A cutoffs
+    # cutoffs provided by C. Boix
+	cutoffs["DNase-seq"]=1.9
+	cutoffs["H3K27ac"]=2.2
+	cutoffs["H3K27me3"]=1.2
+	cutoffs["H3K36me3"]=1.7
+	cutoffs["H3K4me1"]=1.7
+	cutoffs["H3K4me2"]=2
+	cutoffs["H3K4me3"]=1.7
+	cutoffs["H3K79me2"]=2.2
+	cutoffs["H3K9ac"]=1.6
+	cutoffs["H3K9me3"]=1.1
+    # these following cutoffs default to 2
+	cutoffs["ATAC-seq"]=2
+	cutoffs["CTCF"]=2
+	cutoffs["POLR2A"]=2
+	cutoffs["RAD21"]=2
+	cutoffs["SMC3"]=2
+
+    for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
+    do
+        # Collect files into an array
+        files=( $(ls | grep "${feature}") )
+        
+        # Check that we have exactly three files
+        if [ "${#files[@]}" -ne 3 ]; then
+            echo "Error: Expected 3 files for feature ${feature}, but found ${#files[@]}."
+            continue
+        fi
+        
+        # Sum the coverage values using bedtools unionbedg and awk
+        echo "Merging ${feature} bedgraphs"
+        bedtools unionbedg -i "${files[0]}" "${files[1]}" "${files[2]}" \
+        | awk 'BEGIN {OFS="\t"} {sum = 0; for (i = 4; i <= NF; i++) sum += $i; print $1, $2, $3, sum}' \
+        > "${feature}_merged.bedGraph"
+        echo "Merged ${feature} bedgraphs"
+
+        echo "calling peaks with cutoff ${cutoffs[$feature]}"
+        macs2 bdgpeakcall \
+            -i ${feature}_merged.bedGraph \
+            -o ../merged_bedgraph/${feature}_merged.narrow.bed \
+            -c ${cutoffs[$feature]} \
+            -l 73 \
+            -g 100
+
+        cd ../merged_bedgraph
+        echo "liftover ${feature} to hg38"
+        _liftover \
+            /ocean/projects/bio210019p/stevesho/resources \
+            ${feature}
+    done
+}
+
+_merge_bedgraphs
+
 # =============================================================================
 # convert bigwig to bed
 # wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph
@@ -259,38 +331,38 @@ function main_func () {
 	cutoffs["RAD21"]=2
 	cutoffs["SMC3"]=2
 
-    # # make directories if they don't exist
-    # for dir in merged peaks tmp crms crms_processing;
-    # do
-    #     if [ ! -d $1/$2/$dir ]; then
-    #         mkdir $1/$2/$dir
-    #     fi
-    # done
+    # make directories if they don't exist
+    for dir in merged peaks tmp crms crms_processing;
+    do
+        if [ ! -d $1/$2/$dir ]; then
+            mkdir $1/$2/$dir
+        fi
+    done
 
-    # # loop through bigwigs and convert to peaks, based on which epi feature in
-    # # filename
-    # for file in $1/$2/*;
-    # do
-    #     if [ -f $file ]; then
-    #         # set variables
-    #         prefix=$(echo $(basename ${file}) | cut -d'_' -f1)
-    #         histone=$(echo $(basename ${file}) | cut -d'_' -f3 | sed 's/\.bigWig//g')
-    #         name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
+    # loop through bigwigs and convert to peaks, based on which epi feature in
+    # filename
+    for file in $1/$2/*;
+    do
+        if [ -f $file ]; then
+            # set variables
+            prefix=$(echo $(basename ${file}) | cut -d'_' -f1)
+            histone=$(echo $(basename ${file}) | cut -d'_' -f3 | sed 's/\.bigWig//g')
+            name=$(echo $(basename ${file}) | sed 's/\.bigWig//g')
 
-    #         # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
-    #         if [ $prefix == "impute" ]; then
-    #             pval=${cutoffs[$histone]}
-    #         else
-    #             pval=5
-    #         fi
+            # get cutoffs for imputed tracks. Observed tracks get a cutoff of 5
+            if [ $prefix == "impute" ]; then
+                pval=${cutoffs[$histone]}
+            else
+                pval=5
+            fi
 
-    #         _bigWig_to_peaks \
-    #             $3 \
-    #             $1/$2 \
-    #             $name \
-    #             $pval
-    #     fi
-    # done
+            _bigWig_to_peaks \
+                $3 \
+                $1/$2 \
+                $name \
+                $pval
+        fi
+    done
 
     # merge epimap features across 3 samples
     _merge_epimap_heuristically \
