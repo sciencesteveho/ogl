@@ -206,7 +206,14 @@ log_progress "Conda environment and python arguments parsed.\n"
 
 # Function to get training targets after graph construction
 get_splits() {
-    sbatch --parsable --dependency=afterok:"${1}" get_training_targets.sh "${experiment_yaml}" "${tpm_filter}" "${percent_of_samples_filter}" "${split_name}"
+    sbatch_command="sbatch --parsable --dependency=afterok:${1} get_training_targets.sh ${experiment_yaml} ${tpm_filter} ${percent_of_samples_filter} ${split_name}"
+
+    # Append --rna_seq if variable is provided
+    if [[ -n $rna_seq ]]; then
+        sbatch_command+=" --rna_seq"
+    fi
+
+    $sbatch_command
 }
 
 # Set up GNN training script

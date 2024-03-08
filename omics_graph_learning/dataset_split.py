@@ -584,7 +584,6 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
     test_chrs = target_params["test_chrs"]
     val_chrs = target_params["val_chrs"]
     tpm_dir = target_params["tpm_dir"]
-    rna = params["rna"]
     return (
         experiment_name,
         working_directory,
@@ -601,7 +600,6 @@ def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         test_chrs,
         val_chrs,
         tpm_dir,
-        rna,
     )
 
 
@@ -670,7 +668,6 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         test_chrs,
         val_chrs,
         tpm_dir,
-        rna,
     ) = _unpack_params(params)
 
     # check if the matrix with a median across all samples exists
@@ -686,6 +683,10 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
     )
 
     if args.rna_seq:
+        for tissue in tissues:
+            params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
+            rna = params["resources"]["rna"]
+
         with open(rna, "r") as f:
             rna_quantifications = {
                 line[0]: np.log2(int(line[1])) for line in csv.reader(f, delimiter="\t")
