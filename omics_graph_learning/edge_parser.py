@@ -114,10 +114,10 @@ class EdgeParser:
             gencode_ref=self.gencode_ref
         )
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
-        self.gencode_attr_ref = self._create_reference_dict(params["resources"]["gencode_attr"])
-        self.regulatory_attr_ref = self._create_reference_dict(
-            self.regulatory_attr
+        self.gencode_attr_ref = self._create_reference_dict(
+            params["resources"]["gencode_attr"]
         )
+        self.regulatory_attr_ref = self._create_reference_dict(self.regulatory_attr)
         self.se_ref = self._create_reference_dict(params["resources"]["se_ref"])
         self.mirna_ref = self._create_reference_dict(
             f"{self.interaction_dir}/{params['interaction']['mirdip']}"
@@ -526,9 +526,11 @@ class EdgeParser:
         )
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
 
-        # if TSS, set TSS bool
-        tss = first_feature is self.tss or second_feature is self.tss
-        tss = first_feature is self.gencode_ref or second_feature is self.gencode_ref
+        # Set TSS bool if either first_feature or second_feature matches
+        tss = first_feature in [self.tss, self.gencode_ref] or second_feature in [
+            self.tss,
+            self.gencode_ref,
+        ]
 
         # get edges and write to file
         return self._write_loop_edges(
