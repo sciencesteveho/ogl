@@ -174,13 +174,12 @@ def _genes_train_test_val_split(
             if gene.split("_")[0] in genes
         }
         all_genes = list(target_gene_chrs.keys())
-
-    test_genes, val_genes = [], []
-    for gene in all_genes:
-        if genes[gene] in test_chrs:
-            test_genes.append(gene)
-        elif genes[gene] in val_chrs:
-            val_genes.append(gene)
+        test_genes, val_genes = [], []
+        for gene in all_genes:
+            if genes[gene] in test_chrs:
+                test_genes.append(gene)
+            elif genes[gene] in val_chrs:
+                val_genes.append(gene)
 
     # if no test or val chrs, then 80% of genes are for training. The remaining
     # 20% are split into test and validation. If test or val chrs are provided,

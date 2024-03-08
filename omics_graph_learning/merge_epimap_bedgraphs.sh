@@ -1,5 +1,28 @@
 #!/bin/bash
-#
+
+#SBATCH --job-name=merge_epimap
+#SBATCH --mail-user=stevesho@umich.edu
+#SBATCH --account=bio210019p
+#SBATCH --mail-type=FAIL
+
+# Number of nodes requested
+#SBATCH --ntasks-per-node=12
+
+# Partition
+#SBATCH -p RM-shared
+
+# Time
+#SBATCH -t 24:00:00
+
+# output to a designated folder
+#SBATCH -o slurm_outputs/%x_%j.out
+
+#echo commands to stdout
+set -x
+
+module load anaconda3
+conda activate /ocean/projects/bio210019p/stevesho/gnn
+
 # This script is used to convert epimap bigwigs to narrow or broad peak bedfiles
 # with liftover to hg38. Broad peaks are called for histone marks and narrow
 # peaks for TFs. Histones and TFs are then merged across the three samples to
@@ -18,10 +41,10 @@ function _merge_bedgraphs () {
     
     function _liftover () {
         $1/liftOver \
-            ${2}_merged.narrow.bed \
-            $1/hg19ToHg38.over.chain.gz \
-            ${2}_merged.narrow.hg38.bed \
-            ${2}.unlifted
+        ${2}_merged.narrow.bed \
+        $1/hg19ToHg38.over.chain.gz \
+        ${2}_merged.narrow.hg38.bed \
+        ${2}.unlifted
 
         # cleanup
         rm ${2}.unlifted
@@ -93,20 +116,4 @@ function _merge_bedgraphs () {
     done
 }
 
-_merge_bedgraphs
-
-
-# run main_func function!
-#   $1 - bigwig directory, one level before tissues
-#   $2 - name of tissue
-#   $3 - directory to liftover and bigwig conversion file
-main_func \
-    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs \
-    $1 \
-    /ocean/projects/bio210019p/stevesho/resources \
-    "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt" \
-    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files
-
-
-# t=$SECONDS
-# printf 'Time elapsed: %d days, %d minutes\n' "$(( t/86400 ))" "$(( t/60 - 1440*(t/86400) ))"
+_merge_bedgraphs $1
