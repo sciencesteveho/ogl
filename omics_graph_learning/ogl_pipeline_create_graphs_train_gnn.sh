@@ -193,9 +193,10 @@ working_directory=$(python -c "import yaml; print(yaml.safe_load(open('${experim
 experiment_name=$(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['experiment_name'])")
 tissues=($(python -c "import yaml; print(yaml.safe_load(open('${experiment_yaml}'))['tissues'])" | tr -d "[],'"))
 split_name=$(python ${splitname_script} --experiment_config ${experiment_yaml} --tpm_filter ${tpm_filter} --percent_of_samples_filter ${percent_of_samples_filter})
-if [[ -n $rna_seq]]; then
+if [[ -n $rna_seq ]]; then
     split_name="${split_name}_rna_seq"
 fi
+
 log_progress "\n\tWorking directory: ${working_directory}\n\tExperiment name: ${experiment_name}\n\tTissues: ${tissues[*]}\n\tSplit name: ${split_name}\n"
 
 # Set up variables for graph checking
