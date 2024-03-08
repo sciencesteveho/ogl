@@ -109,15 +109,11 @@ class EdgeParser:
 
     def _initialize_references(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize reference dictionaries"""
-        self.gencode_ref = (
-            pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-            .cut([0, 1, 2, 3])
-            .saveas()
-        )
-
+        self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         self.genesymbol_to_gencode = utils.genes_from_gencode(
             gencode_ref=self.gencode_ref
         )
+        self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
         self.gencode_attr_ref = self._create_reference_dict(self.regulatory_attr)
         self.regulatory_attr_ref = self._create_reference_dict(
             params["resources"]["reg_ref"]
