@@ -91,7 +91,6 @@ class EdgeParser:
         self.interaction_files = params["interaction"]
         self.tissue = params["resources"]["tissue"]
         self.chromfile = params["resources"]["chromfile"]
-        self.tissue_name = params["resources"]["tissue_name"]
         self.marker_name = params["resources"]["marker_name"]
         self.ppi_tissue = params["resources"]["ppi_tissue"]
         self.tss = params["resources"]["reftss_genes"]
