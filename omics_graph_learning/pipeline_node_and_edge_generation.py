@@ -10,7 +10,9 @@
 perform part 1 of the pipeline. Takes config to tell the next 3 steps which
 arguments to use."""
 
+
 import argparse
+import contextlib
 import pathlib
 from typing import Dict, List, Union
 
@@ -129,7 +131,8 @@ def parse_local_context(
     ]
 
     if experiment_params["regulatory"] == "encode":
-        nodes.remove("dyadic")
+        with contextlib.suppress(ValueError):
+            nodes.remove("dyadic")
 
     localparseObject = LocalContextParser(
         experiment_name=experiment_name,
@@ -164,7 +167,8 @@ def create_tissue_graph(
     )
 
     if experiment_params["regulatory"] == "encode":
-        nodes.remove("dyadic")
+        with contextlib.suppress(ValueError):
+            nodes.remove("dyadic")
 
     experiment_name = experiment_params["experiment_name"]
     working_directory = experiment_params["working_directory"]
