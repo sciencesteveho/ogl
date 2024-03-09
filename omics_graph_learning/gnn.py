@@ -239,12 +239,12 @@ def get_loader(
     mask: torch.Tensor,
     batch_size: int,
     shuffle: bool = False,
+    layers: int = 2,
 ) -> torch_geometric.data.DataLoader:
     """Loads data into NeighborLoader for GNN training"""
     return NeighborLoader(
         data,
-        # num_neighbors=[5, 5, 5, 5, 5, 3],
-        num_neighbors=[5, 5, 5],
+        num_neighbors=[10] * layers,
         batch_size=batch_size,
         input_nodes=getattr(data, mask),
         shuffle=shuffle,
@@ -457,10 +457,26 @@ def main() -> None:
 
     # set up data loaders
     train_loader = get_loader(
-        data=data, mask="train_mask", batch_size=args.batch_size, shuffle=True
+        data=data,
+        mask="train_mask",
+        batch_size=args.batch_size,
+        shuffle=True,
+        layers=args.gnn_layers,
     )
-    test_loader = get_loader(data=data, mask="test_mask", batch_size=args.batch_size)
-    val_loader = get_loader(data=data, mask="val_mask", batch_size=args.batch_size)
+    test_loader = get_loader(
+        data=data,
+        mask="test_mask",
+        batch_size=args.batch_size,
+        shuffle=False,
+        layers=args.gnn_layers,
+    )
+    val_loader = get_loader(
+        data=data,
+        mask="val_mask",
+        batch_size=args.batch_size,
+        shuffle=False,
+        layers=args.gnn_layers,
+    )
 
     # CHOOSE YOUR WEAPON
     model = create_model(

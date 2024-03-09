@@ -23,13 +23,16 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric
+from torch_geometric.data import DataListLoader
+from torch_geometric.data import DataLoader
+from torch_geometric.data import Subset
 from tqdm import tqdm
 
 from gnn import create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
-EPOCHS = 200
+EPOCHS = 100
 RANDOM_SEED = 42
 ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -190,9 +193,10 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
     dimensions = trial.suggest_int("dimensions", low=32, high=1024, step=32)
     batch_size = trial.suggest_int("batch_size", low=16, high=512, step=16)
+    loader = trial.suggest_categorical("loader", ["neighbor", "data"])
 
     # get dataloaders
-    def _load_data(batch_size):
+    def _load_data(batch_size, loader, neighbors):
         data = graph_to_pytorch(
             experiment_name="regulatory_only_k562_fdr001",
             graph_type="full",
@@ -205,14 +209,33 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         print(f"Number of edges: {data.num_edges}")
 
         # set up data loaders
-        train_loader = get_loader(
-            data=data, mask="train_mask", batch_size=batch_size, shuffle=True
-        )
-        test_loader = get_loader(data=data, mask="test_mask", batch_size=batch_size)
-        val_loader = get_loader(data=data, mask="val_mask", batch_size=batch_size)
-        return train_loader, test_loader, val_loader
+        if loader == "neighbor":
+            train_loader = get_loader(
+                data=data,
+                mask="train_mask",
+                batch_size=batch_size,
+                shuffle=True,
+                layers=gnn_layers,
+            )
+            test_loader = get_loader(
+                data=data, mask="test_mask", batch_size=batch_size, layers=gnn_layers
+            )
+            val_loader = get_loader(
+                data=data, mask="val_mask", batch_size=batch_size, layers=gnn_layers
+            )
+            return train_loader, test_loader, val_loader
+        if loader == "data":
+            train_dataset = Subset(data, data.train_mask)
+            test_dataset = Subset(data, data.test_mask)
+            val_dataset = Subset(data, data.val_mask)
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, shuffle=True
+            )
+            test_loader = DataLoader(test_dataset, batch_size=batch_size)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size)
+            return train_loader, test_loader, val_loader
 
-    train_loader, _, val_loader = _load_data(batch_size=batch_size)
+    train_loader, _, val_loader = _load_data(batch_size=batch_size, loader=loader)
 
     # define model and get optimizer
     model = create_model(
@@ -300,7 +323,7 @@ def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=250, gc_after_trial=True)
+    study.optimize(objective, n_trials=200, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

@@ -38,7 +38,6 @@ conda activate /ocean/projects/bio210019p/stevesho/gnn
 # =============================================================================
 function _merge_bedgraphs () {
     working_dir=$1
-    export LC_ALL=C
     
     function _liftover () {
         $1/liftOver \
@@ -76,9 +75,8 @@ function _merge_bedgraphs () {
 	cutoffs["SMC3"]=2
 
     # for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
-    for feature in CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
+    for feature in ATAC-seq;
     do
-        cd $1/tmp
         # Collect files into an array
         files=( $(ls | grep "${feature}") )
         
@@ -118,3 +116,15 @@ function _merge_bedgraphs () {
 }
 
 _merge_bedgraphs $1
+
+
+firstdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/
+finaldir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/
+
+for tissue in k562 left_ventricle;
+do
+    for file in $firstdir/$tissue/merged_bedgraph/*hg38*; do
+        name="${filename%.hg38.bed}"
+        mv ${name}.hg38.bed $finaldir/$tissue/${name}.bed
+    done
+done
