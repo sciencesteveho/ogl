@@ -6,7 +6,7 @@
 #SBATCH --mail-type=FAIL
 
 # Number of nodes requested
-#SBATCH --ntasks-per-node=12
+#SBATCH --ntasks-per-node=18
 
 # Partition
 #SBATCH -p RM-shared
@@ -89,7 +89,7 @@ function _merge_bedgraphs () {
         # Sort files once and store them
         for i in {0..2}; do
             sorted_files[$i]="${files[$i]}.sorted"
-            sort -k1,1 -k2,2n "${files[$i]}" > "${sorted_files[$i]}"
+            LC_ALL=C sort --parallel=12 -S 80% -k1,1 -k2,2n "${files[$i]}" > "${sorted_files[$i]}"
         done
         
         # Sum the coverage values using bedtools unionbedg and awk
@@ -112,7 +112,7 @@ function _merge_bedgraphs () {
         _liftover \
             /ocean/projects/bio210019p/stevesho/resources \
             ${feature}
-        cd $1
+        cd $1/tmp
     done
 }
 
