@@ -42,6 +42,12 @@ function _merge_bedgraphs () {
     cd tmp
     rm *narrow.bed*
 
+    # Pre-sorting the files before the loop and storing the sorted file paths
+    echo "Sorting all files..."
+    for file in $1/*bedGraph; do
+        sort -k1,1 -k2,2n $1/"$file" > tpmfile && mv tpmfile $1/"$file"
+    done
+
     declare -A cutoffs
     # cutoffs provided by C. Boix
 	cutoffs["DNase-seq"]=1.9

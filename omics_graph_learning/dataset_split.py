@@ -759,12 +759,11 @@ def _extracted_from_prepare_gnn_training_split_and_targets_39(
         tissue_append=True,
         rna=True,
     )
+    _save_splits(split=split, split_path=split_path)
 
     targets = _get_targets_from_rna_seq(
         expression_quantifications=rna_quantifications, split=split
     )
-
-    _save_splits(split=split, split_path=split_path)
     _save_targets(targets=targets, split_path=split_path)
 
 
