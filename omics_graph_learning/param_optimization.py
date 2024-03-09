@@ -194,7 +194,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # get dataloaders
     def _load_data(batch_size):
         data = graph_to_pytorch(
-            experiment_name="regulatory_only_hic_gte2",
+            experiment_name="regulatory_only_leftventricle_fdr001",
             graph_type="full",
             root_dir=ROOT_DIR,
             split_name=SPLIT_NAME,
