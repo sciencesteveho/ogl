@@ -31,7 +31,7 @@ from graph_to_pytorch import graph_to_pytorch
 
 EPOCHS = 50
 RANDOM_SEED = 42
-ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_leftventricle_fdr1/"
+ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13_rna_seq"
 TARGET = "rna_seq"
@@ -189,12 +189,12 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     dropout = trial.suggest_float(name="dropout", low=0.0, high=0.5, step=0.1)
     heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
     dimensions = trial.suggest_int("dimensions", low=32, high=1024, step=32)
-    batch_size = trial.suggest_int("batch_size", low=32, high=512, step=32)
+    batch_size = trial.suggest_int("batch_size", low=16, high=512, step=16)
 
     # get dataloaders
     def _load_data(batch_size):
         data = graph_to_pytorch(
-            experiment_name="regulatory_only_leftventricle_fdr1",
+            experiment_name="regulatory_only_k562_fdr001",
             graph_type="full",
             root_dir=ROOT_DIR,
             split_name=SPLIT_NAME,
@@ -300,7 +300,7 @@ def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=250, gc_after_trial=True)
+    study.optimize(objective, n_trials=200, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

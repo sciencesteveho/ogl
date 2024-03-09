@@ -243,7 +243,8 @@ def get_loader(
     """Loads data into NeighborLoader for GNN training"""
     return NeighborLoader(
         data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
+        # num_neighbors=[5, 5, 5, 5, 5, 3],
+        num_neighbors=[5, 5, 5],
         batch_size=batch_size,
         input_nodes=getattr(data, mask),
         shuffle=shuffle,
