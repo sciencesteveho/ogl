@@ -324,8 +324,7 @@ if [ ! -f "${final_graph}" ]; then
     log_progress "GNN training job submitted.\n"
 else
     log_progress "Final graph found. Going straight to GNN training.\n"
-    split_id=$(get_splits -1)  # temporary
 
-    # sbatch ${train}  # Train graph neural network
+    sbatch ${train}  # Train graph neural network
     log_progress "GNN training job submitted.\n"
 fi
