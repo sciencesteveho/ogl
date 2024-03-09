@@ -268,7 +268,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
-            subset_batches=750,
+            # subset_batches=750,
         )
         # validation
         mse = test(
@@ -277,7 +277,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
-            subset_batches=225,
+            # subset_batches=225,
         )
         scheduler.step(mse)
 
