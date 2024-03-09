@@ -38,6 +38,7 @@ conda activate /ocean/projects/bio210019p/stevesho/gnn
 # =============================================================================
 function _merge_bedgraphs () {
     working_dir=$1
+    export LC_ALL=C
     
     function _liftover () {
         $1/liftOver \

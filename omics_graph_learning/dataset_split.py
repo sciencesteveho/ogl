@@ -632,8 +632,7 @@ def _save_splits(
     split_path: str,
 ) -> None:
     chr_split_dictionary = split_path / "training_targets_split.pkl"
-    if not os.path.exists(chr_split_dictionary):
-        utils._save_pickle(split, chr_split_dictionary)
+    utils._save_pickle(split, chr_split_dictionary)
     # utils._save_pickle(barebones_split, split_path / "training_split.pkl")
 
 
