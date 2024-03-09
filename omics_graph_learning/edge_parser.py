@@ -10,6 +10,7 @@
 
 import contextlib
 import csv
+import os
 from typing import Dict, Generator, Iterator, List, Set, Tuple, Union
 
 import numpy as np
@@ -147,8 +148,10 @@ class EdgeParser:
         """Simple wrapper to load regulatory elements and return BedTools"""
         reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
         bedtools_objects = {
-            key: pybedtools.BedTool(f"{self.local_dir}/{key}_{self.tissue}.bed")
-            for key, value in reg_elements.items()
+            key: self.create_bedtool_if_exists(
+                f"{self.local_dir}/{key}_{self.tissue}.bed"
+            )
+            for key in reg_elements
             if key in ["enhancers", "promoters", "dyadic"]
         }
 
@@ -174,6 +177,29 @@ class EdgeParser:
             bedtools_objects["promoters"],
             bedtools_objects["dyadic"],
         )
+
+    @utils.time_decorator(print_args=True)
+    def parse_edges(self) -> None:
+        """This method parses edges from various sources and constructs the
+        interaction base graph. It then adds coordinates to nodes and writes the
+        nodes and edges to files.
+
+        Returns:
+            None
+        """
+        print("Parsing interaction edges...")
+        self._process_interaction_edges()
+        print("Interaction edges complete!")
+
+        print("Parsing chrom loop edges...")
+        # self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
+        basenodes = self._parse_chromloop_basegraph(gene_gene=False)
+        print("Chrom loop edges complete!")
+
+        print("Writing node references...")
+        for node in basenodes:
+            self._write_noderef_combination(node)
+        print("Node references complete!")
 
     def _iid_ppi(
         self,
@@ -517,6 +543,10 @@ class EdgeParser:
         The overlap function arg only affects the first anchor. The second
         anchor will always use direct overlap.
         """
+        # only perform overlaps if file exists
+        if not first_feature or not second_feature:
+            return set()
+
         first_anchor_overlaps = self._overlap_groupby(
             self.first_anchor, first_feature, self._loop_direct_overlap
         )
@@ -639,28 +669,10 @@ class EdgeParser:
 
         return basenodes
 
-    @utils.time_decorator(print_args=True)
-    def parse_edges(self) -> None:
-        """This method parses edges from various sources and constructs the
-        interaction base graph. It then adds coordinates to nodes and writes the
-        nodes and edges to files.
-
-        Returns:
-            None
-        """
-        print("Parsing interaction edges...")
-        self._process_interaction_edges()
-        print("Interaction edges complete!")
-
-        print("Parsing chrom loop edges...")
-        # self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
-        basenodes = self._parse_chromloop_basegraph(gene_gene=False)
-        print("Chrom loop edges complete!")
-
-        print("Writing node references...")
-        for node in basenodes:
-            self._write_noderef_combination(node)
-        print("Node references complete!")
+    @staticmethod
+    def create_bedtool_if_exists(path: str) -> Union[pybedtools.BedTool, None]:
+        """Create a BedTool object if the file exists."""
+        return pybedtools.BedTool(path) if os.path.exists(path) else None
 
     @staticmethod
     def _generate_edge_combinations(
