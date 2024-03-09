@@ -29,7 +29,7 @@ from gnn import create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
-EPOCHS = 50
+EPOCHS = 200
 RANDOM_SEED = 42
 ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -300,7 +300,7 @@ def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=200, gc_after_trial=True)
+    study.optimize(objective, n_trials=250, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
