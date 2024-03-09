@@ -35,7 +35,7 @@ def _get_regulatory_element_references(regulatory: str) -> str:
         "intersect": "intersect_node_attr.bed",
         "union": "union_node_attr.bed",
         "epimap": "epimap_node_attr.bed",
-        "gencode": "gencode_node_attr.bed",
+        "encode": "gencode_node_attr.bed",
     }
     return regulatory_map.get(regulatory)
 
