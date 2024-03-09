@@ -128,6 +128,9 @@ def parse_local_context(
         bed for bed in bedfiles if all(node not in bed for node in remove_nodes)
     ]
 
+    if experiment_params["regulatory"] == "encode":
+        nodes.remove("dyadic")
+
     localparseObject = LocalContextParser(
         experiment_name=experiment_name,
         nodes=nodes,
@@ -159,6 +162,10 @@ def create_tissue_graph(
         if experiment_params["nodes"] is not None
         else NODES
     )
+
+    if experiment_params["regulatory"] == "encode":
+        nodes.remove("dyadic")
+
     experiment_name = experiment_params["experiment_name"]
     working_directory = experiment_params["working_directory"]
     tissue = tissue_params["resources"]["tissue"]
