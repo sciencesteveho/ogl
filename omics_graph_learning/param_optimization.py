@@ -29,9 +29,9 @@ from gnn import create_model
 from gnn import get_loader
 from graph_to_pytorch import graph_to_pytorch
 
-EPOCHS = 25
+EPOCHS = 50
 RANDOM_SEED = 42
-ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_leftventricle_fdr001/"
+ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_leftventricle_fdr1/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13_rna_seq"
 TARGET = "rna_seq"
@@ -194,7 +194,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # get dataloaders
     def _load_data(batch_size):
         data = graph_to_pytorch(
-            experiment_name="regulatory_only_leftventricle_fdr001",
+            experiment_name="regulatory_only_leftventricle_fdr1",
             graph_type="full",
             root_dir=ROOT_DIR,
             split_name=SPLIT_NAME,
