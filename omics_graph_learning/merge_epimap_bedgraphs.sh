@@ -118,13 +118,15 @@ function _merge_bedgraphs () {
 _merge_bedgraphs $1
 
 
-firstdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/
-finaldir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/
+# firstdir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/bigwigs/
+# finaldir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/
 
-for tissue in k562 left_ventricle;
-do
-    for file in $firstdir/$tissue/merged_bedgraph/*hg38*; do
-        name="${filename%.hg38.bed}"
-        mv ${name}.hg38.bed $finaldir/$tissue/${name}.bed
-    done
-done
+# for tissue in k562 left_ventricle; do
+#     for file in "$firstdir/$tissue/merged_bedgraph/"*hg38*; do
+#         filename=$(basename "$file")
+#         name="${filename%.hg38.bed}"
+#         name2="${name%_merged.narrow}"
+#         echo -e "$name2"
+#         awk -v OFS='\t' -v name2="$name2" '{print $1, $2, $3, name2}' "$firstdir/$tissue/merged_bedgraph/${filename}" > "$finaldir/$tissue/${name2}_narrow_merged.bed"
+#     done
+# done

@@ -193,10 +193,11 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
     dimensions = trial.suggest_int("dimensions", low=32, high=1024, step=32)
     batch_size = trial.suggest_int("batch_size", low=16, high=512, step=16)
-    loader = trial.suggest_categorical("loader", ["neighbor", "data"])
+    # loader = trial.suggest_categorical("loader", ["neighbor", "data"])
 
     # get dataloaders
-    def _load_data(batch_size, loader, neighbors):
+    # def _load_data(batch_size, loader, neighbors):
+    def _load_data(batch_size, neighbors):
         data = graph_to_pytorch(
             experiment_name="regulatory_only_k562_fdr001",
             graph_type="full",
@@ -209,33 +210,34 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         print(f"Number of edges: {data.num_edges}")
 
         # set up data loaders
-        if loader == "neighbor":
-            train_loader = get_loader(
-                data=data,
-                mask="train_mask",
-                batch_size=batch_size,
-                shuffle=True,
-                layers=gnn_layers,
-            )
-            test_loader = get_loader(
-                data=data, mask="test_mask", batch_size=batch_size, layers=gnn_layers
-            )
-            val_loader = get_loader(
-                data=data, mask="val_mask", batch_size=batch_size, layers=gnn_layers
-            )
-            return train_loader, test_loader, val_loader
-        if loader == "data":
-            train_dataset = Subset(data, data.train_mask)
-            test_dataset = Subset(data, data.test_mask)
-            val_dataset = Subset(data, data.val_mask)
-            train_loader = DataLoader(
-                train_dataset, batch_size=batch_size, shuffle=True
-            )
-            test_loader = DataLoader(test_dataset, batch_size=batch_size)
-            val_loader = DataLoader(val_dataset, batch_size=batch_size)
-            return train_loader, test_loader, val_loader
+        train_loader = get_loader(
+            data=data,
+            mask="train_mask",
+            batch_size=batch_size,
+            shuffle=True,
+            layers=gnn_layers,
+        )
+        test_loader = get_loader(
+            data=data, mask="test_mask", batch_size=batch_size, layers=gnn_layers
+        )
+        val_loader = get_loader(
+            data=data, mask="val_mask", batch_size=batch_size, layers=gnn_layers
+        )
+        return train_loader, test_loader, val_loader
+        # if loader == "data":
+        #     train_dataset = Subset(data, data.train_mask)
+        #     test_dataset = Subset(data, data.test_mask)
+        #     val_dataset = Subset(data, data.val_mask)
+        #     train_loader = DataLoader(
+        #         train_dataset, batch_size=batch_size, shuffle=True
+        #     )
+        #     test_loader = DataLoader(test_dataset, batch_size=batch_size)
+        #     val_loader = DataLoader(val_dataset, batch_size=batch_size)
+        #     return train_loader, test_loader, val_loader
 
-    train_loader, _, val_loader = _load_data(batch_size=batch_size, loader=loader)
+    train_loader, _, val_loader = _load_data(
+        batch_size=batch_size,
+    )
 
     # define model and get optimizer
     model = create_model(
