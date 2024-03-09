@@ -748,9 +748,13 @@ def _extracted_from_prepare_gnn_training_split_and_targets_39(
             line[0]: np.log2(float(line[1])) for line in csv.reader(f, delimiter="\t")
         }
 
+    target_genes = [
+        f"{gene}_{tissue}" for gene in rna_quantifications for tissue in tissues
+    ]
+
     split = _genes_train_test_val_split(
         genes=list(rna_quantifications.keys()),
-        target_genes=rna_quantifications.keys(),
+        target_genes=target_genes,
         tissues=tissues,
         tissue_append=True,
         rna=True,
