@@ -626,6 +626,15 @@ def plot_predicted_versus_expected(
     plt.close()
 
 
+# @time_decorator(print_args=True)
+# def plot_roc_curve(
+#     outfile: str,
+#     savestr: str,
+#     predicted: torch.Tensor,
+#     expected: torch.Tensor,
+# ) -> None:
+
+
 def _get_sorted_node_degrees(graph: nx.Graph) -> None:
     """_summary_
 
