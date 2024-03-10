@@ -25,7 +25,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric
 from torch_geometric.data import DataListLoader
 from torch_geometric.data import DataLoader
-from torch_geometric.data import Subset
 from tqdm import tqdm
 
 from gnn import create_model
