@@ -45,6 +45,20 @@ def main() -> None:
 
 if __name__ == "__main__":
     _set_matplotlib_publication_parameters()
+    ### plot performances with increase number of loops from deeploop
+    performances = [0.43, 0.42, 0.42]
+    models = ("1 million", "2 million", "3 million")
+    x_pos = np.arange(len(models))
+
+    plt.tight_layout()
+    plt.bar(x_pos, performances, align="center", alpha=0.5)
+    plt.ylim(0, 1)
+    plt.xticks(x_pos, models)
+    plt.ylabel("Pearson correlation on test set")
+    plt.title("Performance increasing number of contacts from DeepLoop")
+    plt.show()
+
+    _set_matplotlib_publication_parameters()
     ### plot GNN architecture performances
     performances = [0.53, 0.71, 0.75]
     models = ("GCN", "GraphSAGE", "GAT")
@@ -60,14 +74,14 @@ if __name__ == "__main__":
 
     _set_matplotlib_publication_parameters()
     ### plot performances across feat_windows
-    performances = [x, 0.65, 0.58, 0.68, 0.63]
-    models = ("2kb", "5kb", "10kb", ".65", ".63")
+    performances = [0.62, 0.65, 0.60, 0.68, 0.63]
+    models = ("2kb", "5kb", "10kb", "25kb", "50kb")
     x_pos = np.arange(len(models))
 
     plt.tight_layout()
     plt.bar(x_pos, performances, align="center", alpha=0.5)
     plt.ylim(0, 1)
     plt.xticks(x_pos, models)
-    plt.ylabel("Pearson correlation on test set")
-    plt.title("Performance of different GNN architectures")
+    plt.ylabel("Spearmann correlation on test set")
+    plt.title("Performance changing feature windows")
     plt.show()
