@@ -300,8 +300,8 @@ def parse_arguments() -> argparse.Namespace:
         "--activation",
         type=str,
         default="relu",
-        choices=["relu", "leaky_relu", "gelu"],
-        help="Activation function to use. Options: relu, leaky_relu, gelu (default: relu).",
+        choices=["relu", "leakyrelu", "gelu"],
+        help="Activation function to use. Options: relu, leakyrelu, gelu (default: relu).",
     )
     parser.add_argument("--dimensions", type=int, default="256")
     parser.add_argument("--epochs", type=int, default="100")
