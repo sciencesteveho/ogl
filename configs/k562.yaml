@@ -81,5 +81,5 @@ resources:
 tissue_specific_nodes:
   crms:
   super_enhancer:
-  tads:
+  tads: K562_Rao_2014-raw_TADs.txt
   tf_binding:
