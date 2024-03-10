@@ -169,22 +169,23 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # model = trial.suggest_categorical(
     #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
     # )
-    model = trial.suggest_categorical("model", ["GCN", "GAT", "GraphSAGE", "PNA"])
+    # model = trial.suggest_categorical("model", ["GAT", "GraphSAGE", "PNA"])
+    model = trial.suggest_categorical("model", ["GAT"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
-        high=6,
+        high=8,
         step=1,
     )
     linear_layers = trial.suggest_int(
         name="linear_layers",
         low=1,
-        high=3,
+        high=4,
         step=1,
     )
     activation = trial.suggest_categorical("activation", ["relu", "leakyrelu", "gelu"])
     learning_rate = trial.suggest_float(
-        name="learning_rate", low=1e-5, high=1e-2, log=True
+        name="learning_rate", low=1e-6, high=1e-2, log=True
     )
     optimizer_type = trial.suggest_categorical("optimizer_type", ["Adam", "AdamW"])
     residual = trial.suggest_categorical("residual", [True, False])
@@ -322,6 +323,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
+    prefix = "GAT"
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=200, gc_after_trial=True)
@@ -348,7 +350,9 @@ def main() -> None:
     df = df.loc[df["state"] == "COMPLETE"]  # Keep only results that did not prune
     df = df.drop("state", axis=1)  # Exclude state column
     df = df.sort_values("value")  # Sort based on accuracy
-    df.to_csv(f"{plot_dir}/optuna_results.csv", index=False)  # Save to csv file
+    df.to_csv(
+        f"{plot_dir}/optuna_results_{prefix}.csv", index=False
+    )  # Save to csv file
 
     # Display results in a dataframe
     print(f"\nOverall Results (ordered by accuracy):\n {df}")
@@ -365,12 +369,14 @@ def main() -> None:
 
     # Plot and save importances to file
     optuna.visualization.plot_optimization_history(study).write_image(
-        f"{plot_dir}/history.png"
+        f"{plot_dir}/history_{prefix}.png"
     )
     optuna.visualization.plot_param_importances(study=study).write_image(
-        f"{plot_dir}/importances.png"
+        f"{plot_dir}/importances_{prefix}.png"
     )
-    optuna.visualization.plot_slice(study=study).write_image(f"{plot_dir}/slice.png")
+    optuna.visualization.plot_slice(study=study).write_image(
+        f"{plot_dir}/slice_{prefix}.png"
+    )
 
 
 if __name__ == "__main__":
