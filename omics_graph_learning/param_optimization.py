@@ -169,7 +169,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # model = trial.suggest_categorical(
     #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
     # )
-    # model = trial.suggest_categorical("model", ["GAT", "GraphSAGE", "PNA"])
+    model = trial.suggest_categorical("model", ["GAT", "GraphSAGE", "PNA"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
@@ -240,7 +240,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
     # define model and get optimizer
     model = create_model(
-        model="GAT",
+        model=model,
         in_size=41,
         embedding_size=dimensions,
         out_channels=1,
@@ -322,7 +322,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
-    prefix = "GAT"
+    prefix = "all"
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=200, gc_after_trial=True)
