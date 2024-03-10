@@ -256,7 +256,7 @@ if [ ! -f "${final_graph}" ]; then
 
         # Determine node and edge generator script
         if [ "${partition}" == "EM" ]; then
-            node_and_edge_generator=pipeline_node_and_edge_generation_em.sh
+            node_and_edge_generator=pipeline_node_and_edge_generation_mem.sh
         else
             node_and_edge_generator=pipeline_node_and_edge_generation.sh
         fi
