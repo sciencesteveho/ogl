@@ -85,3 +85,31 @@ if __name__ == "__main__":
     plt.ylabel("Spearmann correlation on test set")
     plt.title("Performance changing feature windows")
     plt.show()
+
+    _set_matplotlib_publication_parameters()
+    ### plot performances across FDR for k562
+    performances = [0.40, 0.46, 0.51]
+    models = ("FDR 0.1", "FDR 0.01", "FDR 0.001")
+    x_pos = np.arange(len(models))
+
+    plt.tight_layout()
+    plt.bar(x_pos, performances, align="center", alpha=0.5)
+    plt.ylim(0, 1)
+    plt.xticks(x_pos, models)
+    plt.ylabel("Pearson correlation on test set")
+    plt.title("Performance across HiCDC+ FDR Cutoffs for K562")
+    plt.show()
+
+    _set_matplotlib_publication_parameters()
+    ### plot performances across FDR for LV
+    performances = [0.36, 0.39, 0.41]
+    models = ("FDR 0.1", "FDR 0.01", "FDR 0.001")
+    x_pos = np.arange(len(models))
+
+    plt.tight_layout()
+    plt.bar(x_pos, performances, align="center", alpha=0.5)
+    plt.ylim(0, 1)
+    plt.xticks(x_pos, models)
+    plt.ylabel("Spearmann correlation on test set")
+    plt.title("Performance across HiCDC+ FDR Cutoffs for Left Ventricle")
+    plt.show()
