@@ -137,7 +137,8 @@ def create_model(
         "residual": residual,
     }
     if model in {"GAT", "UniMPTransformer"}:
-        kwargs["heads"] = heads
+        # kwargs["heads"] = heads
+        kwargs["heads"] = 2
     elif model == "PNA":
         kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
     elif model == "DeeperGCN":
@@ -488,7 +489,7 @@ def main() -> None:
         linear_layers=args.linear_layers,
         activation=args.activation,
         dropout_rate=args.dropout or None,
-        heads=args.heads,
+        heads=2 if args.model in {"GAT", "UniMPTransformer"} else None,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 
