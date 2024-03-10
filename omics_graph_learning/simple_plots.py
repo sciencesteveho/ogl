@@ -60,8 +60,8 @@ if __name__ == "__main__":
 
     _set_matplotlib_publication_parameters()
     ### plot performances across feat_windows
-    performances = [0.53, 0.71, 0.75]
-    models = ("5kb", "10kb", "25kb", "50kb")
+    performances = [x, 0.65, 0.58, 0.68, 0.63]
+    models = ("2kb", "5kb", "10kb", ".65", ".63")
     x_pos = np.arange(len(models))
 
     plt.tight_layout()

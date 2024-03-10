@@ -34,7 +34,7 @@ from graph_to_pytorch import graph_to_pytorch
 
 EPOCHS = 100
 RANDOM_SEED = 42
-ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001/"
+ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001_intersect_25kb/"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13_rna_seq"
 TARGET = "rna_seq"
@@ -199,7 +199,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # def _load_data(batch_size, loader, neighbors):
     def _load_data(batch_size, neighbors):
         data = graph_to_pytorch(
-            experiment_name="regulatory_only_k562_fdr001",
+            experiment_name="regulatory_only_k562_fdr001_intersect_25kb",
             graph_type="full",
             root_dir=ROOT_DIR,
             split_name=SPLIT_NAME,
@@ -265,7 +265,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
                 lr=learning_rate,
             )
             scheduler = ReduceLROnPlateau(
-                optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+                optimizer, mode="min", factor=0.5, patience=5, min_lr=1e-5
             )
         elif optimizer_type == "AdamW":
             optimizer = torch.optim.AdamW(
@@ -325,7 +325,7 @@ def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=200, gc_after_trial=True)
+    study.optimize(objective, n_trials=250, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
