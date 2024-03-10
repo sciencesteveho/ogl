@@ -196,7 +196,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
     # get dataloaders
     # def _load_data(batch_size, loader, neighbors):
-    def _load_data(batch_size, neighbors):
+    def _load_data(batch_size):
         data = graph_to_pytorch(
             experiment_name="regulatory_only_k562_fdr001_intersect_25kb",
             graph_type="full",
