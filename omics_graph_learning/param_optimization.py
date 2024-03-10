@@ -170,7 +170,6 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     #     "model", ["GCN", "GAT", "GraphSAGE", "PNA", "DeeperGCN"]
     # )
     # model = trial.suggest_categorical("model", ["GAT", "GraphSAGE", "PNA"])
-    model = trial.suggest_categorical("model", ["GAT"])
     gnn_layers = trial.suggest_int(
         name="gnn_layers",
         low=2,
@@ -241,7 +240,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
     # define model and get optimizer
     model = create_model(
-        model=model,
+        model="GAT",
         in_size=41,
         embedding_size=dimensions,
         out_channels=1,
