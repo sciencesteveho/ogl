@@ -327,7 +327,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--residual", action="store_true")
     parser.add_argument("--zero_nodes", action="store_true")
     parser.add_argument("--randomize_node_feats", action="store_true")
-    parser.add_argument("--early_stop", action="store_true", default=True)
+    parser.add_argument("--early_stop", action="store_true", default=False)
     parser.add_argument("--randomize_edges", action="store_true")
     parser.add_argument("--rna_seq", action="store_true")
     return parser.parse_args()
