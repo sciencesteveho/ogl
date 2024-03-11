@@ -227,7 +227,7 @@ function _poly_a () {
 # =============================================================================
 # RNA Binding protein sites were downloaded from POSTAR 3. We first merged
 # adjacent sites to create RBP binding site clusters. We keep sites present in
-# at least 20% of the sampes (8)
+# at least 20% of the samples (8)
 # Arguments:
 #   $1 - 
 #   $2 - 
