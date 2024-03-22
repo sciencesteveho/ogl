@@ -23,12 +23,14 @@ wget https://raw.githubusercontent.com/remap-cisreg/peakMerge/main/peakMerge.py
 <br>
 
 ## Usage
-OGC is designed to run end to end. Set-up your configs according to those in `omics_graph_creation/configs` and run your experiment with a single command.   
+OGC is designed to run end to end on a computing cluster. Set-up your configs according to those in `omics_graph_creation/configs` and run your experiment with a single command.   
+Example SLURM scripts can be found in `/examples/slurm`.
+
 *Note: not all arguments are compatible with one another, so see examples below for the program's capabilities.*
 ```sh
 yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs/experiments/$config
 partition=RM
-stdbuf -oL bash omics_graph_learning/omics_graph_learning/ogl_pipeline_create_graphs_train_gnn.sh \
+python ogl.py \
     --experiment_yaml $yaml \
     --partition $partition \
     --model "GraphSAGE" \
@@ -73,6 +75,23 @@ OGL will create its own directory structure from the main directory you place it
     * `*experiment_name*/plots/`: plots of training loss and model performance on testing set  
 <br>
 <br>
+
+### Preprocessing
+Given the large amount of multimodal data, some files required preprocessing before input into the OGC pipeline.
+
+Much of the pre-processing is done with the script preparse.sh
+```
+bash preparse.sh --inputs
+```
+
+To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead):
+```
+python sequence_similarity_graph.py \
+    --chrom_sizes /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt \
+    --reg_elements /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/regulatory_elements/concatenated_overlapped_elements.bed \
+    --fasta /ocean/projects/bio210019p/stevesho/resources/hg38.fa \
+    --savedir /ocean/projects/bio210019p/stevesho/data/preprocess/sequence_similarity_graph
+```
 
 ## Model Overview
 ### Tissue-specific models
@@ -209,20 +228,3 @@ CpG methlylation is represented as a 37n vector, each representing a different r
 Epigenetic are represented as a 722n vector, where each track is the average signal in a different tissue.
 ```
 <br>
-
-### Preprocessing
-Given the large amount of multimodal data, some files required preprocessing before input into the OGC pipeline.
-
-Much of the pre-processing is done with the script preparse.sh
-```
-bash preparse.sh --inputs
-```
-
-To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead):
-```
-python sequence_similarity_graph.py \
-    --chrom_sizes /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt \
-    --reg_elements /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/regulatory_elements/concatenated_overlapped_elements.bed \
-    --fasta /ocean/projects/bio210019p/stevesho/resources/hg38.fa \
-    --savedir /ocean/projects/bio210019p/stevesho/data/preprocess/sequence_similarity_graph
-```

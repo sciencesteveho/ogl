@@ -14,9 +14,10 @@ import os
 import subprocess
 from typing import Dict, List
 
-import requests
-
 import utils
+
+# import requests
+
 
 NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
 
@@ -141,20 +142,20 @@ class GenomeDataPreprocessor:
                         boolean=False,
                     )
 
-    def _download_shared_files(self) -> None:
-        """Download shared local features if not already present"""
+    # def _download_shared_files(self) -> None:
+    #     """Download shared local features if not already present"""
 
-        def download(url: str, filename: str) -> None:
-            with open(filename, "wb") as file:
-                response = requests.get(url)
-                file.write(response.content)
+    #     def download(url: str, filename: str) -> None:
+    #         with open(filename, "wb") as file:
+    #             response = requests.get(url)
+    #             file.write(response.content)
 
-        if os.listdir(f"{self.root_dir}/local_feats") != self.shared:
-            for file in self.shared.values():
-                download(
-                    f"https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}",
-                    f"{self.root_dir}/shared_data/local_feats/{file}",
-                )
+    #     if os.listdir(f"{self.root_dir}/local_feats") != self.shared:
+    #         for file in self.shared.values():
+    #             download(
+    #                 f"https://raw.github.com/sciencesteveho/genome_graph_perturbation/raw/master/shared_files/local_feats/{file}",
+    #                 f"{self.root_dir}/shared_data/local_feats/{file}",
+    #             )
 
     @utils.time_decorator(print_args=True)
     def _add_tad_id(self, bed: str) -> None:

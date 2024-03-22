@@ -275,7 +275,7 @@ if [ ! -f "${final_graph}" ]; then
         log_progress "Node and edge generation jobs submitted.\n"
 
         # Concatenate graphs
-        constructor=graph_concat.sh
+        constructor=concat.sh
         construct_id=$(
             sbatch --parsable \
                 --dependency=afterok:"$(echo "${pipeline_a_ids[*]}" | tr ' ' ':')" \
