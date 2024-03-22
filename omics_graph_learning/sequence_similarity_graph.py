@@ -81,17 +81,6 @@ def _bin_elements(
     )
 
 
-def _bin_from_df(
-    bins: pd.DataFrame, reg_elements: pybedtools.BedTool
-) -> Tuple[pd.DataFrame, List[List[pybedtools.BedTool]]]:
-    """Add a column to the bins dataframe that contains the regulatory elements
-    that are within the bin_element."""
-    bins["reg_elements"] = bins.apply(
-        lambda bin_element: _bin_elements(reg_elements, bin_element), axis=1
-    )
-    return bins, bins["reg_elements"].tolist()
-
-
 def _initialize_pairwise_aligner(
     match_score: int = 2,
     mismatch_score: int = -1,
@@ -157,43 +146,28 @@ def _seq_to_elements(
 
 
 def process_bin_element(
-    bin_element: pd.Series,
-    fasta: str,
+    nuc_to_element: Dict[str, str],
     aligner: Align.PairwiseAligner,
     standard_deviation: int,
 ) -> Set[Tuple[str, str]]:
     """Process a bin_element of regulatory elements to find similar regulatory edges"""
-    sequences = _map_elements_to_nucleotide_content(
-        bin_element=bin_element, fasta=fasta
-    )
-    seqs = list(sequences.values())
+    seqs = list(nuc_to_element.keys())
     matched = similar_enhancers(
         seqs, aligner, min_similarity=0.8, max_length_diff=standard_deviation
     )
-    return _seq_to_elements(nuc_to_element=sequences, edges=matched)
+    return _seq_to_elements(nuc_to_element=nuc_to_element, edges=matched)
 
 
 def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--chrom_sizes",
-        type=str,
-    )
-    parser.add_argument(
-        "--reg_elements",
-        type=str,
-    )
-    parser.add_argument(
-        "--fasta",
-        type=str,
-    )
-    parser.add_argument(
-        "--savedir",
-        type=str,
-    )
+    parser.add_argument("--chrom_sizes", type=str)
+    parser.add_argument("--reg_elements", type=str)
+    parser.add_argument("--fasta", type=str)
+    parser.add_argument("--savedir", type=str)
+    parser.add_argument("--open_gap_score", type=int, default=-10)
     args = parser.parse_args()
-    aligner = _initialize_pairwise_aligner()
+    aligner = _initialize_pairwise_aligner(open_gap_score=args.open_gap_score)
 
     # make genomic bins
     log_progress("Making genomic bins")
@@ -206,22 +180,19 @@ def main() -> None:
     reg_elements = BedTool(args.reg_elements)
     standard_deviation = _get_regulatory_element_size_metrics(reg_elements)
 
-    # bin regulatory elements
+    # bin regulatory elements and map to nucleotide content
     with multiprocessing.Pool(processes=16) as pool:
         bins["reg_elements"] = pool.starmap(
             _bin_elements,
             [(reg_elements, row) for _, row in bins.iterrows()],
         )
-
-    with multiprocessing.Pool(processes=16) as pool:
         bins["sequences"] = pool.starmap(
             _map_elements_to_nucleotide_content,
             [(bin_element, args.fasta) for bin_element in bins["reg_elements"]],
         )
 
-    bin_element = bins["reg_elements"].tolist()
+    nuc_to_elements = bins["sequences"].tolist()
     bins.drop(columns=["reg_elements"], inplace=True)
-    # bins, bin_element = _bin_from_df(bins=bins, reg_elements=reg_elements)
     bins.to_pickle(f"{args.savedir}/bins.pkl")  # temp
     log_progress("Saved binned elements elements. Doing pairwise alignments.")
 
@@ -231,17 +202,20 @@ def main() -> None:
         results = pool.starmap(
             process_bin_element,
             [
-                (bin_element, args.fasta, aligner, standard_deviation)
-                for bin_element in bin_element
+                (nuc_to_element, args.fasta, aligner, standard_deviation)
+                for nuc_to_element in nuc_to_elements
             ],
         )
         for edges in results:
             all_edges.update(edges)
 
     # write edges to file
-    with open(f"{args.save_dir}/sequence_similarity_graph_edges.txt", "w") as file:
-        for edge in all_edges:
-            file.write(f"{edge[0]}\t{edge[1]}\n")
+    edges_formatted = [f"{edge[0]}\t{edge[1]}\n" for edge in all_edges]
+    with open(
+        f"{args.savedir}/sequence_similarity_graph_edges_gapscore_{args.open_gap_score}.txt",
+        "w",
+    ) as file:
+        file.writelines(edges_formatted)
 
 
 if __name__ == "__main__":
