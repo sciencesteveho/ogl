@@ -51,11 +51,13 @@ def _define_activation(activation: str) -> Callable:
         )
 
 
-def _initialize_lazy_gnn_layers(
-    in_size: int,
-    embedding_size: int,
-    gnn_layers: int,
-    operator: Callable,
+def _create_norm_layers(embedding_size: int, layers: int) -> nn.ModuleList:
+    """Create normalization layers for GNN."""
+    return nn.ModuleList([GraphNorm(embedding_size) for _ in range(layers)])
+
+
+def _create_gnn_layers(
+    in_size: int, embedding_size: int, layers: int, config: dict
 ) -> nn.ModuleList:
     """Create gnn layers for models that support lazy initialization.
 
@@ -69,27 +71,14 @@ def _initialize_lazy_gnn_layers(
         nn.ModuleList: Module list containing the convolutional layers.
     """
     convs = nn.ModuleList()
-    norms = nn.ModuleList([GraphNorm(embedding_size) for _ in range(gnn_layers)])
-
-    for i in range(gnn_layers):
-        if operator == SAGEConv:
-            convs.append(
-                operator(
-                    in_size if i == 0 else embedding_size, embedding_size, aggr="mean"
-                )
-            )
-        else:
-            convs.append(
-                operator(in_size if i == 0 else embedding_size, embedding_size)
-            )
-
-    return convs, norms
+    for i in range(layers):
+        layer_config = {**config, "in_channels": in_size if i == 0 else embedding_size}
+        convs.append(layer_config["operator"](**layer_config))
+    return convs
 
 
-def _initialize_lazy_linear_layers(
-    in_size: int,
-    out_size: int,
-    linear_layers: int,
+def _initialize_linear_layers(
+    in_size: int, out_size: int, layers: int, include_projection: bool = False
 ) -> nn.ModuleList:
     """Create linear layers for models that support lazy initialization.
 
@@ -101,9 +90,17 @@ def _initialize_lazy_linear_layers(
     Returns:
         nn.ModuleList: The module list containing the linear layers.
     """
-    layers = [nn.Linear(in_size, in_size) for _ in range(linear_layers - 1)]
-    layers.append(nn.Linear(in_size, out_size))
-    return nn.ModuleList(layers)
+    linear_layers = nn.ModuleList()
+    for _ in range(layers - 1):
+        linear_layers.append(nn.Linear(in_size, in_size))
+
+    linear_layers.append(nn.Linear(in_size, out_size))
+
+    linear_projection = (
+        nn.Linear(in_size, in_size, bias=False) if include_projection else None
+    )
+
+    return linear_layers, linear_projection
 
 
 def _get_linear_layer_sizes_attn_models(
@@ -131,6 +128,69 @@ def _create_linear_layers_attn_models(sizes: List[int]) -> nn.ModuleList:
     )
 
 
+class CustomGNNModule(torch.nn.Module):
+    """Modular GNN model architecture"""
+
+    def __init__(
+        self,
+        in_size: int,
+        embedding_size: int,
+        out_channels: int,
+        gnn_layers: int,
+        linear_layers: int,
+        activation: str,
+        gnn_operator_config: dict,
+        residual: bool = False,
+        dropout_rate: Optional[float] = None,
+    ):
+        """Initialize the model"""
+        super().__init__()
+        self.residual = residual
+        self.dropout_rate = dropout_rate
+        self.activation = _define_activation(activation)
+
+        # Initialize GNN layers and batch normalization
+        self.convs = _create_gnn_layers(
+            in_size=in_size,
+            embedding_size=embedding_size,
+            layers=gnn_layers,
+            config=gnn_operator_config,
+        )
+
+        # Initialize linear layers with optional residual connection
+        self.linear_layers, self.linear_projection = _initialize_linear_layers(
+            in_size=embedding_size,
+            out_size=out_channels,
+            layers=linear_layers,
+            include_projection=residual,
+        )
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the GraphSAGE model.
+
+        Args:
+            x: The input tensor.
+            edge_index: The edge index tensor.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        for conv, batch_norm in zip(self.convs, self.norms):
+            if self.residual:
+                residual = self.linear_projection(x) if conv == self.convs[0] else x
+                x = self.activation(batch_norm(conv(x, edge_index))) + residual
+            else:
+                x = self.activation(batch_norm(conv(x, edge_index)))
+
+        apply_dropout = isinstance(self.dropout_rate, float)
+        for linear_layer in self.linears[:-1]:
+            x = self.activation(linear_layer(x))
+            if apply_dropout:
+                x = F.dropout(x, p=self.dropout_rate)
+
+        return self.linears[-1](x)
+
+
 class GCN(torch.nn.Module):
     """GCN model architecture.
 
@@ -152,14 +212,16 @@ class GCN(torch.nn.Module):
         gnn_layers: int,
         linear_layers: int,
         activation: str,
+        heads: int = 0,
         residual: bool = False,
-        dropout_rate: Optional[float] = 0.5,
+        dropout_rate: Optional[float] = None,
     ):
         """Initialize the model"""
         super().__init__()
         self.residual = residual
         self.dropout_rate = dropout_rate
         self.activation = _define_activation(activation)
+        self.heads = heads
 
         # Create graph convolution layers
         self.convs, self.norms = _initialize_lazy_gnn_layers(
@@ -169,42 +231,66 @@ class GCN(torch.nn.Module):
             operator=GCNConv,
         )
 
-        # Create linear layers
-        self.linears = _initialize_lazy_linear_layers(
-            in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
+        # Create linear layers, ending with a single combined layer
+        self.combined_linear = nn.Linear(
+            in_features=embedding_size, out_features=embedding_size
         )
+
+        # Create additional task heads if required
+        if heads:
+            self.task_heads = nn.ModuleList()
+            for _ in range(heads):
+                # Each head has two linear layers before output
+                if self.dropout_rate:
+                    task_layers = nn.Sequential(
+                        nn.Linear(
+                            in_features=embedding_size, out_features=embedding_size
+                        ),
+                        self.activation,
+                        nn.Dropout(p=self.dropout_rate),
+                        nn.Linear(
+                            in_features=embedding_size, out_features=out_channels
+                        ),
+                    )
+                else:
+                    task_layers = nn.Sequential(
+                        nn.Linear(
+                            in_features=embedding_size, out_features=embedding_size
+                        ),
+                        self.activation,
+                        nn.Linear(
+                            in_features=embedding_size, out_features=out_channels
+                        ),
+                    )
+                self.task_heads.append(task_layers)
 
         # Create linear projection for skip connection
         self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        # sourcery skip: assign-if-exp, swap-if-else-branches
         """Forward pass of the GCN model.
 
         Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
+            x: The input tensor. edge_index: The edge index tensor.
 
         Returns:
             torch.Tensor: The output tensor.
         """
         for conv, batch_norm in zip(self.convs, self.norms):
             if self.residual:
-                if conv == self.convs[0]:
-                    x = self.activation(
-                        batch_norm(conv(x, edge_index))
-                    ) + self.linear_projection(x)
-                else:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + x
+                residual = self.linear_projection(x) if conv == self.convs[0] else x
+                x = self.activation(batch_norm(conv(x, edge_index))) + residual
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
 
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linears[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
+        # shared linear layer
+        x = self.activation(self.combined_linear(x))
+        if isinstance(self.dropout_rate, float):
+            x = F.dropout(x, p=self.dropout_rate)
 
-        return self.linears[-1](x)
+        if self.heads:
+            return torch.stack([head(x) for head in self.task_heads], dim=-1)
 
 
 class GraphSAGE(torch.nn.Module):
@@ -224,67 +310,30 @@ class GraphSAGE(torch.nn.Module):
 
     def __init__(
         self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        residual: bool = False,
-        dropout_rate: Optional[float] = 0.5,
+        in_size,
+        embedding_size,
+        out_channels,
+        gnn_layers,
+        linear_layers,
+        activation,
+        residual,
+        dropout_rate,
     ):
-        """Initialize the model"""
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.residual = residual
-        self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
-        self.aggregator = "mean"
-
-        # Create graph convolution layers
-        self.convs, self.norms = _initialize_lazy_gnn_layers(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            gnn_layers=gnn_layers,
-            operator=SAGEConv,
+        gnn_operator_config = {
+            "operator": SAGEConv,
+            "aggr": "mean",
+        }
+        super().__init__(
+            in_size,
+            embedding_size,
+            out_channels,
+            gnn_layers,
+            linear_layers,
+            activation,
+            gnn_operator_config,
+            residual,
+            dropout_rate,
         )
-
-        # Create linear layers
-        self.linears = _initialize_lazy_linear_layers(
-            embedding_size, out_channels, linear_layers
-        )
-
-        # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the GraphSAGE model.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor.
-        """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                if conv == self.convs[0]:
-                    x = self.activation(
-                        batch_norm(conv(x, edge_index))
-                    ) + self.linear_projection(x)
-                else:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
-
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linears[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
-
-        return self.linears[-1](x)
 
 
 class PNA(torch.nn.Module):
@@ -353,7 +402,7 @@ class PNA(torch.nn.Module):
             self.norms.append(GraphNorm(embedding_size))
 
         # Create linear layers
-        self.linear_layers = _initialize_lazy_linear_layers(
+        self.linear_layers = _create_lazy_linear_layers(
             in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
         )
 
@@ -620,7 +669,7 @@ class DeeperGCN(torch.nn.Module):
             self.layers.append(layer)
 
         # Create linear layers
-        self.linears = _initialize_lazy_linear_layers(
+        self.linears = _create_lazy_linear_layers(
             embedding_size, out_channels, linear_layers
         )
 

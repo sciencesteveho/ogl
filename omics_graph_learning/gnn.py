@@ -559,7 +559,7 @@ def main() -> None:
                 torch.save(model.state_dict(), model_path)
             elif best_validation < val_acc:
                 stop_counter += 1
-            if stop_counter == 15:
+            if stop_counter == 20:
                 print("***********Early stopping!")
                 final_acc = val_acc
                 break

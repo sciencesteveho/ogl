@@ -5,6 +5,12 @@
 
 
 # =============================================================================
+# Code was used to sum all overlaps together, only keep unique entries based on chr/start/end
+# =============================================================================
+cat *overlap* | sort  -k1,1 -k2,2n -k3,3n -u > concatenated_overlapped_elements.bed
+
+
+# =============================================================================
 # Utility function to perform reference liftover
 # To download liftover, use `wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver`
 # To download the liftover chain, use `wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz`

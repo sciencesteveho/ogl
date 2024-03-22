@@ -1,83 +1,81 @@
-# Genomic Graph Mutagenesis
+# Omics Graph Learning
 Tools to construct graphs heterogenous multi-omics data and train a GNN to regress values of gene expression and protein abundance. Graphs are mutagenized to query the impact of individual features on biological function.
-&nbsp;
 
 <div align="center">
     <img src='docs/_static/placeholder.png'>
 </div>
-&nbsp;
 
+## Overview
+Lorem Ipsum.  
+<br>
 ## Installation
 
 ```sh
 $ git clone https://github.com/sciencesteveho/genomic_graph_mutagenesis.git
 ```
 
-&nbsp;
-
-## Dependencies
-
-
-```sh
-cmapPy==4.0.1
-joblib==1.0.1
-keras==2.10.0
-Keras-Preprocessing==1.1.2
-MACS2==2.2.8
-networkx==2.6.3
-numpy==1.20.2
-nvidia-cudnn-cu11==8.5.0.96
-pandas==1.2.4
-pybedtools==0.9.0
-pysam==0.19.0
-PyYAML==5.4.1
-scikit-learn==0.24.2
-scipy==1.7.3
-shyaml==0.6.2
-tensorflow==2.10.0
-torch==1.13.1
-torch-geometric==2.3.0
-tqdm==4.60.0
-```
-Additionally, GGM uses peakMerge.py from ReMap2022 (Hammal et al., *Nucleic Acids Research*, 2021) to call tissue-specific cis-regulatory modules from epimap data. Download the script and place its path in the configuration file.
+To set up an environment, use `pip install -r requirements.txt`.  
+<br>
+Additionally, OGL uses peakMerge.py from ReMap2022 (Hammal et al., *Nucleic Acids Research*, 2021) to call tissue-specific cis-regulatory modules from epimap data. Download the script and place its path in the configuration file.
 ```sh
 wget https://raw.githubusercontent.com/remap-cisreg/peakMerge/main/peakMerge.py
 ```
-&nbsp;
+<br>
 
 ## Usage
-
-Note: not all arguments are compatible with one another, so see examples below for the program's capabilities.
+OGC is designed to run end to end. Set-up your configs according to those in `omics_graph_creation/configs` and run your experiment with a single command.   
+*Note: not all arguments are compatible with one another, so see examples below for the program's capabilities.*
 ```sh
-# Convert epimap bigwig files to broad and narrow peaks
-for tissue in hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle skin small_intestine;
-do
-    sbatch merge_epimap.sh $tissue
-done
-
-# Add chromatin loops together
-sh chrom_loops_basefiles.sh
-
-# Preparse bedfiles
-sh preparse.sh
-
-# Run python scripts
-python -u genomic_graph_mutagenesis/prepare_bedfiles.py --config ${yaml}
-python -u genomic_graph_mutagenesis/edge_parser.py --config ${yaml}
-python -u genomic_graph_mutagenesis/local_context_parser.py --config ${yaml}
-python -u genomic_graph_mutagenesis/graph_constructor.py --config ${yaml}
-
-sh concat nx.sh 
-
-# Train graph neural network
-
-# Mutagenize 
-
-# Plotting and visualization
+yaml=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs/experiments/$config
+partition=RM
+stdbuf -oL bash omics_graph_learning/omics_graph_learning/ogl_pipeline_create_graphs_train_gnn.sh \
+    --experiment_yaml $yaml \
+    --partition $partition \
+    --model "GraphSAGE" \
+    --target "rna_seq" \
+    --tpm_filter 1 \
+    --percent_of_samples_filter 0.2 \
+    --gnn_layers 2 \
+    --linear_layers 3 \
+    --activation "relu" \
+    --dimensions 512 \
+    --epochs 100 \
+    --learning_rate 0.0001 \
+    --optimizer "Adam" \
+    --batch_size 256 \
+    --dropout 0.1 \
+    --graph_type "full" \
+    --rna
 ```
-&nbsp;
+<br>
 
-# Tissue-specific models
+## Directory Structure
+### Working Directory
+OGL will create its own directory structure from the main directory you place it, `path/to/graph_processing`.
+
+### Data
+* `graph_construction/shared_data/...`
+    * `local/`: genome static bedfiles
+    * `regulatory_elements/`: regulatory element catalogues
+    * `interaction/`: interaction type data
+    * `tpm/`: training target GCT files and matrices
+
+### Graph Construction
+* `graph_construction/*experiment_name*/...`
+    * `*experiment_name*/tissue/`: directories for sample parsing
+    * `*experiment_name*/graphs/`: individual tissue level graphs
+    * `*experiment_name*/graphs/*target_name*/`: concatenated graphs filtered by training set
+
+### Models
+* `graph_construction/models/...`
+    * `*experiment_name*`: model checkpoints
+    * `*experiment_name*/logs/`: training loss logs as well as tensorboard logs
+    * `*experiment_name*/plots/`: plots of training loss and model performance on testing set  
+<br>
+<br>
+
+## Model Overview
+### Tissue-specific models
 Base interactions are derived tissue-specific chromatin loops, which is then combined with the interaction type graphs to creates the base nodes.
 The following chromatin loop interactions are parsed:
 ```
@@ -162,29 +160,33 @@ The following are represented as attributes:
             s4
         Recombination rate (averaged)
 ```
+<br>
 
-## Working Tissues
+Our models include a variety of tissues and cells lines as indicated below:
+#### Tissues
 ```
-    Hippocampus
-    Left ventricle
-    Liver
-    Lung
-    Mammary
-    Pancreas
-    Skeletal muscle
-    Skin
-    Small intestine
+Hippocampus
+Left ventricle
+Liver
+Lung
+Mammary
+Pancreas
+Skeletal muscle
+Skin
+Small intestine
 ```
-## Cell type models (future)
+#### Cell type models
 ```
-    HeLa
-    K562
-    Neural progenitor cell
+H1-hESC
+12878
+HeLa
+K562
+Neural progenitor cell
 ```
-&nbsp;
+*Note - GM12787 and H1-hESC do not have multiple epimap tracks, so instead of concatenated and averaging their bedgraphs, only one input is used for these samples.*
+<br>
 
-
-# Universal Genome
+### Universal Genome
 The universal genome annotation borrows the core ideas from the tissue-specific models but utilizes data sources that represent large-scale data collected from multiple genomes. Additionally, the universal genome model has an additional node type, DNAse-hypersensitivty sites.
 
 There are 15 node types, 4 edge types, and each node has a 779-dimensional feature vector. Each training target is a 120-dimensional feature vector.
@@ -205,3 +207,22 @@ Super-enhancers are all human super enhancers from the SEdb.
 Genome-static nodes are kept as they are in tissue-specific models
 CpG methlylation is represented as a 37n vector, each representing a different reference genome derived from the roadmap project. CpGs are merged.
 Epigenetic are represented as a 722n vector, where each track is the average signal in a different tissue.
+```
+<br>
+
+### Preprocessing
+Given the large amount of multimodal data, some files required preprocessing before input into the OGC pipeline.
+
+Much of the pre-processing is done with the script preparse.sh
+```
+bash preparse.sh --inputs
+```
+
+To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead):
+```
+python sequence_similarity_graph.py \
+    --chrom_sizes /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt \
+    --reg_elements /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/regulatory_elements/concatenated_overlapped_elements.bed \
+    --fasta /ocean/projects/bio210019p/stevesho/resources/hg38.fa \
+    --savedir /ocean/projects/bio210019p/stevesho/data/preprocess/sequence_similarity_graph
+```

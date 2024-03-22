@@ -18,7 +18,7 @@ from subprocess import Popen
 from typing import Dict, List, Optional, Tuple, Union
 
 import pybedtools
-from pybedtools.featurefuncs import extend_fields
+from pybedtools.featurefuncs import extend_fields  # type: ignore
 
 import utils
 
@@ -115,9 +115,9 @@ class LocalContextParser:
         objects.
         """
         self.genesymbol_to_gencode = utils.genes_from_gencode(
-            pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")
+            pybedtools.BedTool(f"{self.local_dir}/{self.gencode}")  # type: ignore
         )
-        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
+        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()  # type: ignore
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
