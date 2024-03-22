@@ -17,6 +17,7 @@ import csv
 import datetime
 from itertools import combinations
 import multiprocessing
+import os
 import statistics
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -170,39 +171,46 @@ def main() -> None:
     aligner = _initialize_pairwise_aligner(open_gap_score=args.open_gap_score)
 
     # make genomic bins
-    log_progress("Making genomic bins")
-    chrom_lengths = _chr_lengths_ucsc(chrom_sizes_file=args.chrom_sizes)
-    bins = _bin_genome(chrom_lengths=chrom_lengths, bin_size=250000, step_length=50000)
-    bins.to_csv(f"{args.savedir}/bins.csv", index=False)  # temp
-
-    # set up regulatory element catalogue
-    log_progress("Binning regulatory elements")
-    reg_elements = BedTool(args.reg_elements)
-    standard_deviation = _get_regulatory_element_size_metrics(reg_elements)
-
-    # bin regulatory elements and map to nucleotide content
-    with multiprocessing.Pool(processes=16) as pool:
-        bins["reg_elements"] = pool.starmap(
-            _bin_elements,
-            [(reg_elements, row) for _, row in bins.iterrows()],
+    if not os.path.exists(f"{args.savedir}/bins.pkl"):
+        log_progress("Making genomic bins")
+        chrom_lengths = _chr_lengths_ucsc(chrom_sizes_file=args.chrom_sizes)
+        bins = _bin_genome(
+            chrom_lengths=chrom_lengths, bin_size=250000, step_length=50000
         )
-        bins["sequences"] = pool.starmap(
-            _map_elements_to_nucleotide_content,
-            [(bin_element, args.fasta) for bin_element in bins["reg_elements"]],
+        bins.to_csv(f"{args.savedir}/bins.csv", index=False)  # temp
+
+        # set up regulatory element catalogue
+        log_progress("Binning regulatory elements")
+        reg_elements = BedTool(args.reg_elements)
+        standard_deviation = _get_regulatory_element_size_metrics(reg_elements)
+
+        # bin regulatory elements and map to nucleotide content
+        with multiprocessing.Pool(processes=16) as pool:
+            bins["reg_elements"] = pool.starmap(
+                _bin_elements,
+                [(reg_elements, row) for _, row in bins.iterrows()],
+            )
+            bins["sequences"] = pool.starmap(
+                _map_elements_to_nucleotide_content,
+                [(bin_element, args.fasta) for bin_element in bins["reg_elements"]],
+            )
+        bins.drop(columns=["reg_elements"], inplace=True)
+        bins.to_pickle(f"{args.savedir}/bins.pkl")  # temp
+        log_progress("Saved binned elements elements. Doing pairwise alignments.")
+    else:
+        bins = pd.read_pickle(f"{args.savedir}/bins.pkl")
+        standard_deviation = _get_regulatory_element_size_metrics(
+            BedTool(args.reg_elements)
         )
 
     nuc_to_elements = bins["sequences"].tolist()
-    bins.drop(columns=["reg_elements"], inplace=True)
-    bins.to_pickle(f"{args.savedir}/bins.pkl")  # temp
-    log_progress("Saved binned elements elements. Doing pairwise alignments.")
-
     # link similar regulatory elements in parallel
     all_edges = set()
     with multiprocessing.Pool(processes=16) as pool:
         results = pool.starmap(
             process_bin_element,
             [
-                (nuc_to_element, args.fasta, aligner, standard_deviation)
+                (nuc_to_element, aligner, standard_deviation)
                 for nuc_to_element in nuc_to_elements
             ],
         )
