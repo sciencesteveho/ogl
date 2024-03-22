@@ -213,7 +213,14 @@ def main() -> None:
             [(reg_elements, row) for _, row in bins.iterrows()],
         )
 
+    with multiprocessing.Pool(processes=16) as pool:
+        bins["sequences"] = pool.starmap(
+            _map_elements_to_nucleotide_content,
+            [(bin_element, args.fasta) for bin_element in bins["reg_elements"]],
+        )
+
     bin_element = bins["reg_elements"].tolist()
+    bins.drop(columns=["reg_elements"], inplace=True)
     # bins, bin_element = _bin_from_df(bins=bins, reg_elements=reg_elements)
     bins.to_pickle(f"{args.savedir}/bins.pkl")  # temp
     log_progress("Saved binned elements elements. Doing pairwise alignments.")
