@@ -49,12 +49,15 @@ def _bin_genome(
 ) -> pd.DataFrame:
     """Bin genome into bins according to bin_size and step_length, including the
     last bin_element that can be smaller than bin_size. Returns a dataframe."""
-    bins = [
-        (chrom, start, min(start + bin_size, length))
-        for chrom, length in chrom_lengths.items()
-        for start in range(0, length, step_length)
-        if start + bin_size >= length or start + step_length >= length
-    ]
+    bins = []
+    for chrom, length in chrom_lengths.items():
+        start = 0
+        while start < length - bin_size:
+            end = start + bin_size
+            bins.append((chrom, start, end))
+            start += step_length
+        if start < length:
+            bins.append((chrom, start, length))
     return pd.DataFrame(bins, columns=["chrom", "start", "end"])
 
 
@@ -71,7 +74,7 @@ def _bin_elements(
     )
 
 
-def _bin_df(
+def _bin_from_df(
     bins: pd.DataFrame, reg_elements: pybedtools.BedTool
 ) -> List[List[pybedtools.BedTool]]:
     """Add a column to the bins dataframe that contains the regulatory elements
@@ -98,25 +101,16 @@ def _initialize_pairwise_aligner(
     return aligner
 
 
-def _map_elements_to_nucleotide_content(
-    binned_elements: pybedtools.BedTool,
-    fasta: str,
-) -> Dict[str, str]:
-    """Map regulatory elements to nucleotide content."""
-    return {
-        feature[13]: f"{feature[0]}_{feature[1]}_{feature[3]}"
-        for feature in binned_elements.nucleotide_content(fi=fasta, seq=True)
-    }
-
-
 def similar_enhancers(
     sequences: List[str],
     aligner: Align.PairwiseAligner,
     min_similarity: float = 0.8,
     max_length_diff: Optional[Union[int, float]] = None,
 ) -> Set[Tuple[str, str]]:
-    """Find similar sequences based on pairwise sequence alignment. Keeps a
-    cache to avoid redundant alignments."""
+    """Find similar sequences based on pairwise sequence alignment and only
+    keeps alignments passing both a threshold score and as long as the length
+    difference between the sequences is within a given threshold. Keeps a cache
+    to avoid redundant alignments."""
     # set up vars
     max_length_diff = max_length_diff if max_length_diff is not None else float("inf")
     pairs = set()
@@ -135,6 +129,17 @@ def similar_enhancers(
     return pairs
 
 
+def _map_elements_to_nucleotide_content(
+    bin_element: pybedtools.BedTool,
+    fasta: str,
+) -> Dict[str, str]:
+    """Map regulatory elements to nucleotide content."""
+    return {
+        feature[13]: f"{feature[0]}_{feature[1]}_{feature[3]}"
+        for feature in bin_element.nucleotide_content(fi=fasta, seq=True)
+    }
+
+
 def _seq_to_elements(
     nuc_to_element: Dict[str, str], edges: Set[Tuple[str, str]]
 ) -> Set[Tuple[str, str]]:
@@ -151,15 +156,14 @@ def process_bin_element(
     standard_deviation: int,
 ) -> Set[Tuple[str, str]]:
     """Process a bin_element of regulatory elements to find similar regulatory edges"""
-    sequences = _map_elements_to_nucleotide_content(bin_element, fasta)
+    sequences = _map_elements_to_nucleotide_content(
+        bin_element=bin_element, fasta=fasta
+    )
     seqs = list(sequences.values())
     matched = similar_enhancers(
         seqs, aligner, min_similarity=0.8, max_length_diff=standard_deviation
     )
-    try:
-        return _seq_to_elements(nuc_to_element=sequences, edges=matched)
-    except KeyError:
-        print(matched[0])
+    return _seq_to_elements(nuc_to_element=sequences, edges=matched)
 
 
 def main() -> None:
@@ -187,22 +191,23 @@ def main() -> None:
     # make genomic bins
     chrom_lengths = _chr_lengths_ucsc(chrom_sizes_file=args.chrom_sizes)
     bins = _bin_genome(chrom_lengths=chrom_lengths, bin_size=250000, step_length=50000)
+    bins.to_csv(f"{args.save_dir}/bins.csv", index=False)  # temp
 
     # set up regulatory element catalogue
     reg_elements = BedTool(args.reg_elements)
     standard_deviation = _get_regulatory_element_size_metrics(reg_elements)
 
     # bin regulatory elements
-    binned_elements = _bin_df(bins=bins, reg_elements=reg_elements)
+    bin_element = _bin_from_df(bins=bins, reg_elements=reg_elements)
 
-    # link similar regulatory elements
+    # link similar regulatory elements in parallel
     all_edges = set()
     with multiprocessing.Pool(processes=16) as pool:
         results = pool.starmap(
             process_bin_element,
             [
                 (bin_element, args.fasta, aligner, standard_deviation)
-                for bin_element in binned_elements
+                for bin_element in bin_element
             ],
         )
         for edges in results:
