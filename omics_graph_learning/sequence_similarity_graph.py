@@ -14,6 +14,7 @@ potential auxilliary task."""
 
 import argparse
 import csv
+import datetime
 from itertools import combinations
 import multiprocessing
 import statistics
@@ -23,6 +24,12 @@ from Bio import Align
 import pandas as pd
 import pybedtools
 from pybedtools import BedTool  # type: ignore
+
+
+def log_progress(message: str) -> None:
+    """Print a log message with timestamp to stdout"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")
+    print(f"[{timestamp}] {message}")
 
 
 def _chr_lengths_ucsc(chrom_sizes_file: str) -> dict[str, int]:
@@ -76,13 +83,13 @@ def _bin_elements(
 
 def _bin_from_df(
     bins: pd.DataFrame, reg_elements: pybedtools.BedTool
-) -> List[List[pybedtools.BedTool]]:
+) -> Tuple[pd.DataFrame, List[List[pybedtools.BedTool]]]:
     """Add a column to the bins dataframe that contains the regulatory elements
     that are within the bin_element."""
     bins["reg_elements"] = bins.apply(
         lambda bin_element: _bin_elements(reg_elements, bin_element), axis=1
     )
-    return bins["reg_elements"].tolist()
+    return bins, bins["reg_elements"].tolist()
 
 
 def _initialize_pairwise_aligner(
@@ -189,16 +196,27 @@ def main() -> None:
     aligner = _initialize_pairwise_aligner()
 
     # make genomic bins
+    log_progress("Making genomic bins")
     chrom_lengths = _chr_lengths_ucsc(chrom_sizes_file=args.chrom_sizes)
     bins = _bin_genome(chrom_lengths=chrom_lengths, bin_size=250000, step_length=50000)
     bins.to_csv(f"{args.savedir}/bins.csv", index=False)  # temp
 
     # set up regulatory element catalogue
+    log_progress("Binning regulatory elements")
     reg_elements = BedTool(args.reg_elements)
     standard_deviation = _get_regulatory_element_size_metrics(reg_elements)
 
     # bin regulatory elements
-    bin_element = _bin_from_df(bins=bins, reg_elements=reg_elements)
+    with multiprocessing.Pool(processes=16) as pool:
+        bins["reg_elements"] = pool.starmap(
+            _bin_elements,
+            [(reg_elements, row) for _, row in bins.iterrows()],
+        )
+
+    bin_element = bins["reg_elements"].tolist()
+    # bins, bin_element = _bin_from_df(bins=bins, reg_elements=reg_elements)
+    bins.to_pickle(f"{args.savedir}/bins.pkl")  # temp
+    log_progress("Saved binned elements elements. Doing pairwise alignments.")
 
     # link similar regulatory elements in parallel
     all_edges = set()

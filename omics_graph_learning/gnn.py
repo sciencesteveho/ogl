@@ -21,10 +21,10 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-import torch_geometric
-from torch_geometric.loader import NeighborLoader
-from torch_geometric.utils import degree
-from tqdm import tqdm
+import torch_geometric  # type: ignore
+from torch_geometric.loader import NeighborLoader  # type: ignore
+from torch_geometric.utils import degree  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 from graph_to_pytorch import graph_to_pytorch
 from models import DeeperGCN
@@ -34,6 +34,7 @@ from models import GraphSAGE
 from models import MLP
 from models import PNA
 from models import UniMPTransformer
+from ogl import parse_pipeline_arguments
 import utils
 
 
@@ -286,50 +287,14 @@ def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
 
 def parse_arguments() -> argparse.Namespace:
     """Parse args for training GNN"""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--experiment_config",
-        type=str,
-        help="Path to .yaml file with experimental conditions",
-    )
-    parser.add_argument("--model", type=str, default="GCN")
-    parser.add_argument("--target", type=str, default="expression_median_only")
-    parser.add_argument("--gnn_layers", type=int, default="2")
-    parser.add_argument("--linear_layers", type=int, default="2")
-    parser.add_argument(
-        "--activation",
-        type=str,
-        default="relu",
-        choices=["relu", "leakyrelu", "gelu"],
-        help="Activation function to use. Options: relu, leakyrelu, gelu (default: relu).",
-    )
-    parser.add_argument("--dimensions", type=int, default="256")
-    parser.add_argument("--epochs", type=int, default="100")
+    parser = parse_pipeline_arguments()
+    parser.add_argument("--split_name", type=str, required=True)
     parser.add_argument(
         "--seed", type=int, default=42, help="random seed to use (default: 42)"
     )
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--learning_rate", type=float, default=1e-4)
-    parser.add_argument(
-        "--optimizer",
-        type=str,
-        default="AdamW",
-        help="Which optimizer to use for learning. Options: AdamW or Adam (default: AdamW)",
-    )
-    parser.add_argument("--dropout", type=float)
-    parser.add_argument("--heads", type=int, default=None)
     parser.add_argument(
         "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
     )
-    parser.add_argument("--split_name", type=str)
-    parser.add_argument("--total_random_edges", type=int, required=False, default=None)
-    parser.add_argument("--graph_type", type=str, default="full")
-    parser.add_argument("--residual", action="store_true")
-    parser.add_argument("--zero_nodes", action="store_true")
-    parser.add_argument("--randomize_node_feats", action="store_true")
-    parser.add_argument("--early_stop", action="store_true", default=False)
-    parser.add_argument("--randomize_edges", action="store_true")
-    parser.add_argument("--rna_seq", action="store_true")
     return parser.parse_args()
 
 
@@ -407,7 +372,7 @@ def main() -> None:
     """Main function to train GNN on graph data!"""
     # Parse training settings
     args = parse_arguments()
-    params = utils.parse_yaml(args.experiment_config)
+    params = utils.parse_yaml(args.experiment_yaml)
 
     # set up helper variables
     working_directory = pathlib.Path(params["working_directory"])
