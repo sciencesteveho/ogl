@@ -191,7 +191,7 @@ def main() -> None:
     # make genomic bins
     chrom_lengths = _chr_lengths_ucsc(chrom_sizes_file=args.chrom_sizes)
     bins = _bin_genome(chrom_lengths=chrom_lengths, bin_size=250000, step_length=50000)
-    bins.to_csv(f"{args.save_dir}/bins.csv", index=False)  # temp
+    bins.to_csv(f"{args.savedir}/bins.csv", index=False)  # temp
 
     # set up regulatory element catalogue
     reg_elements = BedTool(args.reg_elements)
