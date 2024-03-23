@@ -53,7 +53,7 @@ def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
     return {
         key: gencode_mapper[value]
         for key, value in mapper.items()
-        if value in gencode_ref
+        if value in gencode_mapper
     }
 
 
