@@ -69,8 +69,9 @@ def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
 
 def gene_to_gene_edges(
     edges: List[Tuple[str, str]], mapper: Dict[str, str]
-) -> Generator[Tuple[str, str], None, None]:
+) -> set[Tuple[str, str]]:
     """Convert edges to gene-to-gene edges, linking genes sharing a GO term"""
+    all_edges = set()
     go_to_gene: Dict[str, List[str]] = {}
     for gene, go_term in edges:
         if go_term not in go_to_gene:
@@ -78,7 +79,9 @@ def gene_to_gene_edges(
         if gene in mapper:
             go_to_gene[go_term].append(mapper[gene])
     for linked_genes in go_to_gene.values():
-        yield from itertools.combinations(linked_genes, 2)
+        for gene_pair in itertools.combinations(linked_genes, 2):
+            all_edges.add(gene_pair)
+    return all_edges
 
 
 def main() -> None:
