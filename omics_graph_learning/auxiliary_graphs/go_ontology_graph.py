@@ -14,7 +14,7 @@ import datetime
 import itertools
 import pathlib
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Generator, List, Tuple
 
 import pybedtools
 
@@ -40,7 +40,8 @@ def genes_from_gencode(gencode_ref: str) -> Dict[str, str]:
 def _uniprot_to_gene_symbol(mapfile: Path) -> Dict[str, str]:
     """Get dictionary for mapping Uniprot IDs to Gencode IDs. We keep the first
     gene if there are multiple genes that uniprot maps to."""
-    return {row[0]: row[1] for row in csv.reader(open(mapfile), delimiter="\t")}
+    with open(mapfile) as file:
+        return {row[0]: row[1] for row in csv.reader(file, delimiter="\t")}
 
 
 def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
@@ -48,8 +49,6 @@ def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
     are present in gencode, otherwise the indexes won't be congruent."""
     gencode_mapper = genes_from_gencode(gencode_ref)
     mapper = _uniprot_to_gene_symbol(mapfile)
-    log_progress(f"Number of genes in gencode: {len(gencode_mapper)}")
-    log_progress(f"Number of genes in mapfile: {len(mapper)}")
     return {
         key: gencode_mapper[value]
         for key, value in mapper.items()
@@ -70,23 +69,16 @@ def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
 
 def gene_to_gene_edges(
     edges: List[Tuple[str, str]], mapper: Dict[str, str]
-) -> List[Tuple[str, str]]:
-    """Convert edges to gene-to-gene edges, but linking two genes if they share a GO term"""
-    # Explicitly set vars
+) -> Generator[Tuple[str, str], None, None]:
+    """Convert edges to gene-to-gene edges, linking genes sharing a GO term"""
     go_to_gene: Dict[str, List[str]] = {}
-    gene_edges: List[Tuple[str, str]] = []
-
-    # make a list of genes for each go-term
     for gene, go_term in edges:
         if go_term not in go_to_gene:
             go_to_gene[go_term] = []
         if gene in mapper:
             go_to_gene[go_term].append(mapper[gene])
-
-    # get all possible pairs for each go-term list
     for linked_genes in go_to_gene.values():
-        gene_edges.extend(itertools.combinations(linked_genes, 2))
-    return gene_edges
+        yield from itertools.combinations(linked_genes, 2)
 
 
 def main() -> None:
@@ -115,7 +107,6 @@ def main() -> None:
     go_edges = _create_go_graph(go_gaf)
     log_progress(f"GO edges created w/ number of edges: {len(go_edges)}")
     go_graph = gene_to_gene_edges(go_edges, mapper)
-    log_progress(f"go graph created w/ number of edges: {len(go_graph)}")
 
     # write to a file and savels
     with open(final_graph, "w") as file:
