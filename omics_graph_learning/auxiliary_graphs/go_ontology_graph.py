@@ -39,6 +39,8 @@ def _uniprot_to_gene_symbol(mapfile: Path) -> Dict[str, str]:
 
 
 def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
+    """Create a mapping from Uniprot to Gencode IDs. We only keep the genes that
+    are present in gencode, otherwise the indexes won't be congruent."""
     gencode_mapper = genes_from_gencode(gencode_ref)
     mapper = _uniprot_to_gene_symbol(mapfile)
     return {
