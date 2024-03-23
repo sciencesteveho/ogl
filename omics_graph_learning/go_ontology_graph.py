@@ -11,63 +11,71 @@
 """_summary_ of project"""
 
 import csv
+import itertools
 import pathlib
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import numpy as np
-import pandas as pd
+import pybedtools
 
 
-def _gencode_genes(gencode_file: str) -> List[str]:
-    """Get list of gencode genes"""
-    df = pd.read_csv(gencode_file, sep="\t", header=None)
-    return list(df[3].unique())
+def genes_from_gencode(gencode_ref: str) -> Dict[str, str]:
+    """Returns a dict of gencode v26 genes, their ids and associated gene
+    symbols
+    """
+    gencode_ref = pybedtools.BedTool(gencode_ref)  # type: ignore
+    return {
+        line[9].split(";")[3].split('"')[1]: line[3]
+        for line in gencode_ref
+        if line[0] not in ["chrM"]
+    }
 
 
-def _unipro_to_gencode_mapper(mapfile: Path) -> Dict[str, str]:
+def _uniprot_to_gene_symbol(mapfile: Path) -> Dict[str, str]:
     """Get dictionary for mapping Uniprot IDs to Gencode IDs. We keep the first
     gene if there are multiple genes that uniprot maps to."""
-    df = pd.read_csv(mapfile, sep="\t", header=None)
-    mapper = {
-        row[0]: row[18] for row in df.itertuples(index=False) if not pd.isna(row[18])
+    return {row[0]: row[1] for row in csv.reader(open(mapfile), delimiter="\t")}
+
+
+def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
+    gencode_mapper = genes_from_gencode(gencode_ref)
+    mapper = _uniprot_to_gene_symbol(mapfile)
+    return {
+        key: gencode_mapper[value]
+        for key, value in mapper.items()
+        if value in gencode_ref
     }
-    for key, value in mapper.items():
-        if ";" in value:
-            genes = value.split("; ")
-            mapper[key] = genes[0]
-    return mapper
 
 
-def _create_go_graph(
-    go_graph: pathlib.PosixPath, mapper: Dict[str, str]
-) -> List[Tuple[str, str]]:
+def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
     """Create GO ontology graph"""
-    reader = csv.reader(open(go_graph, newline=""), delimiter="\t")
-    edges = []
-    for row in reader:
-        if row[6] != "IEA":
-            go_id = row[4]
-            if go_id in mapper:
-                db_object_id = row[1]
-                edges.append((mapper[db_object_id], go_id))
-    return edges
+    with open(go_gaf, newline="", mode="r") as file:
+        reader = csv.reader(file, delimiter="\t")
+        return [
+            (row[1], row[4])
+            for row in reader
+            if not row[0].startswith("!") and row[6] != "IEA"
+        ]
 
 
-def _gene_to_gene_edges(edges: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+def _gene_to_gene_edges(
+    edges: List[Tuple[str, str]], mapper: Dict[str, str]
+) -> List[Tuple[str, str]]:
     """Convert edges to gene-to-gene edges, but linking two genes if they share a GO term"""
     # Explicitly set vars
     go_to_gene: Dict[str, List[str]] = {}
     gene_edges: List[Tuple[str, str]] = []
 
-    for gene, go in edges:
-        if go not in go_to_gene:
-            go_to_gene[go] = []
-        go_to_gene[go].append(gene)
+    # make a list of genes for each go-term
+    for gene, go_term in edges:
+        if go_term not in go_to_gene:
+            go_to_gene[go_term] = []
+        if gene in mapper:
+            go_to_gene[go_term].append(mapper[gene])
 
-    for genes in go_to_gene.values():
-        for i, gene1 in enumerate(genes):
-            gene_edges.extend((gene1, gene2) for gene2 in genes[i + 1 :])
+    # get all possible pairs for each go-term list
+    for linked_genes in go_to_gene.values():
+        gene_edges.extend(itertools.combinations(linked_genes, 2))
     return gene_edges
 
 
@@ -76,13 +84,20 @@ def main() -> None:
     working_dir = Path(
         "/ocean/projects/bio210019p/stevesho/data/preprocess/auxiliary_graphs/go"
     )
-    mapfile = working_dir / "HUMAN_9606_idmapping_selected.tab"
-    go_graph = working_dir / "goa_human.gaf"
-    gencode = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+    mapfile = working_dir / "go_ids_to_gene_symbol.txt"
+    go_gaf = working_dir / "goa_human.gaf"
+    gencode_ref = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+    final_graph = working_dir / "go_graph.txt"
 
-    gencode_genes = _gencode_genes(gencode)
-    mapper = _unipro_to_gencode_mapper(mapfile=mapfile)
-    go_edges = _create_go_graph(go_graph, mapper)
+    # get GO graph!
+    mapper = _uniprot_to_gencode(mapfile, gencode_ref)
+    go_edges = _create_go_graph(go_gaf)
+    go_graph = _gene_to_gene_edges(go_edges, mapper)
+
+    # write to a file and save
+    with open(final_graph, "w") as file:
+        for edge in go_graph:
+            file.write(f"{edge[0]}\t{edge[1]}\n")
 
 
 if __name__ == "__main__":
