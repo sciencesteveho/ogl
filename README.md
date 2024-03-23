@@ -86,11 +86,20 @@ bash preparse.sh --inputs
 
 To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead):
 ```
-python sequence_similarity_graph.py \
+python omics_graph_learning/auxiliary_graphs/sequence_similarity_graph.py \
     --chrom_sizes /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt \
     --reg_elements /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/regulatory_elements/concatenated_overlapped_elements.bed \
     --fasta /ocean/projects/bio210019p/stevesho/resources/hg38.fa \
-    --savedir /ocean/projects/bio210019p/stevesho/data/preprocess/sequence_similarity_graph
+    --savedir /ocean/projects/bio210019p/stevesho/data/preprocess/sequence_similarity_graph \
+    --open_gap_score $score
+```
+To prepare the gene ontology graph, we ran the following command:
+```
+python omics_graph_learning/auxiliary_graphs/go_ontoloy_graph.py \
+    --working_dir /ocean/projects/bio210019p/stevesho/data/preprocess/auxiliary_graphs/go \
+    --mapfile go_ids_to_gene_symbol.txt \
+    --go_gaf goa_human.gaf \
+    --gencode_ref /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed
 ```
 
 ## Model Overview

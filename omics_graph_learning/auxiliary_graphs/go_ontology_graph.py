@@ -10,6 +10,7 @@
 
 """_summary_ of project"""
 
+import argparse
 import csv
 import itertools
 import pathlib
@@ -81,16 +82,21 @@ def _gene_to_gene_edges(
 
 def main() -> None:
     """Main function"""
-    working_dir = Path(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/auxiliary_graphs/go"
-    )
-    mapfile = working_dir / "go_ids_to_gene_symbol.txt"
-    go_gaf = working_dir / "goa_human.gaf"
-    gencode_ref = "/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+    parser = argparse.ArgumentParser(description="Create a graph from gene ontology")
+    parser.add_argument("--working_dir", type=str, help="Working directory")
+    parser.add_argument("--mapfile", type=str, help="Mapping file")
+    parser.add_argument("--go_gaf", type=str, help="GO annotation file")
+    parser.add_argument("--gencode_ref", type=str, help="Gencode reference file")
+    args = parser.parse_args()
+
+    # set up vars and paths
+    working_dir = Path(args.working_dir)
+    mapfile = working_dir / args.mapfile
+    go_gaf = working_dir / args.go_gaf
     final_graph = working_dir / "go_graph.txt"
 
     # get GO graph!
-    mapper = _uniprot_to_gencode(mapfile, gencode_ref)
+    mapper = _uniprot_to_gencode(mapfile, args.gencode_ref)
     go_edges = _create_go_graph(go_gaf)
     go_graph = _gene_to_gene_edges(go_edges, mapper)
 
