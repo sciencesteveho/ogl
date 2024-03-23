@@ -84,7 +84,7 @@ Much of the pre-processing is done with the script preparse.sh
 bash preparse.sh --inputs
 ```
 
-To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead):
+To prepare the regulatory element sequence similarity graph, we ran the following command using 18 cores (16 for processing, 2 for overhead).
 ```
 python omics_graph_learning/auxiliary_graphs/sequence_similarity_graph.py \
     --chrom_sizes /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.autosomes.txt \

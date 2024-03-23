@@ -4,20 +4,25 @@
 # // TO-DO //
 # - [ ] first TODO
 #   - [ ] nested TODO
-# Create a graph of the Gene Ontology (GO) ontology
-# Convert GO names to gencode IDs
 
 
 """_summary_ of project"""
 
 import argparse
 import csv
+import datetime
 import itertools
 import pathlib
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pybedtools
+
+
+def log_progress(message: str) -> None:
+    """Print a log message with timestamp to stdout"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")
+    print(f"[{timestamp}] {message}")
 
 
 def genes_from_gencode(gencode_ref: str) -> Dict[str, str]:
@@ -61,7 +66,7 @@ def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
         ]
 
 
-def _gene_to_gene_edges(
+def gene_to_gene_edges(
     edges: List[Tuple[str, str]], mapper: Dict[str, str]
 ) -> List[Tuple[str, str]]:
     """Convert edges to gene-to-gene edges, but linking two genes if they share a GO term"""
@@ -90,19 +95,25 @@ def main() -> None:
     parser.add_argument("--go_gaf", type=str, help="GO annotation file")
     parser.add_argument("--gencode_ref", type=str, help="Gencode reference file")
     args = parser.parse_args()
+    log_progress(f"Starting with args: {args}")
 
     # set up vars and paths
     working_dir = Path(args.working_dir)
     mapfile = working_dir / args.mapfile
     go_gaf = working_dir / args.go_gaf
     final_graph = working_dir / "go_graph.txt"
+    log_progress(f"Working directory: {working_dir}")
+    log_progress(f"Mapfile: {mapfile}")
+    log_progress(f"GO GAF file: {go_gaf}")
+    log_progress(f"Final graph: {final_graph}")
 
     # get GO graph!
     mapper = _uniprot_to_gencode(mapfile, args.gencode_ref)
     go_edges = _create_go_graph(go_gaf)
-    go_graph = _gene_to_gene_edges(go_edges, mapper)
+    go_graph = gene_to_gene_edges(go_edges, mapper)
+    log_progress(f"go graph created w/ number of edges: {len(go_graph)}")
 
-    # write to a file and save
+    # write to a file and savels
     with open(final_graph, "w") as file:
         for edge in go_graph:
             file.write(f"{edge[0]}\t{edge[1]}\n")
