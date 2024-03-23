@@ -29,15 +29,16 @@ import torch
 from torch.nn import Linear
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn import GATv2Conv  # type: ignore
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import GENConv
+from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn import GraphNorm
 from torch_geometric.nn import LayerNorm
 from torch_geometric.nn import PNAConv
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
-from torch_geometric.nn.models import DeepGCNLayer
+from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
 
 def _define_activation(activation: str) -> Callable:

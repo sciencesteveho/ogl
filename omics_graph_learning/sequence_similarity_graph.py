@@ -156,6 +156,7 @@ def process_bin_element(
     matched = similar_enhancers(
         seqs, aligner, min_similarity=0.8, max_length_diff=standard_deviation
     )
+    print(f"Found {len(matched)} similar sequences")
     return _seq_to_elements(nuc_to_element=nuc_to_element, edges=matched)
 
 
