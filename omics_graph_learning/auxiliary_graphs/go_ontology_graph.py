@@ -48,6 +48,8 @@ def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
     are present in gencode, otherwise the indexes won't be congruent."""
     gencode_mapper = genes_from_gencode(gencode_ref)
     mapper = _uniprot_to_gene_symbol(mapfile)
+    log_progress(f"Number of genes in gencode: {len(gencode_mapper)}")
+    log_progress(f"Number of genes in mapfile: {len(mapper)}")
     return {
         key: gencode_mapper[value]
         for key, value in mapper.items()
