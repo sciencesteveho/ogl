@@ -109,7 +109,9 @@ def main() -> None:
 
     # get GO graph!
     mapper = _uniprot_to_gencode(mapfile, args.gencode_ref)
+    log_progress(f"Mapper created w/ number of genes: {len(mapper)}")
     go_edges = _create_go_graph(go_gaf)
+    log_progress(f"GO edges created w/ number of edges: {len(go_edges)}")
     go_graph = gene_to_gene_edges(go_edges, mapper)
     log_progress(f"go graph created w/ number of edges: {len(go_graph)}")
 
