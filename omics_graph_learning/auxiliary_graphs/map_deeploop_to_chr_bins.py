@@ -26,13 +26,13 @@ def main() -> None:
     anchor_file_path = (
         working_dir
         / args.cell_line
-        / "deeloop_output"
+        / "deeploop_output"
         / f"{args.chr}.denoised.anchor.to.anchor"
     )
     output_file_path = (
         working_dir
         / args.cell_line
-        / "deeloop_output"
+        / "deeploop_output"
         / f"{args.chr}.denoised.anchor.to.anchor.mapped"
     )
 
