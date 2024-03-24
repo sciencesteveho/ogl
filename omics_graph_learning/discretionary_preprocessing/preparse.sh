@@ -34,8 +34,9 @@ function _liftover_19_to_38 () {
     rm ${output_dir}/${file_name}.unlifted
 }
 
+
 # =============================================================================
-# function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
+# Function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
 # Done for both enhancers and promoters.
 # Arguments:
 #   $1 - path/to/your working directory
@@ -45,14 +46,20 @@ function _liftover_19_to_38 () {
 #   $5 - naming convention for the regulatory element
 # =============================================================================
 function _overlap_regulatory_regions () {
+    local working_dir=$1
+    local bedfiles_dir=$2
+    local epimap_masterlist_file=$3
+    local encode_regulatory_element_file=$4
+    local regulatory_element_naming=$5
+
     _liftover_19_to_38 \
-        $1 \
-        $2 \
-        $3
+        ${working_dir} \
+        ${bedfiles_dir} \
+        ${epimap_masterlist_file}
 
     bedtools intersect \
-        -a $2/$4 \
-        -b $2/$3._lifted_hg38.bed \
+        -a "${bedfiles_dir}/${encode_regulatory_element_file}" \
+        -b "${bedfiles_di}r/${epimap_masterlist_file}_lifted_hg38.bed" \
         -wa \
         -wb \
         | sort -k1,1 -k2,2n \
@@ -60,16 +67,16 @@ function _overlap_regulatory_regions () {
         | cut -f1 -d',' \
         | uniq \
         | awk -v OFS='\t' '{print $1,$2,$3,$4}' \
-        > $2/${5}s_epimap_screen_overlap.bed
+        > "${bedfiles_dir}/${regulatory_element_naming}s_epimap_screen_overlap.bed"
 
-    if [ -f $2/${3}.unlifted ]; then
-        rm ${3}.unlifted
+    if [ -f "${bedfiles_dir}/${epimap_masterlist_file}.unlifted" ]; then
+        rm "${bedfiles_dir}/${epimap_masterlist_file}.unlifted"
     fi
 }
 
 
 # =============================================================================
-# function to overlap SCREEN regulatory regions with EpiMap dyadic regions
+# Function to overlap SCREEN regulatory regions with EpiMap dyadic regions
 # Arguments:
 #   $1 - path/to/your working directory
 #   $2 - path/to/where your bedfiles are stored

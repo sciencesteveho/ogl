@@ -24,15 +24,16 @@ function _download_loops () {
 }
 
 # =============================================================================
-# setting up variables
+# Setting up variables to track time
 # =============================================================================
 SECONDS=0
 
 function convertsecs() {
- ((h=${1}/3600))
- ((m=(${1}%3600)/60))
- ((s=${1}%60))
- printf "%02d:%02d:%02d\n" $h $m $s
+    local total_seconds=$1
+    local hours=$((total_seconds / 3600))
+    local minutes=$(( (total_seconds % 3600) / 60 ))
+    local seconds=$((total_seconds % 60))
+    printf "%02d:%02d:%02d\n" $hours $minutes $seconds
 }
 
 
@@ -61,6 +62,53 @@ function _deeploop_txt_to_bedpe () {
 
 
 # =============================================================================
+# Liftover deeploop files
+# Arguments:
+#   $1 - directory of deeploop files
+#   $2 - filename without extension
+#   $3 - directory of liftover and liftover chain
+#   $4 - tmp directory to process files
+# =============================================================================
+function _liftover_deeploop_bedpe () {
+    local input_dir=$1
+    local tissue_file=$2
+    local resource_dir=$3
+    local output_dir=$4
+    local chain_file="${resource_dir}/hg19ToHg38.over.chain.gz"
+
+    # split bedpe into two files for lifting
+    awk -v OFS='\t' '{print $1,$2,$3,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}._1"
+    awk -v OFS='\t' '{print $4,$5,$6,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}._2"
+
+    # liftover each anchor
+    for file in ._1 ._2; do
+        "${resource_dir}/liftOver" \
+            "${output_dir}/${tissue_file}.${file}" \
+            "${chain_file}" \
+            "${output_dir}/${tissue_file}.${file}.hg38" \
+            "${output_dir}/${tissue_file}.${file}.unmapped"
+
+        sort -k5,5 -o "${output_dir}/${tissue_file}.${file}.hg38" "${output_dir}/${tissue_file}.${file}.hg38"
+    done
+
+    # join the lifted files
+    join -j 5 \
+        -o 1.1,1.2,1.3,2.1,2.2,2.3,1.4 \
+        "${output_dir}/${tissue_file}._1.hg38" \
+        "${output_dir}/${tissue_file}._2.hg38" \
+        | sed 's/ /\t/g' \
+        | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7}' \
+        > "${input_dir}/${tissue_file}.hg38"
+
+    # cleanup
+    for file in ._1 ._2; do
+        rm "${output_dir}/${tissue_file}.${file}" "${output_dir}/${tissue_file}.${file}.hg38" "${output_dir}/${tissue_file}.${file}.unmapped"
+    done
+}
+
+
+# =============================================================================
+# Extract top pixels from cooler files.
 # Arguments:
 #   $1 - tissue name
 #   $2 - one level above /path/to/data
@@ -71,140 +119,51 @@ function _extract_top_pixels () {
     local tissue=$1
     local working_dir=$2
     local extract_cooler=$3
-    local zero_index=$4  # bool that tells the script to adjust start and end positions by -1
+    local zero_index=$4
+    local liftover=$5
 
-    local pixels_dir="${working_dir}/top_pixels"
+    local pixels_dir="${working_dir}/pixels"
     local coolers_dir="${working_dir}/coolers"
+    local liftover_resources_dir="/ocean/projects/bio210019p/stevesho/resources"
+    local tmp_dir="${working_dir}/tmp"
     local pixels_file="${pixels_dir}/${tissue}.pixels"
     local sorted_pixels_file="${pixels_file}_sorted"
 
-    # check if dirs exist
-    mkdir -p "${pixels_dir}"
-    mkdir -p "${coolers_dir}"
+    mkdir -p "${pixels_dir}" "${coolers_dir}" "${tmp_dir}"
 
     if [[ "$extract_cooler" == true ]]; then
-        # get pixels from cooler
-        cooler dump \
-            -t pixels \
-            --join \
-            -o "${pixels_file}" \
-            "${coolers_dir}/${tissue}.cool"
+        cooler dump -t pixels --join -o "${pixels_file}" "${coolers_dir}/${tissue}.cool"
     fi
 
-    # sort by intensity
+    # Adjust to zero_index and liftover 
+    local intermediate_file="${pixels_file}"
     if [[ "$zero_index" == true ]]; then
-        sort --parallel=8 -S 80% -k7,7nr "${pixels_file}" | awk -v OFS='\t' '{print $1,$2-1,$3,$4,$5,$6,$7}' > "${sorted_pixels_file}"
-    else
-        sort --parallel=8 -S 80% -k7,7nr "${pixels_file}" > "${sorted_pixels_file}"
+        intermediate_file+=".zero_indexed"
+        awk -v OFS='\t' '{print $1,$2-1,$3,$4,$5,$6,$7}' "${pixels_file}" > "${intermediate_file}"
     fi
+
+    if [[ "$liftover" == true ]]; then
+        _liftover_deeploop_bedpe \
+            "${working_dir}" \
+            "${intermediate_file}" \
+            "${liftover_resources_dir}" \
+            "${tmp_dir}"
+        intermediate_file+=".hg38"
+    fi
+
+    # Sort by e/o ratio to extract top pixels
+    sort --parallel=8 -S 80% -k7,7nr "${intermediate_file}" > "${sorted_pixels_file}"
     
-    # take top N pixels
-    for i in 50000 100000 150000 200000 300000 500000 1000000; do
-        head -n $i "${sorted_pixels_file}" > "${pixels_dir}/${tissue}_${i}.pixels"
+    local thresholds=(50000 100000 150000 200000 300000 500000 1000000)
+    local threshold
+    for threshold in "${thresholds[@]}"; do
+        local output_dir="${working_dir}/top_n_pixels/top_${threshold}"
+        mkdir -p "${output_dir}"
+        head -n "${threshold}" "${sorted_pixels_file}" > "${output_dir}/${tissue}_${threshold}.pixels"
     done
 
-    # filter for counts >= 1 (should this be >=1 or >=2? It was inconsistent with the comments)
-    awk '$7 >= 1' "${sorted_pixels_file}" > "${pixels_dir}/${tissue}_gte1.pixels"
-}
-
-
-
-# =============================================================================
-# liftover deeploop files
-# Arguments:
-#   $1 - directory of deeploop files
-#   $2 - filename without extension
-#   $3 - directory of liftover and liftover chain
-#   $4 - tmp directory to process files
-# =============================================================================
-function _liftover_deeploop_bedpe () {
-
-    awk -v OFS='\t' '{print $1,$2,$3,NR}' $1/$2.pixels > $4/$2.pixels_1
-    awk -v OFS='\t' '{print $4,$5,$6,NR}' $1/$2.pixels > $4/$2.pixels_2
-
-    for file in pixels_1 pixels_2;
-    do
-        $3/liftOver \
-            $4/$2.${file} \
-            $3/hg19ToHg38.over.chain.gz \
-            $4/$2.${file}.hg38 \
-            $4/$2.${file}.unmapped
-
-        sort -k4,4 -o $4/$2.${file}.hg38 $4/$2.${file}.hg38
-    done
-}
-
-
-# =============================================================================
-# format loops and keep top N interactions
-# Arguments:
-#   $1 - tmp dir to process files
-#   $2 - filename without extension
-#   $3 - directory to store final files
-# =============================================================================
-function _format_deeploop_bedpe () {
-    join \
-        -j 4 \
-        -o 1.1,1.2,1.3,2.1,2.2,2.3 \
-        $1/$2.pixels_1.hg38 \
-        $1/$2.pixels_2.hg38 \
-        | sed 's/ /\t/g' \
-        | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6}' \
-        | sort --parallel=8 -S 50% -k1,1 -k2,2n \
-        > $3/${2}_pixels.hg38
-}
-
-
-# =============================================================================
-# cleanup files
-# Arguments:
-#   $2 - filename without extension
-#   $3 - tmp dir to process files
-# =============================================================================
-function _cleanup_liftover () {
-    # cleanup
-    for file in $1.pixels_1 $1.pixels_1.hg38 $1.pixels_1.unmapped $1.pixels_2 $1.pixels_2.hg38 $1.pixels_2.unmapped;
-    do
-        rm $2/$file
-    done
-}
-
-
-# =============================================================================
-# main function!
-# Arguments:
-#   $1 - filename without extension
-#   $2 - /path/to/pixels
-#   $3 - /path/to/resources
-#   $4 - final path to deposit chromatin contacts
-# =============================================================================
-deeploop_processing_main () {
-    # set vars
-    filename=$1
-    loop_dir=$2
-    resource_dir=$3
-    deposit_dir=$4
-    tmp_dir=${loop_dir}/tmp
-
-    # make directory for processing
-    if [ ! -d ${loop_dir}/tmp ]; then
-        mkdir ${loop_dir}/tmp
-    fi
-
-    _liftover_deeploop_bedpe \
-        $loop_dir \
-        $filename \
-        $resource_dir \
-        $tmp_dir
-
-    _format_deeploop_bedpe \
-        $tmp_dir \
-        $filename \
-        $deposit_dir
-
-    _cleanup_liftover \
-        $filename \
-        $tmp_dir
+    local output_dir="${working_dir}/top_n_pixels/gte1"
+    awk '$7 >= 1' "${sorted_pixels_file}" > "${output_dir}/${tissue}_gte1.pixels"
 }
 
 
@@ -214,7 +173,7 @@ deeploop_processing_main () {
 # filenames=(aorta hippocampus leftventricle liver lung pancreas psoas_muscle small_intestine)
 # for name in ${filenames[@]}; do
 # =============================================================================
-# format deeploop pixels for the cell-lines with top N txts available for download
+# format deeploop pixels for the cell-lines with already processed loops
 function _format_downloaded_deeploop () {
     base_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic"
     output_dir="${base_dir}/pixels"
@@ -235,25 +194,13 @@ function _format_downloaded_deeploop () {
     done
 }
 
-
+# run main function
 _extract_top_pixels \
     ${1} \
     /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic \
-    false
+    ${2} \
+    ${3} \
+    ${4}
 
 
-tissue_name=$(echo $1 | awk '{print tolower($0)}')
-for addendum in 1000000 2000000 3000000 4000000 5000000 10000000;
-do
-    echo "Processing ${name}_${addendum}..."
-    deeploop_processing_main \
-        ${tissue_name}_${addendum} \
-        /ocean/projects/bio210019p/stevesho/hic/top_pixels \
-        /ocean/projects/bio210019p/stevesho/resources \
-        /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deeploop_${addendum}
-done
-# done
-
-end=`date +%s`
-time=$((end-start))
-echo "Finished! in $(convertsecs $time)"
+echo "Finished in $(convertsecs "${SECONDS}")"
