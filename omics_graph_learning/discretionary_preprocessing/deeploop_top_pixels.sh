@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Scripts to retrieve top pixel contacts from enhanced, denoised hi-c data from
-# deeploop. Also convolves the matrix with a small Gaussian filter as an option.
+# Scripts to retrieve top pixel contacts from enhanced or denoised hi-c data from
+# deeploop.
 
 # """
 #

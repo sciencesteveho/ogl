@@ -65,3 +65,10 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+"""
+pixel_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/pixels
+for cell_line in k562 hepg2 nhek hmec; do
+    cat ${cell_line}/deeploop_output/*mapped | LC_ALL=C sort --parallel=12 -S 50% -k1,1 -k2,2n > ${pixel_dir}/${cell_line}.pixels
+done
+"""
