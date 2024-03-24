@@ -20,14 +20,18 @@ cat *overlap* | sort  -k1,1 -k2,2n -k3,3n -u > concatenated_overlapped_elements.
 #   $3 - 
 # =============================================================================
 function _liftover_19_to_38 () {
-    $1/liftOver \
-        $2/${3}.bed \
-        $1/hg19ToHg38.over.chain.gz \
-        $2/${3}._lifted_hg38.bed \
-        $2/${3}.unlifted
+    local liftover_dir="$1"
+    local output_dir="$2"
+    local file_name="$3"
+
+    ${liftover_dir}/liftOver \
+        ${output_dir}/${file_name}.bed \
+        ${liftover_dir}/hg19ToHg38.over.chain.gz \
+        ${output_dir}/${file_name}._lifted_hg38.bed \
+        ${output_dir}/${file_name}.unlifted
 
     # cleanup
-    rm $2/${3}.unlifted
+    rm ${output_dir}/${file_name}.unlifted
 }
 
 # =============================================================================
