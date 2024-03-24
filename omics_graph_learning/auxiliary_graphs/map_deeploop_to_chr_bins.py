@@ -38,7 +38,7 @@ def main() -> None:
 
     # create a dictionary from the map file
     anchor_to_location = {}
-    with open(map_file_path, "r") as map_file:
+    with open(map_file, "r") as map_file:
         for line in map_file:
             chrom, start, end, anchor = line.strip().split()
             anchor_to_location[anchor] = (chrom, start, end)
