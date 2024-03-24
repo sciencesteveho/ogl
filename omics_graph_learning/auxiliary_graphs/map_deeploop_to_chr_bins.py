@@ -22,7 +22,7 @@ def main() -> None:
         "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/process_deeploop/scripts"
     )
 
-    map_file = map_file_path / args.chr / ".bed"
+    map_file = map_file_path / f"{args.chr}.bed"
     anchor_file_path = (
         working_dir
         / args.cell_line
