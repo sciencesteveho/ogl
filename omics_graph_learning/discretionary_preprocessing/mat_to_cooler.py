@@ -105,9 +105,6 @@ def main(chromsize_file: str, binsize: int) -> None:
     tmp_dir = f"{working_dir}/tmp"
     extension = "qq.mat" if args.qq else "mat"
 
-    with contextlib.suppress(FileExistsError):
-        os.makedirs(f"{args.savedir}/chrs")
-
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
