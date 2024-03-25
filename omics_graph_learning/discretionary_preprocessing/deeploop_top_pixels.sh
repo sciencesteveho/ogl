@@ -201,19 +201,19 @@ For posterity, we ran this script with the following:
 #sbatch top_pixels.sh tissue extract-cooler zero-index liftover
 #bash /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing/deeploop_top_pixels.sh aorta false false true
 
-sbatch top_pixels.sh aorta false false true
-sbatch top_pixels.sh gm12868 false true true
-sbatch top_pixels.sh h1 false true true
-sbatch top_pixels.sh hepg2 false true false
-sbatch top_pixels.sh hippocampus false false true
-sbatch top_pixels.sh hmec false true false
-sbatch top_pixels imr90 false true true
-sbatch top_pixels.sh k562 false true false
-sbatch top_pixels.sh left_ventricle false false true
-sbatch top_pixels.sh liver false false true
-sbatch top_pixels.sh lung false false true
-sbatch top_pixels.sh nhek false true false
-sbatch top_pixels.sh pancreas false false true
-sbatch top_pixels.sh skeletal_muscle false false true
-sbatch top_pixels.sh small_intestine false false true
+# sbatch top_pixels.sh aorta false false true
+# sbatch top_pixels.sh gm12868 false true true
+# sbatch top_pixels.sh h1 false true true
+# sbatch top_pixels.sh hepg2 false true false
+# sbatch top_pixels.sh hippocampus false false true
+# sbatch top_pixels.sh hmec false true false
+# sbatch top_pixels imr90 false true true
+# sbatch top_pixels.sh k562 false true false
+# sbatch top_pixels.sh left_ventricle false false true
+# sbatch top_pixels.sh liver false false true
+# sbatch top_pixels.sh lung false false true
+# sbatch top_pixels.sh nhek false true false
+# sbatch top_pixels.sh pancreas false false true
+# sbatch top_pixels.sh skeletal_muscle false false true
+# sbatch top_pixels.sh small_intestine false false true
 """
