@@ -65,7 +65,7 @@ function _liftover_deeploop_bedpe () {
     local input_file=$1  # directory of deeploop files
     local resource_dir=$2  # directory of liftover and liftover chain
     local output_dir=$3  # directory to place processed file
-    local chain_file="${resource_dir}/hg19ToHg38.over.chain.gz"
+    local chain_file="${resource_dir}/hg19ToHg38.over.chain"
 
     local tissue_file=$(basename "${input_file}")
     local input_dir=$(dirname "${input_file}")
