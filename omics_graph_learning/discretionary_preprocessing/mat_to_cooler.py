@@ -45,7 +45,7 @@ def _load_matrix(matrix_file: str) -> np.ndarray:
     """
     matrix = np.loadtxt(matrix_file)
     assert matrix.shape[0] == matrix.shape[1]  # check for square matrix
-    return np.loadtxt(matrix_file)
+    return matrix
 
 
 def _chr_matrix_to_cooler(
@@ -109,7 +109,7 @@ def main(chromsize_file: str, binsize: int) -> None:
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
-        if chrom != "chrY":
+        if chrom not in ["chrX", "chrY"]:
             matrix_file = (
                 f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
             )
@@ -125,7 +125,7 @@ def main(chromsize_file: str, binsize: int) -> None:
     cooler.merge_coolers(
         output_uri=f"{tmp_dir}/{args.out_prefix}.cool",
         input_uris=[f"{tmp_dir}/{args.tissue}_{chrom}.cool" for chrom in chrs],
-        mergebuf=20000000,
+        mergebuf=10000000,
     )
 
 
