@@ -68,6 +68,7 @@ function _liftover_deeploop_bedpe () {
     local chain_file="${resource_dir}/hg19ToHg38.over.chain.gz"
 
     local tissue_file=$(basename "${input_file}")
+    local input_dir=$(dirname "${input_file}")
 
     mkdir -p "${output_dir}"
 
@@ -83,12 +84,12 @@ function _liftover_deeploop_bedpe () {
     # liftover each anchor
     for file in _1 _2; do
         "${resource_dir}/liftOver" \
-            "${output_dir}/${tissue_file}.${file}" \
+            "${output_dir}/${tissue_file}${file}" \
             "${chain_file}" \
-            "${output_dir}/${tissue_file}.${file}.hg38" \
-            "${output_dir}/${tissue_file}.${file}.unmapped"
+            "${output_dir}/${tissue_file}${file}.hg38" \
+            "${output_dir}/${tissue_file}${file}.unmapped"
 
-        sort -k5,5 -o "${output_dir}/${tissue_file}.${file}.hg38" "${output_dir}/${tissue_file}.${file}.hg38"
+        sort -k5,5 -o "${output_dir}/${tissue_file}${file}.hg38" "${output_dir}/${tissue_file}.${file}.hg38"
     done
 
     # join the lifted files
@@ -198,6 +199,7 @@ echo "Finished in $(convertsecs "${SECONDS}")"
 """
 For posterity, we ran this script with the following:
 #sbatch top_pixels.sh tissue extract-cooler zero-index liftover
+#bash /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing/deeploop_top_pixels.sh aorta false false true
 
 sbatch top_pixels.sh aorta false false true
 sbatch top_pixels.sh gm12868 false true true
