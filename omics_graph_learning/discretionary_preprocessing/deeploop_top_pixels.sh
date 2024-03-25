@@ -43,20 +43,17 @@ function _download_loops () {
 # Format deeploop pixels to bedpe for downloaded contacts
 # =============================================================================
 function _deeploop_txt_to_bedpe () {
-    local input_dir=$1  # directory of deeploop files
-    local input_prefix=$2  # filename of downloaded deeploop contacts
-    local output_dir=$3  # directory to place processed file
-    local output_prefix=$4  # filename without extension of processed file
+    local input_dir=$1
+    local input_prefix=$2
+    local output_dir=$3
+    local output_prefix=$4
 
-    # Using the local input/output directories and prefixes
-    sed \
-        -e 's/\(chr[0-9XY]*\):\([0-9]*\)-\([0-9]*\)\t/\1\t\2\t\3\t/g' \
-        -e 's/\(chr[0-9XY]*\):\([0-9]*\)-\([0-9]*\)$/\1\t\2\t\3/g' \
-        "$input_dir/$input_prefix".txt \
-        | cut -f1,2,3,4,5,6,9 \
-        > "$output_dir/$output_prefix".pixels
+    awk '{
+        split($1, array1, "[:-]");
+        split($2, array2, "[:-]");
+        print array1[1], array1[2], array1[3], array2[1], array2[2], array2[3], $4
+    }' "$input_dir/$input_prefix.txt" > "$output_dir/$output_prefix.pixels"
 }
-
 
 # =============================================================================
 # Liftover deeploop files
