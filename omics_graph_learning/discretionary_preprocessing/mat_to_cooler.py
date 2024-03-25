@@ -66,7 +66,7 @@ def _chr_matrix_to_cooler(
         bins[bins["chrom"] == chrom], matrix, chunksize=10000000
     )
     cooler.create.create_cooler(
-        uri=f"{outfile}.cool",
+        cool_uri=f"{outfile}.cool",
         bins=bins[bins["chrom"] == chrom],
         pixels=pixels,
         ordered=True,
