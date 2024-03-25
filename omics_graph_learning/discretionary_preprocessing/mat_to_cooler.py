@@ -129,7 +129,7 @@ def main() -> None:
             offset += len(bins)
             all_bins.append(bins)
 
-    all_bins = pd.concat(all_bins, ignore_index=True)
+    all_bins_concat = pd.concat(all_bins, ignore_index=True)
     all_pixels = []
     for chrom in chrs:
         clr = cooler.Cooler(f"{tmp_dir}/{args.tissue}_{chrom}.cool")
@@ -142,7 +142,7 @@ def main() -> None:
 
         all_pixels.append(pixels)
 
-    all_pixels = pd.concat(all_pixels, ignore_index=True)
+    all_pixels_concat = pd.concat(all_pixels, ignore_index=True)
     # merge all coolers from sample
     # cooler.merge_coolers(
     #     output_uri=f"{tmp_dir}/{args.out_prefix}.cool",
@@ -151,8 +151,8 @@ def main() -> None:
     # )
     clr = cooler.create.create_cooler(
         f"{tmp_dir}/{args.out_prefix}.cool",
-        bins=all_bins,
-        pixels=all_pixels,
+        bins=all_bins_concat,
+        pixels=all_pixels_concat,
         ordered=True,
     )
 
