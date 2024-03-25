@@ -108,16 +108,17 @@ def main(chromsize_file: str, binsize: int) -> None:
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
-        matrix_file = (
-            f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
-        )
-        _chr_matrix_to_cooler(
-            matrix_file=matrix_file,
-            chrom=chrom,
-            outfile=f"{tmp_dir}/{args.tissue}_{chrom}",
-            bins=bins,
-        )
-        chrs.append(chrom)
+        if chrom != "chrY":
+            matrix_file = (
+                f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
+            )
+            _chr_matrix_to_cooler(
+                matrix_file=matrix_file,
+                chrom=chrom,
+                outfile=f"{tmp_dir}/{args.tissue}_{chrom}",
+                bins=bins,
+            )
+            chrs.append(chrom)
 
     # merge all coolers from sample
     cooler.merge_coolers(
