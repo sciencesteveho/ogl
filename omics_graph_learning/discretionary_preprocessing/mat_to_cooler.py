@@ -48,6 +48,59 @@ def _load_matrix(matrix_file: str) -> np.ndarray:
     return matrix
 
 
+def process_chromosome_matrix(
+    chrom: str, matrix_file: str, bins: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Process a single chromosome matrix and return contact data.
+
+    Args:
+        chrom: Chromosome identifier corresponding to the matrix.
+        matrix_file: The path to the matrix file for the chromosome.
+        bins: DataFrame containing the bins across all chromosomes.
+
+    Returns:
+        DataFrame containing contact data for the specific chromosome.
+    """
+    # Load matrix
+    matrix = _load_matrix(matrix_file)
+
+    # Get bin id offsets for this chromosome
+    offset = bins.index[bins["chrom"] == chrom].values[0]
+
+    # Create non-zero contact pairs from matrix
+    bin1, bin2 = np.nonzero(matrix)
+    counts = matrix[bin1, bin2]
+    return pd.DataFrame(
+        {"bin1_id": bin1 + offset, "bin2_id": bin2 + offset, "count": counts}
+    )
+
+
+def create_cooler_file(
+    chromsize_file: str, matrix_files: dict, binsize: int, output_cool_uri: str
+) -> None:
+    """
+    Create a cooler file given chromosome sizes and individual chromosome matrix files.
+
+    Args:
+        chromsize_file: Path to the chromosome size file.
+        matrix_files: Dictionary of chromosome to matrix file paths.
+        binsize: The size of the bins to be used.
+        output_cool_uri: Path where the cooler file will be saved.
+    """
+    # Get bins
+    bins = _get_bins(chromsize_file, binsize)
+
+    # Process each chromosome matrix file
+    contacts = pd.DataFrame(columns=["bin1_id", "bin2_id", "count"])
+    for chrom, matrix_file in matrix_files.items():
+        chrom_contacts = process_chromosome_matrix(chrom, matrix_file, bins)
+        contacts = pd.concat([contacts, chrom_contacts], ignore_index=True)
+
+    # Create cooler file
+    cooler.create_cooler(cool_uri=output_cool_uri, bins=bins, pixels=contacts)
+
+
 def _chr_matrix_to_cooler(
     matrix_file: str,
     chrom: str,
@@ -73,7 +126,7 @@ def _chr_matrix_to_cooler(
     )
 
 
-def main(chromsize_file: str, binsize: int) -> None:
+def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -96,41 +149,26 @@ def main(chromsize_file: str, binsize: int) -> None:
     )
     args = parser.parse_args()
 
-    # get bins
-    bins = _get_bins(
-        chromsize_file="/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt",
-        binsize=40000,
-    )
-
     working_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/coolers"
     tmp_dir = f"{working_dir}/tmp"
     extension = "qq.mat" if args.qq else "mat"
+    chromsize_file = (
+        "/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt"
+    )
+    binsize = 40000
 
-    # convert to 40kb cooler for each chromosome
-    chrs = []
-    for chrom in bins["chrom"].unique():
-        if chrom not in ["chrX", "chrY"]:
-            matrix_file = (
-                f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
-            )
-            _chr_matrix_to_cooler(
-                matrix_file=matrix_file,
-                chrom=chrom,
-                outfile=f"{tmp_dir}/{args.tissue}_{chrom}",
-                bins=bins,
-            )
-            chrs.append(chrom)
-
-    # merge all coolers from sample
-    cooler.merge_coolers(
-        output_uri=f"{tmp_dir}/{args.out_prefix}.cool",
-        input_uris=[f"{tmp_dir}/{args.tissue}_{chrom}.cool" for chrom in chrs],
-        mergebuf=10000000,
+    matrix_files = {
+        f"chr{chrom}": f"{working_dir}/primary_cohort/{args.tissue}.nor.chr{chrom}.{extension}"
+        for chrom in range(1, 23)
+    }
+    output_cool_uri = f"{tmp_dir}/{args.out_prefix}.cool"
+    create_cooler_file(
+        chromsize_file=chromsize_file,
+        matrix_files=matrix_files,
+        binsize=binsize,
+        output_cool_uri=output_cool_uri,
     )
 
 
 if __name__ == "__main__":
-    main(
-        chromsize_file="/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt",
-        binsize=40000,
-    )
+    main()
