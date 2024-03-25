@@ -109,7 +109,7 @@ def main() -> None:
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
-        if chrom not in ["chrX", "chrY"]
+        if chrom not in ["chrX", "chrY"]:
             matrix_file = (
                 f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
             )
