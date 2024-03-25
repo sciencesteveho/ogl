@@ -158,7 +158,7 @@ function _extract_top_pixels () {
     local gte1_dir="${working_dir}/top_n_pixels/gte1"
     mkdir -p "${gte1_dir}"
     local gte1_file="${gte1_dir}/${tissue}_gte1.pixels"
-    awk '$7 >= 1' "${sorted_pixels_file}" > "${gte1_file}"
+    awk '$7 >= 2' "${sorted_pixels_file}" > "${gte2_file}"
 }
 
 
