@@ -64,16 +64,16 @@ echo "Python script exit status: $?"
 # # =============================================================================
 # # Liftover cooler to hg38
 # # =============================================================================
-# HiCLift \
-#     --input ${tmp_dir}/${tissue}.cool \
-#     --input-format cooler \
-#     --out-pre ${working_dir}/${tissue}_hg38 \
-#     --output-format cool \
-#     --chain-file ${resource_dir}/hg19ToHg38.over.chain \
-#     --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
-#     --in-assembly hg19 \
-#     --out-assembly hg38 \
-#     --logFile ${tmp_dir}/hiclift.log
+HiCLift \
+    --input ${tmp_dir}/${tissue}.cool \
+    --input-format cooler \
+    --out-pre ${working_dir}/${tissue}_hg38 \
+    --output-format cool \
+    --chain-file ${resource_dir}/hg19ToHg38.over.chain \
+    --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
+    --in-assembly hg19 \
+    --out-assembly hg38 \
+    --logFile ${tmp_dir}/hiclift.log
 
 
 # # =============================================================================
