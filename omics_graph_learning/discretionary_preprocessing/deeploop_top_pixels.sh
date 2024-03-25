@@ -71,16 +71,16 @@ function _liftover_deeploop_bedpe () {
     mkdir -p "${output_dir}"
 
     # split bedpe into two files for lifting
-    local lifted_1="${output_dir}/${tissue_file}._1.hg38"
-    local lifted_2="${output_dir}/${tissue_file}._2.hg38"
-    local unmapped_1="${output_dir}/${tissue_file}._1.unmapped"
-    local unmapped_2="${output_dir}/${tissue_file}._2.unmapped"
+    local lifted_1="${output_dir}/${tissue_file}_1.hg38"
+    local lifted_2="${output_dir}/${tissue_file}_2.hg38"
+    local unmapped_1="${output_dir}/${tissue_file}_1.unmapped"
+    local unmapped_2="${output_dir}/${tissue_file}_2.unmapped"
 
-    awk -v OFS='\t' '{print $1,$2,$3,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}._1"
-    awk -v OFS='\t' '{print $4,$5,$6,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}._2"
+    awk -v OFS='\t' '{print $1,$2,$3,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}_1"
+    awk -v OFS='\t' '{print $4,$5,$6,$7,NR}' "${input_dir}/${tissue_file}" > "${output_dir}/${tissue_file}_2"
 
     # liftover each anchor
-    for file in ._1 ._2; do
+    for file in _1 _2; do
         "${resource_dir}/liftOver" \
             "${output_dir}/${tissue_file}.${file}" \
             "${chain_file}" \
@@ -138,14 +138,12 @@ function _extract_top_pixels () {
     fi
 
     if [[ "$liftover" == true ]]; then
-        local lifted_file="${intermediate_file}.hg38"
         _liftover_deeploop_bedpe \
             "${pixels_dir}" \
-            "$(basename "${intermediate_file}")" \
+            "${intermediate_file}" \
             "${liftover_resources_dir}" \
             "${tmp_dir}"
-        mv "${tmp_dir}/$(basename "${lifted_file}")" "${lifted_file}"
-        intermediate_file="${lifted_file}"
+        local intermediate_file+="${lifted_file}".hg38
     fi
 
     # Sort by e/o ratio to extract top pixels
@@ -198,7 +196,9 @@ _extract_top_pixels \
 echo "Finished in $(convertsecs "${SECONDS}")"
 
 """
+For posterity, we ran this script with the following:
 #sbatch top_pixels.sh tissue extract-cooler zero-index liftover
+
 sbatch top_pixels.sh aorta false false true
 sbatch top_pixels.sh gm12868 false true true
 sbatch top_pixels.sh h1 false true true
