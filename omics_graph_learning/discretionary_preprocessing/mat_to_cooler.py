@@ -67,9 +67,9 @@ def _chr_matrix_to_cooler(
     )
     cooler.create.create_cooler(
         cool_uri=f"{outfile}.cool",
-        bins=bins[bins["chrom"] == chrom],
+        bins=bins,
         pixels=pixels,
-        ordered=True,
+        assembly="hg19",
     )
 
 
