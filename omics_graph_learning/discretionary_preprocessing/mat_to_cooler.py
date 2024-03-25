@@ -104,9 +104,6 @@ def main(chromsize_file: str, binsize: int) -> None:
     working_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/coolers"
     tmp_dir = f"{working_dir}/tmp"
     extension = "qq.mat" if args.qq else "mat"
-    matrix_file = (
-        f"{working_dir}/primary_cohort/{args.tissue}.nor.{args.chrom}.{extension}"
-    )
 
     with contextlib.suppress(FileExistsError):
         os.makedirs(f"{args.savedir}/chrs")
@@ -114,6 +111,9 @@ def main(chromsize_file: str, binsize: int) -> None:
     # convert to 40kb cooler for each chromosome
     chrs = []
     for chrom in bins["chrom"].unique():
+        matrix_file = (
+            f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
+        )
         _chr_matrix_to_cooler(
             matrix_file=matrix_file,
             chrom=chrom,

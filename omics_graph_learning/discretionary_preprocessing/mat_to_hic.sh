@@ -44,7 +44,7 @@ tmp_dir="${working_dir}/tmp"
 declare -A tissue_names
 
 # Assign values to the array
-tissue_names[right_ventricle]="RV"
+tissue_names[aorta]="AO"
 tissue_names[hippocampus]="HC"
 tissue_names[lung]="LG2"
 tissue_names[pancreas]="PA2"
@@ -56,47 +56,49 @@ tissue_names[left_ventricle]="LV"
 # =============================================================================
 # Convert individual chr matrices to unified cooler
 # =============================================================================
-python -u ${src_dir}/mat_to_cooler.py -t "${tissue_names[$tissue]}" -o ${tissue}
+echo "Tissue: $tissue"
+echo "Tissue name from array: ${tissue_names[$tissue]}"
+python ${src_dir}/mat_to_cooler.py -t "${tissue_names[$tissue]}" -o ${tissue}
+echo "Python script exit status: $?"
+
+# # =============================================================================
+# # Liftover cooler to hg38
+# # =============================================================================
+# HiCLift \
+#     --input ${tmp_dir}/${tissue}.cool \
+#     --input-format cooler \
+#     --out-pre ${working_dir}/${tissue}_hg38 \
+#     --output-format cool \
+#     --chain-file ${resource_dir}/hg19ToHg38.over.chain \
+#     --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
+#     --in-assembly hg19 \
+#     --out-assembly hg38 \
+#     --logFile ${tmp_dir}/hiclift.log
 
 
-# =============================================================================
-# Liftover cooler to hg38
-# =============================================================================
-HiCLift \
-    --input ${tmp_dir}/${tissue}.cool \
-    --input-format cooler \
-    --out-pre ${working_dir}/${tissue}_hg38 \
-    --output-format cool \
-    --chain-file ${resource_dir}/hg19ToHg38.over.chain \
-    --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
-    --in-assembly hg19 \
-    --out-assembly hg38 \
-    --logFile ${tmp_dir}/hiclift.log
+# # =============================================================================
+# # Convert cooler to hic
+# # Adapted from Charlotte West: https://www.biostars.org/p/360254/
+# # =============================================================================
+# conda activate /jet/home/stevesho/.conda/envs/deeploop
+# function cool_to_hic () {
+#     local tissue=$1
+#     local savedir=$final_dir  # Assuming savedir should point to final_dir.
 
+#     # Convert cooler to ginteractions format
+#     hicConvertFormat -m "${working_dir}/${tissue}_hg38.cool" \
+#         --outFileName "${savedir}/${tissue}_hg38.ginteractions" \
+#         --inputFormat cool \
+#         --outputFormat ginteractions
 
-# =============================================================================
-# Convert cooler to hic
-# Adapted from Charlotte West: https://www.biostars.org/p/360254/
-# =============================================================================
-conda activate /jet/home/stevesho/.conda/envs/deeploop
-function cool_to_hic () {
-    local tissue=$1
-    local savedir=$final_dir  # Assuming savedir should point to final_dir.
+#     # Add dummy variables
+#     awk -F "\t" '{print 0, $1, $2, 0, 0, $4, $5, 1, $7}' "${savedir}/${tissue}_hg38.ginteractions" > "${savedir}/${tissue}_hg38.ginteractions.short"
 
-    # Convert cooler to ginteractions format
-    hicConvertFormat -m "${working_dir}/${tissue}_hg38.cool" \
-        --outFileName "${savedir}/${tissue}_hg38.ginteractions" \
-        --inputFormat cool \
-        --outputFormat ginteractions
+#     # Sort by chromosomes
+#     sort -k2,2d -k6,6d "${savedir}/${tissue}_hg38.ginteractions.short" > "${savedir}/${tissue}_hg38.ginteractions.short.sorted"
 
-    # Add dummy variables
-    awk -F "\t" '{print 0, $1, $2, 0, 0, $4, $5, 1, $7}' "${savedir}/${tissue}_hg38.ginteractions" > "${savedir}/${tissue}_hg38.ginteractions.short"
+#     # Convert ginteractions to hic file using the juicer pre command
+#     $run_juicer pre -r 40000 "${savedir}/${tissue}_hg38.ginteractions.short.sorted" "${savedir}/${tissue}.hic" "${hg38_chrom_sizes}"
+# }
 
-    # Sort by chromosomes
-    sort -k2,2d -k6,6d "${savedir}/${tissue}_hg38.ginteractions.short" > "${savedir}/${tissue}_hg38.ginteractions.short.sorted"
-
-    # Convert ginteractions to hic file using the juicer pre command
-    $run_juicer pre -r 40000 "${savedir}/${tissue}_hg38.ginteractions.short.sorted" "${savedir}/${tissue}.hic" "${hg38_chrom_sizes}"
-}
-
-cool_to_hic ${tissue}
+# cool_to_hic ${tissue}
