@@ -144,7 +144,7 @@ function _extract_top_pixels () {
             "${intermediate_file}" \
             "${liftover_resources_dir}" \
             "${tmp_dir}"
-        local intermediate_file+="${lifted_file}".hg38
+        local intermediate_file+=".hg38"
     fi
 
     # Sort by e/o ratio to extract top pixels
