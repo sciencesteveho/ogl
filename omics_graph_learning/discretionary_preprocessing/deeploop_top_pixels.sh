@@ -50,8 +50,8 @@ function _deeploop_txt_to_bedpe () {
 
     # Using the local input/output directories and prefixes
     sed \
-        -e 's/:/\t/g' \
-        -e 's/-/\t/g' \
+        -e 's/\(chr[0-9XY]*\):\([0-9]*\)-\([0-9]*\)\t/\1\t\2\t\3\t/g' \
+        -e 's/\(chr[0-9XY]*\):\([0-9]*\)-\([0-9]*\)$/\1\t\2\t\3/g' \
         "$input_dir/$input_prefix".txt \
         | cut -f1,2,3,4,5,6,9 \
         > "$output_dir/$output_prefix".pixels
@@ -152,11 +152,15 @@ function _extract_top_pixels () {
     
     local thresholds=(50000 100000 150000 200000 300000 500000 1000000)
     for threshold in "${thresholds[@]}"; do
-        local top_n_file="${pixels_dir}/${tissue}_${threshold}.pixels"
+        local top_n_dir="${working_dir}/top_n_pixels/${threshold}"
+        mkdir -p ${top_n_dir}
+        local top_n_file="${top_n_dir}/${tissue}_${threshold}.pixels"
         head -n "${threshold}" "${sorted_pixels_file}" > "${top_n_file}"
     done
 
-    local gte1_file="${pixels_dir}/${tissue}_gte1.pixels"
+    local gte1_dir="${working_dir}/top_n_pixels/gte1"
+    mkdir -p "${gte1_dir}"
+    local gte1_file="${gte1_dir}/${tissue}_gte1.pixels"
     awk '$7 >= 1' "${sorted_pixels_file}" > "${gte1_file}"
 }
 
