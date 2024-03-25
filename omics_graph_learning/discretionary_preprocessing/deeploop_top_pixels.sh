@@ -140,7 +140,6 @@ function _extract_top_pixels () {
 
     if [[ "$liftover" == true ]]; then
         _liftover_deeploop_bedpe \
-            "${pixels_dir}" \
             "${intermediate_file}" \
             "${liftover_resources_dir}" \
             "${tmp_dir}"
