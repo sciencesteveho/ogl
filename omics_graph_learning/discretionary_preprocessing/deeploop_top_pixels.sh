@@ -62,11 +62,12 @@ function _deeploop_txt_to_bedpe () {
 # Liftover deeploop files
 # =============================================================================
 function _liftover_deeploop_bedpe () {
-    local input_dir=$1  # directory of deeploop files
-    local tissue_file=$2  # filename of deeploop contacts
-    local resource_dir=$3  # directory of liftover and liftover chain
-    local output_dir=$4  # directory to place processed file
+    local input_file=$1  # directory of deeploop files
+    local resource_dir=$2  # directory of liftover and liftover chain
+    local output_dir=$3  # directory to place processed file
     local chain_file="${resource_dir}/hg19ToHg38.over.chain.gz"
+
+    local tissue_file=$(basename "${input_file}")
 
     mkdir -p "${output_dir}"
 
