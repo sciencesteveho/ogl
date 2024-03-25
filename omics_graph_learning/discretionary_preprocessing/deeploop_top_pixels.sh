@@ -48,10 +48,10 @@ function _deeploop_txt_to_bedpe () {
     local output_dir=$3
     local output_prefix=$4
 
-    awk '{
+    awk -v OFS="\t" '{
         split($1, array1, "[:-]");
         split($2, array2, "[:-]");
-        print array1[1], array1[2], array1[3], array2[1], array2[2], array2[3], $4
+        print array1[1], array1[2], array1[3], array2[1], array2[2], array2[3], $5
     }' "$input_dir/$input_prefix.txt" > "$output_dir/$output_prefix.pixels"
 }
 
@@ -197,8 +197,8 @@ _extract_top_pixels \
 
 echo "Finished in $(convertsecs "${SECONDS}")"
 
-"""
-For posterity, we ran this script with the following:
+
+# For posterity, we ran this script with the following:
 #sbatch top_pixels.sh tissue extract-cooler zero-index liftover
 #bash /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing/deeploop_top_pixels.sh aorta false false true
 
@@ -217,4 +217,3 @@ For posterity, we ran this script with the following:
 # sbatch top_pixels.sh pancreas false false true
 # sbatch top_pixels.sh skeletal_muscle false false true
 # sbatch top_pixels.sh small_intestine false false true
-"""
