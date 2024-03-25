@@ -5,6 +5,20 @@
 
 
 # =============================================================================
+# Setting up variables to track time
+# =============================================================================
+SECONDS=0
+
+function convertsecs() {
+    local total_seconds=$1
+    local hours=$((total_seconds / 3600))
+    local minutes=$(( (total_seconds % 3600) / 60 ))
+    local seconds=$((total_seconds % 60))
+    printf "%02d:%02d:%02d\n" $hours $minutes $seconds
+}
+
+
+# =============================================================================
 # Code was used to sum all overlaps together, only keep unique entries based on chr/start/end
 # =============================================================================
 cat *overlap* | sort  -k1,1 -k2,2n -k3,3n -u > concatenated_overlapped_elements.bed
@@ -38,19 +52,13 @@ function _liftover_19_to_38 () {
 # =============================================================================
 # Function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
 # Done for both enhancers and promoters.
-# Arguments:
-#   $1 - path/to/your working directory
-#   $2 - path/to/where your bedfiles are stored
-#   $3 - name of epimap masterlist file
-#   $4 - name of encode regulatory element file
-#   $5 - naming convention for the regulatory element
 # =============================================================================
 function _overlap_regulatory_regions () {
-    local working_dir=$1
-    local bedfiles_dir=$2
-    local epimap_masterlist_file=$3
-    local encode_regulatory_element_file=$4
-    local regulatory_element_naming=$5
+    local working_dir=$1  # path/to/your working directory
+    local bedfiles_dir=$2  # path/to/where your bedfiles are stored
+    local epimap_masterlist_file=$3  # name of epimap masterlist file
+    local encode_regulatory_element_file=$4  # name of encode regulatory element file
+    local regulatory_element_naming=$5  # naming convention for the regulatory element
 
     _liftover_19_to_38 \
         ${working_dir} \
@@ -576,3 +584,5 @@ main \
     var2 \
     var3 \
     var4 
+
+echo "Finished in $(convertsecs "${SECONDS}")"
