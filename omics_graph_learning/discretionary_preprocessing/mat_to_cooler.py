@@ -89,7 +89,8 @@ def main(chromsize_file: str, binsize: int) -> None:
         default=False,
     )
     parser.add_argument(
-        "-o" "--out_prefix",
+        "-o",
+        "--out_prefix",
         type=str,
         help="Prefix to name output files",
     )
