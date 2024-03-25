@@ -107,6 +107,8 @@ def main() -> None:
     extension = "qq.mat" if args.qq else "mat"
 
     # convert to 40kb cooler for each chromosome
+    offset = 0
+    all_bins = []
     chrs = []
     for chrom in bins["chrom"].unique():
         if chrom not in ["chrX", "chrY"]:
@@ -120,12 +122,37 @@ def main() -> None:
                 bins=bins,
             )
             chrs.append(chrom)
+            clr = cooler.Cooler(f"{tmp_dir}/{args.tissue}_{chrom}.cool")
+            bins = clr.bins()[:]
+            bins["start"] = offset
+            offset += len(bins)
+            all_bins.append(bins)
 
+    all_bins = pd.concat(all_bins, ignore_index=True)
+    all_pixels = []
+    for chrom in chrs:
+        clr = cooler.Cooler(f"{tmp_dir}/{args.tissue}_{chrom}.cool")
+        pixels = clr.pixels()[:]
+        bins = clr.bins()[:]
+
+        bin_offset = bins["start_id"].iloc[0]
+        pixels["bin1_id"] += bin_offset
+        pixels["bin2_id"] += bin_offset
+
+        all_pixels.append(pixels)
+
+    all_pixels = pd.concat(all_pixels, ignore_index=True)
     # merge all coolers from sample
-    cooler.merge_coolers(
-        output_uri=f"{tmp_dir}/{args.out_prefix}.cool",
-        input_uris=[f"{tmp_dir}/{args.tissue}_{chrom}.cool" for chrom in chrs],
-        mergebuf=10000000,
+    # cooler.merge_coolers(
+    #     output_uri=f"{tmp_dir}/{args.out_prefix}.cool",
+    #     input_uris=[f"{tmp_dir}/{args.tissue}_{chrom}.cool" for chrom in chrs],
+    #     mergebuf=10000000,
+    # )
+    clr = cooler.create.create_cooler(
+        f"{tmp_dir}/{args.out_prefix}.cool",
+        bins=all_bins,
+        pixels=all_pixels,
+        ordered=True,
     )
 
 
