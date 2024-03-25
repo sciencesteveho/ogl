@@ -122,6 +122,7 @@ def main() -> None:
                 bins=bins,
             )
             chrs.append(chrom)
+
             clr = cooler.Cooler(f"{tmp_dir}/{args.tissue}_{chrom}.cool")
             bins = clr.bins()[:]
             bins["start"] = offset
