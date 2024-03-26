@@ -181,7 +181,7 @@ def main() -> None:
 
     cooler.create_cooler(
         cool_uri=f"{tmp_dir}/{args.out_prefix}.cool",
-        bins=bins[bins["chrom"]],
+        bins=bins,
         pixels=all_pixels_df,
         assembly="hg19",
         dtypes={"count": np.int64},
