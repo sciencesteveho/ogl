@@ -131,7 +131,7 @@ def main() -> None:
     for chrom in bins["chrom"].unique():
         if chrom not in ["chrX", "chrY"]:
             matrix_file = (
-                f"{working_dir}/primary_cohort/{args.tissue}.{chrom}.{extension}"
+                f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
             )
             matrix = _load_matrix(matrix_file=matrix_file)
 
