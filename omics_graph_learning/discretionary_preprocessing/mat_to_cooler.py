@@ -128,7 +128,7 @@ def main() -> None:
 
     # chrs = []
     all_pixels = []
-    for chrom in chromsizes["chr"]:
+    for chrom in bins["chr"].unique():
         if chrom not in ["chrX", "chrY"]:
             matrix_file = (
                 f"{working_dir}/primary_cohort/{args.tissue}.{chrom}.{extension}"
