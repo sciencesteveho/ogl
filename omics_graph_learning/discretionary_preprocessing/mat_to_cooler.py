@@ -129,7 +129,7 @@ def main() -> None:
     # chrs = []
     all_pixels = []
     for chrom in bins["chrom"].unique():
-        if chrom not in ["chrX", "chrY"]:
+        if chrom not in ["chrX", "chrY", "chrM"]:
             matrix_file = (
                 f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
             )
