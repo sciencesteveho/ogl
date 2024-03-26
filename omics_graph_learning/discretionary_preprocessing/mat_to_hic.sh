@@ -30,6 +30,7 @@ tissue=$1
 juicer=/ocean/projects/bio210019p/stevesho/hic/juicer_tools.3.0.0.jar
 run_juicer="java -Xms512m -Xmx2048m -jar ${juicer}"
 hg38_chrom_sizes=/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
+hg19_chrom_sizes=/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt
 src_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
 base_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic"
 resource_dir="/ocean/projects/bio210019p/stevesho/resources"
@@ -63,44 +64,43 @@ echo "Python script exit status: $?"
 # =============================================================================
 # Liftover cooler to hg38
 # =============================================================================
-HiCLift \
-    --input ${tmp_dir}/${tissue}.cool \
-    --input-format cooler \
-    --out-pre ${working_dir}/${tissue}_hg38 \
-    --output-format hic \
-    --chain-file ${resource_dir}/hg19ToHg38.over.chain \
-    --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
-    --in-assembly hg19 \
-    --out-assembly hg38 \
-    --memory 28G \
-    --nproc 12 \
-    --logFile ${tmp_dir}/hiclift.log
+# HiCLift \
+#     --input ${tmp_dir}/${tissue}.cool \
+#     --input-format cooler \
+#     --out-pre ${working_dir}/${tissue}_hg38 \
+#     --output-format hic \
+#     --chain-file ${resource_dir}/hg19ToHg38.over.chain \
+#     --out-chromsizes ${resource_dir}/hg38.chrom.sizes.autosomes.txt \
+#     --in-assembly hg19 \
+#     --out-assembly hg38 \
+#     --memory 28G \
+#     --nproc 12 \
+#     --logFile ${tmp_dir}/hiclift.log
 
-echo "Finished liftover"
+# echo "Finished liftover"
 
-# # # # =============================================================================
-# # # # Convert cooler to hic
-# # # # Adapted from Charlotte West: https://www.biostars.org/p/360254/
-# # # # =============================================================================
-# conda activate /jet/home/stevesho/.conda/envs/deeploop
-# function cool_to_hic () {
-#     local tissue=$1
-#     local savedir=$final_dir  # Assuming savedir should point to final_dir.
+# =============================================================================
+# Convert cooler to hic
+# Adapted from Charlotte West: https://www.biostars.org/p/360254/
+# =============================================================================
+conda activate /jet/home/stevesho/.conda/envs/deeploop
+function cool_to_hic () {
+    local tissue=$1
 
-#     # Convert cooler to ginteractions format
-#     hicConvertFormat -m "${tmp_dir}/${tissue}.cool" \
-#         --outFileName "${tmp_dir}/${tissue}.ginteractions" \
-#         --inputFormat cool \
-#         --outputFormat ginteractions
+    # Convert cooler to ginteractions format
+    hicConvertFormat -m "${tmp_dir}/${tissue}.cool" \
+        --outFileName "${tmp_dir}/${tissue}.ginteractions" \
+        --inputFormat cool \
+        --outputFormat ginteractions
 
-#     # Add dummy variables
-#     awk -F "\t" '{print 0, $1, $2, 0, 0, $4, $5, 1, $7}' "${tmp_dir}/${tissue}.ginteractions" > "${tmp_dir}/${tissue}_hg38.ginteractions.short"
+    # Add dummy variables
+    awk -F "\t" '{print 0, $1, $2, 0, 0, $4, $5, 1, $7}' "${tmp_dir}/${tissue}.ginteractions.tsv" > "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short"
 
-#     # Sort by chromosomes
-#     sort -k2,2d -k6,6d "${savedir}/${tissue}_hg38.ginteractions.short" > "${savedir}/${tissue}_hg38.ginteractions.short.sorted"
+    # Sort by chromosomes
+    sort -k2,2d -k6,6d "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short" > "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short.sorted"
 
-#     # Convert ginteractions to hic file using the juicer pre command
-#     $run_juicer pre -r 40000 "${savedir}/${tissue}_hg38.ginteractions.short.sorted" "${savedir}/${tissue}.hic" "${hg38_chrom_sizes}"
-# }
+    # Convert ginteractions to hic file using the juicer pre command
+    $run_juicer pre -r 40000 "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short.sorted" "${final_dir}/${tissue}.hic" "${hg19_chrom_sizes}"
+}
 
-# cool_to_hic ${tissue}
+cool_to_hic ${tissue}

@@ -142,41 +142,33 @@ def main() -> None:
 
     all_pixels = []
     for chrom in bins["chrom"].unique():
-        # Check if the chromosome is in the exclude list
         if chrom in ["chrX", "chrY"]:
-            # Get the start and end bin IDs for this chromosome
             chr_bins = bins[bins["chrom"] == chrom]
             start, end = (
                 chr_bins.index[0],
                 chr_bins.index[-1] + 1,
-            )  # get bin index range for the chromosome
+            )
 
-            # Create a DataFrame filled with zeros for pixel data for this chromosome
-            # Ensure that your create_pixel_data function can create a DataFrame of zeros when there's no matrix input
+            # Create a df filled with zeros for pixel data for sex chrs
             pixel_data = create_pixel_data_zeros(start_bin_id=start, end_bin_id=end)
 
         else:
-            # Load the matrix file if it's not one of the chromosomes we're filling with zeros
             matrix_file = (
                 f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
             )
             matrix = _load_matrix(matrix_file=matrix_file)
-
-            # Use the previously shown steps to process the matrix and extract pixels
             chr_bins = bins[bins["chrom"] == chrom]
             start, end = (
                 chr_bins.index[0],
                 chr_bins.index[-1] + 1,
             )
 
-            # Generate a DataFrame for pixel data for this chromosome
-            # using 'start' and 'end' to shift the bin IDs appropriately
+            # Generate a df for pixel data for this chromosome
+            # using 'start' and 'end' to shift the bin ids
             pixel_data = create_pixel_data(df_matrix=matrix, start_bin_id=start)
-
-        # Store data in the global list
         all_pixels.append(pixel_data)
 
-    # Concatenate into a single DataFrame
+    # Concat for cooler creation
     all_pixels_df = pd.concat(all_pixels, ignore_index=True)
 
     cooler.create_cooler(
