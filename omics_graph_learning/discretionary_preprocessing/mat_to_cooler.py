@@ -95,19 +95,13 @@ def create_pixel_data_zeros(start_bin_id, end_bin_id):
     # Define the number of bins
     num_bins = end_bin_id - start_bin_id
 
-    # Create a DataFrame with appropriate structure to match your other pixel data
-    # You'll need to adjust this to match the real structure, assuming 'bin1_id' and 'bin2_id' are your index columns with counts of 0
-    zeros_data = pd.DataFrame(
+    return pd.DataFrame(
         {
             "bin1_id": np.arange(start_bin_id, end_bin_id),
             "bin2_id": np.arange(start_bin_id, end_bin_id),
             "count": np.zeros(num_bins),  # or whatever the count column is named
         }
     )
-
-    # Your other processing to match create_pixel_data output format, if any
-
-    return zeros_data
 
 
 def main() -> None:
@@ -139,6 +133,7 @@ def main() -> None:
     #     binsize=40000,
     # )
     chromsizes = cooler.util.fetch_chromsizes("hg19")
+    chromsizes = chromsizes.drop("chrM")
     bins = cooler.binnify(chromsizes, binsize=40000)
 
     working_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/coolers"
@@ -148,7 +143,7 @@ def main() -> None:
     all_pixels = []
     for chrom in bins["chrom"].unique():
         # Check if the chromosome is in the exclude list
-        if chrom in ["chrX", "chrY", "chrM"]:
+        if chrom in ["chrX", "chrY"]:
             # Get the start and end bin IDs for this chromosome
             chr_bins = bins[bins["chrom"] == chrom]
             start, end = (
