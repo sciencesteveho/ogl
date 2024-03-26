@@ -91,6 +91,25 @@ def create_pixel_data(df_matrix, start_bin_id):
     return pd.DataFrame(data)
 
 
+def create_pixel_data_zeros(start_bin_id, end_bin_id):
+    # Define the number of bins
+    num_bins = end_bin_id - start_bin_id
+
+    # Create a DataFrame with appropriate structure to match your other pixel data
+    # You'll need to adjust this to match the real structure, assuming 'bin1_id' and 'bin2_id' are your index columns with counts of 0
+    zeros_data = pd.DataFrame(
+        {
+            "bin1_id": np.arange(start_bin_id, end_bin_id),
+            "bin2_id": np.arange(start_bin_id, end_bin_id),
+            "count": np.zeros(num_bins),  # or whatever the count column is named
+        }
+    )
+
+    # Your other processing to match create_pixel_data output format, if any
+
+    return zeros_data
+
+
 def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser()
@@ -126,15 +145,10 @@ def main() -> None:
     tmp_dir = f"{working_dir}/tmp"
     extension = "qq.mat" if args.qq else "mat"
 
-    # chrs = []
     all_pixels = []
     for chrom in bins["chrom"].unique():
-        if chrom not in ["chrX", "chrY", "chrM"]:
-            matrix_file = (
-                f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
-            )
-            matrix = _load_matrix(matrix_file=matrix_file)
-
+        # Check if the chromosome is in the exclude list
+        if chrom in ["chrX", "chrY", "chrM"]:
             # Get the start and end bin IDs for this chromosome
             chr_bins = bins[bins["chrom"] == chrom]
             start, end = (
@@ -142,19 +156,37 @@ def main() -> None:
                 chr_bins.index[-1] + 1,
             )  # get bin index range for the chromosome
 
+            # Create a DataFrame filled with zeros for pixel data for this chromosome
+            # Ensure that your create_pixel_data function can create a DataFrame of zeros when there's no matrix input
+            pixel_data = create_pixel_data_zeros(start_bin_id=start, end_bin_id=end)
+
+        else:
+            # Load the matrix file if it's not one of the chromosomes we're filling with zeros
+            matrix_file = (
+                f"{working_dir}/primary_cohort/{args.tissue}.nor.{chrom}.{extension}"
+            )
+            matrix = _load_matrix(matrix_file=matrix_file)
+
+            # Use the previously shown steps to process the matrix and extract pixels
+            chr_bins = bins[bins["chrom"] == chrom]
+            start, end = (
+                chr_bins.index[0],
+                chr_bins.index[-1] + 1,
+            )
+
             # Generate a DataFrame for pixel data for this chromosome
             # using 'start' and 'end' to shift the bin IDs appropriately
             pixel_data = create_pixel_data(df_matrix=matrix, start_bin_id=start)
 
-            # Store data in the global list
-            all_pixels.append(pixel_data)
+        # Store data in the global list
+        all_pixels.append(pixel_data)
 
     # Concatenate into a single DataFrame
-    all_pixels_df = pd.concat(all_pixels)
+    all_pixels_df = pd.concat(all_pixels, ignore_index=True)
 
     cooler.create_cooler(
         cool_uri=f"{tmp_dir}/{args.out_prefix}.cool",
-        bins=bins,
+        bins=bins[bins["chrom"]],
         pixels=all_pixels_df,
         assembly="hg19",
         dtypes={"count": np.int64},
