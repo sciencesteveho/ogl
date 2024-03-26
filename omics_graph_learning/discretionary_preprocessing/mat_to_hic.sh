@@ -27,7 +27,7 @@ module load anaconda3
 conda activate /jet/home/stevesho/.conda/envs/hiclift
 
 tissue=$1
-juicer=/ocean/projects/bio210019p/stevesho/hic/juicer_tools.3.0.0.jar
+juicer=/ocean/projects/bio210019p/stevesho/hic/juicer_tools.2.20.00.jar
 run_juicer="java -Xms512m -Xmx2048m -jar ${juicer}"
 hg38_chrom_sizes=/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
 hg19_chrom_sizes=/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt
@@ -100,7 +100,13 @@ function cool_to_hic () {
     sort -k2,2d -k6,6d "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short" > "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short.sorted"
 
     # Convert ginteractions to hic file using the juicer pre command
-    $run_juicer pre -r 40000 "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short.sorted" "${final_dir}/${tissue}.hic" "${hg19_chrom_sizes}"
+    $run_juicer pre \
+        -r 40000 \
+        -n \
+        --threads 12 \
+        "${tmp_dir}/${tissue}_hg38.ginteractions.tsv.short.sorted" \
+        "${final_dir}/${tissue}.hic" \
+        "${hg19_chrom_sizes}"
 }
 
 cool_to_hic ${tissue}
