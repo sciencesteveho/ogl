@@ -1,4 +1,3 @@
-# sourcery skip: avoid-single-character-names-variables, upper-camel-case-classes
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #

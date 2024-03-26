@@ -1,9 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
 
 
 """Metadata handler for graph creation, and inputs metadata into each step to
@@ -16,8 +12,9 @@ import contextlib
 import pathlib
 from typing import Dict, List, Union
 
-from edge_parser import EdgeParser
 import graph_constructor
+
+from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
 from prepare_bedfiles import GenomeDataPreprocessor
 import utils

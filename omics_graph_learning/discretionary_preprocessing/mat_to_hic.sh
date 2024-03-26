@@ -49,7 +49,7 @@ tissue_names[hippocampus]="HC"
 tissue_names[lung]="LG2"
 tissue_names[pancreas]="PA2"
 tissue_names[skeletal_muscle]="PO1"
-tissue_names[small_intestine]="SB"
+tissue_names[small_intestine]="SB2"
 tissue_names[liver]="LI"
 tissue_names[left_ventricle]="LV"
 

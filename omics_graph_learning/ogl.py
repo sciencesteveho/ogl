@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+"""Main script for running Omics Graph Learning"""
+
 
 import argparse
 import datetime
@@ -17,6 +22,7 @@ def log_progress(message: str) -> None:
 
 
 def parse_pipeline_arguments() -> argparse.ArgumentParser:
+    """Parse command-line arguments for the entire pipeline."""
     parser = argparse.ArgumentParser(
         description="Wrapper script for submitting jobs to SLURM."
     )
