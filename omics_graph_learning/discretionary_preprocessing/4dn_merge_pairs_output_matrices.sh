@@ -170,26 +170,6 @@ singularity exec --bind ${script_dir},${outdir},${resource_dir} \
 
 
 # =============================================================================
-# Step 9: Make cooler file. This is with the 4dn updated docker that uses cooler 0.9.3, so does not include the pixels duplication bug from cooler 0.8.3.
-# Args:
-#   1 - pairs file, bgzipped with a .px2 index
-#   2 - chrsize_file
-#   3 - binsize
-#   4 - num_cores
-#   5 - output_prefix
-#   6 - max_split 
-# Output:
-#   Cooler with the name `${output_dir}/${tissue}.cool`
-# =============================================================================
-module load anaconda3
-conda activate /jet/home/stevesho/.conda/envs/hiclift
-resolutions=(5000 10000 20000 40000)
-for resolution in ${resolutions[@]}; do
-    cooler cload pairix -p 24 -s 2 ${resource_dir}/${chrom_sizes}:${resolution} ${outdir}/${tissue}.ff.pairs.gz ${outdir}/${tissue}_${resolution}.cool
-done
-
-
-# =============================================================================
 # Step 10: Make a .hic file with juicer
 #   1 - input pairs
 #   2 - chromsize file
@@ -210,6 +190,31 @@ singularity exec --bind ${script_dir},${outdir},${resource_dir} \
     -m 48g \
     -q 0 \
     -u 5000,10000,20000,40000
+
+
+# =============================================================================
+# Step 9: Make cooler file. This is with cooler 0.9.3, so does not include the
+# pixels duplication bug from cooler 0.8.3 currently present in the 4dn portal.
+# Additionally adds the normalization vectors from juicer to the cooler file
+# using hic2cool.
+# Args:
+#   1 - pairs file, bgzipped with a .px2 index
+#   2 - chrsize_file
+#   3 - binsize
+#   4 - num_cores
+#   5 - output_prefix
+#   6 - max_split 
+# Output:
+#   Cooler with the name `${output_dir}/${tissue}.cool`
+# =============================================================================
+module load anaconda3
+conda activate /jet/home/stevesho/.conda/envs/hiclift
+resolutions=(5000 10000 20000 40000)
+for resolution in ${resolutions[@]}; do
+    cooler cload pairix -p 24 -s 2 ${resource_dir}/${chrom_sizes}:${resolution} ${outdir}/${tissue}.ff.pairs.gz ${outdir}/${tissue}_${resolution}.cool
+    cp ${outdir}/${tissue}_${resolution}.cool ${outdir}/${tissue}_${resolution}_normalized.cool
+    hic2cool extract-norms -e ${outdir}/${tissue}.hic ${outdir}/${tissue}_${resolution}_normalized.cool
+done
 
 
 # ### For posterity, we ran the script with the following command:
