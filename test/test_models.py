@@ -1,9 +1,15 @@
-# test_gnn_models.py
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GATv2
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GCN
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GPSTransformer
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import GraphSAGE
-from genomic_graph_mutagenesis.genomic_graph_mutagenesis.models import MLP
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+"""Test the flexible GNN module"""
+
+
+from omics_graph_learning.models import GATv2
+from omics_graph_learning.models import GCN
+from omics_graph_learning.models import GPSTransformer
+from omics_graph_learning.models import GraphSAGE
+from omics_graph_learning.models import MLP
 import pytest
 import torch
 

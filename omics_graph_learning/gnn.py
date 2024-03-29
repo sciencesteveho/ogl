@@ -209,6 +209,42 @@ def test(
 
 
 @torch.no_grad()
+def test_genes_all_neighbors(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data: torch_geometric.data.Data,
+    epoch: int,
+    mask: str,
+):
+    """Modified testing function. Uses neighborloader with num_neighbors=-1 and
+    batch_size=1 to ensure that the entire neighborhood is loaded for each node
+    during evaluation.  Stores each prediction in a dictionary of key, list and
+    takes a mean of all predictions for each node to get the final
+    prediction."""
+    model.eval()
+    loader = NeighborLoader(data, num_neighbors=[-1], batch_size=1, shuffle=False)
+    predictions = {}
+    for batch in tqdm(loader, desc=f"Evaluating epoch: {epoch:04d}"):
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        node_idx = batch.batch.item()
+        if node_idx in predictions:
+            predictions[node_idx].append(out.squeeze())
+        else:
+            predictions[node_idx] = [out.squeeze()]
+
+    all_preds = torch.tensor(
+        [torch.mean(torch.stack(preds), dim=0) for preds in predictions.values()]
+    )
+    if mask == "val":
+        idx_mask = data.val_mask
+    elif mask == "test":
+        idx_mask = data.test_mask
+    mse = F.mse_loss(all_preds[idx_mask], data.y[idx_mask])
+    return math.sqrt(float(mse.cpu()))
+
+
+@torch.no_grad()
 def inference(
     model: torch.nn.Module,
     device: torch.cuda.device,
@@ -234,6 +270,35 @@ def inference(
         pbar.update(1)
     pbar.close()
     return math.sqrt(float(loss.mean())), outs, labels
+
+
+@torch.no_grad()
+def inference_all_neighbors(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data: torch_geometric.data.Data,
+    epoch: int,
+):
+    """Use model for inference or to evaluate on validation set"""
+    model.eval()
+    loader = NeighborLoader(data, num_neighbors=[-1], batch_size=1, shuffle=False)
+    predictions = {}
+    for batch in tqdm(loader, desc=f"Evaluating epoch: {epoch:04d}"):
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        node_idx = batch.batch.item()
+        if node_idx in predictions:
+            predictions[node_idx].append(out.squeeze())
+        else:
+            predictions[node_idx] = [out.squeeze()]
+
+    all_preds = torch.tensor(
+        [torch.mean(torch.stack(preds), dim=0) for preds in predictions.values()]
+    )
+    outs = all_preds[data.test_mask]
+    labels = data.y[data.test_mask]
+    mse = F.mse_loss(outs, labels)
+    return math.sqrt(float(mse.cpu())), outs, labels
 
 
 def get_loader(

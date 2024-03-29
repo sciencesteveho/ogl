@@ -163,7 +163,9 @@ def submit_slurm_job(job_script: str, dependency, args):
     return job_id.split()[-1]  # Extract just the job ID
 
 
-def get_splits(slurm_dependency):
+def get_splits(
+    slurm_dependency: str, args: argparse.Namespace, split_name: str = "split"
+):
     """Submit a SLURM job to get splits."""
     sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} get_training_targets.sh {args.experiment_yaml} {args.tpm_filter} {args.percent_of_samples_filter} {split_name}"
     if args.rna_seq:

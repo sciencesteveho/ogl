@@ -16,7 +16,7 @@ import pathlib
 from pathlib import Path
 from typing import Dict, Generator, List, Tuple
 
-import pybedtools
+import pybedtools  # type: ignore
 
 
 def log_progress(message: str) -> None:
@@ -63,7 +63,7 @@ def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
         return [
             (row[1], row[4])
             for row in reader
-            if not row[0].startswith("!") and row[6] != "IEA"
+            if not row[0].startswith("!") and row[6] not in ["IEA", "IEP"]
         ]
 
 

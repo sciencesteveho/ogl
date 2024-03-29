@@ -7,9 +7,10 @@ respective tissues."""
 import pickle
 import random
 
-from cmapPy.pandasGEXpress.parse_gct import parse
+from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 import numpy as np
 import pandas as pd
+import pytest
 
 TISSUES = {
     "aorta": "Artery - Aorta",
