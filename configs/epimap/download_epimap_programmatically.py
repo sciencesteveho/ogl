@@ -100,7 +100,7 @@ def _download_files(urls: List[str], download_dir: str) -> None:
     """Downloads files to a specified directory"""
     os.makedirs(download_dir, exist_ok=True)
     for url in urls:
-        os.system(f"wget -P {url} {download_dir}")
+        os.system(f"wget -P {download_dir} {url} ")
 
 
 def _list_all_downloads(

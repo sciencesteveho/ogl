@@ -297,43 +297,43 @@ class EdgeParser:
                     "tf_marker",
                 )
 
-    def _marbach_regulatory_circuits(
-        self,
-        interaction_file: str,
-        score_filter: int,
-    ) -> Generator[Tuple[str, str, float, str], None, None]:
-        """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
-        network is in the following format:
-            col_1   TF
-            col_2   Target gene
-            col_3   Edge weight
-        """
-        reader = self._read_csv_wrapper(interaction_file)
+    # def _marbach_regulatory_circuits(
+    #     self,
+    #     interaction_file: str,
+    #     score_filter: int,
+    # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    #     """Regulatory circuits from Marbach et al., Nature Methods, 2016. Each
+    #     network is in the following format:
+    #         col_1   TF
+    #         col_2   Target gene
+    #         col_3   Edge weight
+    #     """
+    #     reader = self._read_csv_wrapper(interaction_file)
 
-        scores = [
-            float(line[2])
-            for line in reader
-            if (
-                line[0] in self.genesymbol_to_gencode
-                and line[1] in self.genesymbol_to_gencode
-            )
-        ]
-        cutoff = np.percentile(scores, score_filter)
+    #     scores = [
+    #         float(line[2])
+    #         for line in reader
+    #         if (
+    #             line[0] in self.genesymbol_to_gencode
+    #             and line[1] in self.genesymbol_to_gencode
+    #         )
+    #     ]
+    #     cutoff = np.percentile(scores, score_filter)
 
-        reader = self._read_csv_wrapper(interaction_file)  # Re-read the file
-        for line in reader:
-            tf, target_gene, weight = line[0], line[1], float(line[2])
-            if (
-                tf in self.genesymbol_to_gencode
-                and target_gene in self.genesymbol_to_gencode
-                and weight >= cutoff
-            ):
-                yield (
-                    f"{self.genesymbol_to_gencode[tf]}_tf",
-                    self.genesymbol_to_gencode[target_gene],
-                    # weight,
-                    "circuits",
-                )
+    #     reader = self._read_csv_wrapper(interaction_file)  # Re-read the file
+    #     for line in reader:
+    #         tf, target_gene, weight = line[0], line[1], float(line[2])
+    #         if (
+    #             tf in self.genesymbol_to_gencode
+    #             and target_gene in self.genesymbol_to_gencode
+    #             and weight >= cutoff
+    #         ):
+    #             yield (
+    #                 f"{self.genesymbol_to_gencode[tf]}_tf",
+    #                 self.genesymbol_to_gencode[target_gene],
+    #                 # weight,
+    #                 "circuits",
+    #             )
 
     def _tfbinding_footprints(
         self,
@@ -411,11 +411,11 @@ class EdgeParser:
             tf_generator = self._tf_markers(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
             )
-        if "circuits" in self.interaction_types:
-            circuit_generator = self._marbach_regulatory_circuits(
-                f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-                score_filter=30,
-            )
+        # if "circuits" in self.interaction_types:
+        #     circuit_generator = self._marbach_regulatory_circuits(
+        #         f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+        #         score_filter=30,
+        #     )
         if "tfbinding" in self.interaction_types:
             tfbinding_generator = self._tfbinding_footprints(
                 tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
