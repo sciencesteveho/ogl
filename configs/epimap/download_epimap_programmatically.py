@@ -153,6 +153,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # make download directory if it doesn't exist
+    if not os.path.exists(args.download_dir):
+        os.makedirs(args.download_dir)
+
     observed_df = _load_epimap_tables(args.observed_tsv)
     imputed_df = _load_epimap_tables(args.imputed_tsv)
     for accession in EPIMAP_ACCESSIONS[args.tissue]:
