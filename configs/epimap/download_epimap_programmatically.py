@@ -87,8 +87,12 @@ def _format_urls(
     observed_filenames: List[str], imputed_filenames: List[str]
 ) -> List[str]:
     """Adds URL prefixes for full URLs to download"""
-    observed_urls = [OBSERVED_URL_PREFIX + filename for filename in observed_filenames]
-    imputed_urls = [IMPUTED_URL_PREFIX + filename for filename in imputed_filenames]
+    observed_urls = [
+        OBSERVED_URL_PREFIX + filename + ".bigWig" for filename in observed_filenames
+    ]
+    imputed_urls = [
+        IMPUTED_URL_PREFIX + filename + ".bigWig" for filename in imputed_filenames
+    ]
     return observed_urls + imputed_urls
 
 
@@ -164,6 +168,25 @@ def main() -> None:
         )
     print("Finished downloading all files!")
 
+    # observed_df = _load_epimap_tables("all_observed_tracks.tsv")
+    # imputed_df = _load_epimap_tables("all_imputed_tracks.tsv")
+    # all_files = _list_all_downloads(observed_df, imputed_df)
+    # with open("epimap_download_accessions", "w") as file:
+    #     for item in all_files:
+    #         file.write(item + "\n")
+
 
 if __name__ == "__main__":
     main()
+
+
+# For posterity, we ran the following to download all files:
+# For tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung pancreas psoas small_intestine liver aorta skin left_ventricle mammary spleen ovary adrenal;
+# do
+#   epidir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs/epimap
+#   python download_epimap_programmatically.py \
+#       -o ${epidir}/all_observed_tracks.tsv \
+#       -i ${epidir}/all_imputed_tracks.tsv \
+#       -t ${tissue} \
+#       -d /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/${tissue};
+# done
