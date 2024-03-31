@@ -69,17 +69,14 @@ def _sort_mark_file(path: str, file: str) -> str:
                 stdout=outfile,
                 check=True,
             )
-    except subprocess.CalledProcessError as error:
-        print(f"Error sorting {file} with error {error}")
+    except Exception as error:
+        print(f"Error sorting {file}: {error}")
     return sorted_file
 
 
 def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
-    """Sort multiple files in parallel using multiprocessing pool"""
-    pool = Pool(processes=3)
-    sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
-    pool.close()
-    pool.join()
+    with Pool(processes=3) as pool:
+        sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
     return sorted_files
 
 
@@ -188,9 +185,11 @@ def process_mark(mark: str, path: str) -> None:
     """Process a single mark"""
     # get files for mark
     files = _get_mark_files(path=path, mark=mark)
+    print(f"Processing {mark} with {len(files)} files: {files}")
 
     # sort in parallel
     sorted_files = _sort_marks_parallel(path=path, files=files)
+    print(f"Sorted {mark} files: {sorted_files}")
 
     # combine bedgraphs, average, and call peaks
     merged_bedgraph = _sum_coverage_and_average(
