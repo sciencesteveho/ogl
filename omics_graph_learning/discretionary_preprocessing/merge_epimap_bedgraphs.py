@@ -11,6 +11,7 @@ from contextlib import suppress
 from multiprocessing import Pool
 import os
 import subprocess
+import time
 from typing import List
 
 # Cutoffs for each mark
@@ -40,7 +41,7 @@ REMAP_CRM_CALLER = (
 def _make_directories(directory: str) -> None:
     """Make directories to store sorted files, merged files, called peaks, and
     lifted peaks"""
-    for dir in ["sorted", "merged", "peaks", "tmp", "crms", "crms_processing"]:
+    for dir in ["merged", "peaks", "tmp", "crms", "crms_processing"]:
         with suppress(FileExistsError):
             os.makedirs(os.path.join(directory, dir), exist_ok=True)
 
@@ -114,24 +115,26 @@ def _sort_marks_sequential(path: str, files: List[str]) -> List[str]:
 def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
     """Subprocess call to sum the coverage and average the values"""
     merged_bedgraph = f"{path}/merged/{mark}.merged.bedgraph"
+    merged_bedgraph_summed = f"{path}/merged/{mark}.merged.summed.bedgraph"
     try:
-        unionbed = subprocess.run(
-            ["bedtools", "unionbedg", "-i"] + files, stdout=subprocess.PIPE, check=True
-        )
-        try:
-            with open(merged_bedgraph, "w") as outfile:
-                subprocess.run(
-                    ["awk", "{sum=$4+$5+$6; print $1, $2, $3, sum / 3}"],
-                    input=unionbed.stdout,
-                    stdout=outfile,
-                    check=True,
-                )
-        except subprocess.CalledProcessError as error:
-            print(f"Error running awk for {mark} with error {error}")
+        with open(merged_bedgraph, "w") as outfile:
+            subprocess.run(
+                ["bedtools", "unionbedg", "-i"] + files,
+                stdout=outfile,
+                check=True,
+            )
     except subprocess.CalledProcessError as error:
         print(f"Error running bedtools unionbedg for {mark} with error {error}")
-
-    return merged_bedgraph
+    try:
+        with open(merged_bedgraph_summed, "w") as outfile:
+            subprocess.run(
+                ["awk", "{sum=$4+$5+$6; print $1, $2, $3, sum / 3}", merged_bedgraph],
+                stdout=outfile,
+                check=True,
+            )
+    except subprocess.CalledProcessError as error:
+        print(f"Error running awk for {mark} with error {error}")
+    return merged_bedgraph_summed
 
 
 def _call_peaks(path: str, mark: str, bedgraph: str) -> str:
@@ -212,23 +215,30 @@ def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None
         print(f"Error calling CRMs with error {error}")
 
 
+def _print_with_timer(message: str, start_time: float) -> None:
+    """Print message with elapsed time from the start_time."""
+    elapsed_time = time.time() - start_time
+    hours, remainder = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    print(
+        f"{message} | Time Elapsed: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
+    )
+
+
 def process_mark(mark: str, path: str) -> None:
     """Process a single mark"""
+    start_time = time.time()
+
     # get files for mark
     files = _get_mark_files(path=path, mark=mark)
-    print(f"Processing {mark} with {len(files)} files: {files}")
-    if not os.path.exists(f"{path}/{files[0]}"):
-        print(f"Error: files for {mark} don't exist: {files}")
 
     # convert bigwig to bedgraph
     bedgraphs = _bigwig_to_bedgraph_sequential(path=path, files=files)
-    if not os.path.exists(bedgraphs[0]):
-        print(f"Error converting {mark} to bedgraph: {bedgraphs}")
 
-    # sorted_files = _sort_marks_parallel(path=path, files=files)
-    sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
-    if not os.path.exists(sorted_files[0]):
-        print(f"Error sorting {mark}: {sorted_files}")
+    sorted_files = _sort_marks_parallel(path=path, files=bedgraphs)
+    # sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
+    # if not os.path.exists(sorted_files[0]):
+    #     print(f"Error sorting {mark}: {sorted_files}")
 
     # combine bedgraphs, average, and call peaks
     merged_bedgraph = _sum_coverage_and_average(
@@ -243,6 +253,8 @@ def process_mark(mark: str, path: str) -> None:
 
     # liftover to hg38
     _lift_over_peaks(path=path, mark=mark, peaks=peaks)
+    print(f"Peaks for {mark} called!")
+    _print_with_timer(f"Completed processing for {mark}", start_time)
 
 
 def main() -> None:
