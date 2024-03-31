@@ -55,7 +55,8 @@ def _sort_mark_file(path: str, file: str) -> str:
     sorted_file = f"{path}/tmp/{file}.sorted"
     try:
         subprocess.run(
-            ["LC_ALL=C", "sort", "--parallel=12", "-S", "80%", "-k1,1", "-k2,2n", file],
+            ["sort", "--parallel=12", "-S", "80%", "-k1,1", "-k2,2n", file],
+            env={"LC_ALL": "C"},  # Set the environment variable for LC_ALL
             stdout=open(sorted_file, "w"),
             check=True,
         )
@@ -64,10 +65,14 @@ def _sort_mark_file(path: str, file: str) -> str:
     return sorted_file
 
 
+def _pool_helper(args):
+    return _sort_mark_file(*args)
+
+
 def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
     """Sort multiple files in parallel using multiprocessing pool"""
     pool = Pool(processes=3)
-    sorted_files = pool.map(lambda file: _sort_mark_file(path, file), files)
+    sorted_files = pool.starmap(_pool_helper, [(path, file) for file in files])
     pool.close()
     pool.join()
     return sorted_files
