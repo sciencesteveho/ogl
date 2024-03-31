@@ -74,8 +74,7 @@ function _merge_bedgraphs () {
 	cutoffs["RAD21"]=2
 	cutoffs["SMC3"]=2
 
-    # for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
-    for feature in ATAC-seq;
+    for feature in ATAC-seq CTCF DNase-seq H3K27ac H3K27me3 H3K36me3 H3K4me1 H3K4me2 H3K4me3 H3K79me2 H3K9ac H3K9me3 POLR2A RAD21 SMC3;
     do
         # Collect files into an array
         files=( $(ls | grep "${feature}") )

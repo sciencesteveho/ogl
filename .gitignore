@@ -2,4 +2,5 @@
 development/
 debug/
 genomic_graph_mutagenesis/purgatory.py
-
+omics_graph_learning/__pycache__
+omics_graph_learning.egg-info/

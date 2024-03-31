@@ -40,7 +40,7 @@ EPIMAP_ACCESSIONS = {
     "hippocampus": ["BSS00091", "BSS01125", "BSS01124"],
     "lung": ["BSS01869", "BSS01871", "BSS00150"],
     "pancreas": ["BSS01406", "BSS00123", "BSS01407"],
-    "psoas": ["BSS01460", "BSS01462", "BSS01463"],
+    "skeletal_muscle": ["BSS01460", "BSS01462", "BSS01463"],
     "small_intestine": ["BSS01597", "BSS01588", "BSS01599"],
     "liver": ["BSS01519", "BSS01169", "BSS01159"],
     "aorta": ["BSS00088", "BSS00079", "BSS00080"],
@@ -175,7 +175,7 @@ def main() -> None:
     # observed_df = _load_epimap_tables("all_observed_tracks.tsv")
     # imputed_df = _load_epimap_tables("all_imputed_tracks.tsv")
     # all_files = _list_all_downloads(observed_df, imputed_df)
-    # with open("epimap_download_accessions", "w") as file:
+    # with open("epimap_download_accessions.txt", "w") as file:
     #     for item in all_files:
     #         file.write(item + "\n")
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
 
 # For posterity, we ran the following to download all files:
-# For tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung pancreas psoas small_intestine liver aorta skin left_ventricle mammary spleen ovary adrenal;
+# For tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung pancreas skeletal_muscle small_intestine liver aorta skin left_ventricle mammary spleen ovary adrenal;
 # do
 #   epidir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs/epimap
 #   python download_epimap_programmatically.py \
