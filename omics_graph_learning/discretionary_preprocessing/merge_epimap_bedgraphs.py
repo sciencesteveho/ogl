@@ -65,14 +65,10 @@ def _sort_mark_file(path: str, file: str) -> str:
     return sorted_file
 
 
-def _pool_helper(args):
-    return _sort_mark_file(*args)
-
-
 def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
     """Sort multiple files in parallel using multiprocessing pool"""
     pool = Pool(processes=3)
-    sorted_files = pool.starmap(_pool_helper, [(path, file) for file in files])
+    sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
     pool.close()
     pool.join()
     return sorted_files
