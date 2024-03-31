@@ -50,9 +50,28 @@ def _get_mark_files(path: str, mark: str) -> List[str]:
     return [file for file in os.listdir(path) if mark in file]
 
 
+def _bigwig_to_bedgraph(
+    path: str,
+    file: str,
+    resource_dir: str,
+) -> str:
+    """Convert bigwig to bedgraph using subprocess"""
+    bedgraph = f"{path}/tmp/{file}.bedgraph"
+    try:
+        with open(bedgraph, "w") as outfile:
+            subprocess.run(
+                [f"{resource_dir}/bigWigToBedGraph", f"{path}/{file}", bedgraph],
+                stdout=outfile,
+                check=True,
+            )
+    except subprocess.CalledProcessError as error:
+        print(f"Error converting {file} to bedgraph with error {error}")
+    return bedgraph
+
+
 def _sort_mark_file(path: str, file: str) -> str:
     """Sort a single file using subprocess"""
-    sorted_file = f"{path}/sorted/{file}.sorted"
+    sorted_file = f"{file}.sorted"
     try:
         with open(sorted_file, "w") as outfile:
             subprocess.run(
@@ -63,7 +82,7 @@ def _sort_mark_file(path: str, file: str) -> str:
                     "80%",
                     "-k1,1",
                     "-k2,2n",
-                    f"{path}/{file}",
+                    file,
                 ],
                 env={"LC_ALL": "C"},  # Set the environment variable for LC_ALL
                 stdout=outfile,
@@ -78,6 +97,14 @@ def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
     with Pool(processes=3) as pool:
         sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
     return sorted_files
+
+
+def _bigwig_to_bedgraph_sequential(path: str, files: List[str]) -> List[str]:
+    resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
+    return [
+        _bigwig_to_bedgraph(path=path, file=file, resource_dir=resource_dir)
+        for file in files
+    ]
 
 
 def _sort_marks_sequential(path: str, files: List[str]) -> List[str]:
@@ -190,11 +217,18 @@ def process_mark(mark: str, path: str) -> None:
     # get files for mark
     files = _get_mark_files(path=path, mark=mark)
     print(f"Processing {mark} with {len(files)} files: {files}")
+    if not os.path.exists(f"{path}/{files[0]}"):
+        print(f"Error: files for {mark} don't exist: {files}")
 
-    # sort in parallel
+    # convert bigwig to bedgraph
+    bedgraphs = _bigwig_to_bedgraph_sequential(path=path, files=files)
+    if not os.path.exists(bedgraphs[0]):
+        print(f"Error converting {mark} to bedgraph: {bedgraphs}")
+
     # sorted_files = _sort_marks_parallel(path=path, files=files)
-    sorted_files = _sort_marks_sequential(path=path, files=files)
-    print(f"Sorted {mark} files: {sorted_files}")
+    sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
+    if not os.path.exists(sorted_files[0]):
+        print(f"Error sorting {mark}: {sorted_files}")
 
     # combine bedgraphs, average, and call peaks
     merged_bedgraph = _sum_coverage_and_average(
