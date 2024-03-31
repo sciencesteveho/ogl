@@ -66,7 +66,7 @@ def _sort_mark_file(path: str, file: str) -> str:
 
 def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
     """Sort multiple files in parallel using multiprocessing pool"""
-    pool = Pool()
+    pool = Pool(processes=3)
     sorted_files = pool.map(lambda file: _sort_mark_file(path, file), files)
     pool.close()
     pool.join()
