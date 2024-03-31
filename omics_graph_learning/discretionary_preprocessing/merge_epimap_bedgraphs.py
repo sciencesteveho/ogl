@@ -55,7 +55,7 @@ def _sort_mark_file(path: str, file: str) -> str:
     sorted_file = f"{path}/tmp/{file}.sorted"
     try:
         subprocess.run(
-            ["sort", "--parallel=12", "-S", "80%", "-k1,1", "-k2,2n", file],
+            ["sort", "--parallel=12", "-S", "80%", "-k1,1", "-k2,2n", f"{path}/file"],
             env={"LC_ALL": "C"},  # Set the environment variable for LC_ALL
             stdout=open(sorted_file, "w"),
             check=True,
