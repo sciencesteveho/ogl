@@ -47,7 +47,7 @@ def _make_directories(directory: str) -> None:
 
 def _get_mark_files(path: str, mark: str) -> List[str]:
     """Get all files for a mark"""
-    return [os.path.join(path, file) for file in os.listdir(path) if mark in file]
+    return [file for file in os.listdir(path) if mark in file]
 
 
 def _sort_mark_file(path: str, file: str) -> str:
