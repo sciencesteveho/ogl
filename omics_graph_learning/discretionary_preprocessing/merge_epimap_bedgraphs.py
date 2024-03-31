@@ -54,12 +54,21 @@ def _sort_mark_file(path: str, file: str) -> str:
     """Sort a single file using subprocess"""
     sorted_file = f"{path}/tmp/{file}.sorted"
     try:
-        subprocess.run(
-            ["sort", "--parallel=12", "-S", "80%", "-k1,1", "-k2,2n", f"{path}/{file}"],
-            env={"LC_ALL": "C"},  # Set the environment variable for LC_ALL
-            stdout=open(sorted_file, "w"),
-            check=True,
-        )
+        with open(sorted_file, "w") as outfile:
+            subprocess.run(
+                [
+                    "sort",
+                    "--parallel=12",
+                    "-S",
+                    "80%",
+                    "-k1,1",
+                    "-k2,2n",
+                    f"{path}/{file}",
+                ],
+                env={"LC_ALL": "C"},  # Set the environment variable for LC_ALL
+                stdout=outfile,
+                check=True,
+            )
     except subprocess.CalledProcessError as error:
         print(f"Error sorting {file} with error {error}")
     return sorted_file
@@ -81,17 +90,19 @@ def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
         unionbed = subprocess.run(
             ["bedtools", "unionbedg", "-i"] + files, stdout=subprocess.PIPE, check=True
         )
+        try:
+            with open(merged_bedgraph, "w") as outfile:
+                subprocess.run(
+                    ["awk", "{sum=$4+$5+$6; print $1, $2, $3, sum / 3}"],
+                    input=unionbed.stdout,
+                    stdout=outfile,
+                    check=True,
+                )
+        except subprocess.CalledProcessError as error:
+            print(f"Error running awk for {mark} with error {error}")
     except subprocess.CalledProcessError as error:
         print(f"Error running bedtools unionbedg for {mark} with error {error}")
-    try:
-        subprocess.run(
-            ["awk", "{sum=$4+$5+$6; print $1, $2, $3, sum / 3}"],
-            input=unionbed.stdout,
-            stdout=open(merged_bedgraph, "w"),
-            check=True,
-        )
-    except subprocess.CalledProcessError as error:
-        print(f"Error running awk for {mark} with error {error}")
+
     return merged_bedgraph
 
 
