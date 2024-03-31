@@ -52,7 +52,7 @@ def _get_mark_files(path: str, mark: str) -> List[str]:
 
 def _sort_mark_file(path: str, file: str) -> str:
     """Sort a single file using subprocess"""
-    sorted_file = f"{path}/tmp/{file}.sorted"
+    sorted_file = f"{path}/sorted/{file}.sorted"
     try:
         with open(sorted_file, "w") as outfile:
             subprocess.run(
@@ -78,6 +78,10 @@ def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
     with Pool(processes=3) as pool:
         sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
     return sorted_files
+
+
+def _sort_marks_sequential(path: str, files: List[str]) -> List[str]:
+    return [_sort_mark_file(path=path, file=file) for file in files]
 
 
 def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
@@ -188,7 +192,8 @@ def process_mark(mark: str, path: str) -> None:
     print(f"Processing {mark} with {len(files)} files: {files}")
 
     # sort in parallel
-    sorted_files = _sort_marks_parallel(path=path, files=files)
+    # sorted_files = _sort_marks_parallel(path=path, files=files)
+    sorted_files = _sort_marks_sequential(path=path, files=files)
     print(f"Sorted {mark} files: {sorted_files}")
 
     # combine bedgraphs, average, and call peaks
