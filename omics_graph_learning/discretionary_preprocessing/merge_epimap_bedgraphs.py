@@ -94,10 +94,10 @@ def _sort_mark_file(path: str, file: str) -> str:
     return sorted_file
 
 
-def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
-    with Pool(processes=3) as pool:
-        sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
-    return sorted_files
+# def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
+#     with Pool(processes=3) as pool:
+#         sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
+#     return sorted_files
 
 
 def _bigwig_to_bedgraph_sequential(path: str, files: List[str]) -> List[str]:
@@ -235,8 +235,8 @@ def process_mark(mark: str, path: str) -> None:
     # convert bigwig to bedgraph
     bedgraphs = _bigwig_to_bedgraph_sequential(path=path, files=files)
 
-    sorted_files = _sort_marks_parallel(path=path, files=bedgraphs)
-    # sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
+    # sorted_files = _sort_marks_parallel(path=path, files=bedgraphs)
+    sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
     # if not os.path.exists(sorted_files[0]):
     #     print(f"Error sorting {mark}: {sorted_files}")
 
