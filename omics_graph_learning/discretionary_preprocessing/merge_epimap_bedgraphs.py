@@ -94,12 +94,6 @@ def _sort_mark_file(file: str) -> str:
     return sorted_file
 
 
-# def _sort_marks_parallel(path: str, files: List[str]) -> List[str]:
-#     with Pool(processes=3) as pool:
-#         sorted_files = pool.starmap(_sort_mark_file, [(path, file) for file in files])
-#     return sorted_files
-
-
 def _bigwig_to_bedgraph_sequential(path: str, files: List[str]) -> List[str]:
     resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
     return [
