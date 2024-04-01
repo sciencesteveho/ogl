@@ -201,7 +201,7 @@ def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None
             [
                 "python",
                 peakmerge_script,
-                "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes",
+                "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt",
                 f"{working_dir}/crms_processing",
                 "narrowPeak",
                 f"{working_dir}/crms",
@@ -264,8 +264,8 @@ def main() -> None:
     _make_directories(directory=args.path)
 
     # Process each mark
-    for mark in CUTOFFS.keys():
-        process_mark(mark=mark, path=args.path)
+    # for mark in CUTOFFS.keys():
+    #     process_mark(mark=mark, path=args.path)
 
     # Call CRMS after processing all marks
     call_crms(
