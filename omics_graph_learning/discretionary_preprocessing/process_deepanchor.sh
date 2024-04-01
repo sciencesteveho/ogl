@@ -1,6 +1,27 @@
 #!/bin/bash
-#
-# Script to process loops from DeepAnchor into bedpe format
+
+#SBATCH --job-name=process_deepanchor
+#SBATCH --mail-user=stevesho@umich.edu
+#SBATCH --account=bio210019p
+#SBATCH --mail-type=FAIL
+
+# Number of nodes requested
+#SBATCH --ntasks-per-node=8
+
+# Partition
+#SBATCH -p RM-shared
+
+# Time
+#SBATCH -t 24:00:00
+
+# output to a designated folder
+#SBATCH -o %x_%j.out
+
+#echo commands to stdout
+set -x
+
+module load anaconda3
+conda activate /ocean/projects/bio210019p/stevesho/gnn
 
 # =============================================================================
 # Setting up variables to track time
@@ -8,13 +29,18 @@
 SECONDS=0
 
 function convertsecs() {
-    local total_seconds=$1
+    local total_seconds=
     local hours=$((total_seconds / 3600))
     local minutes=$(( (total_seconds % 3600) / 60 ))
     local seconds=$((total_seconds % 60))
-    printf "%02d:%02d:%02d\n" $hours $minutes $seconds
+    printf "%02d:%02d:%02d\n" hours minutes seconds
 }
 
+
+# Function to echo script progress to stdout
+log_progress() {
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] "
+}
 
 
 # =============================================================================
@@ -30,13 +56,13 @@ function _format_deepanchor_loops () {
     local liftover_dir="$5"  # resource directory
     local output_dir="$6"  # final directory to place lifted and formatted calls
     local output_prefix="$7"  # tissue naming for final file
+    local conversion_script_dir="$8"  # directory with bigBedToBed
     
     # make directory for processing
-    if [ ! -d "$processing_dir" ]; then
-        mkdir "$processing_dir"
-    fi
+    mkdir -p "$output_dir"
+    mkdir -p "$processing_dir"
     
-    "$biginteract_dir/bigBedToBed" \
+    "$conversion_script_dir/bigBedToBed" \
         "$biginteract_dir/${prefix}.bigInteract" \
         "$processing_dir/${prefix}.bedpe" 
 
@@ -67,7 +93,7 @@ function _format_deepanchor_loops () {
         local unmappedfile="${processing_dir}/${prefix}.${file}.unmapped"
         "$liftover_dir/liftOver" \
             "$processing_dir/${prefix}.${file}" \
-            "$liftover_dir/hg19ToHg38.over.chain.gz" \
+            "$liftover_dir/hg19ToHg38.over.chain" \
             "$outfile" \
             "$unmappedfile"
         
@@ -89,7 +115,7 @@ function _format_deepanchor_loops () {
 # =============================================================================
 # Process deepanchor loops
 # =============================================================================
-deepanchor_processing_main () {
+function deepanchor_processing_main () {
     local deepanchor_dir=$1
     local final_dir=$2
 
@@ -116,27 +142,22 @@ deepanchor_processing_main () {
         ["ENCLB733WTO"]="adrenal"
     )
 
-    local -A combine_files=(
-        ["hippocampus"]="Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops"
-        ["left_ventricle"]="Leung_2015.VentricleLeft.hg38.peakachu-merged.loops"
-        ["liver"]="Leung_2015.Liver.hg38.peakachu-merged.loops"
-        ["lung"]="Schmitt_2016.Lung.hg38.peakachu-merged.loops"
-        ["mammary"]="Rao_2014.HMEC.hg38.peakachu-merged.loops"
-        ["pancreas"]="Schmitt_2016.Pancreas.hg38.peakachu-merged.loops"
-        ["skeletal_muscle"]="Schmitt_2016.Psoas.hg38.peakachu-merged.loops"
-        ["skin"]="Rao_2014.NHEK.hg38.peakachu-merged.loops"
-        ["small_intestine"]="Schmitt_2016.Bowel_Small.hg38.peakachu-merged.loops"
-        ["aorta"]="Leung_2015.Aorta.hg38.peakachu-merged.loops"
-    )
-
     for file in "${!loop_files[@]}"; do
         _format_deepanchor_loops \
             "${deepanchor_dir}" \
-            "/ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data/loops/" \
+            "/ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data/loops" \
             "$file" \
             "/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt" \
             "/ocean/projects/bio210019p/stevesho/resources" \
             "${final_dir}" \
-            "${loop_files[$file]}"
+            "${loop_files[$file]}" \
+            /ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data
+
+        log_progress "Finished processing ${file} loops"
+        echo "Total time: $(convertsecs SECONDS)"
     done
 }
+
+deepanchor_processing_main \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deepanchor/processing \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deepanchor

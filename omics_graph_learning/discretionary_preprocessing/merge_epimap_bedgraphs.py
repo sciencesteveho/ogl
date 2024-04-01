@@ -70,7 +70,7 @@ def _bigwig_to_bedgraph(
     return bedgraph
 
 
-def _sort_mark_file(path: str, file: str) -> str:
+def _sort_mark_file(file: str) -> str:
     """Sort a single file using subprocess"""
     sorted_file = f"{file}.sorted"
     try:
@@ -80,7 +80,7 @@ def _sort_mark_file(path: str, file: str) -> str:
                     "sort",
                     "--parallel=12",
                     "-S",
-                    "80%",
+                    "60%",
                     "-k1,1",
                     "-k2,2n",
                     file,
@@ -109,7 +109,7 @@ def _bigwig_to_bedgraph_sequential(path: str, files: List[str]) -> List[str]:
 
 
 def _sort_marks_sequential(path: str, files: List[str]) -> List[str]:
-    return [_sort_mark_file(path=path, file=file) for file in files]
+    return [_sort_mark_file(file=file) for file in files]
 
 
 def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
@@ -198,10 +198,11 @@ def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None
     2. Call!
     """
     for file in os.listdir(bedfile_dir):
-        os.symlink(
-            src=os.path.join(bedfile_dir, file),
-            dst=os.path.join(f"{working_dir}/crms_processing", file),
-        )
+        with suppress(FileExistsError):
+            os.symlink(
+                src=os.path.join(bedfile_dir, file),
+                dst=os.path.join(f"{working_dir}/crms_processing", file),
+            )
     try:
         subprocess.run(
             [
