@@ -77,7 +77,6 @@ def _sort_mark_file(file: str) -> str:
         with open(sorted_file, "w") as outfile:
             subprocess.run(
                 [
-                    "LC_ALL=C",
                     "sort",
                     "--parallel=12",
                     "-S",
