@@ -22,6 +22,12 @@ set -x
 
 
 # =============================================================================
+# Filter using HiCDC+
+# =============================================================================
+Rscript hicdcplus.r --hicfile 4DNFITUOMFUQ.hic --outdir /Users/steveho/hic/temp --sig GATC --binsize 5000 --chrs "chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9" "chr10" "chr11" "chr12" "chr13" "chr14" "chr15" "chr16" "chr17" "chr18" "chr19" "chr20" "chr21" "chr22" --ncore 4
+
+
+# =============================================================================
 # Write files out to separate chromosomes
 # =============================================================================
 # Set your qvalue cutoff here

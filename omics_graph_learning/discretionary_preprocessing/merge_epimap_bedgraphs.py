@@ -264,8 +264,8 @@ def main() -> None:
     _make_directories(directory=args.path)
 
     # Process each mark
-    # for mark in CUTOFFS.keys():
-    #     process_mark(mark=mark, path=args.path)
+    for mark in CUTOFFS.keys():
+        process_mark(mark=mark, path=args.path)
 
     # Call CRMS after processing all marks
     call_crms(
