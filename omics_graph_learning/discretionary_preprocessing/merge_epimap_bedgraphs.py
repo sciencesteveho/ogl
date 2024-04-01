@@ -120,7 +120,7 @@ def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
         except subprocess.CalledProcessError as error:
             print(f"Error running bedtools unionbedg for {mark} with error {error}")
     else:
-        merged_bedgraph_summed = files[0]
+        merged_bedgraph = files[0]
     try:
         with open(merged_bedgraph_summed, "w") as outfile:
             subprocess.run(
