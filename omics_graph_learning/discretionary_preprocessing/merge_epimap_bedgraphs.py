@@ -116,15 +116,18 @@ def _sum_coverage_and_average(path: str, mark: str, files: List[str]) -> str:
     """Subprocess call to sum the coverage and average the values"""
     merged_bedgraph = f"{path}/merged/{mark}.merged.bedgraph"
     merged_bedgraph_summed = f"{path}/merged/{mark}.merged.summed.bedgraph"
-    try:
-        with open(merged_bedgraph, "w") as outfile:
-            subprocess.run(
-                ["bedtools", "unionbedg", "-i"] + files,
-                stdout=outfile,
-                check=True,
-            )
-    except subprocess.CalledProcessError as error:
-        print(f"Error running bedtools unionbedg for {mark} with error {error}")
+    if len(files) == 3:
+        try:
+            with open(merged_bedgraph, "w") as outfile:
+                subprocess.run(
+                    ["bedtools", "unionbedg", "-i"] + files,
+                    stdout=outfile,
+                    check=True,
+                )
+        except subprocess.CalledProcessError as error:
+            print(f"Error running bedtools unionbedg for {mark} with error {error}")
+    else:
+        merged_bedgraph_summed = files[0]
     try:
         with open(merged_bedgraph_summed, "w") as outfile:
             subprocess.run(
