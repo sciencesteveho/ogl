@@ -46,7 +46,7 @@ hic_processing <- function(tissue = NULL,
                            binsize = 5000,
                            ncore = 8) {
   # Set up vars
-  hicfile <- paste0(working_dr, '/', tissue, ".hic")
+  hicfile <- paste0(working_dir, '/', tissue, ".hic")
   outfile <- paste0(outdir, '/', tissue, "_result.txt.gz")
 
   # generate features
