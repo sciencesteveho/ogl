@@ -63,7 +63,7 @@ hic_processing <- function(tissue = NULL,
                     #           "chr20", "chr21", "chr22", "chrX", "chrY"),)
   
   gi_list <- generate_bintolen_gi_list(bintolen_path = bintolen, gen = "Hsapiens", gen_ver = gen_ver)
-  gi_list <- add_hic_counts(gi_list, hic_path = hic_file)
+  gi_list <- add_hic_counts(gi_list, hic_path = hicfile)
   gi_list <- expand_1D_features(gi_list)
   set.seed(1010) # HiC-DC downsamples rows for modeling
   gi_list <- HiCDCPlus_parallel(gi_list, ncore = ncore)
