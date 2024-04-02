@@ -45,6 +45,7 @@ hic_processing <- function(tissue = NULL,
                            ncore = 8) {
   # Set up vars
   hicfile <- paste0(working_dir, '/', tissue, ".hic")
+  intermediate <- paste0(working_dir, '/tmp/', tissue, "_bintolen.txt.gz")
   outfile <- paste0(working_dir, '/tmp/', tissue, "_result.txt.gz")
 
   # generate features
@@ -58,7 +59,7 @@ hic_processing <- function(tissue = NULL,
                               "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
                               "chr20", "chr21", "chr22", "chrX", "chrY"),)
   
-  gi_list <- generate_bintolen_gi_list(bintolen_path = outfile, gen = "Hsapiens", gen_ver = gen_ver)
+  gi_list <- generate_bintolen_gi_list(bintolen_path = intermediate, gen = "Hsapiens", gen_ver = gen_ver)
   gi_list <- add_hic_counts(gi_list, hic_path = hic_file)
   gi_list <- expand_1D_features(gi_list)
   set.seed(1010) # HiC-DC downsamples rows for modeling
