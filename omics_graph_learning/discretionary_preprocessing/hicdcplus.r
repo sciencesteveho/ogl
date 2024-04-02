@@ -6,7 +6,6 @@ library(HiCDCPlus)
 parser <- ArgumentParser()
 parser$add_argument("--tissue", help="Name of the tissue/cell line", type="character")
 parser$add_argument("--working_dir", help="Basedir location of the .hic file", type="character")
-parser$add_argument("--outdir", help="Path to the output directory", type="character")
 parser$add_argument("--gen_ver", help="Genome version", type="character")
 parser$add_argument("--binsize", help="Bin size", type="numeric")
 parser$add_argument("--ncore", help="Number of cores to use", type="numeric")
@@ -73,4 +72,4 @@ load_ref(gen_ver=args$gen_ver)
 message("Packages loaded")
 
 # Run the HiCDCPlus pipeline
-hic_processing(tissue=args$tissue, working_dir=args$working_dir, outdir=args$outdir, gen_ver=args$gen_ver, binsize=args$binsize, ncore=args$ncore)
+hic_processing(tissue=args$tissue, working_dir=args$working_dir, gen_ver=args$gen_ver, binsize=args$binsize, ncore=args$ncore)
