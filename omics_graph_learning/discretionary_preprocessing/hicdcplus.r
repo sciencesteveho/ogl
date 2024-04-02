@@ -32,7 +32,6 @@ load_ref <- function(gen_ver = NULL) {
 #' 
 #' @param tissue (string) Name of tissue or cell line
 #' @param working_dir (string) Path to the working directory
-#' @param outdir (string) Path to the output directory
 #' @param gen_ver (string) Genome version ["hg19", "hg38"]
 #' @param binsize (numeric) Bin size
 #' @param ncore (numeric) Number of cores to use
@@ -41,13 +40,12 @@ load_ref <- function(gen_ver = NULL) {
 
 hic_processing <- function(tissue = NULL,
                            working_dir = NULL,
-                           outdir = '/tmp',
                            gen_ver = NULL,
                            binsize = 5000,
                            ncore = 8) {
   # Set up vars
   hicfile <- paste0(working_dir, '/', tissue, ".hic")
-  outfile <- paste0(outdir, '/', tissue, "_result.txt.gz")
+  outfile <- paste0(working_dir, '/tmp/', tissue, "_result.txt.gz")
 
   # generate features
   hicfile_path <- system.file(hicfile, package = "HiCDCPlus")
@@ -58,7 +56,7 @@ hic_processing <- function(tissue = NULL,
                      binsize = binsize,
                      chrs = c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
                               "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
-                              "chr20", "chr21", "chr22"))
+                              "chr20", "chr21", "chr22", "chrX", "chrY"),)
   
   gi_list <- generate_bintolen_gi_list(bintolen_path = outfile, gen = "Hsapiens", gen_ver = gen_ver)
   gi_list <- add_hic_counts(gi_list, hic_path = hic_file)
