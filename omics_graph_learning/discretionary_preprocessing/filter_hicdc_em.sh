@@ -6,10 +6,10 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=24
 
 # Partition
-#SBATCH -p RM-shared
+#SBATCH -p EM
 
 # Request time
 #SBATCH -t 12:00:00
@@ -20,17 +20,14 @@
 #echo commands to stdout
 set -x
 
-tissue=$1  # name of tissue or cell line
-binsize=$2  # resolution of .hic to work with
+# tissue=$1  # name of tissue or cell line
+# binsize=$2  # resolution of .hic to work with
 
 # tissue=liver
 # binsize=40000
 
 working_dir=/ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices
 script_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
-
-tissue=hmec
-binsize=5000
 
 # =============================================================================
 # Filter using HiCDC+
@@ -48,7 +45,10 @@ function run_hicdcplus () {
         --ncore 4
 }
 
-run_hicdcplus $tissue $binsize
+for cell in gm12878 h1-esc hepg2 hmec imr90 k562 nhek;
+do
+    run_hicdcplus $cell 5000
+done
 
 
 # =============================================================================
@@ -107,7 +107,7 @@ run_hicdcplus $tissue $binsize
 
 
 # For posterity, the follow was used to filter the hic results
-# for tis in adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen;
+# for tis in adrenal aorta hippocampus liver left_ventricle liver lung ovary pancreas skeletal_muscle small_intestine spleen;
 # do
 #     sbatch filter_hicdc_tissues.sh $tis 40000
 # done
