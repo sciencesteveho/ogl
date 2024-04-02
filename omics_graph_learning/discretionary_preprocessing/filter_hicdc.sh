@@ -6,7 +6,7 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=10
 
 # Partition
 #SBATCH -p RM-shared
@@ -20,40 +20,59 @@
 #echo commands to stdout
 set -x
 
+tissue=$1  # name of tissue or cell line
+binsize=$2  # resolution of .hic to work with
+
+working_dir=/ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices
+script_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
 
 # =============================================================================
 # Filter using HiCDC+
 # =============================================================================
-Rscript hicdcplus.r --hicfile 4DNFITUOMFUQ.hic --outdir /Users/steveho/hic/temp --sig GATC --binsize 5000 --chrs "chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9" "chr10" "chr11" "chr12" "chr13" "chr14" "chr15" "chr16" "chr17" "chr18" "chr19" "chr20" "chr21" "chr22" --ncore 4
+function run_hicdcplus () {
+    local tissue=$1
+    local binsize=$2
+    local gen_ver="hg38"
+
+    Rscript ${script_dir}/hicdcplus.r \
+        --tissue $1 \
+        --working_dir $working_dir \
+        --gen_ver $gen_ver \
+        --binsize $binsize \
+        --ncore 8
+}
+
+run_hicdcplus $tissue $binsize
 
 
 # =============================================================================
 # Write files out to separate chromosomes
 # =============================================================================
 # Set your qvalue cutoff here
-QVALUE_CUTOFF=$1
-INPUT_FILE=$2
-FILE_PREFIX=$3
+INPUT_FILE=${working_dir}/tmp/${tissue}_result.txt
+FILE_PREFIX=${working_dir}/fdr_filtered/${tissue}
 
-# Assuming the input file is named "input.tsv"
 # and the first line of the file contains headers.
+mkdir -p ${FILE_PREFIX}
+gunzip ${INPUT_FILE}.gz
 HEADER=$(head -n 1 "$INPUT_FILE")
 
 # Create an associative array to keep track of which chromosome files have been written
 declare -A chr_written
-
-tail -n +2 "$INPUT_FILE" | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFIX" '{
-    chrFile = prefix "_" $1 "_" cutoff ".tsv"
-    if ($10 < cutoff) {
-        if (!(chrFile in chr_written)) {
-            print header > chrFile
-            chr_written[chrFile] = 1
+for QVALUE_CUTOFF in 0.1 0.01 0.001; do
+    tail -n +2 "$INPUT_FILE" | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFIX" '{
+        chrFile = prefix "_" $1 "_" cutoff ".tsv"
+        if ($10 < cutoff) {
+            if (!(chrFile in chr_written)) {
+                print header > chrFile
+                chr_written[chrFile] = 1
+            }
+            print >> chrFile
         }
-        print >> chrFile
-    }
-}' header="$HEADER"
+    }' header="$HEADER"
 
-echo "Files have been created for each chromosome with qvalue below $QVALUE_CUTOFF."
+    echo "Files have been created for each chromosome with qvalue below $QVALUE_CUTOFF."
+done
 
 # for qval in 0.1 0.01 0.001; do
 #     sbatch filter_hicdc.sh $qval leftventricle_result.txt leftventricle
