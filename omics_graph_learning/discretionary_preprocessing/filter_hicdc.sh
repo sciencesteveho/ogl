@@ -6,7 +6,7 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=10
+#SBATCH --ntasks-per-node=24
 
 # Partition
 #SBATCH -p RM-shared
@@ -49,8 +49,8 @@ run_hicdcplus $tissue $binsize
 # Write files out to separate chromosomes
 # =============================================================================
 # Set your qvalue cutoff here
-INPUT_FILE=${working_dir}/tmp/${tissue}_result.txt
-FILE_PREFIX=${working_dir}/fdr_filtered/${tissue}
+INPUT_FILE=${working_dir}/fdr_filtered/${tissue}_result.txt
+FILE_PREFIX=${working_dir}/fdr_filtered/${tissue}/${tissue}
 
 # and the first line of the file contains headers.
 mkdir -p ${FILE_PREFIX}

@@ -46,7 +46,7 @@ hic_processing <- function(tissue = NULL,
   hicfile <- paste0(working_dir, '/', tissue, ".hic")
   feats <- paste0(working_dir, '/tmp/', tissue)
   bintolen <- paste0(working_dir, '/tmp/', tissue, "_bintolen.txt.gz")
-  outfile <- paste0(working_dir, '/tmp/', tissue, "_result.txt.gz")
+  outfile <- paste0(working_dir, 'fdr_filtered', tissue, "_result.txt.gz")
 
   # generate features
   hicfile_path <- system.file(hicfile, package = "HiCDCPlus")
