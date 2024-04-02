@@ -67,6 +67,7 @@ hic_processing <- function(tissue = NULL,
   gi_list <- expand_1D_features(gi_list)
   set.seed(1010) # HiC-DC downsamples rows for modeling
   gi_list <- HiCDCPlus_parallel(gi_list, ncore = ncore)
+  gc()  # force garbage collection to see if it helps with segmentation fault error
   gi_list_write(gi_list, fname = outfile)
   message(paste0("Processing ", tissue, " complete!"))
 }
