@@ -98,3 +98,15 @@ done
 #     done
 # done
 # # Add executable permissions to the script if needed
+
+
+# For posterity, the follow was used to filter the hic results
+# for tis in adrenal aorta hippocampus liver left_ventricle liver lung ovary pancreas skeletal_muscle small_intestine spleen;
+# do
+#     sbatch filter_hicdc.sh $tis 40000
+# done
+
+# for cell in gm12878 h1-esc hepg2 hmec imr90 k562 nhek;
+# do
+#     sbatch filter_hicdc.sh $cell 5000
+# done

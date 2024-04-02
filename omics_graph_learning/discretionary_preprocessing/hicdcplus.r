@@ -57,7 +57,10 @@ hic_processing <- function(tissue = NULL,
                      binsize = binsize,
                      chrs = c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
                               "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
-                              "chr20", "chr21", "chr22", "chrX", "chrY"),)
+                              "chr20", "chr21", "chr22"),)
+                    #  chrs = c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
+                    #           "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
+                    #           "chr20", "chr21", "chr22", "chrX", "chrY"),)
   
   gi_list <- generate_bintolen_gi_list(bintolen_path = bintolen, gen = "Hsapiens", gen_ver = gen_ver)
   gi_list <- add_hic_counts(gi_list, hic_path = hic_file)
