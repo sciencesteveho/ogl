@@ -6,10 +6,10 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=24
 
 # Partition
-#SBATCH -p RM-shared
+#SBATCH -p EM
 
 # Request time
 #SBATCH -t 12:00:00
@@ -20,17 +20,14 @@
 #echo commands to stdout
 set -x
 
-tissue=$1  # name of tissue or cell line
-binsize=$2  # resolution of .hic to work with
+# tissue=$1  # name of tissue or cell line
+# binsize=$2  # resolution of .hic to work with
 
 # tissue=liver
 # binsize=40000
 
-working_dir=/ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices
-script_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
-
-tissue=hmec
-binsize=5000
+working_dir=/Users/steveho/hic
+script_dir=/Users/steveho/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
 
 # =============================================================================
 # Filter using HiCDC+
@@ -40,7 +37,7 @@ function run_hicdcplus () {
     local binsize=$2
     local gen_ver="hg38"
 
-    Rscript ${script_dir}/hicdcplus.r \
+    R ${script_dir}/hicdcplus.r \
         --tissue $1 \
         --working_dir $working_dir \
         --gen_ver $gen_ver \
@@ -48,8 +45,24 @@ function run_hicdcplus () {
         --ncore 4
 }
 
-run_hicdcplus $tissue $binsize
 
+for cell in gm12878 h1-esc hepg2 hmec imr90 k562 nhek adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen; do
+    case "$cell" in
+        gm12878|h1-esc|hepg2|hmec|imr90|k562|nhek)
+            resolution=5000
+            ;;
+        adrenal|aorta|hippocampus|liver|left_ventricle|lung|ovary|pancreas|skeletal_muscle|small_intestine|spleen)
+            resolution=40000
+            ;;
+        *)
+            echo "Invalid cell type: $cell"
+            continue
+            ;;
+    esac
+
+    echo "Running hicdcplus for $cell with resolution $resolution"
+    run_hicdcplus $cell $resolution
+done
 
 # =============================================================================
 # Write files out to separate chromosomes
@@ -107,7 +120,7 @@ run_hicdcplus $tissue $binsize
 
 
 # For posterity, the follow was used to filter the hic results
-# for tis in adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen;
+# for tis in adrenal aorta hippocampus liver left_ventricle liver lung ovary pancreas skeletal_muscle small_intestine spleen;
 # do
 #     sbatch filter_hicdc_tissues.sh $tis 40000
 # done
