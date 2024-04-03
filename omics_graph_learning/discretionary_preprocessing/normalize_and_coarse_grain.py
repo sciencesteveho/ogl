@@ -19,50 +19,68 @@ def _balance_cooler_chr(cool: cooler.Cooler, chromosome: str) -> np.ndarray:
     return cool.matrix(balance=True).fetch(chromosome)
 
 
-def _write_bedpe(
-    contacts: List[List[Union[str, float, int]]],
-    chromosome: str,
-    tissue: str,
-    cutoff: float,
-) -> None:
-    """Write matrix to BEDPE format"""
-    contacts_df = pd.DataFrame(
-        contacts,
-        columns=["chrom1", "start1", "end1", "chrom2", "start2", "end2", "count"],
+# def _write_bedpe(
+#     contacts: List[List[Union[str, float, int]]],
+#     chromosome: str,
+#     tissue: str,
+#     cutoff: float,
+# ) -> None:
+#     """Write matrix to BEDPE format"""
+#     contacts_df = pd.DataFrame(
+#         contacts,
+#         columns=["chrom1", "start1", "end1", "chrom2", "start2", "end2", "count"],
+#     )
+#     contacts_df.to_csv(
+#         f"{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe",
+#         sep="\t",
+#         index=False,
+#     )
+
+
+def _smoothed_matrix(clr: cooler.Cooler, chromosome: str) -> np.ndarray:
+    """Apply balancing and adaptive coarse-graining to a chromosome. Returns a
+    smoothed matrix."""
+    balanced = _balance_cooler_chr(clr, chromosome)
+    raw = clr.matrix(balance=False).fetch(chromosome)
+    return adaptive_coarsegrain(balanced, raw, cutoff=2, max_levels=8).astype(
+        np.float32
     )
-    contacts_df.to_csv(
-        f"{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe",
-        sep="\t",
-        index=False,
-    )
+
+
+# def _write_bedpe_line(line: str, chromosome: str, tissue: str, cutoff: float) -> None:
+#     """Write out each line to a bedpe"""
+#     outfile = f"{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe"
+#     with open(outfile, "a") as file:
+#         file.write(f"{line}")
 
 
 def process_chromosome(
     clr: cooler.Cooler, chromosome: str, tissue: str, cutoff: float
 ) -> None:
-    """Apply matrix balancing and adaptive coarse-graining to a chromosome. Writes out results to a BEDPE file."""
-    balanced = _balance_cooler_chr(clr, chromosome)  # balanced matrix
-    raw = clr.matrix(balance=False).fetch(chromosome)  # get raw vals
-    bins = clr.bins().fetch(chromosome).to_numpy()  # get bins for writing
+    """Process each chromosome and write out results to a BEDPE file if above
+    threshold. Writes out results to a BEDPE file."""
+    bins = clr.bins().fetch(chromosome).to_numpy()
+    smoothed_matrix = _smoothed_matrix(clr, chromosome)
 
-    smoothed_matrix = adaptive_coarsegrain(
-        balanced, raw, cutoff=2, max_levels=8
-    ).astype(np.float32)
-
-    # Convert the smoothed matrix to coordinates with counts greater than a cutoff value.
-    contacts = []
-    for i in range(len(smoothed_matrix)):
-        for j in range(i, len(smoothed_matrix)):
-            count = smoothed_matrix[i][j]
-            if count >= cutoff:
-                # Get the genomic coordinates for bin i and bin j
-                start1, end1 = bins[i][1], bins[i][2]
-                start2, end2 = bins[j][1], bins[j][2]
-                contacts.append(
-                    [chromosome, start1, end1, chromosome, start2, end2, count]
-                )
-
-    _write_bedpe(contacts=contacts, chromosome=chromosome, tissue=tissue, cutoff=cutoff)
+    # Write out contacts to BEDPE file
+    outfile = f"{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe"
+    with open(outfile, "a+") as file:
+        for i in range(len(smoothed_matrix)):
+            for j in range(i, len(smoothed_matrix)):
+                count = smoothed_matrix[i][j]
+                if count >= cutoff:
+                    # Get the genomic coordinates for bin i and bin j
+                    start1, end1 = bins[i][1], bins[i][2]
+                    start2, end2 = bins[j][1], bins[j][2]
+                    file.write(
+                        f"{chromosome}\t{start1}\t{end1}\t{chromosome}\t{start2}\t{end2}\t{count}\n"
+                    )
+                # _write_bedpe_line(
+                #     line=f"{chromosome}\t{start1}\t{end1}\t{chromosome}\t{start2}\t{end2}\t{count}",
+                #     chromosome=chromosome,
+                #     tissue=tissue,
+                #     cutoff=cutoff,
+                # )
 
 
 def main() -> None:
