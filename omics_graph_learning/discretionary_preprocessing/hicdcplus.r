@@ -44,7 +44,7 @@ hic_processing <- function(tissue = NULL,
                            ncore = 8) {
   # Set up vars
   hicfile <- paste0(working_dir, '/', tissue, ".hic")
-  feats <- paste0(working_dir, '/tmp/', tissue, '.tmp')
+  feats <- paste0(working_dir, '/tmp/', tissue)
   bintolen <- paste0(working_dir, '/tmp/', tissue, "_bintolen.txt.gz")
   outfile <- paste0(working_dir, '/fdr_filtered/', tissue, "_result.txt.gz")
 

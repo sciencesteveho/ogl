@@ -26,18 +26,19 @@ set -x
 # tissue=liver
 # binsize=40000
 
-working_dir=/Users/steveho/hic
-script_dir=/Users/steveho/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
-
 # =============================================================================
 # Filter using HiCDC+
 # =============================================================================
+
+working_dir=/Users/steveho/hic
+script_dir=/Users/steveho/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
+
 function run_hicdcplus () {
     local tissue=$1
     local binsize=$2
     local gen_ver="hg38"
 
-    R ${script_dir}/hicdcplus.r \
+    /Library/Frameworks/R.framework/Resources/bin/Rscript ${script_dir}/hicdcplus.r \
         --tissue $1 \
         --working_dir $working_dir \
         --gen_ver $gen_ver \

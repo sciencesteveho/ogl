@@ -107,9 +107,7 @@ def main() -> None:
     #     )
 
     for cutoff in [0.1, 0.2, 0.3, 0.4, 0.5]:
-        process_chromosome(
-            clr=clr, chromosome="chr10", tissue=args.tissue, cutoff=cutoff
-        )
+        process_chromosome(clr=clr, chromosome="10", tissue=args.tissue, cutoff=cutoff)
 
 
 if __name__ == "__main__":
