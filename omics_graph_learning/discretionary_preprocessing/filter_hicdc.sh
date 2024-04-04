@@ -6,13 +6,13 @@
 #SBATCH --mail-type=FAIL
 
 # Number of cores requested
-#SBATCH --ntasks-per-node=24
+#SBATCH --ntasks-per-node=8
 
 # Partition
-#SBATCH -p EM
+#SBATCH -p RM-shared
 
 # Request time
-#SBATCH -t 12:00:00
+#SBATCH -t 48:00:00
 
 # output to a designated folder
 #SBATCH -o slurm_outputs/%x_%j.out
@@ -30,69 +30,86 @@ set -x
 # Filter using HiCDC+
 # =============================================================================
 
-working_dir=/Users/steveho/hic
-script_dir=/Users/steveho/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
+# working_dir=/Users/steveho/hic
+# script_dir=/Users/steveho/omics_graph_learning/omics_graph_learning/discretionary_preprocessing
 
-function run_hicdcplus () {
-    local tissue=$1
-    local binsize=$2
-    local gen_ver="hg38"
+# function run_hicdcplus () {
+#     local tissue=$1
+#     local binsize=$2
+#     local gen_ver="hg38"
 
-    /Library/Frameworks/R.framework/Resources/bin/Rscript ${script_dir}/hicdcplus.r \
-        --tissue $1 \
-        --working_dir $working_dir \
-        --gen_ver $gen_ver \
-        --binsize $binsize \
-        --ncore 4
-}
+#     /Library/Frameworks/R.framework/Resources/bin/Rscript ${script_dir}/hicdcplus.r \
+#         --tissue $1 \
+#         --working_dir $working_dir \
+#         --gen_ver $gen_ver \
+#         --binsize $binsize \
+#         --ncore 4
+# }
 
 
-for cell in gm12878 h1-esc hepg2 hmec imr90 k562 nhek adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen; do
-    case "$cell" in
-        gm12878|h1-esc|hepg2|hmec|imr90|k562|nhek)
-            resolution=5000
-            ;;
-        adrenal|aorta|hippocampus|liver|left_ventricle|lung|ovary|pancreas|skeletal_muscle|small_intestine|spleen)
-            resolution=40000
-            ;;
-        *)
-            echo "Invalid cell type: $cell"
-            continue
-            ;;
-    esac
+# for cell in gm12878 h1-esc hepg2 hmec imr90 k562 nhek adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen; do
+#     case "$cell" in
+#         gm12878|h1-esc|hepg2|hmec|imr90|k562|nhek)
+#             resolution=5000
+#             ;;
+#         adrenal|aorta|hippocampus|liver|left_ventricle|lung|ovary|pancreas|skeletal_muscle|small_intestine|spleen)
+#             resolution=40000
+#             ;;
+#         *)
+#             echo "Invalid cell type: $cell"
+#             continue
+#             ;;
+#     esac
 
-    echo "Running hicdcplus for $cell with resolution $resolution"
-    run_hicdcplus $cell $resolution
-done
+#     echo "Running hicdcplus for $cell with resolution $resolution"
+#     # run_hicdcplus $cell $resolution  <-- Uncomment this line to run the script
+# done
 
 # =============================================================================
 # Write files out to separate chromosomes
 # =============================================================================
-# # Set your qvalue cutoff here
-# INPUT_FILE=${working_dir}/fdr_filtered/${tissue}_result.txt
-# FILE_PREFIX=${working_dir}/fdr_filtered/${tissue}/${tissue}
+# Set your qvalue cutoff here
+tissue=$1
+QVALUE_CUTOFF=$2
 
-# # and the first line of the file contains headers.
-# mkdir -p ${working_dir}/fdr_filtered/${tissue}
-# gunzip ${INPUT_FILE}.gz
-# HEADER=$(head -n 1 "$INPUT_FILE")
+working_dir=/ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices
+INPUT_FILE=${working_dir}/fdr_filtered/${tissue}_result.txt
+FILE_PREFIX=${working_dir}/fdr_filtered/${tissue}/${tissue}
 
-# # Create an associative array to keep track of which chromosome files have been written
-# declare -A chr_written
-# for QVALUE_CUTOFF in 0.1 0.01 0.001; do
-#     tail -n +2 "$INPUT_FILE" | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFIX" '{
-#         chrFile = prefix "_" $1 "_" cutoff ".tsv"
-#         if ($10 < cutoff) {
-#             if (!(chrFile in chr_written)) {
-#                 print header > chrFile
-#                 chr_written[chrFile] = 1
-#             }
-#             print >> chrFile
-#         }
-#     }' header="$HEADER"
+# Make the directory to place filtered files if it doesn't exist
+mkdir -p ${working_dir}/fdr_filtered/${tissue}
 
-#     echo "Files have been created for each chromosome with qvalue below $QVALUE_CUTOFF."
+# Create an array to keep track of which chromosome files have been
+# written
+tail -n +2 "$INPUT_FILE" \
+    | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFIX" '$10 < cutoff' \
+    | sort -k1,1 -k2,2n \
+    | cut -f1,2,3,4,5,6 \
+    > ${working_dir}/fdr_filtered/${tissue}/${tissue}_${QVALUE_CUTOFF}_filtered.txt
+
+echo "$tissue hi-c contacts filtered at q-val = $QVALUE_CUTOFF."
+
+
+# q_vals=(0.1 0.01 0.001)
+# for tissue in h1-esc hepg2 hmec imr90 k562 nhek gm12878 adrenal aorta hippocampus liver left_ventricle lung ovary pancreas skeletal_muscle small_intestine spleen; do
+#     for qval in "${q_vals[@]}"; do
+#         sbatch filter_hicdc_qvals.sh $tissue $qval
+#     done
 # done
+
+# declare -A chr_written
+# tail -n +2 "$INPUT_FILE" | awk -v cutoff="$QVALUE_CUTOFF" -v prefix="$FILE_PREFIX" '{
+#     chrFile = prefix "_" $1 "_" cutoff ".tsv"
+#     if ($10 < cutoff) {
+#         if (!(chrFile in chr_written)) {
+#             print header > chrFile
+#             chr_written[chrFile] = 1
+#         }
+#         print >> chrFile
+#     }
+# }' header="$HEADER"
+
+# echo "Files have been created for each chromosome with qvalue below $QVALUE_CUTOFF."
 
 # for qval in 0.1 0.01 0.001; do
 #     sbatch filter_hicdc.sh $qval leftventricle_result.txt leftventricle
@@ -101,8 +118,8 @@ done
 # # =============================================================================
 # # Concat to get counts
 # # =============================================================================
-# # Define arrays or space-separated strings of all unique prefixes and q-values
-# # prefixes=("leftventricle")  # Add all possible prefixes
+# Define arrays or space-separated strings of all unique prefixes and q-values
+# prefixes=("leftventricle")  # Add all possible prefixes
 # prefixes=("k562")  # Add all possible prefixes
 # qvals=("0.001" "0.01")  # Add all possible q-values
 

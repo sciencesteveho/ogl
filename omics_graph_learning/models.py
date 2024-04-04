@@ -128,7 +128,7 @@ def _create_linear_layers_attn_models(sizes: List[int]) -> nn.ModuleList:
     )
 
 
-class CustomGNNModule(torch.nn.Module):
+class FlexibleGNNModule(torch.nn.Module):
     """Modular GNN model architecture"""
 
     def __init__(
