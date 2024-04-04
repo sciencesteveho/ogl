@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Iterative balancing and adaptive coarse-graining of contact matrices"""
+"""Iterative balancing and adaptive coarse-graining of hi-c contact matrices"""
 
 import argparse
 import os
@@ -102,14 +102,16 @@ def main() -> None:
         required=True,
         help="Tissue name for output file",
     )
-    # parser.add_argument(
-    #     "--min",
-    #     type=float,
-    #     required=False,
-    #     default=0.2,
-    #     help="Minimum cutoff value for contact matrix",
-    # )
+    parser.add_argument(
+        "--min",
+        type=float,
+        required=False,
+        default=0.2,
+        help="Minimum cutoff value for contact matrix",
+    )
     args = parser.parse_args()
+
+    # Make dir to store output
     if not os.path.exists(args.tissue):
         os.makedirs(args.tissue)
 
@@ -120,18 +122,11 @@ def main() -> None:
     if not _check_balance(clr):
         cooler.balance_cooler(clr, store=True)
 
-    # process each chromosome
-    # cutoff = 0.2 if args.min is None else args.min
-    # for chromosome in clr.chromnames:
-    #     process_chromosome(
-    #         clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=cutoff
-    #     )
-
-    for cutoff in [0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.075]:
-        process_chromosome(clr=clr, chromosome="10", tissue=args.tissue, cutoff=cutoff)
-        process_chromosome(clr=clr, chromosome="1", tissue=args.tissue, cutoff=cutoff)
-        process_chromosome(clr=clr, chromosome="8", tissue=args.tissue, cutoff=cutoff)
-        process_chromosome(clr=clr, chromosome="9", tissue=args.tissue, cutoff=cutoff)
+    # Run processing!
+    for chromosome in clr.chromnames:
+        process_chromosome(
+            clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=args.cutoff
+        )
 
 
 if __name__ == "__main__":
