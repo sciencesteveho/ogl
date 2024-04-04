@@ -5,6 +5,7 @@
 """Iterative balancing and adaptive coarse-graining of contact matrices"""
 
 import argparse
+import os
 from typing import List, Tuple, Union
 
 import cooler  # type: ignore
@@ -63,7 +64,7 @@ def process_chromosome(
     )  # get chunks for processing
 
     # Write out contacts to BEDPE file
-    outfile = f"{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe"
+    outfile = f"{tissue}/{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe"
 
     with open(outfile, "a+") as file:
         for bin_chunk in chunked_bins:
@@ -109,6 +110,8 @@ def main() -> None:
     #     help="Minimum cutoff value for contact matrix",
     # )
     args = parser.parse_args()
+    if not os.path.exists(args.tissue):
+        os.makedirs(args.tissue)
 
     # Load cooler
     clr = cooler.Cooler(args.cooler)
@@ -124,8 +127,9 @@ def main() -> None:
     #         clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=cutoff
     #     )
 
-    for cutoff in [0.1, 0.2, 0.3, 0.4, 0.5]:
+    for cutoff in [0.1, 0.125, 0.15, 0.175, 0.2]:
         process_chromosome(clr=clr, chromosome="10", tissue=args.tissue, cutoff=cutoff)
+        process_chromosome(clr=clr, chromosome="1", tissue=args.tissue, cutoff=cutoff)
 
 
 if __name__ == "__main__":
