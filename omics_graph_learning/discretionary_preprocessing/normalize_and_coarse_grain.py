@@ -64,7 +64,7 @@ def process_chromosome(
     )  # get chunks for processing
 
     # Write out contacts to BEDPE file
-    outfile = f"{tissue}/{tissue}_{chromosome}_balanced_corse_grain_{cutoff}.bedpe"
+    outfile = f"{tissue}/{tissue}_{chromosome}_balanced_coarse_grain_{cutoff}.bedpe"
 
     with open(outfile, "a+") as file:
         for bin_chunk in chunked_bins:
@@ -127,9 +127,11 @@ def main() -> None:
     #         clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=cutoff
     #     )
 
-    for cutoff in [0.1, 0.125, 0.15, 0.175, 0.2]:
+    for cutoff in [0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.075]:
         process_chromosome(clr=clr, chromosome="10", tissue=args.tissue, cutoff=cutoff)
         process_chromosome(clr=clr, chromosome="1", tissue=args.tissue, cutoff=cutoff)
+        process_chromosome(clr=clr, chromosome="8", tissue=args.tissue, cutoff=cutoff)
+        process_chromosome(clr=clr, chromosome="9", tissue=args.tissue, cutoff=cutoff)
 
 
 if __name__ == "__main__":
