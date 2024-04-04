@@ -14,6 +14,11 @@ import numpy as np
 import pandas as pd
 
 
+def _check_balance(clr: cooler.Cooler) -> bool:
+    """Check if the cooler is balanced"""
+    return "weight" in clr.bins().columns
+
+
 def _balance_cooler_chr(
     cool: cooler.Cooler, chromosome: str, start: int, end: int
 ) -> np.ndarray:
@@ -105,11 +110,12 @@ def main() -> None:
     # )
     args = parser.parse_args()
 
-    # load cooler
+    # Load cooler
     clr = cooler.Cooler(args.cooler)
 
-    # store balancing weights
-    cooler.balance_cooler(clr, store=True)
+    # Check for balancing weights
+    if not _check_balance(clr):
+        cooler.balance_cooler(clr, store=True)
 
     # process each chromosome
     # cutoff = 0.2 if args.min is None else args.min
