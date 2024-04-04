@@ -125,7 +125,7 @@ def main() -> None:
     # Run processing!
     for chromosome in clr.chromnames:
         process_chromosome(
-            clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=args.cutoff
+            clr=clr, chromosome=chromosome, tissue=args.tissue, cutoff=args.min
         )
 
 
