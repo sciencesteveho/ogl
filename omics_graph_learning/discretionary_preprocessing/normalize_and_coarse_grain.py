@@ -79,7 +79,7 @@ def process_chromosome(
                         start1, end1 = bin_chunk[i][1], bin_chunk[i][2]
                         start2, end2 = bin_chunk[j][1], bin_chunk[j][2]
                         file.write(
-                            f"chr{chromosome}\t{start1}\t{end1}\t{chromosome}\tchr{start2}\t{end2}\t{count}\n"
+                            f"chr{chromosome}\t{start1}\t{end1}\tchr{chromosome}\t{start2}\t{end2}\t{count}\n"
                         )
 
 
