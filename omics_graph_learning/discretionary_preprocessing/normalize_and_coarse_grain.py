@@ -64,7 +64,7 @@ def process_chromosome(
     )  # get chunks for processing
 
     # Write out contacts to BEDPE file
-    outfile = f"{tissue}/{tissue}_{chromosome}_balanced_coarse_grain_{cutoff}.bedpe"
+    outfile = f"{tissue}/{tissue}_chr{chromosome}_balanced_coarse_grain_{cutoff}.bedpe"
 
     with open(outfile, "a+") as file:
         for bin_chunk in chunked_bins:
@@ -79,7 +79,7 @@ def process_chromosome(
                         start1, end1 = bin_chunk[i][1], bin_chunk[i][2]
                         start2, end2 = bin_chunk[j][1], bin_chunk[j][2]
                         file.write(
-                            f"{chromosome}\t{start1}\t{end1}\t{chromosome}\t{start2}\t{end2}\t{count}\n"
+                            f"chr{chromosome}\t{start1}\t{end1}\t{chromosome}\tchr{start2}\t{end2}\t{count}\n"
                         )
 
 
