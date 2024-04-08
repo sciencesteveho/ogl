@@ -19,15 +19,15 @@ import subprocess
 import time
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-import matplotlib.pyplot as plt
-import networkx as nx
+import matplotlib.pyplot as plt  # type: ignore
+import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
-import pybedtools
-from scipy import stats
-import seaborn as sns
+import pybedtools  # type: ignore
+from scipy import stats  # type: ignore
+import seaborn as sns  # type: ignore
 import torch
-import yaml
+import yaml  # type: ignore
 
 ATTRIBUTES = [
     "gc",

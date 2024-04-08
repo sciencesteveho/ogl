@@ -159,7 +159,7 @@ _make_ref_for_regulatory_elements \
 
 # =============================================================================
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
-# "gene" entries. Additionally, make a lookup table top convert from gencode to
+# "gene" entries. Additionally, make a lookup table to convert from gencode to
 # genesymbol.
 # wget https://storage.googleapis.com/gtex_analysis_v8/reference/gencode.v26.GRCh38.genes.gtf 
 # Arguments:

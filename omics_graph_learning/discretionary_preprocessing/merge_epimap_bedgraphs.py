@@ -186,25 +186,24 @@ def _lift_over_peaks(path: str, mark: str, peaks: str) -> None:
 
 
 def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None:
-    """Steps
-    1. Symlink files
-    2. Call!
-    """
+    """Symlinks the called peaks, excluding DNase and ATAC seq files. Calls CRMs
+    using ReMap 2022's method (peakMerge.py)"""
     for file in os.listdir(bedfile_dir):
-        with suppress(FileExistsError):
-            os.symlink(
-                src=os.path.join(bedfile_dir, file),
-                dst=os.path.join(f"{working_dir}/crms_processing", file),
-            )
+        if "DNase" not in file and "ATAC" not in file:
+            with suppress(FileExistsError):
+                os.symlink(
+                    src=os.path.join(bedfile_dir, file),
+                    dst=os.path.join(f"{working_dir}/crms_processing", file),
+                )
     try:
         subprocess.run(
             [
                 "python",
                 peakmerge_script,
                 "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt",
-                f"{working_dir}/crms_processing",
+                f"{working_dir}/crms_processing/",
                 "narrowPeak",
-                f"{working_dir}/crms",
+                f"{working_dir}/crms/",
             ],
             check=True,
         )

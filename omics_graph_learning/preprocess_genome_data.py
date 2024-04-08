@@ -280,10 +280,10 @@ class GenomeDataPreprocessor:
             )
 
         ### Make symlinks for regulatory data
-        reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
-        for element in reg_elements:
+        regulatory_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
+        for element in regulatory_elements:
             utils.check_and_symlink(
-                src=f"{self.reg_dir}/{reg_elements[element]}",
+                src=f"{self.reg_dir}/{regulatory_elements[element]}",
                 dst=f"{self.tissue_dir}/local/{element}_{self.tissue}.bed",
             )
 
