@@ -256,15 +256,19 @@ def process_mark(mark: str, path: str) -> None:
 def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser(description="Merge epimap bedgraphs")
-    parser.add_argument("path", type=str, help="Path to bedgraph files")
+    parser.add_argument("--path", type=str, help="Path to bedgraph files")
+    parser.add_argument(
+        "--crm_only", action="store_true", help="Call CRMs only", default=False
+    )
     args = parser.parse_args()
 
     # Make directories
     _make_directories(directory=args.path)
 
     # Process each mark
-    for mark in CUTOFFS.keys():
-        process_mark(mark=mark, path=args.path)
+    if not args.crm_only:
+        for mark in CUTOFFS.keys():
+            process_mark(mark=mark, path=args.path)
 
     # Call CRMS after processing all marks
     call_crms(
