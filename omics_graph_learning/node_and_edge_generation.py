@@ -10,13 +10,13 @@ arguments to use."""
 import argparse
 import contextlib
 import pathlib
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import graph_constructor
+from prepare_bedfiles import GenomeDataPreprocessor
 
 from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
-from prepare_bedfiles import GenomeDataPreprocessor
 import utils
 
 NODES = [
@@ -27,7 +27,7 @@ NODES = [
 ]
 
 
-def _get_regulatory_element_references(regulatory: str) -> str:
+def _get_regulatory_element_references(regulatory: str) -> Optional[str]:
     """Returns the filename corresponding to the given regulatory element
     scheme."""
     regulatory_map = {

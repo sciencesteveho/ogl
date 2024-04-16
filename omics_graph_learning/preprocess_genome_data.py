@@ -1,25 +1,29 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] fix _download_shared_files, which is currently broken
-#   - [ ] resolve hosting due to bandwidth limits
-#   - [ ] fix URLs as they point to incorrect locations
 
-"""Code to preprocess bedfiles before parsing into graph structures"""
+
+"""Preprocessor for genome data before parsing into graph structures. This
+script deals with data wrangling that does not necessarily fit into more defined
+downstream modules, which includes downloading shared files, setting up
+directories and symbolic linkes, parsing tissue-specific data, and adjusting
+file formatting."""
 
 
 import contextlib
 import os
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import utils
 
 # import requests
 
 
-NODETYPES_LOCAL = ["cpgislands", "ctcfccre", "tss"]
+NODETYPES_LOCAL: List[str] = [
+    "cpgislands",
+    "ctcfccre",
+    "tss",
+]  # local context filetypes
 
 
 class GenomeDataPreprocessor:
@@ -29,6 +33,7 @@ class GenomeDataPreprocessor:
         experiment_name (str): The name of the experiment.
         interaction_types (List[str]): The types of interactions.
         nodes (List[str]): The nodes.
+        regulatory (str): The regulatory element catalogue to use.
         working_directory (str): The working directory.
         params (Dict[str, Dict[str, str]]): The parameters.
 
@@ -52,6 +57,19 @@ class GenomeDataPreprocessor:
         Merge individual CPGs with optional liftover.
     prepare_data_files:
         Main pipeline function.
+
+    Examples:
+    --------
+    >>> preprocessObject = GenomeDataPreprocessor(
+            experiment_name=experiment_params["experiment_name"],
+            interaction_types=experiment_params["interaction_types"],
+            nodes=nodes,
+            regulatory=experiment_params["regulatory"],
+            working_directory=experiment_params["working_directory"],
+            params=tissue_params,
+        )
+
+    >>> preprocessObject.prepare_data_files()
     """
 
     def __init__(
@@ -189,7 +207,8 @@ class GenomeDataPreprocessor:
         90% of the collapsed motif falls within the cluster, the cluster is
         annotated with the binding motif.
 
-        ** Removed clustering
+        ** Removed clustering of Funk binding sites. The commented code is
+        deprecated. **
         """
         # if study == "Funk":
         #     cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
@@ -224,31 +243,146 @@ class GenomeDataPreprocessor:
         for cmds in [cmd, rename]:
             self._run_cmd(cmds)
 
+    def _liftover(
+        self, liftover: str, bed: str, liftover_chain: str, path: str
+    ) -> None:
+        """Liftovers bed file, sorts it, and deletes the unlifted regions. The
+        command is a subprocess call and is set up like:
+        
+        ./liftOver \
+            input.bed \
+            hg19ToHg38.over.chain \
+            output.bed \
+            unlifted.bed
+            
+        bedtools sort -i output.bed > output_sorted.bed && \
+            mv output_sorted output.bed \
+            && rm unlifted.bed
+            
+        Returns none, but creates an output file *path/bed_lifted*
+        """
+        cmd = f"{liftover} \
+            {path}/{bed} \
+            {liftover_chain} \
+            {path}/{bed}_lifted \
+            {path}/{bed}_unlifted \
+            && bedtools sort -i {path}/{bed}_lifted \
+            > {path}/{bed}_lifted_sorted \
+            && mv {path}/{bed}_lifted_sorted {path}/{bed}_lifted \
+            && rm {path}/{bed}_unlifted"
+
+        self._run_cmd(cmd)
+
     @utils.time_decorator(print_args=True)
-    def _merge_cpg(self, bed: str) -> None:
-        """Merge individual CPGs with optional liftover"""
+    def _combined_cpg(self, beds: List[str], path: str) -> None:
+        """Combined methylation signal across CpGs and average by dividing by
+        the amount of files combined."""
+        cmd = f"cat {' '.join([f'{path}/{bed}' for bed in beds])} \
+                | sort -k1,1, -k2,2n \
+                | bedtools merge -i - -c 11 -o mean \
+                > {path}/merged_cpgs.bed"
+
+        self._run_cmd(cmd)
+
+    @utils.time_decorator(print_args=True)
+    def _bigwig_to_filtered_bedgraph(
+        self, path: str, file: str, resource_dir: str
+    ) -> str:
+        """Convert bigwig to bedgraph file"""
+        bed = f"{path}/{file}"
+        convert_cmd = f"{resource_dir}/bigWigToBedGraph {bed}.bigwig {bed}.bedGraph"
+        filter_cmd = f"awk '$4 >= 0.8' {bed}.bedGraph > {bed}_gt80.bedGraph"
+        for cmd in [convert_cmd, filter_cmd]:
+            self._run_cmd(cmd)
+        return f"{path}/{file}_gt80.bedGraph"
+
+    @utils.time_decorator(print_args=True)
+    def _merge_cpg(self, bed: Union[str, List[str]]) -> None:
+        base_path = f"{self.tissue_dir}/unprocessed"
+        cpg_bed = bed if isinstance(bed, str) else "merged_cpgs"
+        cpg_percent_col = 11 if isinstance(bed, str) else 4
+
+        if not isinstance(bed, str):
+            self._combined_cpg(beds=bed, path=base_path)
+
+        if self.methylation["cpg_filetype"] == "roadmap":
+            cpg_bed = self._bigwig_to_filtered_bedgraph(
+                path=base_path,
+                file=cpg_bed.split(".bigwig")[0],
+                resource_dir=self.resources["roadmap"],
+            )
+
+        if self.methylation["cpg_liftover"]:
+            self._liftover(
+                liftover=self.resources["liftover"],
+                bed=cpg_bed,
+                liftover_chain=self.resources["liftover_chain"],
+                path=base_path,
+            )
+
+        file = (
+            f"{base_path}/{bed}_gt80"
+            if self.methylation["cpg_filetype"] in ["ENCODE", "GEO"]
+            else f"{base_path}/{bed}"
+        )
+        if self.methylation["cpg_filetype"] == "ENCODE":
+            gt_gc = (
+                f"awk -v FS='\t' -v OFS='\t' '${cpg_percent_col} >= 80' {file} > {file}"
+            )
+        elif self.methylation["cpg_filetype"] == "GEO":
+            gt_gc = f"sed -e 's/\//\t/g' | tr -d '\ | awk '{{print $4/$5}}' | awk '$4 >= 0.8' > {file}"
+        if self.methylation["cpg_filetype"] in ["ENCODE", "GEO"]:
+            self._run_cmd(gt_gc)
+
+        bedtools_cmd = f"bedtools merge -i {file} | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"cpg_methyl\"}}' > {self.tissue_dir}/local/cpg_{self.tissue}_parsed.bed"
+        self._run_cmd(bedtools_cmd)
+
+    @utils.time_decorator(print_args=True)
+    def _merge_cpg(self, bed: Union[str, List[str]]) -> None:
+        """Process CPGs with optional liftover. Bookended methylated CpGs are
+        merged. If the config includes multiple CpGs, then methylation signal is
+        combined across CpGs and averaged by dividing by the amount of files
+        combined."""
+        if isinstance(bed, list):
+            self._combined_cpg(beds=bed, path=f"{self.tissue_dir}/unprocessed")
+            cpg_bed = "merged_cpgs"
+            cpg_percent_col = 4
+        else:
+            cpg_bed = bed
+            cpg_percent_col = 11
+
+        if self.methylation["cpg_filetype"] == "roadmap":
+            cpg_bed = self._bigwig_to_filtered_bedgraph(
+                path=f"{self.tissue_dir}/unprocessed",
+                file=cpg_bed.split(".bigwig")[0],
+                resource_dir=self.resources["roadmap"],
+            )
+
         if self.methylation["cpg_liftover"] == True:
-            liftover_sort = f"{self.resources['liftover']} \
-                {self.tissue_dir}/unprocessed/{bed} \
-                {self.resources['liftover_chain']} \
-                {self.tissue_dir}/unprocessed/{bed}_lifted \
-                {self.tissue_dir}/unprocessed/{bed}_unlifted \
-                && bedtools sort -i {self.tissue_dir}/unprocessed/{bed}_lifted \
-                > {self.tissue_dir}/unprocessed/{bed}_lifted_sorted \
-                && mv {self.tissue_dir}/unprocessed/{bed}_lifted_sorted {self.tissue_dir}/unprocessed/{bed}_lifted"
-            self._run_cmd(liftover_sort)
+            self._liftover(
+                liftover=self.resources["liftover"],
+                bed=cpg_bed,
+                liftover_chain=self.resources["liftover_chain"],
+                path=f"{self.tissue_dir}/unprocessed",
+            )
 
         if self.methylation["cpg_filetype"] == "ENCODE":
-            file = f"{self.tissue_dir}/unprocessed/{bed}_gt75"
-            gt_gc = f"awk -v FS='\t' -v OFS='\t' '$11 >= 70' {self.tissue_dir}/unprocessed/{bed} \
+            file = f"{self.tissue_dir}/unprocessed/{bed}_gt80"
+            gt_gc = f"awk -v FS='\t' -v OFS='\t' '${cpg_percent_col} >= 80' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
             self._run_cmd(gt_gc)
+        elif self.methylation["cpg_filetype"] == "GEO":
+            file = f"{self.tissue_dir}/unprocessed/{bed}_gt80"
+            gt_gc = f"sed -e 's/\//\t/g' \
+                | tr -d '\ \
+                | awk '{{print $4/$5}}' \
+                | awk '$4 >= 0.8' \
+                > {file}"
         else:
-            file = f"{self.tissue_dir}/unprocessed/{bed}_lifted"
+            file = f"{self.tissue_dir}/unprocessed/{bed}"
 
         bedtools_cmd = f"bedtools merge \
             -i {file} \
-            -d 1 \
             | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"cpg_methyl\"}}' \
             > {self.tissue_dir}/local/cpg_{self.tissue}_parsed.bed"
 
@@ -256,7 +390,14 @@ class GenomeDataPreprocessor:
 
     @utils.time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
-        """Pipeline to prepare all bedfiles"""
+        """Pipeline to prepare all bedfiles.
+
+        Args:
+            self: Instance of the class.
+
+        Returns:
+            None
+        """
 
         ### Make symlinks for shared data files
         for file in self.shared.values():
