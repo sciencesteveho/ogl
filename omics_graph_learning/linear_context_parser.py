@@ -23,7 +23,7 @@ from pybedtools.featurefuncs import extend_fields  # type: ignore
 import utils
 
 
-class LocalContextParser:
+class LinearContextParser:
     """Object that parses local genomic data into graph edges
 
     Attributes:

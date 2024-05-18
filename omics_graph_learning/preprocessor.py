@@ -9,21 +9,35 @@ directories and symbolic linkes, parsing tissue-specific data, and adjusting
 file formatting."""
 
 
+from collections import defaultdict
 import contextlib
-import os
+import csv
 import subprocess
 from typing import Dict, List, Union
 
-import utils
+import pandas as pd
+
+from constants import REGULATORY_ELEMENTS
+from utils import check_and_symlink
+from utils import dir_check_make
+from utils import time_decorator
 
 # import requests
-
 
 NODETYPES_LOCAL: List[str] = [
     "cpgislands",
     "ctcfccre",
     "tss",
 ]  # local context filetypes
+
+
+def _mirna_ref(ref_file: str) -> Dict[str, List[str]]:
+    """Reference for miRNA target genes"""
+    mirnaref = defaultdict(list)
+    with open(ref_file) as f:
+        for line in csv.reader(f, delimiter="\t"):
+            mirnaref[line[3]].append(line[-1])
+    return mirnaref
 
 
 class GenomeDataPreprocessor:
@@ -92,6 +106,7 @@ class GenomeDataPreprocessor:
         self.interaction = params["interaction"]
         self.methylation = params["methylation"]
         self.resources = params["resources"]
+        self.references = params["references"]
         self.shared = params["local"]
         self.features = params["features"]
         self.tissue_specific_nodes = params["tissue_specific_nodes"]
@@ -103,7 +118,7 @@ class GenomeDataPreprocessor:
         self.tissue_dir = (
             f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
         )
-        self.data_dir = f"{self.root_dir}/raw_files/{self.tissue}"
+        self.data_dir = f"{self.root_dir}/raw_tissue_data/{self.tissue}"
 
         # make directories, link files, and download shared files if necessary
         self._make_directories()
@@ -112,10 +127,10 @@ class GenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        utils.dir_check_make(self.tissue_dir)
+        dir_check_make(self.tissue_dir)
 
         for directory in ["local", "interaction", "unprocessed"]:
-            utils.dir_check_make(f"{self.tissue_dir}/{directory}")
+            dir_check_make(f"{self.tissue_dir}/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -125,14 +140,14 @@ class GenomeDataPreprocessor:
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
         for file in self.tissue_specific_nodes.values():
-            utils.check_and_symlink(
+            check_and_symlink(
                 dst=f"{self.tissue_dir}/unprocessed/{file}",
                 src=f"{self.data_dir}/{file}",
                 boolean=True,
             )
 
         interact_files = {
-            "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
+            # "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
             "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
             "tf_marker": f"{self.shared_data_dir}/interaction/{self.interaction['tf_marker']}",
             "tf_binding": f"{self.shared_data_dir}/interaction/{self.interaction['tf_binding']}",
@@ -141,20 +156,14 @@ class GenomeDataPreprocessor:
         with contextlib.suppress(TypeError):
             for datatype in self.interaction_types:
                 if datatype == "mirna":
-                    utils.check_and_symlink(
-                        src=f"{self.shared_data_dir}/interaction/mirdip_tissue/{self.interaction['mirdip']}",
-                        dst=f"{self.tissue_dir}/interaction/"
-                        + self.interaction["mirdip"],
-                        boolean=True,
-                    )
-                    utils.check_and_symlink(
+                    check_and_symlink(
                         src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
                         dst=f"{self.tissue_dir}/interaction/"
                         + self.interaction["mirnatargets"],
                         boolean=True,
                     )
                 else:
-                    utils.check_and_symlink(
+                    check_and_symlink(
                         src=interact_files[datatype],
                         dst=f"{self.tissue_dir}/interaction/{self.interaction[datatype]}",
                         boolean=False,
@@ -175,7 +184,7 @@ class GenomeDataPreprocessor:
     #                 f"{self.root_dir}/shared_data/local_feats/{file}",
     #             )
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _add_tad_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' \
@@ -184,7 +193,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.tissue_dir}/unprocessed/{bed} \
@@ -193,7 +202,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _tf_binding_sites(self, bed: str) -> None:
         """
         Parse tissue-specific transcription factor binding sites Vierstra et
@@ -273,7 +282,40 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
+    def _normalize_mirna(self, file: str) -> None:
+        """CPM (counts per million) normalization for miRNA-seq counts"""
+        # get miRNA reference
+        mirnaref = _mirna_ref(self.references["mirna"])
+
+        mirna = pd.read_csv(
+            file,
+            sep="\t",
+            header=None,
+            skiprows=[0, 1, 2, 3],
+            usecols=[0, 1],
+            names=["gene", "count"],
+        )
+
+        # CPM normalization
+        mirna = self._count_per_million(mirna)
+
+        # Filter out miRNAs that are not in the reference and flatten list
+        active_mirna_gencode = (
+            mirna["gene"]
+            .apply(lambda x: mirnaref[x] if x in mirnaref and mirnaref[x] else [])
+            .tolist()
+        )
+        flattned_mirna = [item for sublist in active_mirna_gencode for item in sublist]
+
+        # Write out to file
+        with open(
+            f"{self.tissue_dir}/interaction/active_mirna_{self.tissue}.txt", "w"
+        ) as f:
+            for item in flattned_mirna:
+                f.write("%s\n" % item)
+
+    @time_decorator(print_args=True)
     def _combined_cpg(self, beds: List[str], path: str) -> None:
         """Combined methylation signal across CpGs and average by dividing by
         the amount of files combined."""
@@ -284,7 +326,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _bigwig_to_filtered_bedgraph(
         self, path: str, file: str, resource_dir: str
     ) -> str:
@@ -296,52 +338,11 @@ class GenomeDataPreprocessor:
             self._run_cmd(cmd)
         return f"{path}/{file}_gt80.bedGraph"
 
-    @utils.time_decorator(print_args=True)
-    def _merge_cpg(self, bed: Union[str, List[str]]) -> None:
-        base_path = f"{self.tissue_dir}/unprocessed"
-        cpg_bed = bed if isinstance(bed, str) else "merged_cpgs"
-        cpg_percent_col = 11 if isinstance(bed, str) else 4
-
-        if not isinstance(bed, str):
-            self._combined_cpg(beds=bed, path=base_path)
-
-        if self.methylation["cpg_filetype"] == "roadmap":
-            cpg_bed = self._bigwig_to_filtered_bedgraph(
-                path=base_path,
-                file=cpg_bed.split(".bigwig")[0],
-                resource_dir=self.resources["roadmap"],
-            )
-
-        if self.methylation["cpg_liftover"]:
-            self._liftover(
-                liftover=self.resources["liftover"],
-                bed=cpg_bed,
-                liftover_chain=self.resources["liftover_chain"],
-                path=base_path,
-            )
-
-        file = (
-            f"{base_path}/{bed}_gt80"
-            if self.methylation["cpg_filetype"] in ["ENCODE", "GEO"]
-            else f"{base_path}/{bed}"
-        )
-        if self.methylation["cpg_filetype"] == "ENCODE":
-            gt_gc = (
-                f"awk -v FS='\t' -v OFS='\t' '${cpg_percent_col} >= 80' {file} > {file}"
-            )
-        elif self.methylation["cpg_filetype"] == "GEO":
-            gt_gc = f"sed -e 's/\//\t/g' | tr -d '\ | awk '{{print $4/$5}}' | awk '$4 >= 0.8' > {file}"
-        if self.methylation["cpg_filetype"] in ["ENCODE", "GEO"]:
-            self._run_cmd(gt_gc)
-
-        bedtools_cmd = f"bedtools merge -i {file} | awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"cpg_methyl\"}}' > {self.tissue_dir}/local/cpg_{self.tissue}_parsed.bed"
-        self._run_cmd(bedtools_cmd)
-
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _merge_cpg(self, bed: Union[str, List[str]]) -> None:
         """Process CPGs with optional liftover. Bookended methylated CpGs are
         merged. If the config includes multiple CpGs, then methylation signal is
-        combined across CpGs and averaged by dividing by the amount of files
+        combined across CpGs and averaged by dividing by the amount of fileshttps://app.sendcutsend.com/customer#
         combined."""
         if isinstance(bed, list):
             self._combined_cpg(beds=bed, path=f"{self.tissue_dir}/unprocessed")
@@ -388,7 +389,7 @@ class GenomeDataPreprocessor:
 
         self._run_cmd(bedtools_cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles.
 
@@ -408,22 +409,22 @@ class GenomeDataPreprocessor:
                 and file in self.nodes
                 or file not in NODETYPES_LOCAL
             ):
-                utils.check_and_symlink(
+                check_and_symlink(
                     src=src,
                     dst=dst,
                 )
 
         ### Make symlinks for histone marks
         for datatype in self.features:
-            utils.check_and_symlink(
+            check_and_symlink(
                 src=f"{self.data_dir}/{self.features[datatype]}",
                 dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
             )
 
         ### Make symlinks for regulatory data
-        regulatory_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
+        regulatory_elements = REGULATORY_ELEMENTS[self.regulatory]
         for element in regulatory_elements:
-            utils.check_and_symlink(
+            check_and_symlink(
                 src=f"{self.reg_dir}/{regulatory_elements[element]}",
                 dst=f"{self.tissue_dir}/local/{element}_{self.tissue}.bed",
             )
@@ -431,14 +432,14 @@ class GenomeDataPreprocessor:
         ### Make symlink for cpg
         src = f"{self.data_dir}/{self.methylation['cpg']}"
         dst = f"{self.tissue_dir}/unprocessed/{self.methylation['cpg']}"
-        utils.check_and_symlink(
+        check_and_symlink(
             src=src,
             dst=dst,
         )
 
         if self.nodes is not None:
             if "crms" in self.nodes:
-                utils.check_and_symlink(
+                check_and_symlink(
                     src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
                     dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
                 )
@@ -450,3 +451,21 @@ class GenomeDataPreprocessor:
                 self._tf_binding_sites(self.tissue_specific_nodes["tf_binding"])
 
         self._merge_cpg(self.methylation["cpg"])
+
+        # parse active miRNAs from raw data
+        if "mirna" in self.nodes:
+            self._normalize_mirna(
+                f"{self.tissue_dir}/unprocessed/{self.interaction['mirna']}"
+            )
+
+    @staticmethod
+    def _count_per_million(df: pd.DataFrame) -> pd.DataFrame:
+        """CPM (counts per million) normalization for miRNA-seq counts. Assumes
+        there is a column named "count" in the dataframe with gene
+        quantifications"""
+        try:
+            total = df["count"].sum()
+        except KeyError as e:
+            raise ValueError("DataFrame must have a column named 'count'") from e
+        df["cpm"] = (df["count"] / total) * 1e6
+        return df[df["cpm"] >= 3]

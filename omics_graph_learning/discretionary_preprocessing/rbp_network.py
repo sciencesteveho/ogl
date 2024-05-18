@@ -60,6 +60,7 @@ def process_data(filename: str) -> List[Tuple[str, str, List[str]]]:
 
 
 def save_to_file(data: List[Tuple[str, str, List[str]]], output_filename: str) -> None:
+    """Save the data to a file"""
     with open(output_filename, "w") as file:
         for col1, col2, _ in data:
             file.write(f"{col1}\t{col2}\t\n")  # Tab-separated output

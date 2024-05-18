@@ -14,7 +14,7 @@ Lorem Ipsum.
 $ git clone https://github.com/sciencesteveho/genomic_graph_mutagenesis.git
 ```
 
-To set up an environment, use `pip install -r requirements.txt`.  
+To set up an environment, use `pip install -r requirements.txt`. Using a conda environment is highly recommended. <br>
 <br>
 Additionally, OGL uses peakMerge.py from ReMap2022 (Hammal et al., *Nucleic Acids Research*, 2021) to call tissue-specific cis-regulatory modules from epimap data. Download the script and place its path in the configuration file.
 ```sh
@@ -53,23 +53,35 @@ python ogl.py \
 
 ## Directory Structure
 ### Working Directory
-OGL will create its own directory structure from the main directory you place it, `path/to/graph_processing`.
+OGL's directory structures will be made from the main directory you place it, `path/to/graph_processing`.
 
-### Data
-* `graph_construction/shared_data/...`
+To start, users must create the following directory ```shared_data/``` and subdirectories to place their raw data.
+
+### Shared Data
+* `graph_processing/shared_data/...`
     * `local/`: genome static bedfiles
     * `regulatory_elements/`: regulatory element catalogues
+    * `references/`: bedfiles that provide coordinates for node types
     * `interaction/`: interaction type data
-    * `tpm/`: training target GCT files and matrices
+    * `targets/`: training target GCT files and matrices <br>
+    ** `targets/expression`: expression targets for cell lines <br>
+    ** `targets/matrices`: protein targets and all-tissue gcts <br>
+    ** `targets/tpm`: individual gcts per tissue <br>
+
+### Raw Data
+* `graph_processing/raw_tissue_data/...`
+
+<br>
+The following directories will be made automatically during the pipeline.
 
 ### Graph Construction
-* `graph_construction/*experiment_name*/...`
+* `graph_processing/*experiment_name*/...`
     * `*experiment_name*/tissue/`: directories for sample parsing
     * `*experiment_name*/graphs/`: individual tissue level graphs
     * `*experiment_name*/graphs/*target_name*/`: concatenated graphs filtered by training set
 
 ### Models
-* `graph_construction/models/...`
+* `graph_processing/models/...`
     * `*experiment_name*`: model checkpoints
     * `*experiment_name*/logs/`: training loss logs as well as tensorboard logs
     * `*experiment_name*/plots/`: plots of training loss and model performance on testing set  

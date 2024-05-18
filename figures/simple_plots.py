@@ -13,8 +13,8 @@ import pickle
 import random
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+import matplotlib.pyplot as plt  # type: ignore
+import matplotlib.ticker as ticker  # type: ignore
 import numpy as np
 
 

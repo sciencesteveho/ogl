@@ -257,10 +257,17 @@ function _poly_a () {
 #   $1 - 
 #   $2 - 
 #   $3 - 
+# The second function creates a list of RBPs and intersects their binding sites
+# with gene bodies. It then removes any RBP --> Gene interactions that are
+# singletons.
+# Arguments:
+#   $1 - 
+#   $2 - 
+#   $3 - 
 # =============================================================================
-function _rbp_sites () {
-    awk '$6 != "RBP_occupancy"' $1/$2 | \
-        bedtools merge \
+function _rbp_site_clusters () {
+    awk '$6 != "RBP_occupancy"' $1/$2 \
+        | bedtools merge \
         -d 50 \
         -i - \
         -c 6,6,8,8 \
@@ -270,6 +277,31 @@ function _rbp_sites () {
         | sed 's/,/_/g' \
         | awk -v OFS='\t' '{print $1, $2, $3, "rnab_"$4}' \
         > $3/rbpbindingsites_parsed_hg38.bed
+}
+
+function _rbp_binding_sites () {
+    local file=$1
+    local gencode=$2
+
+    awk '$6 != "RBP_occupancy"' ${file} \
+        | cut -f1,2,3,6,8 \
+        | bedtools intersect \
+        -a - \
+        -b ${gencode} \
+        -wa \
+        -wb \ 
+        | cut -f4,5,9 \
+        | sort -u \
+        |  awk 'BEGIN{FS=OFS="\t"} {array[$1 OFS $3] = array[$1 OFS $3] ? array[$1 OFS $3] "," $2 : $2} END{for (i in array) print i, array[i]}' \
+        | grep "," \
+        > rbp_gene_binding_sites.bed
+
+        lookup=/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/interaction/gencode_to_genesymbol_lookup_table.txt
+        rows=/ocean/projects/bio210019p/stevesho/data/data_preparse/rbp_gene_binding_sites.bed
+
+        awk 'BEGIN { FS=OFS="\t" } NR==FNR { lookup[$2]=$1; next } $1 in lookup { $1=lookup[$1] } 1' ${lookup} ${rows} \
+            | grep -e '^ENSG' \
+            > rbp_gene_binding_sites_genesymbol.bed
 }
 
 
@@ -334,17 +366,79 @@ _tss \
 #   $3 - 
 #   $4 - 
 # =============================================================================
-function _target_scan () {
-    _liftover_19_to_38 \
-        $1 \
-        $2 \
-        $3
+# function _target_scan () {
+#     _liftover_19_to_38 \
+#         $1 \
+#         $2 \
+#         $3
 
-    awk -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' Predicted_Target_Locations.default_predictions.hg19._lifted_hg38.bed \
-        | sed 's/::/__/g' \
-        > $4/mirnatargets_parsed_hg38.bed
+#     awk -v OFS='\t' '{print $1,$2,$3,"miRNAtarget_"$4}' Predicted_Target_Locations.default_predictions.hg19._lifted_hg38.bed \
+#         | sed 's/::/__/g' \
+#         > $4/mirnatargets_parsed_hg38.bed
+# }
+
+
+# =============================================================================
+# MicroRNA targets
+# We download the entire miRNA catalogue from miRTarBase (version 9.0) and
+# filter the miRNAs to only keep homo sapiens relevant miRNAs with functional
+# evidence (remove Non-functional MTI).
+# Arguments:
+#   $1 - 
+# =============================================================================
+function _mirtarbase_targets () {
+    local file=$1
+
+    {
+        echo -e "miRNA\ttarget_gene"
+        cut -f2,4,6,8 -d',' "${file}" \
+            | sed 's/,/\t/g' \
+            | awk -vFS='\t' '$3 == "Homo sapiens" && $4 ~ /Functional/' \
+            | cut -f1,2 \
+            | sort -u
+    } > mirtargets_filtered.txt
 }
 
+_mirtarbase_targets miRTarBase_MTI.csv
+
+
+# =============================================================================
+# MicroRNA coordinates
+# We download coordinates of human miRNAs from miRBase Release 22.1:
+# https://www.mirbase.org/download/hsa.gff3
+# For the miRBase catalog, we remove unceccessary information and only keep the coordinates and name (casefolded). Because there are some repeat entrys (primary transcript vs gene body), we collapse any redundant mirnas by keeping the larger coordinates. Of not, 66 miRNAs had multiple annotations on disparate chromosomes. We removed these 66 miRNA from our analysis.
+# For each ENCODE miRNA dataset, gencode entries are adjusted for only their base name then converted to miRNA aliases via gprofiler. 
+# https://biit.cs.ut.ee/gprofiler/convert
+# Arguments:
+#   $1 - 
+# =============================================================================
+function _mirbase_mirnas () {
+    local file=$1
+
+    grep -v "^#" ${file} \
+        | cut -f1,4,5,9 \
+        | awk 'BEGIN{FS=OFS="\t"} {split($4, a, ";"); for (i in a) if (a[i] ~ /^Name=/) {split(a[i], b, "="); $4 = tolower(b[2])}} 1' \
+        | sort -k4,4 -k1,1 -k2,2n \
+        | bedtools groupby -g 4 -c 1,2,3 -o distinct,min,max \
+        | awk 'BEGIN{OFS="\t"} {print $2, $3, $4, $1}' \
+        | sort -k1,1 -k2,2n \
+        | grep -v "," \
+        > mirbase_coordinates_hg38.bed
+}
+
+_mirbase_mirnas hsa.gff3
+
+function _biomart_mirna_coordinates () {
+    local file=$1
+
+    awk 'BEGIN{FS=OFS="\t"} {print "chr"$6, $3, $4, $2, $7}' ${file} \
+        | grep -v "PATCH" \
+        | awk '$1 != "chrMT" && $1 != "chrY" && $1 != "chrX"' \
+        | sort -k1,1 -k2,2n \
+        > ensembl_mirna_coordinates_hg38.bed
+}
+
+_biomart_mirna_coordinates mart_export.txt
 
 # =============================================================================
 # ENCODE SCREEN candidate promoters from SCREEN registry of cCREs V3
@@ -525,7 +619,7 @@ function main() {
         atlas.clusters.2.0.GRCh38.96.bed \
         '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local'
 
-    _rbp_sites \
+    _rbp_site_clusters \
         '/ocean/projects/bio210019p/stevesho/data/bedfile_preparse' \
         human.txt \
         '/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local'

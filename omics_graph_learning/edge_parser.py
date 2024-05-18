@@ -1,9 +1,6 @@
-# sourcery skip: lambdas-should-be-short
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] Fix inheritance for self.gene_gene
+
 
 """Parse edges from interaction-type omics data"""
 
@@ -11,24 +8,34 @@
 import contextlib
 import csv
 import os
-from typing import Dict, Generator, Iterator, List, Set, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
-import numpy as np
 import pandas as pd
-import pybedtools
+import pybedtools  # type: ignore
 
-import utils
+from constants import REGULATORY_ELEMENTS
+from utils import genes_from_gencode
+from utils import time_decorator
 
 
 class EdgeParser:
     """Object to construct tensor based graphs from parsed bedfiles
 
     Attributes:
-        experiment_name (str): The name of the experiment.
-        interaction_types (List[str]): The types of interactions to consider.
-        working_directory (str): The working directory.
-        loop_file (str): The loop file.
-        params (Dict[str, Dict[str, str]]): Configuration values from YAML.
+        experiment_name (str): The name of the experiment. interaction_types
+        (List[str]): The types of interactions to consider. working_directory
+        (str): The working directory. loop_file (str): The loop file. params
+        (Dict[str, Dict[str, str]]): Configuration values from YAML.
 
     Methods
     ----------
@@ -61,12 +68,27 @@ class EdgeParser:
         Connects nodes if they are linked by chromatin loops.
     parse_edges:
         Constructs tissue-specific interaction base graph.
+
+    Examples:
+    --------
+    >>> edgeparserObject = EdgeParser(
+            experiment_name=experiment_params["experiment_name"],
+            interaction_types=experiment_params["interaction_types"],
+            working_directory=experiment_params["working_directory"],
+            loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
+            regulatory=experiment_params["regulatory"],
+            regulatory_attr=regulatory_attr,
+            params=tissue_params,
+        )
+
+    >>> edgeparserObject.parse_edges()
     """
 
     def __init__(
         self,
         experiment_name: str,
         interaction_types: List[str],
+        gene_gene: bool,
         working_directory: str,
         loop_file: str,
         regulatory: str,
@@ -76,6 +98,7 @@ class EdgeParser:
         """Initialize the class"""
         self.experiment_name = experiment_name
         self.interaction_types = interaction_types
+        self.gene_gene = gene_gene
         self.working_directory = working_directory
         self.loop_file = loop_file
         self.regulatory = regulatory
@@ -90,6 +113,7 @@ class EdgeParser:
         """Initialize directory paths"""
         self.gencode = params["local"]["gencode"]
         self.interaction_files = params["interaction"]
+        self.blacklist_file = params["resources"]["blacklist"]
         self.tissue = params["resources"]["tissue"]
         self.chromfile = params["resources"]["chromfile"]
         self.marker_name = params["resources"]["marker_name"]
@@ -109,10 +133,9 @@ class EdgeParser:
 
     def _initialize_references(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize reference dictionaries"""
+        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
         self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
-        self.genesymbol_to_gencode = utils.genes_from_gencode(
-            gencode_ref=self.gencode_ref
-        )
+        self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
         self.gencode_attr_ref = self._create_reference_dict(
             params["resources"]["gencode_attr"]
@@ -120,43 +143,62 @@ class EdgeParser:
         self.regulatory_attr_ref = self._create_reference_dict(self.regulatory_attr)
         self.se_ref = self._create_reference_dict(params["resources"]["se_ref"])
         self.mirna_ref = self._create_reference_dict(
-            f"{self.interaction_dir}/{params['interaction']['mirdip']}"
+            params["reference"]["mirna"], mirna=True
         )
         self.footprint_ref = self._create_reference_dict(
             f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
         )
 
-    def _create_reference_dict(self, file: str) -> List[str]:
+    def _create_reference_dict(
+        self, file: str, mirna: bool = False
+    ) -> Dict[str, List[str]]:
         """Reads a file and stores its lines in a dictionary"""
         try:
+            key_idx = 4 if mirna else 3
             return {
-                line[3]: line[:4]
+                line[key_idx]: line[:4]
                 for line in csv.reader(open(file, newline=""), delimiter="\t")
             }
         except FileNotFoundError:
             return {}
 
-    def _read_csv_wrapper(
-        self, file_path: str
-    ) -> Union[Tuple[List[str], Iterator[List[str]]], Iterator[List[str]]]:
+    def _read_csv_wrapper(self, file_path: str) -> Iterator[List[str]]:
         """Wrapper function to read a CSV file."""
         with open(file_path, newline="") as file:
             reader = csv.reader(file, delimiter="\t")
             return reader
 
-    def _prepare_regulatory_elements(self):
+    def _remove_blacklist(self, bed: pybedtools.BedTool) -> pybedtools.BedTool:
+        """Remove blacklist regions from a BedTool object."""
+        return bed.intersect(self.blacklist, v=True, sorted=True)
+
+    def _create_bedtool(self, path: str) -> Union[pybedtools.BedTool, None]:
+        """Create a BedTool object if the file exists."""
+        return (
+            self._remove_blacklist(pybedtools.BedTool(path))
+            if os.path.exists(path)
+            else None
+        )
+
+    def _prepare_regulatory_elements(
+        self,
+    ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool, Optional[pybedtools.BedTool]]:
         """Simple wrapper to load regulatory elements and return BedTools"""
-        reg_elements = utils.REGULATORY_ELEMENTS[self.regulatory]
+        reg_elements = REGULATORY_ELEMENTS[self.regulatory]
         bedtools_objects = {
-            key: self.create_bedtool_if_exists(
-                f"{self.local_dir}/{key}_{self.tissue}.bed"
-            )
+            key: self._create_bedtool(f"{self.local_dir}/{key}_{self.tissue}.bed")
             for key in reg_elements
             if key in ["enhancers", "promoters", "dyadic"]
         }
 
         if self.regulatory == "encode":
             bedtools_objects["dyadic"] = None
+
+        return (
+            bedtools_objects["enhancers"],
+            bedtools_objects["promoters"],
+            bedtools_objects["dyadic"],
+        )
 
         # Code for filtering distal enhancers. Ignoring for now.
         # if self.regulatory in ["encode", "intersect"]:
@@ -172,13 +214,8 @@ class EdgeParser:
         #     bedtools_objects["promoters"],
         #     bedtools_objects["dyadic"],
         # )
-        return (
-            bedtools_objects["enhancers"],
-            bedtools_objects["promoters"],
-            bedtools_objects["dyadic"],
-        )
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def parse_edges(self) -> None:
         """This method parses edges from various sources and constructs the
         interaction base graph. It then adds coordinates to nodes and writes the
@@ -192,8 +229,7 @@ class EdgeParser:
         print("Interaction edges complete!")
 
         print("Parsing chrom loop edges...")
-        # self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
-        basenodes = self._parse_chromloop_basegraph(gene_gene=False)
+        basenodes = self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
         print("Chrom loop edges complete!")
 
         print("Writing node references...")
@@ -201,46 +237,17 @@ class EdgeParser:
             self._write_noderef_combination(node)
         print("Node references complete!")
 
-    def _iid_ppi(
-        self,
-        interaction_file: str,
-        tissue: str,
-    ) -> Generator[Tuple[str, str, float, str], None, None]:
-        """Protein-protein interactions from the Integrated Interactions
-        Database v 2021-05"""
-        reader = self._read_csv_wrapper(interaction_file)
-        header = next(reader)
-        idxs = {
-            key: header.index(key)
-            for key in ["symbol1", "symbol2", "evidence_type", "n_methods", tissue]
-        }
-
-        for line in reader:
-            if (
-                float(line[idxs[tissue]]) > 0
-                and int(line[idxs["n_methods"]]) >= 3
-                and "exp" in line[idxs["evidence_type"]]
-                and line[idxs["symbol1"]] in self.genesymbol_to_gencode
-                and line[idxs["symbol2"]] in self.genesymbol_to_gencode
-            ):
-                yield (
-                    self.genesymbol_to_gencode[line[idxs["symbol1"]]],
-                    self.genesymbol_to_gencode[line[idxs["symbol2"]]],
-                    # -1,
-                    "ppi",
-                )
-
     def _mirna_targets(
         self,
         target_list: str,
         tissue_active_mirnas: str,
-    ) -> Generator[Tuple[str, str, float, str], None, None]:
-        """Filters all miRNA -> target interactions from miRTarBase and only
-        keeps the miRNAs that are active in the given tissue from mirDIP.
+        # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    ) -> Generator[Tuple[str, str, str], None, None]:
+        """Filters all miRNA -> target interactions from miRTarBase and based on
+        the active miRNAs in the given tissue.
         """
         with open(tissue_active_mirnas, newline="") as file:
-            active_mirna_reader = csv.reader(file, delimiter="\t")
-            active_mirna = {line[3] for line in active_mirna_reader}
+            active_mirna = set(csv.reader(file, delimiter="\t"))
 
         with open(target_list, newline="") as file:
             target_reader = csv.reader(file, delimiter="\t")
@@ -254,8 +261,10 @@ class EdgeParser:
                     )
 
     def _tf_markers(
-        self, interaction_file: str
-    ) -> Generator[Tuple[str, str, float, str], None, None]:
+        self,
+        interaction_file: str,
+        # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    ) -> Generator[Tuple[str, str, str], None, None]:
         """Filters tf markers based on specified conditions.
 
         Args:
@@ -335,11 +344,42 @@ class EdgeParser:
     #                 "circuits",
     #             )
 
+    # def _iid_ppi(
+    #     self,
+    #     interaction_file: str,
+    #     tissue: str,
+    #     # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    # ) -> Generator[Tuple[str, str, str], None, None]:
+    #     """Protein-protein interactions from the Integrated Interactions
+    #     Database v 2021-05"""
+    #     reader = self._read_csv_wrapper(interaction_file)
+    #     header = next(reader)
+    #     idxs = {
+    #         key: header.index(key)
+    #         for key in ["symbol1", "symbol2", "evidence_type", "n_methods", tissue]
+    #     }
+
+    #     for line in reader:
+    #         if (
+    #             float(line[idxs[tissue]]) > 0
+    #             and int(line[idxs["n_methods"]]) >= 3
+    #             and "exp" in line[idxs["evidence_type"]]
+    #             and line[idxs["symbol1"]] in self.genesymbol_to_gencode
+    #             and line[idxs["symbol2"]] in self.genesymbol_to_gencode
+    #         ):
+    #             yield (
+    #                 self.genesymbol_to_gencode[line[idxs["symbol1"]]],
+    #                 self.genesymbol_to_gencode[line[idxs["symbol2"]]],
+    #                 # -1,
+    #                 "ppi",
+    #             )
+
     def _tfbinding_footprints(
         self,
         tfbinding_file: str,
         footprint_file: str,
-    ) -> Generator[Tuple[str, str, float, str], None, None]:
+        # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    ) -> Generator[Tuple[str, str, str], None, None]:
         """Create edges based on whether or not known TF binding from Meuleman
         et al. overlap footprints from Vierstra et al.
 
@@ -350,7 +390,7 @@ class EdgeParser:
         Returns:
             List[Tuple[str, str, float, str]]
         """
-        tf_binding = pybedtools.BedTool(tfbinding_file)
+        tf_binding = self._remove_blacklist(pybedtools.BedTool(tfbinding_file))
         tf_edges = tf_binding.intersect(footprint_file, wb=True)
         for line in tf_edges:
             yield (
@@ -379,7 +419,7 @@ class EdgeParser:
                 self._add_node_coordinates(node, self.regulatory_attr_ref)
             )
 
-    def _write_node_list(self, node: Tuple[Union[str, int]]) -> None:
+    def _write_node_list(self, node: List[str]) -> None:
         """Write gencode nodes to file"""
         with open(f"{self.local_dir}/basenodes_hg38.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
@@ -397,30 +437,30 @@ class EdgeParser:
             tfbinding_generator
         ) = iter([])
 
-        if "ppis" in self.interaction_types:
-            ppi_generator = self._iid_ppi(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
-                tissue=self.ppi_tissue,
-            )
         if "mirna" in self.interaction_types:
             mirna_generator = self._mirna_targets(
-                target_list=f"{self.interaction_dir}/{self.interaction_files['mirnatargets']}",
+                target_list=f"{self.interaction_dir}/active_mirna_{self.tissue}.txt",
                 tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
             )
         if "tf_marker" in self.interaction_types:
             tf_generator = self._tf_markers(
                 interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
             )
-        # if "circuits" in self.interaction_types:
-        #     circuit_generator = self._marbach_regulatory_circuits(
-        #         f"{self.interaction_dir}/{self.interaction_files['circuits']}",
-        #         score_filter=30,
-        #     )
         if "tfbinding" in self.interaction_types:
             tfbinding_generator = self._tfbinding_footprints(
                 tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
                 footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
             )
+        # if "ppis" in self.interaction_types:
+        #     ppi_generator = self._iid_ppi(
+        #         interaction_file=f"{self.interaction_dir}/{self.interaction_files['ppis']}",
+        #         tissue=self.ppi_tissue,
+        #     )
+        # if "circuits" in self.interaction_types:
+        #     circuit_generator = self._marbach_regulatory_circuits(
+        #         f"{self.interaction_dir}/{self.interaction_files['circuits']}",
+        #         score_filter=30,
+        #     )
 
         return (
             ppi_generator,
@@ -434,7 +474,7 @@ class EdgeParser:
         self,
         node: str,
         node_ref: Dict[str, List[str]],
-    ) -> Tuple[str, str, str, str]:
+    ) -> List[str]:
         """Add coordinates to nodes based on the given node reference."""
         return node_ref[node]
 
@@ -458,7 +498,7 @@ class EdgeParser:
         """Check if interaction edges file exists"""
         return bool(self.interaction_types)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _process_interaction_edges(self) -> None:
         """Retrieve all interaction edges and saves them to a text file. Edges
         will be loaded from the text file for subsequent runs to save
@@ -500,7 +540,7 @@ class EdgeParser:
         self,
         anchor: pybedtools.BedTool,
         features: pybedtools.BedTool,
-        overlap_func: callable,
+        overlap_func: Callable,
     ) -> pybedtools.BedTool:
         """Gets specific overlap, renames regulatory features, and uses groupby to
         collapse overlaps into the same anchor"""
@@ -528,7 +568,7 @@ class EdgeParser:
         edges_df.to_csv(file_path, sep="\t", mode="a", header=False, index=False)
         return set(pd.concat([edges_df["edge_0"], edges_df["edge_1"]]).unique())
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _process_loop_edges(
         self,
         first_feature: pybedtools.BedTool,
@@ -572,6 +612,12 @@ class EdgeParser:
             tss=tss,
         )
 
+    def _add_slop_window(
+        self, bed: pybedtools.BedTool, window: int
+    ) -> pybedtools.BedTool:
+        """Return a slopped BedTool object"""
+        return bed.slop(g=self.chromfile, b=window)
+
     def _load_tss(self) -> pybedtools.BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
         Additionally, adds a slop of 2kb to the TSS for downstream overlap.
@@ -589,10 +635,22 @@ class EdgeParser:
             return None
 
         tss = pybedtools.BedTool(f"{self.tss}")
-        return tss.filter(_gene_only_tss).slop(g=self.chromfile, b=2000).saveas()
+        return self._add_slop_window(tss.filter(_gene_only_tss), 2000)
 
-    @utils.time_decorator(print_args=True)
-    def _parse_chromloop_basegraph(self, gene_gene: bool = False) -> None:
+    def _process_overlaps(
+        self, overlaps: List[Tuple[pybedtools.BedTool, pybedtools.BedTool, str]]
+    ) -> Set[str]:
+        """Process overlaps per type of regulatory connection and generate loop edges."""
+        basenodes = set()
+        for first_feature, second_feature, edge_type in overlaps:
+            basenodes |= self._process_loop_edges(
+                first_feature, second_feature, edge_type
+            ) | self._process_loop_edges(second_feature, first_feature, edge_type)
+            print(f"Processed chrom_loop {edge_type} edges")
+        return basenodes
+
+    @time_decorator(print_args=True)
+    def _parse_chromloop_basegraph(self, gene_gene: bool = False) -> Set[str]:
         """Performs overlaps and write edges for regulatory features connected
         by chromatin loops. For gene overlaps, anchors are connected if anchors
         are within 2kb of the TSS. For regulatory features, anchors are
@@ -600,7 +658,7 @@ class EdgeParser:
 
         Optional boolian 'gene_gene' specifies if gene_gene interactions will be
         parsed. If not, only gene_regulatory interactions will be parsed.
-        Defaults to no.
+        Defaults to False.
 
         tss vs de, p , d
         p vs e, d, p
@@ -613,19 +671,7 @@ class EdgeParser:
             self.loop_file
         )
 
-        # Helpers - types of elements connected by loops
-        # overlaps = [
-        #     (self.tss, distal_enhancers, "g_de"),
-        #     (self.tss, promoters, "g_p"),
-        #     (self.tss, dyadic, "g_d"),
-        #     (promoters, all_enhancers, "p_e"),
-        #     (promoters, dyadic, "p_d"),
-        #     (promoters, promoters, "p_p"),
-        #     (all_enhancers, all_enhancers, "e_e"),
-        #     (all_enhancers, dyadic, "e_d"),
-        # ]
         overlaps = [
-            (self.gencode_ref, self.gencode_ref, "g_g"),
             (self.tss, all_enhancers, "g_e"),
             (self.tss, promoters, "g_p"),
             (self.tss, dyadic, "g_d"),
@@ -650,29 +696,12 @@ class EdgeParser:
                 ]
 
         # Add gene_gene interactions if specified
-        # if gene_gene:
-        #     overlaps.append((self.tss, self.tss, "g_g"))
+        if gene_gene:
+            gencode_2kb = self._add_slop_window(self.gencode_ref, 2000)
+            overlaps.append((gencode_2kb, gencode_2kb, "g_g"))
 
         # perform two sets of overlaps
-        basenodes = set()
-        for first_feature, second_feature, edge_type in overlaps:
-            basenodes |= self._process_loop_edges(
-                first_feature=first_feature,
-                second_feature=second_feature,
-                edge_type=edge_type,
-            ) | self._process_loop_edges(
-                first_feature=second_feature,
-                second_feature=first_feature,
-                edge_type=edge_type,
-            )
-            print(f"Processed chrom_loop {edge_type} edges")
-
-        return basenodes
-
-    @staticmethod
-    def create_bedtool_if_exists(path: str) -> Union[pybedtools.BedTool, None]:
-        """Create a BedTool object if the file exists."""
-        return pybedtools.BedTool(path) if os.path.exists(path) else None
+        return self._process_overlaps(overlaps)
 
     @staticmethod
     def _generate_edge_combinations(
@@ -700,7 +729,6 @@ class EdgeParser:
 
         # explode and remove self loops
         df = df.explode("edge_0").explode("edge_1").query("edge_0 != edge_1")
-
         return df[["edge_0", "edge_1"]].drop_duplicates().assign(type=edge_type)
 
     @staticmethod
@@ -729,7 +757,7 @@ class EdgeParser:
     @staticmethod
     def _add_feat_names(feature: str) -> str:
         """Add feature name in the format of chr_start_type"""
-        feature[6] = f"{feature[6]}_{feature[7]}_{feature[9]}"
+        feature[6] = f"{feature[6]}_{feature[7]}_{feature[9]}"  # type: ignore
         return feature
 
     @staticmethod

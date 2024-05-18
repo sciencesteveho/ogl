@@ -26,8 +26,7 @@ interaction:
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirdip: left.ventricle_mirdip
-  mirnatargets: mirtargets_filtered.txt
+  mirna: left.ventricle_mirdip
   ppis: IID_annotated_PPI.txt
   tf_binding: tfbinding_footprints.bed
   tf_marker: tf_marker.txt
@@ -62,20 +61,24 @@ methylation:
   cpg_filetype: ENCODE
   cpg_liftover: false
 
+references:
+  genes: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
+  mirna: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/interaction/ensembl_mirna_coordinates_hg38.bed
+  mirnatargets: mirtargets_filtered.txt
+  reftss: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
+  regulatory_elements: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
+  super_enhancers: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
+
 resources:
   blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/hg38-blacklist.v2.bed
   chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
   fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
   key_protein_abundance: heart_ventricle
   key_tpm: heart_left_ventricle
   liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
   liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name: Heart
   ppi_tissue: heart
-  reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  reg_ref: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
-  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: left_ventricle
   tissue_name: Heart - Left Ventricle

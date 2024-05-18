@@ -16,7 +16,7 @@ import graph_constructor
 from prepare_bedfiles import GenomeDataPreprocessor
 
 from edge_parser import EdgeParser
-from local_context_parser import LocalContextParser
+from linear_context_parser import LinearContextParser
 import utils
 
 NODES = [
@@ -92,6 +92,7 @@ def parse_edges(
     edgeparserObject = EdgeParser(
         experiment_name=experiment_params["experiment_name"],
         interaction_types=experiment_params["interaction_types"],
+        gene_gene=experiment_params["gene_gene"],
         working_directory=experiment_params["working_directory"],
         loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
         regulatory=experiment_params["regulatory"],
@@ -103,7 +104,7 @@ def parse_edges(
     print("Edges parsed!")
 
 
-def parse_local_context(
+def parse_linear_context(
     experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
     nodes: List[str],
@@ -131,7 +132,7 @@ def parse_local_context(
         with contextlib.suppress(ValueError):
             nodes.remove("dyadic")
 
-    localparseObject = LocalContextParser(
+    localparseObject = LinearContextParser(
         experiment_name=experiment_name,
         nodes=nodes,
         working_directory=working_directory,
@@ -217,7 +218,7 @@ def main() -> None:
         experiment_params=experiment_params,
         tissue_params=tissue_params,
     )
-    parse_local_context(
+    parse_linear_context(
         experiment_params=experiment_params,
         tissue_params=tissue_params,
         nodes=nodes,

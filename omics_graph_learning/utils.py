@@ -1,4 +1,3 @@
-# sourcery skip: do-not-use-staticmethod
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -17,10 +16,9 @@ import pickle
 import random
 import subprocess
 import time
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt  # type: ignore
-import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
 import pybedtools  # type: ignore
@@ -29,161 +27,30 @@ import seaborn as sns  # type: ignore
 import torch
 import yaml  # type: ignore
 
-ATTRIBUTES = [
-    "gc",
-    "atac",
-    "cnv",
-    "cpg",
-    "ctcf",
-    "dnase",
-    "h3k27ac",
-    "h3k27me3",
-    "h3k36me3",
-    "h3k4me1",
-    "h3k4me2",
-    "h3k4me3",
-    "h3k79me2",
-    "h3k9ac",
-    "h3k9me3",
-    "indels",
-    "line",
-    "ltr",
-    "microsatellites",
-    "phastcons",
-    "polr2a",
-    "polyasites",
-    "rad21",
-    "rbpbindingsites",
-    "recombination",
-    "repg1b",
-    "repg2",
-    "reps1",
-    "reps2",
-    "reps3",
-    "reps4",
-    "rnarepeat",
-    "simplerepeats",
-    "sine",
-    "smc3",
-    "snp",
-]
 
-NODE_FEAT_IDXS = {
-    "start": 0,
-    "end": 1,
-    "size": 2,
-    "gc": 3,
-    "atac": 4,
-    "cnv": 5,
-    "cpg": 6,
-    "ctcf": 7,
-    "dnase": 8,
-    "h3k27ac": 9,
-    "h3k27me3": 10,
-    "h3k36me3": 11,
-    "h3k4me1": 12,
-    "h3k4me2": 13,
-    "h3k4me3": 14,
-    "h3k79me2": 15,
-    "h3k9ac": 16,
-    "h3k9me3": 17,
-    "indels": 18,
-    "line": 19,
-    "ltr": 20,
-    "microsatellites": 21,
-    "phastcons": 22,
-    "polr2a": 23,
-    "polyasites": 24,
-    "rad21": 25,
-    "rbpbindingsites": 26,
-    "recombination": 27,
-    "repg1b": 28,
-    "repg2": 29,
-    "reps1": 30,
-    "reps2": 31,
-    "reps3": 32,
-    "reps4": 33,
-    "rnarepeat": 34,
-    "simplerepeats": 35,
-    "sine": 36,
-    "smc3": 37,
-    "snp": 38,
-}
-
-POSSIBLE_NODES = [
-    "cpgislands",
-    "crms",
-    "ctcfccre",
-    "dyadic",
-    "enhancers",
-    "gencode",
-    "promoters",
-    "superenhancers",
-    "tads",
-    "tfbindingsites",
-    "tss",
-]
-
-TISSUES = [
-    "aorta",
-    "hippocampus",
-    "left_ventricle",
-    "liver",
-    "lung",
-    "mammary",
-    "pancreas",
-    "skeletal_muscle",
-    "skin",
-    "small_intestine",
-    # "hela",
-    # "k562",
-    # "npc",
-]
-
-REGULATORY_ELEMENTS: Dict[str, Dict[str, str]] = {
-    "intersect": {
-        "enhancers": "enhancers_epimap_screen_overlap.bed",
-        "promoters": "promoters_epimap_screen_overlap.bed",
-        "dyadic": "dyadic_epimap_screen_overlap.bed",
-    },
-    "union": {
-        "enhancers": "enhancers_all_union_hg38.bed",
-        "promoters": "promoters_all_union_hg38.bed",
-        "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
-    },
-    "epimap": {
-        "enhancers": "ENH_masterlist_locations._lifted_hg38.bed",
-        "promoters": "PROM_masterlist_locations._lifted_hg38.bed",
-        "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
-    },
-    "encode": {
-        "enhancers": "GRCh38-ELS.bed",
-        "promoters": "GRCh38-PLS.bed",
-        "dyadic": None,
-    },
-}
+def _load_pickle(file_path: str) -> Any:
+    """Wrapper to load a pkl"""
+    with open(file_path, "rb") as file:
+        return pickle.load(file)
 
 
-def _generate_deeploop_dict(resolution: Union[int, str]) -> Dict[str, str]:
-    """Generate a dictionary of deeploop filenames for a given resolution"""
-    special_tissues = {
-        "left_ventricle": "leftventricle",
-        "skeletal_muscle": "psoas_muscle",
-    }
-    tissues = [
-        "aorta",
-        "hippocampus",
-        "left_ventricle",
-        "liver",
-        "lung",
-        "pancreas",
-        "skeletal_muscle",
-        "small_intestine",
-    ]
-    return {
-        tissue: f"{special_tissues.get(tissue, tissue)}_{resolution}_pixels.hg38"
-        for tissue in tissues
-    }
+def _save_pickle(data: object, file_path: str) -> Any:
+    """Wrapper to save a pkl"""
+    with open(file_path, "wb") as output:
+        pickle.dump(data, output)
+
+
+def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
+    """Load yaml for parsing"""
+    with open(config_file, "r") as stream:
+        params = yaml.safe_load(stream)
+    return params
+
+
+def dir_check_make(dir: str) -> None:
+    """Utility to make directories only if they do not already exist"""
+    with suppress(FileExistsError):
+        os.makedirs(dir)
 
 
 def _generate_hic_dict(resolution: float) -> Dict[str, str]:
@@ -196,6 +63,36 @@ def _generate_hic_dict(resolution: float) -> Dict[str, str]:
         tissue: f"{special_tissues.get(tissue, tissue)}_all_chr_{resolution}.tsv"
         for tissue in tissues
     }
+
+
+def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
+    """Decorator to time functions.
+
+    Args:
+        print_args (bool, optional): Whether to print the function arguments.
+        Defaults to False. display_arg (str, optional): The argument to display
+        in the print statement. Defaults to "".
+
+    Returns:
+        Callable: The decorated function.
+    """
+
+    def _time_decorator_func(function: Callable) -> Callable:
+        @functools.wraps(function)
+        def _execute(*args: Any, **kwargs: Any) -> Any:
+            start_time = time.monotonic()
+            fxn_args = inspect.signature(function).bind(*args, **kwargs).arguments
+            result = function(*args, **kwargs)
+            end_time = time.monotonic()
+            args_to_print = list(fxn_args.values()) if print_args else display_arg
+            print(
+                f"Finished {function.__name__} {args_to_print} - Time: {timedelta(seconds=end_time - start_time)}"
+            )
+            return result
+
+        return _execute
+
+    return _time_decorator_func
 
 
 class ScalerUtils:
@@ -220,7 +117,7 @@ class ScalerUtils:
     def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
         """Unpack params from the .yaml"""
         experiment_name = params["experiment_name"]
-        working_directory = params["working_directory"]
+        working_directory = str(params["working_directory"])  # Convert to str
         # target_params = params["training_targets"]
         return (
             experiment_name,
@@ -261,67 +158,12 @@ class ScalerUtils:
         return idxs, graph
 
 
-def _load_pickle(file_path: str) -> Any:
-    """Wrapper to load a pkl"""
-    with open(file_path, "rb") as file:
-        return pickle.load(file)
-
-
-def _save_pickle(data: object, file_path: str) -> Any:
-    """Wrapper to save a pkl"""
-    with open(file_path, "wb") as output:
-        pickle.dump(data, output)
-
-
-def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
-    """Decorator to time functions.
-
-    Args:
-        print_args (bool, optional): Whether to print the function arguments.
-        Defaults to False. display_arg (str, optional): The argument to display
-        in the print statement. Defaults to "".
-
-    Returns:
-        Callable: The decorated function.
-    """
-
-    def _time_decorator_func(function: Callable) -> Callable:
-        @functools.wraps(function)
-        def _execute(*args: Any, **kwargs: Any) -> Any:
-            start_time = time.monotonic()
-            fxn_args = inspect.signature(function).bind(*args, **kwargs).arguments
-            result = function(*args, **kwargs)
-            end_time = time.monotonic()
-            args_to_print = list(fxn_args.values()) if print_args else display_arg
-            print(
-                f"Finished {function.__name__} {args_to_print} - Time: {timedelta(seconds=end_time - start_time)}"
-            )
-            return result
-
-        return _execute
-
-    return _time_decorator_func
-
-
-def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
-    """Load yaml for parsing"""
-    with open(config_file, "r") as stream:
-        params = yaml.safe_load(stream)
-    return params
-
-
-def dir_check_make(dir: str) -> None:
-    """Utility to make directories only if they do not already exist"""
-    with suppress(FileExistsError):
-        os.makedirs(dir)
-
-
 def _dataset_split_name(
-    test_chrs: List[int] = None,
-    val_chrs: List[int] = None,
+    test_chrs: Optional[List[int]] = None,
+    val_chrs: Optional[List[int]] = None,
     tpm_filter: Union[float, int] = 0.1,
     percent_of_samples_filter: float = 0.2,
-) -> None:
+) -> str:
     """Save the partitioning split to a file based on provided chromosome
     information.
 
@@ -337,11 +179,13 @@ def _dataset_split_name(
     chrs = []
 
     if test_chrs and val_chrs:
-        chrs.append(f"test_{('-').join(test_chrs)}_val_{('-').join(val_chrs)}")
+        chrs.append(
+            f"test_{('-').join(map(str, test_chrs))}_val_{('-').join(map(str, val_chrs))}"
+        )
     elif test_chrs:
-        chrs.append(f"test_{('-').join(test_chrs)}")
+        chrs.append(f"test_{('-').join(map(str, test_chrs))}")
     elif val_chrs:
-        chrs.append(f"val_{('-').join(val_chrs)}")
+        chrs.append(f"val_{('-').join(map(str, val_chrs))}")
     else:
         chrs.append("random_assign")
 
@@ -385,7 +229,6 @@ def chunk_genes(
     chunks: int,
 ) -> Dict[int, List[str]]:
     """Constructs graphs in parallel"""
-    ### get list of all gencode V26 genes
     for _ in range(5):
         random.shuffle(genes)
 
@@ -455,12 +298,12 @@ def prepare_tss_file(
     Returns:
         None
 
-    Example:
-        prepare_tss_file(
+    Examples:
+    >>> prepare_tss_file(
             tss_file="refTSS_v4.1_human_coordinate.hg38.bed.txt",
             annotation_file="refTSS_v4.1_human_hg38_annotation.txt",
-            gencode_ref="/ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/local/gencode_v26_genes_only_with_GTEx_targets.bed",
-            savedir="/ocean/projects/bio210019p/stevesho/data/bedfile_preparse/reftss",
+            gencode_ref="gencode_v26_genes_only_with_GTEx_targets.bed",
+            savedir="/reftss",
         )
     """
     _reftss_cut_cols(annotation_file)
@@ -471,7 +314,7 @@ def prepare_tss_file(
         genesymbol_to_gencode=genesymbol_to_gencode,
     )
 
-    bed = []
+    bed: List[List[str]] = []
     for line in tss:
         if line[3] in maps:
             bed.extend(
@@ -484,7 +327,7 @@ def prepare_tss_file(
     bed = pybedtools.BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
 
 
-def genes_from_gff(gff: str) -> List[str]:
+def genes_from_gff(gff: str) -> Dict[str, str]:
     """Get list of gtex genes from GFF file
 
     Args:
@@ -501,24 +344,27 @@ def genes_from_gff(gff: str) -> List[str]:
         }
 
 
-@time_decorator(print_args=True)
-def _filter_low_tpm(
-    file: str,
-    tissue: str,
-    return_list: bool = False,
+def filter_pybedtools_by_genes(
+    bed: pybedtools.BedTool,
+    genes: List[str],
+    autosomes_only: bool = True,
+) -> pybedtools.BedTool:
+    """Filter a pybedtools object by a list of genes."""
+    filter_term = lambda x: x[3] in genes
+    if autosomes_only:
+        filter_term = lambda x: x[3] in genes and x[0] not in ["chrX", "chrY", "chrM"]
+    return bed.filter(filter_term).saveas()
+
+
+def filter_gtex_dataframe_by_tpm(
+    df: pd.DataFrame,
+    tpm_filter: Union[float, int],
+    percent_of_samples_filter: float,
 ) -> List[str]:
-    """
-    Filter genes according to the following criteria: (A) Only keep genes
-    expressing >= 0.1 TPM across 20% of samples in that tissue
-    """
-    df = pd.read_table(file, index_col=0, header=[2])
+    """Filter out genes in a GTEx dataframe."""
     sample_n = len(df.columns)
-    df["total"] = df.select_dtypes(np.number).ge(1).sum(axis=1)
-    df["result"] = df["total"] >= (0.20 * sample_n)
-    if not return_list:
-        return [f"{gene}_{tissue}" for gene in list(df.loc[df["result"] == True].index)]
-    else:
-        return list(df.loc[df["result"] == True].index)
+    sufficient_tpm = df.select_dtypes("number").ge(tpm_filter).sum(axis=1)
+    return list(df.loc[sufficient_tpm >= (percent_of_samples_filter * sample_n)].index)
 
 
 @time_decorator(print_args=True)
@@ -537,15 +383,14 @@ def filter_genes_by_tpm(
         pybedtools object with +/- <window> windows around that gene
     """
     df = pd.read_table(tpm_file, index_col=0, header=[2])
-    sample_n = len(df.columns)
-    df["total"] = df.select_dtypes(np.number).ge(tpm_filter).sum(axis=1)
-    df["result"] = df["total"] >= (percent_of_samples_filter * sample_n)
-    tpm_filtered_genes = list(df.loc[df["result"] == True].index)
+    tpm_filtered_genes = filter_gtex_dataframe_by_tpm(
+        df=df,
+        tpm_filter=tpm_filter,
+        percent_of_samples_filter=percent_of_samples_filter,
+    )
 
     genes = pybedtools.BedTool(gencode)
-    genes_filtered = genes.filter(
-        lambda x: x[3] in tpm_filtered_genes and x[0] not in ["chrX", "chrY", "chrM"]
-    ).saveas()
+    genes_filtered = filter_pybedtools_by_genes(genes, tpm_filtered_genes)
 
     return genes_filtered.sort()
 
@@ -568,7 +413,7 @@ def plot_training_losses(
     plt.figure(figsize=(3.125, 2.25))
     _set_matplotlib_publication_parameters()
 
-    losses = {"Train": [], "Test": [], "Validation": []}
+    losses: Dict[str, List[float]] = {"Train": [], "Test": [], "Validation": []}
     with open(log, newline="") as file:
         reader = csv.reader(file, delimiter=":")
         for line in reader:
@@ -579,7 +424,7 @@ def plot_training_losses(
 
     # remove last item in train
     try:
-        losses = pd.DataFrame(losses)
+        loss_df = pd.DataFrame(losses)
     except ValueError:
         losses["Train"] = losses["Train"][:-1]
 
@@ -626,25 +471,7 @@ def plot_predicted_versus_expected(
     plt.close()
 
 
-# @time_decorator(print_args=True)
-# def plot_roc_curve(
-#     outfile: str,
-#     savestr: str,
-#     predicted: torch.Tensor,
-#     expected: torch.Tensor,
-# ) -> None:
-
-
-def _get_sorted_node_degrees(graph: nx.Graph) -> None:
-    """_summary_
-
-    Args:
-        graph (nx.Graph): _description_
-    """
-    return sorted(graph.degree, key=lambda x: x[1], reverse=True)
-
-
-def _calculate_max_distance_base_graph(bed: List[List[str]]) -> List[List[str]]:
+def _calculate_max_distance_base_graph(bed: List[List[str]]) -> Set[int]:
     """Calculate the max distance between nodes in the base graph. Report the
     max, mean, and median distances for all interaction type data.
     """
@@ -654,47 +481,9 @@ def _calculate_max_distance_base_graph(bed: List[List[str]]) -> List[List[str]]:
     }
 
 
-def _graph_stats(tissue, graph_dir):
-    """_summary_
-
-    Args:
-        tissue (str): _description_
-    """
-    with open(f"{graph_dir}/graph.pkl", "rb") as file:
-        graph = pickle.load(file)
-
-    print(graph["num_nodes"])
-    print(graph["num_edges"])
-    print(graph["avg_edges"])
-
-
-def _concat_nx_graphs(tissue_list, graph_dir, graph_type):
-    """_summary_
-
-    Args:
-        tissue_list (str): _description_
-    """
-    graphs = [
-        nx.read_gml(f"{graph_dir}/{tissue}/{tissue}_{graph_type}_graph.gml")
-        for tissue in tissue_list
-    ]
-    return nx.compose_all(graphs)
-
-
-def _combined_graph_arrays(
-    tissue_list: List[str],
-    graph_dir: str,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Combine graph arrays from multiple tissues"""
-    feats = []
-    for _ in tissue_list:
-        graph_file = f"{graph_dir}/graph.pkl"
-        with open(graph_file, "rb") as f:
-            graph = pickle.load(f)
-        feats.append(graph["node_feat"])
-
-
-def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:
+def _map_genesymbol_to_tss(
+    tss_path: str, annotation_path: str
+) -> List[tuple[str, str, str, str]]:
     """_summary_
 
     Args:
@@ -712,34 +501,6 @@ def _map_genesymbol_to_tss(tss_path: str, annotation_path: str) -> List[str]:
         (line[0], line[1], line[2], f"tss_{line[3]}_{genesymbols[line[3]]}")
         for line in csv.reader(open(tss_path), delimiter="\t")
     ]
-
-
-@time_decorator(print_args=True)
-def _n_ego_graph(
-    graph: nx.Graph,
-    max_nodes: int,
-    node: str,
-    radius: int,
-) -> nx.Graph:
-    """Get n-ego graph centered around a gene (node)"""
-    # get n-ego graph
-    n_ego_graph = nx.ego_graph(
-        graph=graph,
-        n=node,
-        radius=radius,
-        undirected=True,
-    )
-
-    # if n_ego_graph is too big, reduce radius until n_ego_graph has nodes < max_nodes
-    while n_ego_graph.number_of_nodes() > max_nodes:
-        radius -= 1
-        n_ego_graph = nx.ego_graph(
-            graph=graph,
-            n=node,
-            radius=radius,
-        )
-
-    return n_ego_graph
 
 
 def _convert_coessential_to_gencode(
@@ -808,17 +569,18 @@ def _get_indexes(
 
 def _get_split_indexes(
     split: Dict[str, List[str]], indexes: Dict[str, int]
-) -> Tuple[List[int], List[int], List[int], List[str], List[str], List[str]]:
-    """Lorem Ipsum"""
-    results = []
-    for key in ("train", "validation", "test"):
-        results.extend(_get_indexes(split[key], indexes))
-    return tuple(results)
-
-
-def _get_dict_subset_by_split(idxs, count_dict):
-    """Lorem Ipsum"""
-    return {idx: count_dict[idx] for idx in idxs}
+) -> Tuple[List[int], List[str], List[int], List[str], List[int], List[str]]:
+    present_train, not_present_train = _get_indexes(split["train"], indexes)
+    present_val, not_present_val = _get_indexes(split["validation"], indexes)
+    present_test, not_present_test = _get_indexes(split["test"], indexes)
+    return (
+        present_train,
+        not_present_train,
+        present_val,
+        not_present_val,
+        present_test,
+        not_present_test,
+    )
 
 
 def _average_edges_per_expression_node(edge_count_dict):
@@ -830,130 +592,3 @@ def _average_edges_per_expression_node(edge_count_dict):
 def _get_targets_for_train_list(genes, targets):
     """Lorem Ipsum"""
     return {gene: targets[gene][0] for gene in genes}
-
-
-# def filter_target_split(
-#     root_dir: str,
-#     tissues: Dict[Tuple[str, str], None],
-#     targets: Dict[str, Dict[str, np.ndarray]],
-# ) -> Dict[str, Dict[str, np.ndarray]]:
-#     """Filters and only keeps targets that pass the TPM filter of >1 TPM across
-#     20% of samples
-
-#     Args:
-#         root_dir (str): The root directory.
-#         tissues (Dict[Tuple[str, str], None]): The tissues.
-#         targets (Dict[str, Dict[str, np.ndarray]]): The targets.
-
-#     Returns:
-#         Dict[str, Dict[str, np.ndarray]]: The filtered targets.
-#     """
-
-#     def filtered_genes(tpm_filtered_genes: str) -> List[str]:
-#         with open(tpm_filtered_genes, newline="") as file:
-#             return [f"{line[3]}_{tissue}" for line in csv.reader(file, delimiter="\t")]
-
-#     for idx, tissue in enumerate(tissues):
-#         if idx == 0:
-#             genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-#         else:
-#             update_genes = filtered_genes(f"{root_dir}/{tissue}/tpm_filtered_genes.bed")
-#             genes += update_genes
-
-#     genes = set(genes)
-#     for key in targets:
-#         targets[key] = {
-#             gene: targets[key][gene] for gene in targets[key].keys() if gene in genes
-#         }
-#     return targets
-
-
-# TISSUES_early_testing = [
-#     "aorta",
-#     "hippocampus",
-#     "left_ventricle",
-#     "liver",
-#     "lung",
-#     "pancreas",
-#     "skeletal_muscle",
-#     "small_intestine",
-#     # "hela",
-#     # "k562",
-#     # "npc",
-# ]
-
-# ONEHOT_EDGETYPE = {
-#     "g_e": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-enhancer"
-#     "g_p": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-promoter"
-#     "g_d": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-dyadic"
-#     "g_se": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # "gene-superenhancer"
-#     "p_e": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # "promoter-enhancer"
-#     "p_d": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # "promoter-dyadic"
-#     "p_se": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # "promoter-superenhancer"
-#     "g_g": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # "gene-gene"
-#     "ppi": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # "protein-protein"
-#     "mirna": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # "mirna-gene"
-#     "tf_marker": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # "tf-marker"
-#     "circuits": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # "circuits"
-#     "local": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # "local"
-# }
-
-
-# LOOPFILES = {
-#     "deepanchor": {
-#         "aorta": "aorta_deepanchor.bedpe.hg38",
-#         "hippocampus": "hippocampus_deepanchor.bedpe.hg38",
-#         "left_ventricle": "left_ventricle_deepanchor.bedpe.hg38",
-#         "liver": "liver_deepanchor.bedpe.hg38",
-#         "lung": "lung_deepanchor.bedpe.hg38",
-#         "mammary": "mammary_deepanchor.bedpe.hg38",
-#         "pancreas": "pancreas_deepanchor.bedpe.hg38",
-#         "skeletal_muscle": "skeletal_muscle_deepanchor.bedpe.hg38",
-#         "skin": "skin_deepanchor.bedpe.hg38",
-#         "small_intestine": "small_intestine_deepanchor.bedpe.hg38",
-#     },
-#     "peakachu": {
-#         "aorta": "Leung_2015.Aorta.hg38.peakachu-merged.loops",
-#         "hippocampus": "Schmitt_2016.Hippocampus.hg38.peakachu-merged.loops",
-#         "left_ventricle": "Leung_2015.VentricleLeft.hg38.peakachu-merged.loops",
-#         "liver": "Leung_2015.Liver.hg38.peakachu-merged.loops",
-#         "lung": "Schmitt_2016.Lung.hg38.peakachu-merged.loops",
-#         "mammary": "Rao_2014.HMEC.hg38.peakachu-merged.loops",
-#         "pancreas": "Schmitt_2016.Pancreas.hg38.peakachu-merged.loops",
-#         "skeletal_muscle": "Schmitt_2016.Psoas.hg38.peakachu-merged.loops",
-#         "skin": "Rao_2014.NHEK.hg38.peakachu-merged.loops",
-#         "small_intestine": "Schmitt_2016.Bowel_Small.hg38.peakachu-merged.loops",
-#     },
-#     "peakachu_deepanchor": {
-#         "aorta": "aorta_peakachu_deepanchor.hg38.combined_loops",
-#         "hippocampus": "hippocampus_peakachu_deepanchor.hg38.combined_loops",
-#         "left_ventricle": "left_ventricle_peakachu_deepanchor.hg38.combined_loops",
-#         "liver": "liver_peakachu_deepanchor.hg38.combined_loops",
-#         "lung": "lung_peakachu_deepanchor.hg38.combined_loops",
-#         "mammary": "mammary_peakachu_deepanchor.hg38.combined_loops",
-#         "pancreas": "pancreas_peakachu_deepanchor.hg38.combined_loops",
-#         "skeletal_muscle": "skeletal_muscle_peakachu_deepanchor.hg38.combined_loops",
-#         "skin": "skin_peakachu_deepanchor.hg38.combined_loops",
-#         "small_intestine": "small_intestine_peakachu_deepanchor.hg38.combined_loops",
-#     },
-#     "deeploop_only": {
-#         "aorta": "GSE167200_Aorta.top300K_300000_loops.bedpe.hg38",
-#         "hippocampus": "GSE167200_Hippocampus.top300K_300000_loops.bedpe.hg38",
-#         "left_ventricle": "GSE167200_LeftVentricle.top300K_300000_loops.bedpe.hg38",
-#         "liver": "GSE167200_Liver.top300K_300000_loops.bedpe.hg38",
-#         "lung": "GSE167200_Lung.top300K_300000_loops.bedpe.hg38",
-#         "pancreas": "GSE167200_Pancreas.top300K_300000_loops.bedpe.hg38",
-#         "skeletal_muscle": "GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38",
-#         "small_intestine": "GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38",
-#     },
-#     "deeploop_deepanchor_peakachu": {
-#         "aorta": "aorta_alloops.bed",
-#         "hippocampus": "hippocampus_alloops.bed",
-#         "left_ventricle": "left_ventricle_alloops.bed",
-#         "liver": "liver_alloops.bed",
-#         "lung": "lung_alloops.bed",
-#         "pancreas": "pancreas_alloops.bed",
-#         "skeletal_muscle": "skeletal_muscle_alloops.bed",
-#         "small_intestine": "small_intestine_alloops.bed",
-#     },
-# }
