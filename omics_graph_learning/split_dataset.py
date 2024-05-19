@@ -10,17 +10,21 @@ training the network."""
 import argparse
 from copy import deepcopy
 import csv
-import os
 import pathlib
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 
-from cmapPy.pandasGEXpress.parse_gct import parse
+from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.preprocessing import StandardScaler  # type: ignore
 
-import utils
+from utils import _load_pickle
+from utils import _save_pickle
+from utils import dir_check_make
+from utils import filter_genes_by_tpm
+from utils import parse_yaml
+from utils import time_decorator
 
 
 def _tpm_filter_genes_and_prepare_keywords(
@@ -30,7 +34,7 @@ def _tpm_filter_genes_and_prepare_keywords(
     tissues: List[str],
     tpm_filter: Union[float, int],
     percent_of_samples_filter: float,
-) -> None:
+) -> Dict[str, Tuple[str, str]]:
     """Filter genes for all tissues based on TPM values, creating the file
     'tpm_filtered_genes.bed' in each tissue directory.
 
@@ -46,11 +50,11 @@ def _tpm_filter_genes_and_prepare_keywords(
     """
     matrix_keywords = {}
     for tissue in tissues:
-        params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
+        params = parse_yaml(f"{config_dir}/{tissue}.yaml")
 
         # set up params
         genes = split_path / f"{tissue}_tpm_filtered_genes.bed"
-        tpm_file = f"{params['resources']['tpm']}"
+        tpm_file = params["resources"]["tpm"]
         tpm_keyword = params["resources"]["key_tpm"]
         protein_abundance_keyword = params["resources"]["key_protein_abundance"]
 
@@ -59,7 +63,7 @@ def _tpm_filter_genes_and_prepare_keywords(
 
         if not genes.exists():
             # filter genes here!
-            utils.filter_genes_by_tpm(
+            filter_genes_by_tpm(
                 gencode=gencode_gtf,
                 tpm_file=tpm_file,
                 tpm_filter=tpm_filter,
@@ -70,7 +74,7 @@ def _tpm_filter_genes_and_prepare_keywords(
 
 
 def _open_filtered_genes_and_append_tissue(
-    tpm_filtered_genes: str,
+    tpm_filtered_genes: pathlib.PosixPath,
     tissue: str,
 ) -> List[str]:
     """Return a list of genes from a filtered gtex bedfile"""
@@ -81,7 +85,7 @@ def _open_filtered_genes_and_append_tissue(
 def _get_tpm_filtered_genes(
     tissue_keywords: Dict[str, Tuple[str, str]],
     split_path: pathlib.PosixPath,
-) -> List[str]:
+) -> Set[str]:
     """Process tissue targets by filtering them based on tissue keywords and
     genes.
 
@@ -132,7 +136,7 @@ def _tpm_median_across_all_tissues(
         print("File already exists!")
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _genes_train_test_val_split(
     genes: Union[Dict[str, str], List[str]],
     target_genes: List[str],
@@ -300,7 +304,7 @@ def _tissue_rename(
     return tissue.casefold()
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _calculate_foldchange_from_medians(
     median_matrix: pd.DataFrame,
     median_across_tissues: pd.DataFrame,
@@ -332,11 +336,10 @@ def _calculate_foldchange_from_medians(
     df[[f"{tissue}_foldchange" for tissue in df.columns]] = df[df.columns].div(
         df["all_tissues"], axis=0
     )
+    return pd.DataFrame(np.log2(df.drop(columns=["all_tissues"])))
 
-    return np.log2(df.drop(columns=["all_tissues"]))
 
-
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _difference_from_average_activity_per_tissue(
     average_activity: pd.DataFrame,
     pseudocount: float,
@@ -374,9 +377,9 @@ def _difference_from_average_activity_per_tissue(
             fold_change.name = f"{tissue}_foldchange_from_average"
             fold_changes.append(fold_change)
 
-    return np.log2(pd.concat(differences, axis=1) + pseudocount), np.log2(
-        pd.concat(fold_changes, axis=1) + pseudocount
-    )
+    return pd.DataFrame(
+        np.log2(pd.concat(differences, axis=1) + pseudocount)
+    ), pd.DataFrame(np.log2(pd.concat(fold_changes, axis=1) + pseudocount))
 
 
 def _get_targets_from_rna_seq(
@@ -393,7 +396,7 @@ def _get_targets_from_rna_seq(
     }
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _get_targets_per_partition(
     diff_from_average_df: pd.DataFrame,
     foldchange_from_average_df: pd.DataFrame,
@@ -402,7 +405,7 @@ def _get_targets_per_partition(
     partition: str,
     tissue_keywords: dict,
     tpm_median_and_foldchange_df: pd.DataFrame,
-) -> Dict[str, Dict[str, np.ndarray]]:
+) -> Dict[str, np.ndarray]:
     """Get target values for each tissue."""
 
     targets = {}
@@ -535,7 +538,7 @@ def _tissue_targets_for_training(
     }
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _scale_targets(
     targets: Dict[str, Dict[str, np.ndarray]]
 ) -> Dict[str, Dict[str, np.ndarray]]:
@@ -568,7 +571,7 @@ def _scale_targets(
     return scaled_targets
 
 
-def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
+def _unpack_params(params: Dict[str, Any]) -> :
     """Unpack params from yaml config"""
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]
@@ -612,15 +615,15 @@ def _prepare_split_directories(
     working_path = pathlib.Path(working_directory)
     graph_dir = working_path / experiment_name / "graphs"
     split_path = graph_dir / split_name
-    utils.dir_check_make(split_path)
+    dir_check_make(split_path)
     return graph_dir, split_path
 
 
 def _load_dataframes(
     matrix_path: str, average_activity_df: str, expression_median_across_all_df: str
 ):
-    average_activity = utils._load_pickle(average_activity_df)
-    expression_median_across_all = utils._load_pickle(
+    average_activity = _load_pickle(average_activity_df)
+    expression_median_across_all = _load_pickle(
         matrix_path / expression_median_across_all_df
     )
     return average_activity, expression_median_across_all
@@ -632,8 +635,8 @@ def _save_splits(
     split_path: str,
 ) -> None:
     chr_split_dictionary = split_path / "training_targets_split.pkl"
-    utils._save_pickle(split, chr_split_dictionary)
-    # utils._save_pickle(barebones_split, split_path / "training_split.pkl")
+    _save_pickle(split, chr_split_dictionary)
+    # _save_pickle(barebones_split, split_path / "training_split.pkl")
 
 
 def _save_targets(
@@ -641,9 +644,9 @@ def _save_targets(
     split_path: str,
     scaled_targets: Dict[str, Dict[str, np.ndarray]] = None,
 ) -> None:
-    utils._save_pickle(targets, split_path / "training_targets.pkl")
+    _save_pickle(targets, split_path / "training_targets.pkl")
     if scaled_targets:
-        utils._save_pickle(scaled_targets, split_path / "training_targets_scaled.pkl")
+        _save_pickle(scaled_targets, split_path / "training_targets_scaled.pkl")
 
 
 def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) -> None:
@@ -708,7 +711,7 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         )
 
         split = _genes_train_test_val_split(
-            genes=utils.genes_from_gff(gencode_gtf),
+            genes=genes_from_gff(gencode_gtf),
             target_genes=filtered_genes,
             tissues=tissues,
             test_chrs=test_chrs,
@@ -739,7 +742,7 @@ def _extracted_from_prepare_gnn_training_split_and_targets_39(
     tissues, config_dir, gencode_gtf, split_path
 ):
     for tissue in tissues:
-        params = utils.parse_yaml(f"{config_dir}/{tissue}.yaml")
+        params = parse_yaml(f"{config_dir}/{tissue}.yaml")
         rna = params["resources"]["rna"]
 
     with open(rna, "r") as f:
@@ -789,7 +792,7 @@ def main() -> None:
         help="Whether to use RNA-seq data for targets",
     )
     args = parser.parse_args()
-    params = utils.parse_yaml(args.experiment_config)
+    params = parse_yaml(args.experiment_config)
 
     prepare_gnn_training_split_and_targets(args=args, params=params)
 

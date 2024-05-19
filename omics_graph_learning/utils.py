@@ -16,7 +16,7 @@ import pickle
 import random
 import subprocess
 import time
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
@@ -40,7 +40,7 @@ def _save_pickle(data: object, file_path: str) -> Any:
         pickle.dump(data, output)
 
 
-def parse_yaml(config_file: str) -> Dict[str, Union[str, list]]:
+def parse_yaml(config_file: str) -> Dict[str, Any]:
     """Load yaml for parsing"""
     with open(config_file, "r") as stream:
         params = yaml.safe_load(stream)
