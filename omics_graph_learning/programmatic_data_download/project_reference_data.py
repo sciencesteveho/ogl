@@ -9,12 +9,12 @@ import os
 import pickle
 
 
-def place_holder_function() -> None:
+def prepare_gencode() -> None:
     """_summary_ of function"""
     pass
 
 
-def place_holder_function() -> None:
+def prepare_mirna() -> None:
     """_summary_ of function"""
     pass
 
