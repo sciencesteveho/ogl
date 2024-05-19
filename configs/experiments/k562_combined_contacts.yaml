@@ -1,4 +1,10 @@
 ---
+directories:
+  root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
+  raw_data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/raw_tissue_data
+  shared_data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data
+
+
 baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
 
 baseloops: hic_fdr_0.001
