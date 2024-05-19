@@ -21,7 +21,7 @@ function convertsecs() {
 # =============================================================================
 # Code was used to sum all overlaps together, only keep unique entries based on chr/start/end
 # =============================================================================
-cat *overlap* | sort  -k1,1 -k2,2n -k3,3n -u > concatenated_overlapped_elements.bed
+# cat *overlap* | sort  -k1,1 -k2,2n -k3,3n -u > concatenated_overlapped_elements.bed
 
 
 # =============================================================================

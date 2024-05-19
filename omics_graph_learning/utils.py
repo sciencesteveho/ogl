@@ -43,8 +43,7 @@ def _save_pickle(data: object, file_path: str) -> Any:
 def parse_yaml(config_file: str) -> Dict[str, Any]:
     """Load yaml for parsing"""
     with open(config_file, "r") as stream:
-        params = yaml.safe_load(stream)
-    return params
+        return yaml.safe_load(stream)
 
 
 def dir_check_make(dir: str) -> None:

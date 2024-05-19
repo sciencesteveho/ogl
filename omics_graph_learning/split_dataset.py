@@ -571,7 +571,7 @@ def _scale_targets(
     return scaled_targets
 
 
-def _unpack_params(params: Dict[str, Any]) -> :
+def _unpack_params(params: Dict[str, Any]) -> None:
     """Unpack params from yaml config"""
     experiment_name = params["experiment_name"]
     working_directory = params["working_directory"]

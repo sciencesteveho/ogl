@@ -1,11 +1,17 @@
 ---
 directories:
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
-  raw_data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/raw_tissue_data
-  shared_data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data
-
-
-baseloop_directory: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops
+  raw_data_dir: raw_tissue_data
+  baseloop_dir: raw_tissue_data/chromatin_loops/processed_loops
+  shared_data_dir: shared_data
+  interaction_dir: shared_data/interaction
+  local_data_dir: shared_data/local
+  reference_dir: shared_data/reference
+  regulatory_dir: shared_data/regulatory_elements
+  target_dir: shared_data/targets
+  expression_dir: shared_data/targets/expression
+  tpm_dir: shared_data/targets/tpm
+  matrix_dir: shared_data/targets/matrices
 
 baseloops: hic_fdr_0.001
 
@@ -15,11 +21,11 @@ feat_window: 2000
 
 gene_gene: False
 
-interaction_types: null
+interaction_types: null  # type is Optional [List[str]]
 
 loop_resolution: 0.001
 
-nodes: null
+nodes: null  # type is Optional [List[str]]
 
 regulatory: intersect
 

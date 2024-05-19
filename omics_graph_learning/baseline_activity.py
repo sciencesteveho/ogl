@@ -54,12 +54,16 @@ def _tpm_dataset_specific_tissue_average(
     """_summary_
 
     Args:
-        tpm_dir (str): /path/to/ tissue split TPM tables 
+        tpm_dir (str): /path/to/ tissue split TPM tables
 
     Returns:
         pd.DataFrame
     """
-    dfs = [pd.read_table(file, index_col=0, header=[2]) for file in os.listdir(tpm_dir) if 'tpm.txt' in file]
+    dfs = [
+        pd.read_table(file, index_col=0, header=[2])
+        for file in os.listdir(tpm_dir)
+        if "tpm.txt" in file
+    ]
     df = pd.concat(dfs, axis=1)
     samples = len(df.columns)
     summed = df.sum(axis=1).to_frame()
@@ -75,16 +79,16 @@ def _difference_from_average_activity_per_tissue(
     """Lorem"""
     dfs = []
     for file in os.listdir(tpm_dir):
-        if 'tpm.txt' in file:
+        if "tpm.txt" in file:
             df = pd.read_table(file, index_col=0, header=[2])
             samples = len(df.columns)
             tissue_average = df.sum(axis=1).div(samples)
-            difference = tissue_average.subtract(average_activity['average']).abs()
+            difference = tissue_average.subtract(average_activity["average"]).abs()
             difference.name = f'{file.split(".tpm.txt")[0]}_difference_from_average'
             dfs.append(difference)
     return pd.concat(dfs, axis=1)
 
-            
+
 def _get_targets(
     split: str,
     targets: dict,
@@ -103,7 +107,7 @@ def main(
     expression_gct: str,
 ) -> None:
     """Main function"""
-    
+
     # get predictions as the average tpm for that gene across all tissues
     average_activity = _tpm_all_tissue_average(expression_gct)
     with open("average_activity_before_transform.pkl", "wb") as f:
@@ -158,9 +162,7 @@ def main(
     # print(f"Validation error: {val_error}")
 
     print(
-        f"Tissue train error: {tissue_train_error} 
-        \nTissue test error: {test_train_error} 
-        \nTissue validation error: {val_train_error}"
+        f"Tissue train error: {tissue_train_error} \nTissue test error: {test_train_error} \nTissue validation error: {val_train_error}"
     )
 
     # with open("all_tissue_baseline_test_preds.pkl", "wb") as f:

@@ -1,6 +1,6 @@
 ---
 dirs:
-  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
+  # circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
   data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/left_ventricle
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
 
@@ -22,12 +22,12 @@ features:
   SMC3: SMC3_narrow_merged.bed
 
 interaction:
-  circuits: left_ventricle_adult.txt
+  # circuits: left_ventricle_adult.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirna: left.ventricle_mirdip
-  ppis: IID_annotated_PPI.txt
+  # mirna: left.ventricle_mirdip
+  # ppis: IID_annotated_PPI.txt
   tf_binding: tfbinding_footprints.bed
   tf_marker: tf_marker.txt
 

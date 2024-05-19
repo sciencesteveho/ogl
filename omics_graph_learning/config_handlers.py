@@ -11,10 +11,13 @@ from typing import Any, Dict, List, Optional, Union
 
 import yaml  # type: ignore
 
+from utils import parse_yaml
+
 
 @dataclass
 class ExperimentConfig:
-    baseloop_directory: pathlib.Path
+
+    # Params
     baseloops: str
     experiment_name: str
     feat_window: int
@@ -24,16 +27,16 @@ class ExperimentConfig:
     nodes: Optional[List[str]]
     regulatory: str
     tissues: List[str]
+
+    # Files for training split
     average_activity_df: pathlib.Path
     config_dir: pathlib.Path
     expression_median_across_all: pathlib.Path
     expression_median_matrix: pathlib.Path
     expression_all_matrix: pathlib.Path
     gencode_gtf: pathlib.Path
-    matrix_dir: pathlib.Path
     protein_abundance_matrix: pathlib.Path
     protein_abundance_medians: pathlib.Path
-    tpm_dir: pathlib.Path
     test_chrs: List[str]
     val_chrs: List[str]
     working_directory: pathlib.Path
@@ -41,14 +44,35 @@ class ExperimentConfig:
         default_factory=lambda: ["dyadic", "enhancers", "gencode", "promoters"]
     )
 
+    # Directories
+    root_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    raw_data_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    shared_data_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    interaction_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    local_data_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    reference_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    regulatory_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    expression_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    tpm_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    matrix_dir: pathlib.Path = field(default_factory=pathlib.Path)
+    baseloop_dir: pathlib.Path = field(default_factory=pathlib.Path)
+
+    def _resolve_directories(self, directories: Dict[str, str]) -> None:
+        """Retrieves the root dir from the config and sets up all other required
+        directories as resolved absolute paths."""
+        self.root_dir = pathlib.Path(directories["root_dir"]).resolve()
+        # Use setattr to update dataclass fields based on the dictionary entries
+        for key, relative_path in directories.items():
+            if key != "root_dir":
+                absolute_path = self.root_dir / relative_path
+                setattr(self, f"{key}", absolute_path.resolve())
+
     @classmethod
     def from_yaml(cls, yaml_file: pathlib.Path) -> "ExperimentConfig":
         """Load the configuration from a yaml and set all configs."""
         params = cls._load_yaml(yaml_file)
 
-        cls._set_defaults_based_on_root_dir(params)
         cls._update_with_training_targets(params)
-        cls._convert_str_to_path(params)
         cls._ensure_lists(
             params, ["interaction_types", "nodes", "test_chrs", "val_chrs", "tissues"]
         )
@@ -56,7 +80,7 @@ class ExperimentConfig:
         return cls(**params)
 
     @staticmethod
-    def _load_yaml(yaml_file: pathlib.Path) -> dict:
+    def _load_yaml(yaml_file: pathlib.Path) -> Dict[str, Any]:
         with open(yaml_file, "r") as stream:
             return yaml.safe_load(stream)
 
@@ -67,30 +91,8 @@ class ExperimentConfig:
             params[key] = pathlib.Path(path)
 
     @staticmethod
-    def _convert_str_to_path(params: dict) -> None:
-        for key, value in params.items():
-            if isinstance(value, str) and (
-                "_dir" in key or "_path" in key or "_file" in key
-            ):
-                params[key] = pathlib.Path(value)
-
-    @staticmethod
-    def _set_defaults_based_on_root_dir(params: dict) -> None:
-        if "root_dir" in params:
-            root_dir = pathlib.Path(params["root_dir"])
-            params["raw_data_dir"] = params.get(
-                "raw_data_dir", root_dir / "raw_tissue_data"
-            )
-            params["shared_data_dir"] = params.get(
-                "shared_data_dir", root_dir / "shared_data"
-            )
-            params["baseloop_dir"] = params.get(
-                "baseloop_dir",
-                root_dir / "raw_tissue_data" / "chromatin_loops" / "processed_loops",
-            )
-
-    @staticmethod
     def _ensure_lists(params: dict, keys: List[str]) -> None:
+        """Ensure the given keys have a list value."""
         for key in keys:
             params[key] = params.get(key, [])
 
