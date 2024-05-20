@@ -126,7 +126,7 @@ function _filter_gencode_annotations () {
 
     _download_raw_file \
         ${raw_gencode_file} \
-        "https://storage.googleapis.com/gtex_analysis_v8/reference/gencode.v26.GRCh38.genes.gtf"
+        https://storage.googleapis.com/adult-gtex/references/v8/reference-tables/gencode.v26.GRCh38.genes.gtf
 
     gtf2bed < ${raw_gencode_file} \
         | awk '$8 == "gene"' \
@@ -378,7 +378,7 @@ function main () {
     unprocessed_dir="$root_dir/unprocessed"
     interaction_dir="$root_dir/shared_data/interaction"
     local_dir="$root_dir/shared_data/local"
-    reference_dir="$root_dir/shared_data/reference"
+    reference_dir="$root_dir/shared_data/references"
     regulatory_elements_dir="$root_dir/shared_data/regulatory_elements"
     expression_dir="$root_dir/shared_data/targets/expression"
     tpm_dir="$root_dir/shared_data/targets/tpm"
