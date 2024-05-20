@@ -473,7 +473,7 @@ if [[ -z "$root_directory" ]]; then
     echo "Error: --root_directory not set."
     echo "Usage: $0 --root_directory PATH [--cleanup]"
     exit 1
-else:
+else
     echo "Root directory is set to $root_directory"
     main ${root_directory}
 fi
