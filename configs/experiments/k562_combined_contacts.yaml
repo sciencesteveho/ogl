@@ -15,6 +15,8 @@ directories:
 
 baseloops: hic_fdr_0.001
 
+differentiate_tf: False
+
 experiment_name: regulatory_only_k562_fdr001
 
 feat_window: 2000

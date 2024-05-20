@@ -131,6 +131,10 @@ class EdgeParser:
         self.interaction_dir = f"{self.tissue_dir}/interaction"
         self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
+        self.tf_extension = ""
+        if params["differentiate"] == True:
+            self.tf_extension += "_tf"
+
     def _initialize_references(self, params: Dict[str, Dict[str, str]]) -> None:
         """Initialize reference dictionaries"""
         self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
@@ -300,7 +304,7 @@ class EdgeParser:
                 and tup[1] in self.genesymbol_to_gencode.keys()
             ):
                 yield (
-                    f"{self.genesymbol_to_gencode[tup[0]]}_tf",
+                    f"{self.genesymbol_to_gencode[tup[0]]}{self.tf_extension}",
                     self.genesymbol_to_gencode[tup[1]],
                     # -1,
                     "tf_marker",
