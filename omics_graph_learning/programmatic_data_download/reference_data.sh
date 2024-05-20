@@ -102,7 +102,7 @@ function _prepare_directory_structure () {
         "raw_tissue_data/chromatin_loops/processed_loops"
         "shared_data/interaction"
         "shared_data/local"
-        "shared_data/reference"
+        "shared_data/references"
         "shared_data/regulatory_elements"
         "shared_data/targets/expression"
         "shared_data/targets/tpm"
