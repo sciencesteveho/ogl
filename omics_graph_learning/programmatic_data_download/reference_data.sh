@@ -475,7 +475,7 @@ if [[ -z "$root_directory" ]]; then
     exit 1
 else:
     echo "Root directory is set to $root_directory"
-    main_func ${root_directory}
+    main ${root_directory}
 fi
 
 # run optional cleanup
