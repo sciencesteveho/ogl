@@ -134,7 +134,7 @@ function _filter_gencode_annotations () {
         > ${filtered_gencode_file}
 }
 
-function function _prepare_gencode_lookup_table () {
+function _prepare_gencode_lookup_table () {
     local filtered_gencode_file=$1  # absolute path to filtered gencode bed file
     local lookup_table=$2  # absolute path to lookup table
 
