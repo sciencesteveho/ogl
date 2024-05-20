@@ -109,6 +109,7 @@ function _prepare_directory_structure () {
         "shared_data/targets/matrices"
     )
 
+    mkdir -p ${root_dir}
     for directory in "${directories[@]}"; do
         mkdir -p ${root_dir}/${directory}
     done
