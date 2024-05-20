@@ -307,7 +307,7 @@ function _rbp_binding_sites () {
         -a - \
         -b ${gencode} \
         -wa \
-        -wb \ 
+        -wb \
         | cut -f4,5,9 \
         | sort -u \
         |  awk 'BEGIN{FS=OFS="\t"} {array[$1 OFS $3] = array[$1 OFS $3] ? array[$1 OFS $3] "," $2 : $2} END{for (i in array) print i, array[i]}' \
