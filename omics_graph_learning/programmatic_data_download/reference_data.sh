@@ -62,11 +62,11 @@ done
 SECONDS=0
 
 function convertsecs() {
-    local total_seconds=
+    local total_seconds=$1
     local hours=$((total_seconds / 3600))
     local minutes=$(( (total_seconds % 3600) / 60 ))
     local seconds=$((total_seconds % 60))
-    printf "%02d:%02d:%02d\n" hours minutes seconds
+    printf "%02d:%02d:%02d\n" $hours $minutes $seconds
 }
 
 
