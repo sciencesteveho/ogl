@@ -85,7 +85,7 @@ function _download_raw_file () {
 
     if [ ! -f ${raw_file} ]; then
         echo "Downloading ${raw_file}..."
-        wget -O ${raw_file} ${download_url}
+        wget -nv -O ${raw_file} ${download_url}
     else
         echo "${raw_file} exists."
     fi
@@ -231,9 +231,15 @@ function _mirtarbase_targets () {
 
 
 # =============================================================================
-# MicroRNA coordinates
-# We download coordinates of human miRNAs from miRBase Release 22.1 For the miRBase catalog, we remove unceccessary information and only keep the coordinates and name (casefolded). Because there are some repeat entrys (primary transcript vs gene body), we collapse any redundant mirnas by keeping the larger coordinates. Of not, 66 miRNAs had multiple annotations on disparate chromosomes. We removed these 66 miRNA from our analysis.
-# To convert between miRNA IDs and ENSG identifiers, we create a lookup table with coordinates from biomart.
+# MicroRNA coordinates 
+# We download coordinates of human miRNAs from miRBase release 22.1 For the
+# miRBase catalog, we remove unceccessary information and only keep the
+# coordinates and name (casefolded). Because there are some repeat entrys
+# (primary transcript vs gene body), we collapse any redundant mirnas by keeping
+# the larger coordinates. Of not, 66 miRNAs had multiple annotations on
+# disparate chromosomes. We removed these 66 miRNA from our analysis. To convert
+# between miRNA IDs and ENSG identifiers, we create a lookup table with
+# coordinates from biomart.
 # =============================================================================
 function _mirbase_mirnas () {
     local raw_mirbase_file=$1  # absolute path to raw mirbase file
