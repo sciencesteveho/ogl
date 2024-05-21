@@ -189,7 +189,7 @@ function _tss () {
         > ${map_file}
 
     # Create a list of TSS to gene symbol tuples
-    cut -f1,8 "$annotation_file" \
+    cut -f1,8 ${decompressed_annotation_file} \
         | awk '{ split($2, a, " "); for(i in a) print $1, a[i] }' \
         > ${tss_genesymbol_tupes}
 
@@ -371,7 +371,7 @@ function _node_featsaver () {
         https://bio.liclab.net/sedb/download/new/package/SE_package_hg38.bed
 
     tail -n +2 ${sedb_list} \
-        | awk -vOFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}' \
+        | awk -v OFS='\t' '{print $3,$4,$5,$3"_"$4"_superenhancer"}' \
         > ${sedb_attr}
 }
 
@@ -483,13 +483,14 @@ function main () {
 
 
 # check if the root_directory is not set
-if [[ -z "$root_directory" ]]; then
-    echo "Error: --root_directory not set."
-    echo "Usage: $0 --root_directory PATH [--cleanup]"
+if [[ -z "$root_directory" ]] || [[ -z "$postar3_file" ]]; then
+    echo "Error: --root_directory and/or --postar3_file are not set."
+    echo "Usage: $0 --root_directory PATH --postar3_file PATH [--cleanup]"
     exit 1
 else
     echo "Root directory is set to $root_directory"
-    main ${root_directory}
+    echo "Postar3 file is set to $postar3_file"
+    main "${root_directory}" "${postar3_file}"
 fi
 
 # run optional cleanup
