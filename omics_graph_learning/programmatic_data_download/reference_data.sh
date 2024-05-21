@@ -2,7 +2,9 @@
 #
 # Code to download and parse reference base data for the project. This script
 # will assume that your environment has working BEDOPS, BEDTools, and xlsx2csv
-# installed. Initial data will be downloaded to the unprocessed directory and
+# installed with Bash > 4.0. Additionally, a python environment with pybedtools
+# is required and its PATH should be accessible from wherever you run this
+# script. Initial data will be downloaded to the unprocessed directory and
 # parsed data placement is hardcoded based on the provided root directory. To
 # run the script:
 #
@@ -36,10 +38,12 @@
 #   --root_directory: project root directory
 #   --cleanup: boolean flag to remove intermediate files
 #   --postar3_file: path to postar3 file
+#  --script_directory: path to programmatic_data_download
 # =============================================================================
 # Initialize the variables
 root_directory=""
 postar3_file=""
+script_directory=""
 cleanup=false
 
 # Parse the command line arguments
@@ -51,6 +55,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --postar3_file)
             postar3_file="$2"
+            shift 2
+            ;;
+        --script_directory)
+            script_directory="$2"
             shift 2
             ;;
         --cleanup)
@@ -81,7 +89,7 @@ function convertsecs() {
 
 # Function to echo script progress to stdout
 log_progress() {
-    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] "
+    echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] $1\n"
 }
 
 
@@ -164,14 +172,13 @@ function _prepare_gencode_lookup_table () {
 # genes w/ gencode IDs.
 # =============================================================================
 function _tss () {
-    local annotation_tss_file=$1  # absolute path to raw tss file
-    local raw_tss_file=$2  # absolute path to decompressed tss file
-    local decompressed_annotation_file=$3  # absolute path to decompressed tss file
-    local decompressed_tss_file=$4  # absolute path to decompressed tss file
-    local gencode_ref=$5  # absolute path to gencode reference file
-    local map_file=$6
-    local tss_genesymbol_tupes=$7
-    local parsed_tss_file=$8
+    local script_dir=$1  # absolute path to script directory
+    local annotation_tss_file=$2  # absolute path to raw tss file
+    local raw_tss_file=$3  # absolute path to decompressed tss file
+    local decompressed_annotation_file=$4  # absolute path to decompressed tss file
+    local decompressed_tss_file=$5  # absolute path to decompressed tss file
+    local gencode_ref=$6  # absolute path to gencode reference file
+    local parsed_tss_file=$7
 
     _download_raw_file \
         ${annotation_tss_file} \
@@ -182,24 +189,14 @@ function _tss () {
         https://reftss.riken.jp/datafiles/4.1/human/refTSS_v4.1_human_coordinate.hg38.bed.txt.gz
 
     gunzip -c ${annotation_tss_file} > ${decompressed_annotation_file}
-    gunzip -c ${raw_tss_file} > ${decompressed_tss_file}
+    gunzip -c ${raw_tss_file} > tmp && cat tmp | tail -n +2 > ${decompressed_tss_file} && rm tmp
 
-    # Map gene symbols to gencode IDs
-    awk '$1 !~ /^chr(X|Y|M)$/' "$gencode_ref" \
-        | awk 'BEGIN { FS=";"; OFS="\t" } { split($4, a, "\""); geneSymbol=a[2]; geneId=$1; print geneSymbol, geneId }' \
-        > ${map_file}
-
-    # Create a list of TSS to gene symbol tuples
-    cut -f1,8 ${decompressed_annotation_file} \
-        | awk '{ split($2, a, " "); for(i in a) print $1, a[i] }' \
-        > ${tss_genesymbol_tupes}
-
-    # Constructing the final mapped file
-    join -1 2 -2 1 -t $'\t' -o 1.1 2.2 \
-        <(sort -k2 ${tss_genesymbol_tupes}) \
-        <(sort -k1 ${map_file}) \
-        | awk 'BEGIN {OFS="\t"} {print $1, "tss_"$2}' \
-        > ${8}
+    # run python script
+    python -u ${script_dir}/reftss_parser.py \
+        --tss_file ${decompressed_tss_file} \
+        --annotation_file ${decompressed_annotation_file} \
+        --gencode_ref ${gencode_ref} \
+        --outfile ${parsed_tss_file}
 }
 
 
@@ -210,13 +207,17 @@ function _tss () {
 # evidence (remove Non-functional MTI).
 # =============================================================================
 function _mirtarbase_targets () {
-    local raw_mirtarbase_file=$1  # absolute path to mirtarbase xlsx
-    local raw_mirtarbase_csv=$2  # absolute path to mirtarbase csv
-    local parsed_mirtarbase=$3  # absolute path to final parsed file
+    local unprocessed_dir=$1  
+    local raw_mirtarbase_file=$2  # absolute path to mirtarbase xlsx
+    local raw_mirtarbase_csv=$3  # absolute path to mirtarbase csv
+    local parsed_mirtarbase=$4  # absolute path to final parsed file
 
-    _download_raw_file \
-        ${raw_mirtarbase_file} \
-        https://mirtarbase.cuhk.edu.cn/~miRTarBase/miRTarBase_2022/cache/download/9.0/miRTarBase_MTI.xlsx
+    if [ ! -f ${raw_mirtarbase_file} ]; then
+        echo "Downloading ${raw_mirtarbase_file}..."
+        wget -nv -P ${unprocessed_dir} https://mirtarbase.cuhk.edu.cn/~miRTarBase/miRTarBase_2022/cache/download/9.0/miRTarBase_MTI.xlsx
+    else
+        echo "${raw_mirtarbase_file} exists."
+    fi
 
     # convert to csv
     xlsx2csv ${raw_mirtarbase_file} ${raw_mirtarbase_csv}
@@ -270,7 +271,7 @@ function _biomart_mirna_coordinates () {
     if [ -f ${biomart_file} ]; then
         echo "Biomart file exists."
     else
-        wget -O ${biomart_file} "https://www.ensembl.org/biomart/martservice?query=<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "chromosome_name" /><Attribute name = "start_position" /><Attribute name = "end_position" /><Attribute name = "external_gene_name" /><Attribute name = "mirbase_accession" /><Attribute name = "mirbase_id" /></Dataset></Query>"
+        curl -o "${biomart_file}" "https://www.ensembl.org/biomart/martservice" --data-urlencode "query=<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE Query><Query  virtualSchemaName = \"default\" formatter = \"TSV\" header = \"0\" uniqueRows = \"0\" count = \"\" datasetConfigVersion = \"0.6\" ><Dataset name = \"hsapiens_gene_ensembl\" interface = \"default\" ><Attribute name = \"ensembl_gene_id\" /><Attribute name = \"ensembl_gene_id_version\" /><Attribute name = \"chromosome_name\" /><Attribute name = \"start_position\" /><Attribute name = \"end_position\" /><Attribute name = \"external_gene_name\" /><Attribute name = \"mirbase_accession\" /><Attribute name = \"mirbase_id\" /></Dataset></Query>"
     fi
 
     awk '{ if (length($8) > 0) print $0 }' ${biomart_file} \
@@ -283,6 +284,8 @@ function _biomart_mirna_coordinates () {
 
 
 # =============================================================================
+# NOTE - there is no direct download for POSTAR 3 sites. Users must download
+# ahead of time.
 # RNA Binding protein sites were downloaded from POSTAR 3. We take the list of
 # RBPs and their binding sites and intersect their binding sites with gene
 # bodies. To get RBP --> Gene interactions. We then keep RBP --> Gene
@@ -305,10 +308,6 @@ function _rbp_binding_sites () {
     local gencode_lookup=$5  # absolute path to gencode lookup table
     local rbp_network=$6  # absolute path to rbp network in edge list format
 
-    # _download_raw_file \
-    #     ${raw_postar3_file} \
-    #     https://cloud.tsinghua.edu.cn/seafhttp/files/065196bd-f5d7-4f53-8ea5-4a1ba268abb0/human.txt.gz
-
     gunzip -c ${raw_postar3_gunzipped} > ${raw_postar3_txt}
 
     awk '$6 != "RBP_occupancy"' ${raw_postar3_txt} \
@@ -320,13 +319,15 @@ function _rbp_binding_sites () {
         -wb \
         | cut -f4,5,9 \
         | sort -u \
-        |  awk 'BEGIN{FS=OFS="\t"} {array[$1 OFS $3] = array[$1 OFS $3] ? array[$1 OFS $3] "," $2 : $2} END{for (i in array) print i, array[i]}' \
+        | awk 'BEGIN{FS=OFS="\t"} {array[$1 OFS $3] = array[$1 OFS $3] ? array[$1 OFS $3] "," $2 : $2} END{for (i in array) print i, array[i]}' \
         | grep "," \
         > ${parsed_binding_sites}
 
-        awk 'BEGIN { FS=OFS="\t" } NR==FNR { lookup[$2]=$1; next } $1 in lookup { $1=lookup[$1] } 1' ${gencode_lookup} ${parsed_binding_sites} \
-            | grep -e '^ENSG' \
-            > ${rbp_network}
+    awk 'BEGIN { FS=OFS="\t" } NR==FNR { lookup[$2]=$1; next } $1 in lookup { $1=lookup[$1] } 1' \
+        ${gencode_lookup} \
+        ${parsed_binding_sites} \
+        | grep -e '^ENSG' \
+        > ${rbp_network}
 }
 
 
@@ -378,11 +379,13 @@ function _node_featsaver () {
 
 
 # =============================================================================
-# Run main_func function! 
+# Main function! Takes care of all the data processing and downloading.
 # =============================================================================
 function main () {
     log_progress "Setting up input vars"
     local root_dir=$1  # project root directory
+    local postar3_file=$2  # path to postar3 file
+    local script_dir=$3  # script directory
 
     # Set up directory paths
     unprocessed_dir="$root_dir/unprocessed"
@@ -394,60 +397,60 @@ function main () {
     tpm_dir="$root_dir/shared_data/targets/tpm"
     matrices_dir="$root_dir/shared_data/targets/matrices"
 
-    # log_progress "Preparing directory structure"
-    # _prepare_directory_structure \
-    #     "$root_dir"
+    log_progress "Preparing directory structure"
+    _prepare_directory_structure \
+        "$root_dir"
 
-    # log_progress "Download files that do not require processing"
-    # declare -A files_to_download=(
-    #     ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
-    #     ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
-    #     ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
-    #     ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
-    #     ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
-    #     ["$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"]="https://resources.altius.org/~jvierstra/projects/footprinting.2020/consensus.index/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"
-    # )
+    log_progress "Download files that do not require processing"
+    declare -A files_to_download=(
+        ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
+        ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
+        ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
+        ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
+        ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
+        ["$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"]="https://resources.altius.org/~jvierstra/projects/footprinting.2020/consensus.index/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"
+    )
 
-    # # download each file
-    # for target_path in "${!files_to_download[@]}"; do
-    #     _download_raw_file "$target_path" "${files_to_download[$target_path]}"
-    # done
+    # download each file
+    for target_path in "${!files_to_download[@]}"; do
+        _download_raw_file "$target_path" "${files_to_download[$target_path]}"
+    done
 
-    # # set execution permission for liftOver tool
-    # chmod +x "$reference_dir/liftOver"
+    # set execution permission for liftOver tool
+    chmod +x "$reference_dir/liftOver"
 
-    # log_progress "Decompressing zip files"
-    # gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
-    # gunzip -c "$unprocessed_dir/hg38-blacklist.v2.bed.gz" > "$reference_dir/hg38-blacklist.v2.bed"
-    # gunzip -c "$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz" > "$reference_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed"
+    log_progress "Decompressing zip files"
+    gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
+    gunzip -c "$unprocessed_dir/hg38-blacklist.v2.bed.gz" > "$reference_dir/hg38-blacklist.v2.bed"
+    gunzip -c "$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz" > "$reference_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed"
 
-    # log_progress "Prepare gencode related files"
-    # _filter_gencode_annotations \
-    #     "$unprocessed_dir/gencode.v26.GRCh38.genes.gtf" \
-    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
+    log_progress "Prepare gencode related files"
+    _filter_gencode_annotations \
+        "$unprocessed_dir/gencode.v26.GRCh38.genes.gtf" \
+        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
 
-    # _prepare_gencode_lookup_table \
-    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-    #     "$reference_dir/gencode_to_genesymbol_lookup_table.txt"
+    _prepare_gencode_lookup_table \
+        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
+        "$reference_dir/gencode_to_genesymbol_lookup_table.txt"
 
-    # # make a symlink and place gencode file in local
-    # ln -s \
-    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-    #     "$local_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
+    # make a symlink and place gencode file in local
+    ln -s \
+        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
+        "$local_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
 
     log_progress "Prepare TSS files"
     _tss \
+        "$script_dir" \
         "$unprocessed_dir/refTSS_v4.1_human_hg38_annotation.txt.gz" \
         "$unprocessed_dir/refTSS_v4.1_human_coordinate.hg38.bed.txt.gz" \
         "$unprocessed_dir/refTSS_v4.1_human_hg38_annotation.txt" \
         "$unprocessed_dir/refTSS_v4.1_human_coordinate.hg38.bed.txt" \
         "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-        "$reference_dir/gene_mapping.tsv" \
-        "$reference_dir/gene_tuples.tsv" \
         "$local_dir/tss_parsed_hg38.bed"
 
     log_progress "Prepare miRTarBase files"
     _mirtarbase_targets \
+        "$unprocessed_dir" \
         "$unprocessed_dir/miRTarBase_MTI.xlsx" \
         "$unprocessed_dir/miRTarBase_MTI.csv" \
         "$reference_dir/mirtargets_filtered.txt"
@@ -463,10 +466,10 @@ function main () {
 
     log_progress "Prepare RBP network"
     _rbp_binding_sites \
-        "$unprocessed_dir/human.txt.gz" \
+        "$postar3_file" \
         "$unprocessed_dir/human.txt" \
         "$unprocessed_dir/rbp_gene_binding_sites.bed" \
-         \
+        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
         "$reference_dir/gencode_to_genesymbol_lookup_table.txt" \
         "$reference_dir/rbp_gene_network.txt"
 
@@ -483,15 +486,19 @@ function main () {
 }
 
 
+# =============================================================================
+# Run the script, given that arguments are passed properly.
+# =============================================================================
 # check if the root_directory is not set
-if [[ -z "$root_directory" ]] || [[ -z "$postar3_file" ]]; then
-    echo "Error: --root_directory and/or --postar3_file are not set."
+if [[ -z "$root_directory" ]] || [[ -z "$postar3_file" ]] || [[ -z "$script_directory" ]]; then
+    echo "Error: --root_directory and/or --postar3_file and/or --script_directory are not set."
     echo "Usage: reference_data.sh --root_directory PATH --postar3_file PATH [--cleanup]"
     exit 1
 else
     echo "Root directory is set to $root_directory"
     echo "Postar3 file is set to $postar3_file"
-    main "${root_directory}" "${postar3_file}"
+    echo "Script directory is set to $script_directory"
+    main "${root_directory}" "${postar3_file}" "${script_directory}"
 fi
 
 # run optional cleanup
