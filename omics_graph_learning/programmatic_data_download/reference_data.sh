@@ -39,6 +39,7 @@
 # =============================================================================
 # Initialize the variables
 root_directory=""
+postar3_file=""
 cleanup=false
 
 # Parse the command line arguments
@@ -49,7 +50,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         --postar3_file)
-            postar3_File="$2"
+            postar3_file="$2"
             shift 2
             ;;
         --cleanup)
@@ -485,7 +486,7 @@ function main () {
 # check if the root_directory is not set
 if [[ -z "$root_directory" ]] || [[ -z "$postar3_file" ]]; then
     echo "Error: --root_directory and/or --postar3_file are not set."
-    echo "Usage: $0 --root_directory PATH --postar3_file PATH [--cleanup]"
+    echo "Usage: reference_data.sh --root_directory PATH --postar3_file PATH [--cleanup]"
     exit 1
 else
     echo "Root directory is set to $root_directory"
