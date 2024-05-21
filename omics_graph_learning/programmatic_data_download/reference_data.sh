@@ -394,46 +394,46 @@ function main () {
     tpm_dir="$root_dir/shared_data/targets/tpm"
     matrices_dir="$root_dir/shared_data/targets/matrices"
 
-    log_progress "Preparing directory structure"
-    _prepare_directory_structure \
-        "$root_dir"
+    # log_progress "Preparing directory structure"
+    # _prepare_directory_structure \
+    #     "$root_dir"
 
-    log_progress "Download files that do not require processing"
-    declare -A files_to_download=(
-        ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
-        ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
-        ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
-        ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
-        ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
-        ["$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"]="https://resources.altius.org/~jvierstra/projects/footprinting.2020/consensus.index/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"
-    )
+    # log_progress "Download files that do not require processing"
+    # declare -A files_to_download=(
+    #     ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
+    #     ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
+    #     ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
+    #     ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
+    #     ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
+    #     ["$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"]="https://resources.altius.org/~jvierstra/projects/footprinting.2020/consensus.index/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"
+    # )
 
-    # download each file
-    for target_path in "${!files_to_download[@]}"; do
-        _download_raw_file "$target_path" "${files_to_download[$target_path]}"
-    done
+    # # download each file
+    # for target_path in "${!files_to_download[@]}"; do
+    #     _download_raw_file "$target_path" "${files_to_download[$target_path]}"
+    # done
 
-    # set execution permission for liftOver tool
-    chmod +x "$reference_dir/liftOver"
+    # # set execution permission for liftOver tool
+    # chmod +x "$reference_dir/liftOver"
 
-    log_progress "Decompressing zip files"
-    gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
-    gunzip -c "$unprocessed_dir/hg38-blacklist.v2.bed.gz" > "$reference_dir/hg38-blacklist.v2.bed"
-    gunzip -c "$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz" > "$reference_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed"
+    # log_progress "Decompressing zip files"
+    # gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
+    # gunzip -c "$unprocessed_dir/hg38-blacklist.v2.bed.gz" > "$reference_dir/hg38-blacklist.v2.bed"
+    # gunzip -c "$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz" > "$reference_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed"
 
-    log_progress "Prepare gencode related files"
-    _filter_gencode_annotations \
-        "$unprocessed_dir/gencode.v26.GRCh38.genes.gtf" \
-        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
+    # log_progress "Prepare gencode related files"
+    # _filter_gencode_annotations \
+    #     "$unprocessed_dir/gencode.v26.GRCh38.genes.gtf" \
+    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
 
-    _prepare_gencode_lookup_table \
-        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-        "$reference_dir/gencode_to_genesymbol_lookup_table.txt"
+    # _prepare_gencode_lookup_table \
+    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
+    #     "$reference_dir/gencode_to_genesymbol_lookup_table.txt"
 
-    # make a symlink and place gencode file in local
-    ln -s \
-        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-        "$local_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
+    # # make a symlink and place gencode file in local
+    # ln -s \
+    #     "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
+    #     "$local_dir/gencode_v26_genes_only_with_GTEx_targets.bed"
 
     log_progress "Prepare TSS files"
     _tss \
@@ -442,8 +442,8 @@ function main () {
         "$unprocessed_dir/refTSS_v4.1_human_hg38_annotation.txt" \
         "$unprocessed_dir/refTSS_v4.1_human_coordinate.hg38.bed.txt" \
         "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
-        "$reference_dir/${6}" \
-        "$reference_dir/${tss_genesymbol_tupes}}" \
+        "$reference_dir/gene_mapping.tsv" \
+        "$reference_dir/gene_tuples.tsv" \
         "$local_dir/tss_parsed_hg38.bed"
 
     log_progress "Prepare miRTarBase files"
