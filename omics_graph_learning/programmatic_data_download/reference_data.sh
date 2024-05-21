@@ -25,6 +25,9 @@
 #         ├── expression
 #         ├── matrices
 #         └── tpm
+#
+# There is no direct download link for the postar3 data, so users will be
+# required to download it manually.
 
 
 # =============================================================================
@@ -32,6 +35,7 @@
 # Arguments:
 #   --root_directory: project root directory
 #   --cleanup: boolean flag to remove intermediate files
+#   --postar3_file: path to postar3 file
 # =============================================================================
 # Initialize the variables
 root_directory=""
@@ -42,11 +46,15 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --root_directory)
             root_directory="$2"
-            shift 2  # shift twice to pass the value
+            shift 2
+            ;;
+        --postar3_file)
+            postar3_File="$2"
+            shift 2
             ;;
         --cleanup)
             cleanup=true
-            shift    # shift once since it's a boolean flag
+            shift
             ;;
         *)
             echo "Unknown parameter passed: $1"
@@ -155,50 +163,42 @@ function _prepare_gencode_lookup_table () {
 # genes w/ gencode IDs.
 # =============================================================================
 function _tss () {
-    local raw_tss_file=$1  # absolute path to raw tss file
-    local decompressed_tss_file=$2  # absolute path to decompressed tss file
-    local parsed_tss_file=$3
+    local annotation_tss_file=$1  # absolute path to raw tss file
+    local raw_tss_file=$2  # absolute path to decompressed tss file
+    local decompressed_annotation_file=$3  # absolute path to decompressed tss file
+    local decompressed_tss_file=$4  # absolute path to decompressed tss file
+    local gencode_ref=$5  # absolute path to gencode reference file
+    local map_file=$6
+    local tss_genesymbol_tupes=$7
+    local parsed_tss_file=$8
+
+    _download_raw_file \
+        ${annotation_tss_file} \
+        https://reftss.riken.jp/datafiles/4.1/human/refTSS_v4.1_human_hg38_annotation.txt.gz
 
     _download_raw_file \
         ${raw_tss_file} \
-        https://reftss.riken.jp/datafiles/4.1/human/refTSS_v4.1_human_hg38_annotation.txt.gz
+        https://reftss.riken.jp/datafiles/4.1/human/refTSS_v4.1_human_coordinate.hg38.bed.txt.gz
 
+    gunzip -c ${annotation_tss_file} > ${decompressed_annotation_file}
     gunzip -c ${raw_tss_file} > ${decompressed_tss_file}
 
-    # create associative array
-    declare -A tss_genes
-    while read -r line; do
-        key=$(echo "$line" | cut -f1 -d' ')
-        value=$(echo "$line" | cut -f8 -d' ')
-        tss_genes["$key"]="$value"
-    done < "$decompressed_tss_file"
+    # Map gene symbols to gencode IDs
+    awk '$1 !~ /^chr(X|Y|M)$/' "$gencode_ref" \
+        | awk 'BEGIN { FS=";"; OFS="\t" } { split($4, a, "\""); geneSymbol=a[2]; geneId=$1; print geneSymbol, geneId }' \
+        > ${map_file}
 
-    # convert associative array to string
-    tss_string=""
-    for key in "${!tss_genes[@]}"; do
-        tss_string+="$key=${tss_genes[$key]} "
-    done
+    # Create a list of TSS to gene symbol tuples
+    cut -f1,8 "$annotation_file" \
+        | awk '{ split($2, a, " "); for(i in a) print $1, a[i] }' \
+        > ${tss_genesymbol_tupes}
 
-    # parse tss file and add array values if present
-    awk -v OFS='\t' -v tss_genes="$tss_string" '
-        BEGIN {
-            split(tss_genes, genes, " ")
-            for (i in genes) {
-                split(genes[i], gene_pair, "=")
-                gene = gene_pair[1]
-                value = gene_pair[2]
-                tss_array[gene] = value
-            }
-        }
-        {
-            key = "tss_" $4
-            if (key in tss_array) {
-                print $1, $2, $3, key, tss_array[$4]
-            } else {
-                print $1, $2, $3, key, "NA"
-            }
-        }
-    ' ${decompressed_tss_file} > ${parsed_tss_file}
+    # Constructing the final mapped file
+    join -1 2 -2 1 -t $'\t' -o 1.1 2.2 \
+        <(sort -k2 ${tss_genesymbol_tupes}) \
+        <(sort -k1 ${map_file}) \
+        | awk 'BEGIN {OFS="\t"} {print $1, "tss_"$2}' \
+        > ${8}
 }
 
 
@@ -246,9 +246,9 @@ function _mirbase_mirnas () {
     local raw_mirbase_file=$1  # absolute path to raw mirbase file
     local parsed_mirbase_file=$2  # absolute path to parsed mirbase file
 
-    _download_raw_file \ 
+    _download_raw_file \
         ${raw_mirbase_file} \
-        https://www.mirbase.org/download/hsa.gff3
+        "https://www.mirbase.org/download/hsa.gff3"
 
     grep -v "^#" ${raw_mirbase_file} \
         | cut -f1,4,5,9 \
@@ -266,9 +266,11 @@ function _biomart_mirna_coordinates () {
     local biomart_file=$1  # absolute path to biomart file
     local mirna_coordinates=$2  # absolute path to mirna_coordinate file
 
-    _download_raw_file \
-        ${biomart_file} \
-       'https://www.ensembl.org/biomart/martservice?query=<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "chromosome_name" /><Attribute name = "start_position" /><Attribute name = "end_position" /><Attribute name = "external_gene_name" /><Attribute name = "mirbase_accession" /><Attribute name = "mirbase_id" /></Dataset></Query>'
+    if [ -f ${biomart_file} ]; then
+        echo "Biomart file exists."
+    else
+        wget -O ${biomart_file} "https://www.ensembl.org/biomart/martservice?query=<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "chromosome_name" /><Attribute name = "start_position" /><Attribute name = "end_position" /><Attribute name = "external_gene_name" /><Attribute name = "mirbase_accession" /><Attribute name = "mirbase_id" /></Dataset></Query>"
+    fi
 
     awk '{ if (length($8) > 0) print $0 }' ${biomart_file} \
         | awk 'BEGIN{FS=OFS="\t"} {print "chr"$3, $4, $5, $2, $8}' \
@@ -302,13 +304,13 @@ function _rbp_binding_sites () {
     local gencode_lookup=$5  # absolute path to gencode lookup table
     local rbp_network=$6  # absolute path to rbp network in edge list format
 
-    _download_raw_file \
-        ${raw_postar3_file} \
-        https://cloud.tsinghua.edu.cn/seafhttp/files/ec09ccf7-6b81-410b-8c0f-ff229bf26021/human.txt.gz
+    # _download_raw_file \
+    #     ${raw_postar3_file} \
+    #     https://cloud.tsinghua.edu.cn/seafhttp/files/065196bd-f5d7-4f53-8ea5-4a1ba268abb0/human.txt.gz
 
     gunzip -c ${raw_postar3_gunzipped} > ${raw_postar3_txt}
 
-    awk '$6 != "RBP_occupancy"' ${file} \
+    awk '$6 != "RBP_occupancy"' ${raw_postar3_txt} \
         | cut -f1,2,3,6,8 \
         | bedtools intersect \
         -a - \
@@ -359,9 +361,9 @@ function _node_featsaver () {
     local sedb_list=$3  # absolute path to superenhancer database file
     local sedb_attr=$4  # absolute path to superenhancer node attribute file
 
+    # <(awk -v OFS='\t' '{print $1, $2, $3, $4"_protein"}' $1/$2) \
     cat <(awk -v OFS='\t' '{print $1, $2, $3, $4}' ${gencode_file}) \
         <(awk -v OFS='\t' '{print $1, $2, $3, $4"_tf"}' ${gencode_file}) \
-        # <(awk -v OFS='\t' '{print $1, $2, $3, $4"_protein"}' $1/$2) \
         > ${genocode_attr}
 
     _download_raw_file \
@@ -435,7 +437,12 @@ function main () {
     log_progress "Prepare TSS files"
     _tss \
         "$unprocessed_dir/refTSS_v4.1_human_hg38_annotation.txt.gz" \
+        "$unprocessed_dir/refTSS_v4.1_human_coordinate.hg38.bed.txt.gz" \
         "$unprocessed_dir/refTSS_v4.1_human_hg38_annotation.txt" \
+        "$unprocessed_dir/refTSS_v4.1_human_coordinate.hg38.bed.txt" \
+        "$reference_dir/gencode_v26_genes_only_with_GTEx_targets.bed" \
+        "$reference_dir/${6}" \
+        "$reference_dir/${tss_genesymbol_tupes}}" \
         "$local_dir/tss_parsed_hg38.bed"
 
     log_progress "Prepare miRTarBase files"
