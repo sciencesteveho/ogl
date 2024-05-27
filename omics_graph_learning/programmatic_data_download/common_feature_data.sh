@@ -168,14 +168,20 @@ function _replication_hotspots () {
         ${unprocessed_dir} \
         rep_formatted_hg18
 
-    # print out a file per phase
-    awk '{file=$4 ".txt"; print > file}' ${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed
+    # # print out a file per phase
+    # awk '{file=$4 ".txt"; print > file}' ${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed
 
-    # symlink files to local directory
-    for phase in repg1b repg2 reps1 reps2 reps3 reps4;
-    do
-        ln -s ${unprocessed_dir}/${phase}.txt ${local_dir}/${phase}_hg38.bed
-    done
+    # print out a file per unique value in the fourth column
+    awk -v output_dir="$local_dir_dir" '{
+        file=sprintf("%s/%s_hg38.bed", output_dir, $4);
+        print > file
+    }' "${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed"
+
+    # # symlink files to local directory
+    # for phase in repg1b repg2 reps1 reps2 reps3 reps4;
+    # do
+    #     ln -s ${unprocessed_dir}/${phase}.txt ${local_dir}/${phase}_hg38.bed
+    # done
 }
 
 
@@ -224,11 +230,8 @@ function _repeatmasker () {
     local repeat_file=$2
     local local_dir=$3
 
-    echo "File: ${unprocessed_dir}/${repeat_file}"
-
     awk -v OFS="\t" '{print $6, $7, $8, $12}' ${unprocessed_dir}/${repeat_file} \
         | awk -v OFS="\t" -v dir="${local_dir}" '
-            BEGIN { print "Output directory is:", dir }
             {
                 match_type = "";
                 file_suffix = "_hg38.bed";
@@ -244,6 +247,7 @@ function _repeatmasker () {
             }
         '
 }
+
 
 
 # =============================================================================
@@ -354,7 +358,7 @@ function main () {
     # Repeat masker
     log_progress "Parse repeat masker into individual repeat types."
     _repeatmasker \
-        ${unprocessed} \
+        ${unprocessed_dir} \
         "rmsk.txt" \
         ${local_dir}
 
@@ -363,7 +367,7 @@ function main () {
     _phastcons \
         ${reference_dir} \
         ${unprocessed_dir} \
-        "phastCons30way.txt" \
+        "hg38.phastCons30way.bw" \
         ${local_dir} \
         0.7
 }
