@@ -342,7 +342,7 @@ class GenomeDataPreprocessor:
     def _merge_cpg(self, bed: Union[str, List[str]]) -> None:
         """Process CPGs with optional liftover. Bookended methylated CpGs are
         merged. If the config includes multiple CpGs, then methylation signal is
-        combined across CpGs and averaged by dividing by the amount of fileshttps://app.sendcutsend.com/customer#
+        combined across CpGs and averaged by dividing by the amount of files
         combined."""
         if isinstance(bed, list):
             self._combined_cpg(beds=bed, path=f"{self.tissue_dir}/unprocessed")

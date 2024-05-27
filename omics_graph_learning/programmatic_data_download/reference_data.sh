@@ -2,13 +2,17 @@
 #
 # Code to download and parse reference base data for the project. This script
 # will assume that your environment has working BEDOPS, BEDTools, and xlsx2csv
-# installed with Bash > 4.0. Additionally, a python environment with pybedtools
+# along with Bash > 4.0. Additionally, a python environment with pybedtools
 # is required and its PATH should be accessible from wherever you run this
 # script. Initial data will be downloaded to the unprocessed directory and
 # parsed data placement is hardcoded based on the provided root directory. To
 # run the script:
 #
-# >>> bash reference_data.sh --root_directory /path/to/project/root [--cleanup]
+# $ bash reference_data.sh \
+# $   --root_directory /path/to/project/root \
+# $   --postar3_file /path/to/postar3/file \
+# $   --script_directory /path/to/programmatic_data_download \
+# $   [--cleanup]
 # 
 # The script will also prepare the necessary directory structure for the rest of
 # OGL. Provided is a schematic of the directory layout:
@@ -18,9 +22,11 @@
 # ├── raw_tissue_data
 # │   └── chromatin_loops
 # │       └── processed_loops
+# │   └── epimap_tracks
 # ├── shared_data
 #     ├── local
 #     ├── regulatory_elements
+#     |   └── unprocessed
 #     ├── references
 #     ├── interaction
 #     └── targets
@@ -38,7 +44,7 @@
 #   --root_directory: project root directory
 #   --cleanup: boolean flag to remove intermediate files
 #   --postar3_file: path to postar3 file
-#  --script_directory: path to programmatic_data_download
+#   --script_directory: path to programmatic_data_download
 # =============================================================================
 # Initialize the variables
 root_directory=""
@@ -117,10 +123,11 @@ function _prepare_directory_structure () {
     local directories=(
         "unprocessed"
         "raw_tissue_data/chromatin_loops/processed_loops"
+        "raw_tissue_data/epimap_tracks"
         "shared_data/interaction"
         "shared_data/local"
         "shared_data/references"
-        "shared_data/regulatory_elements"
+        "shared_data/regulatory_elements/unprocessed"
         "shared_data/targets/expression"
         "shared_data/targets/tpm"
         "shared_data/targets/matrices"
@@ -323,7 +330,7 @@ function _rbp_binding_sites () {
         | grep "," \
         > ${parsed_binding_sites}
 
-    awk 'BEGIN { FS=OFS="\t" } NR==FNR { lookup[$2]=$1; next } $1 in lookup { $1=lookup[$1] } 1' \
+    awk 'BEGIN { FS=OFS="\t" } NR==FNR { lookup[$2]=$1; next } $1 in lookup { $1=lookup[$1] } split($3, a, ",") >= 3 { print }' \
         ${gencode_lookup} \
         ${parsed_binding_sites} \
         | grep -e '^ENSG' \
@@ -405,6 +412,9 @@ function main () {
     declare -A files_to_download=(
         ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
         ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
+        ["$reference_dir/bigWigToWig"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigToWig"
+        ["$reference_dir/bigWigToBedGraph"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph"
+        ["$reference_dir/peakMerge.py"]="https://github.com/remap-cisreg/peakMerge/raw/main/peakMerge.py"
         ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
         ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
         ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
@@ -416,8 +426,9 @@ function main () {
         _download_raw_file "$target_path" "${files_to_download[$target_path]}"
     done
 
-    # set execution permission for liftOver tool
+    # set execution permission for UCSC utilities
     chmod +x "$reference_dir/liftOver"
+    chmod +x "$reference_dir/bigWigToWig"
 
     log_progress "Decompressing zip files"
     gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
@@ -483,6 +494,15 @@ function main () {
         "$reference_dir/gencode_v26_node_attr.bed" \
         "$unprocessed_dir/SE_package_hg38.bed" \
         "$reference_dir/se_node_attr.bed"
+
+    log_progress "Downloading TF marker, remove unecessary columns, "
+    wget -O \
+        ${unprocessed_dir}/tf_marker.txt \
+        https://bio.liclab.net/TF-Marker/public/download/main_download.csv
+
+    grep "Normal cell" ${unprocessed_dir}/tf_marker.txt \
+        | cut -f1,2,3,4,5,11 \
+        > ${reference_dir}/tf_marker.bed
 }
 
 

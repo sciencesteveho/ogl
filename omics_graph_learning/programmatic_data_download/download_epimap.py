@@ -182,15 +182,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# For posterity, we ran the following to download all files:
-# For tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung pancreas skeletal_muscle small_intestine liver aorta skin left_ventricle mammary spleen ovary adrenal;
-# do
-#   epidir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs/epimap
-#   python download_epimap_programmatically.py \
-#       -o ${epidir}/all_observed_tracks.tsv \
-#       -i ${epidir}/all_imputed_tracks.tsv \
-#       -t ${tissue} \
-#       -d /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/${tissue};
-# done

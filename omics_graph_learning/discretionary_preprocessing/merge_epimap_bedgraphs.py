@@ -3,12 +3,26 @@
 
 
 """Script to handle conversion, liftover, and mergining of uniformly processed
-epimap data."""
+epimap data. The script will convert bigwig files to bedgraph files call peaks
+using MACS2. The called peaks will be lifted over to hg38 using the liftOver
+tool. The script will also call CRMs using ReMap 2022's method (peakMerge.py).
+
+The script will add the following directories (with asterisks indicating)
+# root_directory
+# ├── unprocessed
+# ├── raw_tissue_data
+# │   └── epimap_tracks
+# │       └── tissue
+# │         ├── *merged
+# │         ├── *peaks
+# │         ├── *tmp
+# │         ├── *crms
+# │         └── *crms_processing
+"""
 
 
 import argparse
 from contextlib import suppress
-from multiprocessing import Pool
 import os
 import subprocess
 import time
@@ -32,10 +46,6 @@ CUTOFFS = {
     "RAD21": 2.0,
     "SMC3": 2.0,
 }
-
-REMAP_CRM_CALLER = (
-    "/ocean/projects/bio210019p/stevesho/resources/remap2022/peakMerge.py"
-)
 
 
 def _make_directories(directory: str) -> None:
@@ -93,15 +103,17 @@ def _sort_mark_file(file: str) -> str:
     return sorted_file
 
 
-def _bigwig_to_bedgraph_sequential(path: str, files: List[str]) -> List[str]:
-    resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
+def _bigwig_to_bedgraph_sequential(
+    path: str, resource_dir: str, files: List[str]
+) -> List[str]:
     return [
         _bigwig_to_bedgraph(path=path, file=file, resource_dir=resource_dir)
         for file in files
     ]
 
 
-def _sort_marks_sequential(path: str, files: List[str]) -> List[str]:
+def _sort_marks_sequential(files: List[str]) -> List[str]:
+    """Sort all files in a list sequentially"""
     return [_sort_mark_file(file=file) for file in files]
 
 
@@ -185,7 +197,9 @@ def _lift_over_peaks(path: str, mark: str, peaks: str) -> None:
         print(f"Error lifting over peaks for {mark} with error {error}")
 
 
-def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None:
+def call_crms(
+    working_dir: str, peakmerge_script: str, bedfile_dir: str, resource_dir: str
+) -> None:
     """Symlinks the called peaks, excluding DNase and ATAC seq files. Calls CRMs
     using ReMap 2022's method (peakMerge.py)"""
     for file in os.listdir(bedfile_dir):
@@ -200,7 +214,7 @@ def call_crms(working_dir: str, peakmerge_script: str, bedfile_dir: str) -> None
             [
                 "python",
                 peakmerge_script,
-                "/ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt",
+                f"{resource_dir}/hg38.chrom.sizes.txt",
                 f"{working_dir}/crms_processing/",
                 "narrowPeak",
                 f"{working_dir}/crms/",
@@ -221,20 +235,18 @@ def _print_with_timer(message: str, start_time: float) -> None:
     )
 
 
-def process_mark(mark: str, path: str) -> None:
+def process_mark(mark: str, path: str, resource_dir: str) -> None:
     """Process a single mark"""
     start_time = time.time()
 
     # get files for mark
     files = _get_mark_files(path=path, mark=mark)
 
-    # convert bigwig to bedgraph
-    bedgraphs = _bigwig_to_bedgraph_sequential(path=path, files=files)
-
-    # sorted_files = _sort_marks_parallel(path=path, files=bedgraphs)
-    sorted_files = _sort_marks_sequential(path=path, files=bedgraphs)
-    # if not os.path.exists(sorted_files[0]):
-    #     print(f"Error sorting {mark}: {sorted_files}")
+    # convert bigwig to bedgraph and sort
+    bedgraphs = _bigwig_to_bedgraph_sequential(
+        path=path, resource_dir=resource_dir, files=files
+    )
+    sorted_files = _sort_marks_sequential(files=bedgraphs)
 
     # combine bedgraphs, average, and call peaks
     merged_bedgraph = _sum_coverage_and_average(
@@ -257,24 +269,25 @@ def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser(description="Merge epimap bedgraphs")
     parser.add_argument("--path", type=str, help="Path to bedgraph files")
+    parser.add_argument("--resource_dir", type=str, help="Path to resource directory")
     parser.add_argument(
         "--crm_only", action="store_true", help="Call CRMs only", default=False
     )
     args = parser.parse_args()
-
-    # Make directories
     _make_directories(directory=args.path)
 
-    # Process each mark
+    # process each mark
     if not args.crm_only:
         for mark in CUTOFFS.keys():
-            process_mark(mark=mark, path=args.path)
+            process_mark(mark=mark, path=args.path, resource_dir=args.resource_dir)
 
-    # Call CRMS after processing all marks
+    # call CRMS after processing all marks
+    crm_caller = f"{args.resource_dir}/peakMerge.py"
     call_crms(
         working_dir=args.path,
-        peakmerge_script=REMAP_CRM_CALLER,
+        peakmerge_script=crm_caller,
         bedfile_dir=os.path.join(args.path, "peaks"),
+        resource_dir=args.resource_dir,
     )
 
 

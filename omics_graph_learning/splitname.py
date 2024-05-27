@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ]
+
 
 """Simple script to get split name"""
 

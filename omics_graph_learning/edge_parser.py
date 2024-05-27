@@ -45,16 +45,11 @@ class EdgeParser:
         Initialize reference dictionaries.
     _create_reference_dict:
         Reads a file and stores its lines in a dictionary.
-    _iid_ppi:
-        Protein-protein interactions from the Integrated Interactions Database v
-        2021-05.
     _mirna_targets:
         Filters all miRNA -> target interactions from miRTarBase and only keeps
         the miRNAs that are active in the given tissue from mirDIP.
     _tf_markers:
         Filters TF markers based on specific conditions.
-    _marbach_regulatory_circuits:
-        Regulatory circuits from Marbach et al., Nature Methods, 2016.
     _tfbinding_footprints:
         Create edges based on whether or not known TF binding from Meuleman et
         al. overlap footprints from Vierstra et al.
@@ -82,6 +77,10 @@ class EdgeParser:
         )
 
     >>> edgeparserObject.parse_edges()
+
+    DEPRECATED:
+        _iid_ppi
+        _marbach_regulatory_circuits:
     """
 
     def __init__(
@@ -467,8 +466,8 @@ class EdgeParser:
         #     )
 
         return (
-            ppi_generator,
-            mirna_generator,
+            # ppi_generator,
+            # mirna_generator,
             tf_generator,
             circuit_generator,
             tfbinding_generator,

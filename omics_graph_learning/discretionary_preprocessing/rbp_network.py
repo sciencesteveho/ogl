@@ -1,26 +1,23 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
 
 
-"""_summary_ of project"""
+"""Code to derive a RBP network from POSTAR3 data. The network consists of nodes
+(RBPs or Genes) where an edge indicates that the RBP has a binding site that
+intersects that gene's annotation in GENCODE v26"""
 
-import os
-import pickle
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import pybedtools  # type: ignore
 
 
 def process_binding_sites(
     postar_path: str, gencode_path: str, output_path="rbp_edges.txt"
-) -> None:
+) -> List[Tuple[str, str, str]]:
+    """Intersect the POSTAR3 binding sites with GENCODE v26 gene annotations"""
 
     def process_line(line):
-
+        """Trime each line and return the 3rd, 8th, and 5th columns as a tuple"""
         fields = line.rstrip().split("\t")
         return pybedtools.create_interval_from_list([fields[3], fields[8], fields[4]])
 
@@ -38,7 +35,7 @@ def process_binding_sites(
 
 def process_data(filename: str) -> List[Tuple[str, str, List[str]]]:
     """Process the data from the file and return a list of tuples, where each tuple is RBP"""
-    samples = {}
+    samples: Dict[Tuple[str, str], Set[str]] = {}
 
     with open(filename, "r") as file:
         for line in file:
