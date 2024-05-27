@@ -90,6 +90,7 @@ function _liftover_elements_19_to_38 () {
         ${unprocessed_dir}/${file_name}.unlifted
 
     awk -v OFS='\t' -v ename="${element_name}" '{print $1,$2,$3,$1"_"$2"_"ename}' \
+        ${unprocessed_dir}/${file_name}.lifted_hg38.bed \
         > ${output_dir}/${file_name}.lifted_hg38.bed
 }
 
