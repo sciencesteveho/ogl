@@ -8,7 +8,7 @@
 # intersection, and a union of elements. The EpiMap catalogue is in hg18 and is
 # lifted over to hg38.
 # 
-# $ bash regulatory_element_assemblage.sh \
+# $ bash common_feature_data.sh \
 # $   --root_directory /path/to/your/root/directory
 #
 # This script assumes that your environment has working BEDOPS and BEDTOOLS.
@@ -361,3 +361,9 @@ function main () {
         ${local_dir} \
         0.7
 }
+
+
+# =============================================================================
+# Run main function!
+# =============================================================================
+main $root_directory
