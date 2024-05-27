@@ -229,7 +229,8 @@ main () {
     local unprocessed_dir="${root_dir}/unprocessed"
 
     _encode_downloader \
-        "${tissue_dir}"
+        "${tissue_dir}" \
+        "${unprocessed_dir}"
 
     # Download and process methylation data for hippocampus, keeping CpG sites
     # with >= 80% methylated reads
