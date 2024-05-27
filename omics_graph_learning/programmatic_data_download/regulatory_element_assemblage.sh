@@ -214,13 +214,13 @@ function main () {
     unprocessed_dir="${reg_dir}/unprocessed"
 
     log_progress "Downloading and parsing regulatory elements..."
-        declare -a files_to_download=(
-            ["$unprocessed_dir/GRCh38-PLS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-PLS.bed"
-            ["$unprocessed_dir/GRCh38-ELS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-ELS.bed"
-            ["$unprocessed_dir/GRCh38-CTCF.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-CTCF.bed"
-            ["$unprocessed_dir/DYADIC_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/DYADIC_masterlist_locations.bed"
-            ["$unprocessed_dir/ENH_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/ENH_masterlist_locations.bed"
-            ["$unprocessed_dir/PROM_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/PROM_masterlist_locations.bed"
+    declare -a files_to_download=(
+        ["$unprocessed_dir/GRCh38-PLS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-PLS.bed"
+        ["$unprocessed_dir/GRCh38-ELS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-ELS.bed"
+        ["$unprocessed_dir/GRCh38-CTCF.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-CTCF.bed"
+        ["$unprocessed_dir/DYADIC_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/DYADIC_masterlist_locations.bed"
+        ["$unprocessed_dir/ENH_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/ENH_masterlist_locations.bed"
+        ["$unprocessed_dir/PROM_masterlist_locations.bed"]="https://personal.broadinstitute.org/cboix/epimap/mark_matrices/PROM_masterlist_locations.bed"
     )
 
     # download each file
