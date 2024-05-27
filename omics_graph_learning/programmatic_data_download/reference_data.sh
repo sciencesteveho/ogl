@@ -21,10 +21,10 @@
 # ├── unprocessed
 # ├── raw_tissue_data
 # │   └── chromatin_loops
-# │       └── processed_loops
 # │   └── epimap_tracks
 # ├── shared_data
 #     ├── local
+#     ├── processed_loops
 #     ├── regulatory_elements
 #     |   └── unprocessed
 #     ├── references
@@ -122,9 +122,10 @@ function _prepare_directory_structure () {
     local root_dir=$1  # project root directory
     local directories=(
         "unprocessed"
-        "raw_tissue_data/chromatin_loops/processed_loops"
+        "raw_tissue_data/chromatin_loops"
         "raw_tissue_data/epimap_tracks"
         "shared_data/interaction"
+        "shared_data/processed_loops"
         "shared_data/local"
         "shared_data/references"
         "shared_data/regulatory_elements/unprocessed"
