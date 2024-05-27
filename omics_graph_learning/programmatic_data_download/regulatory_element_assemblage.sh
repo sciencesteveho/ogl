@@ -209,9 +209,9 @@ function main () {
     log_progress "Setting up directories and inputs"
     local root_dir=$1
     reg_dir=${root_dir}/shared_data/regulatory_elements
-    local_dir="${root_dir}/shared_data/local"
-    reference_dir="${root_dir}/shared_data/references"
-    unprocessed_dir="${reg_dir}/unprocessed"
+    local_dir=${root_dir}/shared_data/local
+    reference_dir=${root_dir}/shared_data/references
+    unprocessed_dir=${reg_dir}/unprocessed
 
     log_progress "Downloading and parsing regulatory elements..."
     declare -a files_to_download=(
