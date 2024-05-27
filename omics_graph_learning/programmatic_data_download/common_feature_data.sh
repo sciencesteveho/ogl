@@ -172,7 +172,7 @@ function _replication_hotspots () {
     # awk '{file=$4 ".txt"; print > file}' ${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed
 
     # print out a file per unique value in the fourth column
-    awk -v output_dir="$local_dir_dir" '{
+    awk -v output_dir="$local_dir" '{
         file=sprintf("%s/%s_hg38.bed", output_dir, $4);
         print > file
     }' "${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed"
