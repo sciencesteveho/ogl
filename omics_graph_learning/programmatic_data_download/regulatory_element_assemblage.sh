@@ -255,8 +255,8 @@ function main () {
         
         _liftover_elements_19_to_38 \
             "${reference_dir}" \
+            "${unprocessed_dir}" \
             "${reg_dir}" \
-            "${output_dir}" \
             "${file}" \
             "${element}"
     done
