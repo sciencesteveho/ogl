@@ -112,7 +112,14 @@ function _encode_downloader () {
             fi
             
             local url="${base_url}/${accession}/@@download/${accession}${file_extension}"
-            wget -O "${output_path}" "${url}"
+
+            if [ -f "${output_path}" ]; then
+                log_progress "File already exists: ${output_path}"
+                continue
+            else
+                log_progress "Downloading ${url} to ${output_path}"
+                wget -O "${output_path}" "${url}"
+            fi
 
             # if file is a .gz, unzip it to the tissue directory
             if [[ "${output_path}" == *.gz ]]; then
