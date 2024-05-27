@@ -107,7 +107,7 @@ function _overlap_regulatory_regions () {
 
     bedtools intersect \
         -a "${reg_dir}/${encode_file}" \
-        -b "${reg_dir}r/${epimap_file}" \
+        -b "${reg_dir}/${epimap_file}" \
         -wa \
         -wb \
         | sort -k1,1 -k2,2n \
