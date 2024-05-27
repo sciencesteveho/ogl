@@ -8,16 +8,31 @@ using MACS2. The called peaks will be lifted over to hg38 using the liftOver
 tool. The script will also call CRMs using ReMap 2022's method (peakMerge.py).
 
 The script will add the following directories (with asterisks indicating)
-# root_directory
-# ├── unprocessed
-# ├── raw_tissue_data
-# │   └── epimap_tracks
-# │       └── tissue
-# │         ├── *merged
-# │         ├── *peaks
-# │         ├── *tmp
-# │         ├── *crms
-# │         └── *crms_processing
+root_directory
+├── unprocessed
+├── raw_tissue_data
+│   └── epimap_tracks
+│       └── tissue
+│         ├── *merged
+│         ├── *peaks
+│         ├── *tmp
+│         ├── *crms
+│         └── *crms_processing
+
+For posterity, the job to run epimap processing is shown below:
+for tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung
+pancreas skeletal_muscle small_intestine liver aorta skin left_ventricle mammary
+spleen ovary adrenal; do 
+    script_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/programmatic_data_download
+    root_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
+    resource_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references
+    job1=$(sbatch --parsable epimap_download.sh \
+        "${script_dir}" \ "${root_dir}" \ ${tissue})
+
+    job2=$(sbatch --parsable --dependency=afterok:${job1} epimap_processing.sh \
+    sbatch epimap_processing.sh \
+        "${script_dir}" \ "${root_dir}" \ ${tissue})
+done
 """
 
 
