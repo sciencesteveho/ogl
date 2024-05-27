@@ -86,7 +86,7 @@ function _liftover_elements_19_to_38 () {
     ${liftover_dir}/liftOver \
         ${unprocessed_dir}/${file_name}.bed \
         ${unprocessed_dir}/hg19ToHg38.over.chain.gz \
-        ${unprocessed}/${file_name}.lifted_hg38.bed \
+        ${unprocessed_dir}/${file_name}.lifted_hg38.bed \
         ${unprocessed_dir}/${file_name}.unlifted
 
     awk -v OFS='\t' -v ename="${element_name}" '{print $1,$2,$3,$1"_"$2"_"ename}' \
