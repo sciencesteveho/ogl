@@ -97,7 +97,7 @@ function _liftover_19_to_38 () {
 function _poly_a () {
     local unprocessed_dir=$1  # working diretory
     local poly_a_file=$2  # name of poly_a file
-    local local_dir  # path to local_dir
+    local local_dir=$3  # path to local_dir
 
     awk -v OFS='\t' '{print "chr"$1,$2,$3,"polya_"$4_$10}' ${unprocessed_dir}/${poly_a_file} \
         > ${local_dir}/polyasites_filtered_hg38.bed
@@ -169,7 +169,7 @@ function _replication_hotspots () {
         rep_formatted_hg18
 
     # print out a file per phase
-    awk -v OFS="\t" '{print>$4}' ${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed
+    awk '{file=$4 ".txt"; print > file}' ${unprocessed_dir}/rep_formatted_hg18.lifted_hg38.bed
 
     # symlink files to local directory
     for phase in repg1b repg2 reps1 reps2 reps3 reps4;
@@ -224,22 +224,22 @@ function _repeatmasker () {
     local repeat_file=$2
     local local_dir=$3
 
-    awk -v OFS="\t" '{print $6, $7, $8, $12}' "${unprocessed_dir}/${repeat_file}" | \
-    awk -v OFS="\t" -v dir="${local_dir}" '
-        {
-            match_type = "";
-            file_suffix = "_hg38.bed";
-            if ($4 == "LINE") { match_type = "line" }
-            else if ($4 == "LTR" || $4 == "Retroposon") { match_type = "ltr" }
-            else if ($4 == "SINE") { match_type = "sine" }
-            else if ($4 ~ /RNA/) { match_type = "rnarepeat" }
-            
-            if (match_type != "") {
-                output_file = dir "/" match_type file_suffix;
-                print $1, $2, $3, $4 > output_file;
+    awk -v OFS="\t" '{print $6, $7, $8, $12}' ${unprocessed_dir}/${repeat_file} \
+        | awk -v OFS="\t" -v dir="${local_dir}" '
+            {
+                match_type = "";
+                file_suffix = "_hg38.bed";
+                if ($4 == "LINE") { match_type = "line" }
+                else if ($4 == "LTR" || $4 == "Retroposon") { match_type = "ltr" }
+                else if ($4 == "SINE") { match_type = "sine" }
+                else if ($4 ~ /RNA/) { match_type = "rnarepeat" }
+                
+                if (match_type != "") {
+                    output_file = dir "/" match_type file_suffix;
+                    print $1, $2, $3, $4 > output_file;
+                }
             }
-        }
-    '
+        '
 }
 
 
@@ -296,7 +296,9 @@ function main () {
     done
 
     # gunzip the .gz files
-    gunzip -k $unprocessed_dir/*.gz
+    for file in ${unprocessed_dir}/simpleRepeat.txt.gz ${unprocessed_dir}/cpgIslandExt.txt.gz ${unprocessed_dir}/microsat.txt.gz ${unprocessed_dir}/rmsk.txt.gz; do
+        gunzip -k $file
+    done
 
     # filter polyA file
     log_progress "Processing poly_a tail binding sites..."
@@ -350,14 +352,14 @@ function main () {
     log_progress "Parse repeat masker into individual repeat types."
     _repeatmasker \
         ${unprocessed} \
-        rmsk.txt \
+        "rmsk.txt" \
         ${local_dir}
 
     # Conservation scores
     log_progress "Parse phastCons scores..."
     _phastcons \
         ${unprocessed_dir} \
-        phastCons30way.txt \
+        "phastCons30way.txt" \
         ${local_dir} \
         0.7
 }

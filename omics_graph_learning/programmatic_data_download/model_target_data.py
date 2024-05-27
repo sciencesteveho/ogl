@@ -4,7 +4,16 @@
 
 """Code to download and process GTEx gene expression data for training targets.
 **Note that the protein expression data is available as XLSX files and thus are
-not included in the script."""
+not included in the script.
+
+root_directory
+├── shared_data
+    └── targets
+        ├── expression
+        ├── matrices
+        └── tpm
+        
+"""
 
 import os
 import pathlib
@@ -86,25 +95,17 @@ def _write_tissue_level_gct(file_path: str) -> None:
     gct_df = parse(file_path)
     tissues = gct_df.col_metadata_df.columns
 
-    # Create a directory to store individual tissue GCT files
     output_dir = "tissue_gcts"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Iterate over each tissue to create individual GCT files
     for tissue in tissues:
-        # Select columns relevant to the tissue
         tissue_df = gct_df.data_df.loc[:, tissue].to_frame()
-
-        # Create a new GCToo instance, which requires data_df, row_metadata_df, and col_metadata_df
         new_gct = gct_df.clone(base_df=tissue_df)
-
-        # Write the tissue-specific GCT data to a file
         tissue_file_name = os.path.join(
             output_dir, f"{tissue.replace(' - ', '_').replace(' ', '_')}.gct"
         )
         write(new_gct, tissue_file_name)
-
         print(f"Created GCT file for {tissue}: {tissue_file_name}")
 
 
