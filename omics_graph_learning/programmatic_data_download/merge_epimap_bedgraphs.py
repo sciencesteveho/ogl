@@ -180,8 +180,7 @@ def _remove_first_two_lines(bedfile: str) -> None:
         file.writelines(lines[2:])
 
 
-def _lift_over_peaks(path: str, mark: str, peaks: str) -> None:
-    resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
+def _lift_over_peaks(path: str, resource_dir: str, mark: str, peaks: str) -> None:
     try:
         subprocess.run(
             [
@@ -260,7 +259,7 @@ def process_mark(mark: str, path: str, resource_dir: str) -> None:
     _remove_first_two_lines(bedfile=peaks)
 
     # liftover to hg38
-    _lift_over_peaks(path=path, mark=mark, peaks=peaks)
+    _lift_over_peaks(path=path, resource_dir=resource_dir, mark=mark, peaks=peaks)
     print(f"Peaks for {mark} called!")
     _print_with_timer(f"Completed processing for {mark}", start_time)
 
