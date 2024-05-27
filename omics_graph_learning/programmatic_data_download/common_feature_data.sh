@@ -84,8 +84,8 @@ function _liftover_19_to_38 () {
 
     ${liftover_dir}/liftOver \
         ${unprocessed_dir}/${file_name}.bed \
-        ${unprocessed_dir}/hg19ToHg38.over.chain.gz \
-        ${unprocessed}/${file_name}.lifted_hg38.bed \
+        ${liftover_dir}/hg19ToHg38.over.chain.gz \
+        ${unprocessed_dir}/${file_name}.lifted_hg38.bed \
         ${unprocessed_dir}/${file_name}.unlifted
 }
 
