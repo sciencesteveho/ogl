@@ -186,7 +186,7 @@ def _lift_over_peaks(path: str, resource_dir: str, mark: str, peaks: str) -> Non
             [
                 f"{resource_dir}/liftOver",
                 peaks,
-                f"{resource_dir}/hg19ToHg38.over.chain",
+                f"{resource_dir}/hg19ToHg38.over.chain.gz",
                 f"{path}/peaks/{mark}_merged.narrow.peaks.hg38.bed",
                 f"{path}/tmp/{mark}_merged.narrow.peaks.hg38.unmapped.bed",
             ],
@@ -213,7 +213,7 @@ def call_crms(
             [
                 "python",
                 peakmerge_script,
-                f"{resource_dir}/hg38.chrom.sizes.txt",
+                f"{resource_dir}/hg38.chrom.sizes",
                 f"{working_dir}/crms_processing/",
                 "narrowPeak",
                 f"{working_dir}/crms/",
