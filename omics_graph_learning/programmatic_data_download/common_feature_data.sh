@@ -174,7 +174,7 @@ function _replication_hotspots () {
     # symlink files to local directory
     for phase in repg1b repg2 reps1 reps2 reps3 reps4;
     do
-        ln -s ${unprocessed_dir}/${phase} ${local_dir}/${phase}_hg38.bed
+        ln -s ${unprocessed_dir}/${phase}.txt ${local_dir}/${phase}_hg38.bed
     done
 }
 
@@ -358,6 +358,7 @@ function main () {
     # Conservation scores
     log_progress "Parse phastCons scores..."
     _phastcons \
+        ${reference_dir} \
         ${unprocessed_dir} \
         "phastCons30way.txt" \
         ${local_dir} \
