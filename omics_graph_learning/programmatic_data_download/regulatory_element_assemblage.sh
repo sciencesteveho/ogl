@@ -214,7 +214,7 @@ function main () {
     unprocessed_dir=${reg_dir}/unprocessed
 
     log_progress "Downloading and parsing regulatory elements..."
-    declare -a files_to_download=(
+    declare -A files_to_download=(
         ["$unprocessed_dir/GRCh38-PLS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-PLS.bed"
         ["$unprocessed_dir/GRCh38-ELS.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-ELS.bed"
         ["$unprocessed_dir/GRCh38-CTCF.bed"]="https://downloads.wenglab.org/cCREs/GRCh38-CTCF.bed"
