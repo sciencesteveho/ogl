@@ -116,7 +116,7 @@ function _encode_downloader () {
 
             # if file is a .gz, unzip it to the tissue directory
             if [[ "${output_path}" == *.gz ]]; then
-                gunzip -c "${output_path}" > "${base_dir}/${tissue_name}/${accession}.bed"
+                gunzip -c "${output_path}" > "${raw_tissue_dir}/${tissue_name}/${accession}.bed"
                 rm "${output_path}" # Optionally remove the .gz file after extraction
             fi
         done
