@@ -224,8 +224,11 @@ function _repeatmasker () {
     local repeat_file=$2
     local local_dir=$3
 
+    echo "File: ${unprocessed_dir}/${repeat_file}"
+
     awk -v OFS="\t" '{print $6, $7, $8, $12}' ${unprocessed_dir}/${repeat_file} \
         | awk -v OFS="\t" -v dir="${local_dir}" '
+            BEGIN { print "Output directory is:", dir }
             {
                 match_type = "";
                 file_suffix = "_hg38.bed";
