@@ -211,7 +211,7 @@ function main () {
     local root_dir=$1
     local reg_dir=${root_dir}/shared_data/regulatory_elements
     local local_dir=${root_dir}/shared_data/local
-    local eference_dir=${root_dir}/shared_data/references
+    local reference_dir=${root_dir}/shared_data/references
     local unprocessed_dir=${reg_dir}/unprocessed
 
     log_progress "Downloading and parsing regulatory elements..."
