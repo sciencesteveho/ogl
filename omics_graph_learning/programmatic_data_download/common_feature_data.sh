@@ -279,7 +279,7 @@ function main () {
     local reference_dir="${shared_dir}/references"
 
     log_progress "Downloading and parsing regulatory elements..."
-    declare -a files_to_download=(
+    declare -A files_to_download=(
         ["$unprocessed_dir/40246_2021_318_MOESM3_ESM.txt"]="https://static-content.springer.com/esm/art%3A10.1186%2Fs40246-021-00318-3/MediaObjects/40246_2021_318_MOESM3_ESM.txt"
         ["$unprocessed_dir/recombAvg.bw"]="https://hgdownload.soe.ucsc.edu/gbdb/hg38/recombRate/recombAvg.bw"
         ["$unprocessed_dir/cpgIslandExt.txt.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/cpgIslandExt.txt.gz"
