@@ -429,6 +429,7 @@ function main () {
     # set execution permission for UCSC utilities
     chmod +x "$reference_dir/liftOver"
     chmod +x "$reference_dir/bigWigToWig"
+    chmod +x "$reference_dir/bigWigToBedGraph"
 
     log_progress "Decompressing zip files"
     gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
