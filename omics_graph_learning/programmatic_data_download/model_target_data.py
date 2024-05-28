@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 
 """Code to download and process GTEx gene expression data for training targets.
 **Note that the protein expression data is available as XLSX files and thus are
@@ -13,11 +13,14 @@ root_directory
         ├── matrices  <- place to store matrix level data
         └── tpm  <- place to store tissue level tpm
         
+Additionally, this script will generate a dataframe that provides the median TPM
+per gene across all samples within the GTEx V8 dataset (all samples meaning all
+tissues as well), as well as the average TPM per gene across all samples.
 """
 
+import argparse
 import os
-import pathlib
-import pickle
+from pathlib import Path
 
 from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 from cmapPy.pandasGEXpress.write_gct import write  # type: ignore
@@ -52,37 +55,51 @@ GENE_QUANTIFICATIONS = {
 }
 
 
-def _check_and_download(file: str, filename: str) -> None:
+def _check_and_download(path: Path, file: str) -> None:
     """Download a given file if the file does not already exist"""
     if not os.path.exists(file):
-        print(f"Downloading {filename}...")
-        os.system(f"wget -O {filename} {file}")
+        os.system(f"wget -P {path} {file}")
     else:
         print(f"{file} already exists.")
 
 
 def _tpm_median_across_all_tissues(
-    median_across_all_file: pathlib.PosixPath,
-    all_matrix_gct: str,
+    df: pd.DataFrame,
+    median_across_all_file: Path,
 ) -> None:
     """Get the median TPM per gene across ALL samples within GTEx V8 GCT and
-    saves it. Because the file is large and requires a lot of memory, we ran
-    this separately from the produce_training_targets function and is only run once.
+    saves it.
 
     Args:
         median_across_all_file (str): /path/to/median_across_all_file
-        all_matrix_gct (str): /path/to/gtex gct file
+        gtex_tpm_gct (str): /path/to/gtex gct file (not median tpm, just tpm gct)
     """
-    try:
-        if not median_across_all_file.exists():
-            median_series = pd.Series(
-                parse(all_matrix_gct).data_df.median(axis=1), name="all_tissues"
-            ).to_frame()
-            median_series.to_pickle(median_across_all_file, mode="xb")
-        else:
-            print("File already exists")
-    except FileExistsError:
-        print("File already exists!")
+    median_series = pd.Series(df.median(axis=1), name="all_tissues").to_frame()
+    median_series.to_pickle(median_across_all_file)
+
+
+def _avg_tpm_all_tissues(
+    df: pd.DataFrame,
+    output_dir: Path,
+) -> None:
+    """Get the average (not median!) expression for each gene in GTEx across all
+    samples. Formally, the average activity is the summed expression at each
+    gene across all samples, divided by the total number of samples.
+
+    Args:
+        df: pd.DataFrame: dataframe with gene expression data
+        output_dir: Path: output directory to save the average activity
+        dataframe
+
+    Returns:
+        np.ndarray: array with average activity for each gene
+    """
+    sample_count = df.astype(bool).sum(axis=1)
+    summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
+    summed_activity["average"] = (
+        summed_activity.div(sample_count, axis=0).fillna(0).values
+    )
+    summed_activity.to_pickle(output_dir / "average_activity_df.pkl")
 
 
 def standardize_tissue_name(tissue_name: str) -> str:
@@ -90,9 +107,9 @@ def standardize_tissue_name(tissue_name: str) -> str:
     return tissue_name.casefold().replace(" ", "_").replace("(", "").replace(")", "")
 
 
-def _write_tissue_level_gct(gct_file: str, output_dir: str) -> None:
+def _write_tissue_level_gct(gtex_median_tpm_gct: Path, output_dir: Path) -> None:
     """Read the GCT and write out each individual column (tissue) as a separate GCT file."""
-    gct_df = parse(gct_file)
+    gct_df = parse(gtex_median_tpm_gct)
     tissues = gct_df.col_metadata_df.columns
 
     for tissue in tissues:
@@ -107,7 +124,50 @@ def _write_tissue_level_gct(gct_file: str, output_dir: str) -> None:
 
 def main() -> None:
     """Main function"""
-    pass
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--target_dir",
+        type=str,
+    )
+    args = parser.parse_args()
+
+    # set up directories
+    target_dir = Path(args.target_dir)
+    target_dir = target_dir / "targets"
+    matrix_dir = target_dir / "matrices"
+    tpm_dir = target_dir / "tpm"
+
+    # download matrix files
+    for url in DOWNLOADS_URLS:
+        _check_and_download(path=matrix_dir, file=url)
+
+    # download tissue level TPMs
+    for _, url in GENE_QUANTIFICATIONS.items():
+        _check_and_download(path=tpm_dir, file=url)
+
+    # load the GTEx TPM GCT
+    gtex_tpm_gct = matrix_dir / "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct"
+    gtex_tpm_df = parse(gtex_tpm_gct).data_df
+
+    # make the median across all tissues matrix
+    median_all_file = matrix_dir / "gtex_tpm_median_across_all_tissues.pkl"
+    _tpm_median_across_all_tissues(
+        df=gtex_tpm_df,
+        median_across_all_file=median_all_file,
+    )
+
+    # make the average activity matrix
+    _avg_tpm_all_tissues(
+        df=gtex_tpm_df,
+        output_dir=matrix_dir,
+    )
+
+    # write out individual tissue level gcts
+    _write_tissue_level_gct(
+        matrix_dir / "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
+        tpm_dir,
+    )
 
 
 if __name__ == "__main__":

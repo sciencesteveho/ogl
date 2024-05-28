@@ -112,30 +112,6 @@ def _get_tpm_filtered_genes(
     return unique_genes
 
 
-def _tpm_median_across_all_tissues(
-    median_across_all_file: pathlib.PosixPath,
-    all_matrix_gct: str,
-) -> None:
-    """Get the median TPM per gene across ALL samples within GTEx V8 GCT and
-    saves it. Because the file is large and requires a lot of memory, we ran
-    this separately from the produce_training_targets function and is only run once.
-
-    Args:
-        median_across_all_file (str): /path/to/median_across_all_file
-        all_matrix_gct (str): /path/to/gtex gct file
-    """
-    try:
-        if not median_across_all_file.exists():
-            median_series = pd.Series(
-                parse(all_matrix_gct).data_df.median(axis=1), name="all_tissues"
-            ).to_frame()
-            median_series.to_pickle(median_across_all_file, mode="xb")
-        else:
-            print("File already exists")
-    except FileExistsError:
-        print("File already exists!")
-
-
 @time_decorator(print_args=False)
 def _genes_train_test_val_split(
     genes: Union[Dict[str, str], List[str]],
@@ -673,12 +649,6 @@ def prepare_gnn_training_split_and_targets(args: Any, params: Dict[str, Any]) ->
         val_chrs,
         tpm_dir,
     ) = _unpack_params(params)
-
-    # check if the matrix with a median across all samples exists
-    _tpm_median_across_all_tissues(
-        median_across_all_file=matrix_path / expression_median_across_all_df,
-        all_matrix_gct=matrix_path / all_matrix_gct,
-    )
 
     _, split_path = _prepare_split_directories(
         working_directory=working_directory,
