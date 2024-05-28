@@ -49,51 +49,45 @@ log_progress() {
 # =============================================================================
 function _format_deepanchor_loops () {
     # Declare variables as local
-    local processing_dir="$1"  # working directory
-    local biginteract_dir="$2"  # directory with .bigInteract loop calls
-    local prefix="$3"  # prefix for .bigInteract file
-    local genome_file="$4"  # genome / chr size file
-    local liftover_dir="$5"  # resource directory
-    local output_dir="$6"  # final directory to place lifted and formatted calls
-    local output_prefix="$7"  # tissue naming for final file
-    local conversion_script_dir="$8"  # directory with bigBedToBed
+    local resource_dir=$1
+    local raw_chr_loop_dir=$2
+    local genome_file=$3  # genome / chr size file
+    local prefix=$4  # prefix for .bigInteract file
+    local output_dir=$5  # final directory to place lifted and formatted calls
+    local output_prefix=$6  # tissue naming for final file
     
-    # make directory for processing
-    mkdir -p "$output_dir"
-    mkdir -p "$processing_dir"
-    
-    "$conversion_script_dir/bigBedToBed" \
-        "$biginteract_dir/${prefix}.bigInteract" \
-        "$processing_dir/${prefix}.bedpe" 
+    "$resource_dir/bigBedToBed" \
+        "$raw_chr_loop_dir/${prefix}.bigInteract" \
+        "$raw_chr_loop_dir/${prefix}.bedpe" 
 
     # Split bedpe and extend regions to approximate 5kb resolution, and to
     # determine a cutoff for anchor overlap to create edges to regulatory
     # elements. The first anchor is extended upstream, and the second anchor is
     # extended downstream.
-    awk -v OFS='\t' '{print $9,$10,$11,NR}' "$processing_dir/${prefix}.bedpe" \
+    awk -v OFS='\t' '{print $9,$10,$11,NR}' "$raw_chr_loop_dir/${prefix}.bedpe" \
         | bedtools slop \
         -i stdin \
         -g "$genome_file" \
         -r 4981 \
         -l 0 \
-        > "$processing_dir/${prefix}.bedpe_1"
+        > "$raw_chr_loop_dir/${prefix}.bedpe_1"
     
-    awk -v OFS='\t' '{print $14,$15,$16,NR}' "$processing_dir/${prefix}.bedpe" \
+    awk -v OFS='\t' '{print $14,$15,$16,NR}' "$raw_chr_loop_dir/${prefix}.bedpe" \
         | bedtools slop \
         -i stdin \
         -g "$genome_file" \
         -r 0 \
         -l 4981 \
-        > "$processing_dir/${prefix}.bedpe_2"
+        > "$raw_chr_loop_dir/${prefix}.bedpe_2"
 
     # liftover hg19 to hg38
     for file in bedpe_1 bedpe_2;
     do
-        local outfile="${processing_dir}/${prefix}.${file}.hg38"
-        local unmappedfile="${processing_dir}/${prefix}.${file}.unmapped"
-        "$liftover_dir/liftOver" \
-            "$processing_dir/${prefix}.${file}" \
-            "$liftover_dir/hg19ToHg38.over.chain" \
+        local outfile="${raw_chr_loop_dir}/${prefix}.${file}.hg38"
+        local unmappedfile="${raw_chr_loop_dir}/${prefix}.${file}.unmapped"
+        "$resource_dir/liftOver" \
+            "$raw_chr_loop_dir/${prefix}.${file}" \
+            "$resource_dir/hg19ToHg38.over.chain.gz" \
             "$outfile" \
             "$unmappedfile"
         
@@ -104,8 +98,8 @@ function _format_deepanchor_loops () {
     join \
         -j 4 \
         -o 1.1,1.2,1.3,2.1,2.2,2.3 \
-        "${processing_dir}/${prefix}.bedpe_1.hg38" \
-        "${processing_dir}/${prefix}.bedpe_2.hg38" \
+        "${raw_chr_loop_dir}/${prefix}.bedpe_1.hg38" \
+        "${raw_chr_loop_dir}/${prefix}.bedpe_2.hg38" \
         | sed 's/ /\t/g' \
         | sort -k8,8n \
         > "${output_dir}/${output_prefix}_deepanchor.bedpe.hg38"
@@ -116,15 +110,16 @@ function _format_deepanchor_loops () {
 # Process deepanchor loops
 # =============================================================================
 function deepanchor_processing_main () {
-    local deepanchor_dir=$1
-    local final_dir=$2
+    local resource_dir=$1
+    local raw_chr_loop_dir=$2
+    local final_dir=$3
 
     local -A loop_files=(
         ["ENCFF000RWO"]="k562"
         ["ENCFF000YCK"]="imr90"
         ["ENCFF001HHX"]="gm12878"
         ["GSM749715"]="hepg2"
-        ["ENCFF000ONR"]="h1-esc"
+        ["ENCFF000ONR"]="h1_esc"
         ["ENCFF001HPM"]="hmec"
         ["GSM749707"]="nhek"
         ["ENCFF000CFW"]="hippocampus"
@@ -142,22 +137,26 @@ function deepanchor_processing_main () {
         ["ENCLB733WTO"]="adrenal"
     )
 
-    for file in "${!loop_files[@]}"; do
-        _format_deepanchor_loops \
-            "${deepanchor_dir}" \
-            "/ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data/loops" \
-            "$file" \
-            "/ocean/projects/bio210019p/stevesho/resources/hg19.chrom.sizes.txt" \
-            "/ocean/projects/bio210019p/stevesho/resources" \
-            "${final_dir}" \
-            "${loop_files[$file]}" \
-            /ocean/projects/bio210019p/stevesho/resources/deepanchor/Xuhang01-LoopAnchor-b531d97/loopanchor/data
+    download_prefix=https://github.com/Xuhang01/LoopAnchor/raw/main/loopanchor/data/loops/
 
+    for file in "${!loop_files[@]}"; do
+        log_progress "Downloading ${file} loops"
+        wget -P "${raw_chr_loop_dir}" "${download_prefix}/${file}.bigInteract"
+
+        log_progress "Processing ${file} loops"
+        _format_deepanchor_loops \
+            ${resource_dir} \
+            ${raw_chr_loop_dir} \
+            ${resource_dir}/hg19.chrom.sizes \
+            ${file} \
+            ${final_dir} \
+            ${loop_files[$file]}
         log_progress "Finished processing ${file} loops"
-        echo "Total time: $(convertsecs SECONDS)"
+        # echo "Total time: $(convertsecs SECONDS)"
     done
 }
 
 deepanchor_processing_main \
-    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deepanchor/processing \
-    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/processed_loops/deepanchor
+    /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/raw_tissue_data/chromatin_loops \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/deepanchor

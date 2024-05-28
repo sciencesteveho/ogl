@@ -143,7 +143,7 @@ function _prepare_directory_structure () {
 
 # =============================================================================
 # Convert gencode v26 GTF to bed, remove micro RNA genes and only keep canonical
-# "gene" entries. Additionally, keep a lookup table for the converion of from
+# "gene" entries. Additionally, keep a lookup table for the conversion from
 # gencode ENSG IDs to genesymbol.
 # =============================================================================
 function _filter_gencode_annotations () {
@@ -412,11 +412,15 @@ function main () {
     log_progress "Download files that do not require processing"
     declare -A files_to_download=(
         ["$reference_dir/hg38.chrom.sizes"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes"
+        ["$reference_dir/hg19.chrom.sizes"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes"
         ["$reference_dir/liftOver"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver"
         ["$reference_dir/bigWigToWig"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigToWig"
         ["$reference_dir/bigWigToBedGraph"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigWigToBedGraph"
+        ["$reference_dir/bigBedToBed"]="http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bigBedToBed"
         ["$reference_dir/peakMerge.py"]="https://github.com/remap-cisreg/peakMerge/raw/main/peakMerge.py"
         ["$reference_dir/hg19ToHg38.over.chain.gz"]="https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz"
+        ["$reference_dir/yue_hg38_tads.zip"]="http://3dgenome.fsm.northwestern.edu/downloads/hg38.TADs.zip"
+        ["$reference_dir/peakachu_loops.zip"]="http://3dgenome.fsm.northwestern.edu/downloads/loops-hg38.zip"
         ["$unprocessed_dir/hg38.fa.gz"]="https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
         ["$unprocessed_dir/hg38-blacklist.v2.bed.gz"]="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
         ["$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"]="https://resources.altius.org/~jvierstra/projects/footprinting.2020/consensus.index/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz"
@@ -431,11 +435,18 @@ function main () {
     chmod +x "$reference_dir/liftOver"
     chmod +x "$reference_dir/bigWigToWig"
     chmod +x "$reference_dir/bigWigToBedGraph"
+    chmod +x "$reference_dir/bigBedToBed"
 
     log_progress "Decompressing zip files"
     gunzip -c "$unprocessed_dir/hg38.fa.gz" > "$reference_dir/hg38.fa"
     gunzip -c "$unprocessed_dir/hg38-blacklist.v2.bed.gz" > "$reference_dir/hg38-blacklist.v2.bed"
     gunzip -c "$unprocessed_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed.gz" > "$reference_dir/collapsed_motifs_overlapping_consensus_footprints_hg38.bed"
+
+    unzip -o -d "$reference_dir" "$reference_dir/yue_hg38_tads.zip"
+    mv "$reference_dir/hg38" "$reference_dir/yue_hg38_tads"
+
+    unzip -o -d "$reference_dir" "$reference_dir/peakachu_loops.zip"
+    mv "$reference_dir/hg38" "$reference_dir/peakachu_loops"
 
     log_progress "Prepare gencode related files"
     _filter_gencode_annotations \
