@@ -10,8 +10,8 @@ root_directory
 ├── shared_data
     └── targets
         ├── expression
-        ├── matrices
-        └── tpm
+        ├── matrices  <- place to store matrix level data
+        └── tpm  <- place to store tissue level tpm
         
 """
 
@@ -90,14 +90,10 @@ def standardize_tissue_name(tissue_name: str) -> str:
     return tissue_name.casefold().replace(" ", "_").replace("(", "").replace(")", "")
 
 
-def _write_tissue_level_gct(file_path: str) -> None:
+def _write_tissue_level_gct(gct_file: str, output_dir: str) -> None:
     """Read the GCT and write out each individual column (tissue) as a separate GCT file."""
-    gct_df = parse(file_path)
+    gct_df = parse(gct_file)
     tissues = gct_df.col_metadata_df.columns
-
-    output_dir = "tissue_gcts"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     for tissue in tissues:
         tissue_df = gct_df.data_df.loc[:, tissue].to_frame()

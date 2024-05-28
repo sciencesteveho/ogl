@@ -41,20 +41,8 @@ done
 
 
 # =============================================================================
-# Setting up variables to track time and progress
+# Setting up variables to track progress
 # =============================================================================
-SECONDS=0
-
-function convertsecs() {
-    local total_seconds=
-    local hours=$((total_seconds / 3600))
-    local minutes=$(( (total_seconds % 3600) / 60 ))
-    local seconds=$((total_seconds % 60))
-    printf "%02d:%02d:%02d\n" hours minutes seconds
-}
-
-
-# Function to echo script progress to stdout
 log_progress() {
     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] "
 }
@@ -71,7 +59,7 @@ function _encode_downloader () {
     encode_map["imr90"]="ENCFF404JRI ENCFF221TXA"
     encode_map["gm12878"]="ENCFF570TIL ENCFF343RGE"
     encode_map["hepg2"]="ENCFF690FNR ENCFF671ZNH"
-    encode_map["h1-esc"]="ENCFF434CNG ENCFF851ANC"
+    encode_map["h1_esc"]="ENCFF434CNG ENCFF851ANC"
     encode_map["hmec"]="ENCFF478RLX ENCFF164YOM"
     encode_map["nhek"]="ENCFF679KWT"
     encode_map["hippocampus"]="ENCFF520TSX"
@@ -85,7 +73,7 @@ function _encode_downloader () {
     encode_map["left_ventricle"]="ENCFF908SEW ENCFF318IKY ENCFF398ERY ENCFF119HDC"
     encode_map["mammary"]="ENCFF478RLX ENCFF164YOM"
     encode_map["spleen"]="ENCFF287TJO ENCFF527IVK ENCFF336UWV ENCFF564OCC"
-    encode_map["ovary"]="ENCFF889UGC ENCFF716SXG ENCFF454NP ENCFF087HIG"
+    encode_map["ovary"]="ENCFF889UGC ENCFF716SXG ENCFF454NPL ENCFF087HIG"
     encode_map["adrenal"]="ENCFF942KJO ENCFF774YCZ ENCFF748OTV ENCFF817OKW"
 
     local raw_tissue_dir=$1
@@ -125,6 +113,7 @@ function _encode_downloader () {
             if [[ "${output_path}" == *.gz ]]; then
                 gunzip -c "${output_path}" > "${raw_tissue_dir}/${tissue_name}/${accession}.bed"
                 rm "${output_path}" # Optionally remove the .gz file after extraction
+                echo "Unzipped ${output_path} to ${raw_tissue_dir}/${tissue_name}/${accession}.bed"
             fi
         done
     done
@@ -141,15 +130,17 @@ _hippocampus_data() {
     local tissue_dir=$2
 
     # Download hippocampus methylation data from GSE and convert to bed
-    wget -O "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.wig" \
+    wget -O "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.wig.gz" \
     "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM916nnn/GSM916050/suppl/GSM916050%5FBI%2EBrain%5FHippocampus%5FMiddle%2EBisulfite%2DSeq%2E150%2Ewig%2Egz"
+
+    gunzip "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.wig.gz"
 
     # convert to bed
     wig2bed < "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.wig" \
     > "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.bed"
 
     # keep columns 1-4 and only rows where col4 >= .80
-    awk -vOFS="\t" '$4 >= 0.80 {print $1","$2","$3","$4}' \
+    awk -vOFS="\t" '$5 >= 0.80 {print $1, "$2, "$3, $5}' \
     "${unprocessed_dir}/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.bed" \
     | bedtools merge -i - \
     > "${tissue_dir}/hippocampus/GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.merged.bed"
@@ -261,4 +252,4 @@ main () {
 # run main function!
 # =============================================================================
 main "${root_directory}"
-echo "Total time: $(convertsecs SECONDS)"
+# echo "Total time: $(convertsecs SECONDS)"
