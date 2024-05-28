@@ -63,6 +63,11 @@ def _check_and_download(path: Path, file: str) -> None:
         print(f"{file} already exists.")
 
 
+def _gunzip_file(file: Path) -> None:
+    """Gunzip a file"""
+    os.system(f"gunzip {file}")
+
+
 def _tpm_median_across_all_tissues(
     df: pd.DataFrame,
     median_across_all_file: Path,
@@ -142,10 +147,12 @@ def main() -> None:
     # download matrix files
     for url in DOWNLOADS_URLS:
         _check_and_download(path=matrix_dir, file=url)
+        _gunzip_file(matrix_dir / url.split("/")[-1])
 
     # download tissue level TPMs
     for _, url in GENE_QUANTIFICATIONS.items():
         _check_and_download(path=tpm_dir, file=url)
+        _gunzip_file(tpm_dir / url.split("/")[-1])
 
     # load the GTEx TPM GCT
     gtex_tpm_gct = matrix_dir / "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct"
