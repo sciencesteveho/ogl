@@ -129,12 +129,13 @@ def main() -> None:
     parser.add_argument(
         "--target_dir",
         type=str,
+        required=True,
     )
     args = parser.parse_args()
 
     # set up directories
     target_dir = Path(args.target_dir)
-    target_dir = target_dir / "targets"
+    expression_dir = target_dir / "expression"
     matrix_dir = target_dir / "matrices"
     tpm_dir = target_dir / "tpm"
 
