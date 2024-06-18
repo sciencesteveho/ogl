@@ -12,11 +12,14 @@ file formatting."""
 from collections import defaultdict
 import contextlib
 import csv
+from pathlib import Path
 import subprocess
 from typing import Dict, List, Union
 
 import pandas as pd
 
+from config_handlers import ExperimentConfig
+from config_handlers import TissueConfig
 from constants import REGULATORY_ELEMENTS
 from utils import check_and_symlink
 from utils import dir_check_make
@@ -44,15 +47,11 @@ class GenomeDataPreprocessor:
     """Data preprocessor for dealing with differences in bed files.
 
     Attributes:
-        experiment_name (str): The name of the experiment.
-        interaction_types (List[str]): The types of interactions.
-        nodes (List[str]): The nodes.
-        regulatory (str): The regulatory element catalogue to use.
-        working_directory (str): The working directory.
-        params (Dict[str, Dict[str, str]]): The parameters.
+        experiment_config: Dataclass containing the experiment configuration.
+        tissue_config: Dataclass containing the tissue configuration.
 
     Methods
-    ----------
+    --------
     _run_cmd:
         Runs shell command via subprocess call.
     _make_directories:
@@ -75,12 +74,8 @@ class GenomeDataPreprocessor:
     Examples:
     --------
     >>> preprocessObject = GenomeDataPreprocessor(
-            experiment_name=experiment_params["experiment_name"],
-            interaction_types=experiment_params["interaction_types"],
-            nodes=nodes,
-            regulatory=experiment_params["regulatory"],
-            working_directory=experiment_params["working_directory"],
-            params=tissue_params,
+            experiment_config=experiment_config,
+            tissue_config=tissue_config,
         )
 
     >>> preprocessObject.prepare_data_files()
@@ -88,37 +83,30 @@ class GenomeDataPreprocessor:
 
     def __init__(
         self,
-        experiment_name: str,
-        interaction_types: List[str],
-        nodes: List[str],
-        regulatory: str,
-        working_directory: str,
-        params: Dict[str, Dict[str, str]],
+        experiment_config: ExperimentConfig,
+        tissue_config: TissueConfig,
     ) -> None:
         """Initialize the class"""
-        self.experiment_name = experiment_name
-        self.interaction_types = interaction_types
-        self.nodes = nodes
-        self.regulatory = regulatory
-        self.working_directory = working_directory
+        self.experiment_name = experiment_config.experiment_name
+        self.interaction_types = experiment_config.interaction_types
+        self.nodes = experiment_config.nodes
+        self.attribute_references = experiment_config.attribute_references
+        self.regulatory_schema = experiment_config.regulatory_schema
+        self.root_dir = experiment_config.root_dir
+        self.working_directory = experiment_config.working_directory
 
-        self.dirs = params["dirs"]
-        self.interaction = params["interaction"]
-        self.methylation = params["methylation"]
-        self.resources = params["resources"]
-        self.references = params["references"]
-        self.shared = params["local"]
-        self.features = params["features"]
-        self.tissue_specific_nodes = params["tissue_specific_nodes"]
+        self.interaction = tissue_config.interaction
+        self.methylation = tissue_config.methylation
+        self.resources = tissue_config.resources
+        self.local = tissue_config.local
+        self.features = tissue_config.features
+        self.tissue_specific_nodes = tissue_config.tissue_specific_nodes
 
         self.tissue = self.resources["tissue"]
-        self.root_dir = self.dirs["root_dir"]
-        self.shared_data_dir = f"{self.root_dir}/shared_data"
-        self.reg_dir = f"{self.shared_data_dir}/regulatory_elements"
-        self.tissue_dir = (
-            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
-        )
-        self.data_dir = f"{self.root_dir}/raw_tissue_data/{self.tissue}"
+        self.shared_data_dir = self.root_dir / "shared_data"
+        self.reg_dir = self.shared_data_dir / "regulatory_elements"
+        self.tissue_dir = self.working_directory / self.experiment_name / self.tissue
+        self.data_dir = self.root_dir / "raw_tissue_data" / self.tissue
 
         # make directories, link files, and download shared files if necessary
         self._make_directories()
@@ -130,7 +118,7 @@ class GenomeDataPreprocessor:
         dir_check_make(self.tissue_dir)
 
         for directory in ["local", "interaction", "unprocessed"]:
-            dir_check_make(f"{self.tissue_dir}/{directory}")
+            dir_check_make(self.tissue_dir / directory)
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -141,8 +129,8 @@ class GenomeDataPreprocessor:
         """Make symlinks for tissue specific files in unprocessed folder"""
         for file in self.tissue_specific_nodes.values():
             check_and_symlink(
-                dst=f"{self.tissue_dir}/unprocessed/{file}",
-                src=f"{self.data_dir}/{file}",
+                dst=self.tissue_dir / "unprocessed" / file,
+                src=self.data_dir / file,
                 boolean=True,
             )
 
@@ -154,20 +142,26 @@ class GenomeDataPreprocessor:
         }
 
         with contextlib.suppress(TypeError):
-            for datatype in self.interaction_types:
-                if datatype == "mirna":
-                    check_and_symlink(
-                        src=f"{self.shared_data_dir}/interaction/{self.interaction['mirnatargets']}",
-                        dst=f"{self.tissue_dir}/interaction/"
-                        + self.interaction["mirnatargets"],
-                        boolean=True,
-                    )
-                else:
-                    check_and_symlink(
-                        src=interact_files[datatype],
-                        dst=f"{self.tissue_dir}/interaction/{self.interaction[datatype]}",
-                        boolean=False,
-                    )
+            if self.interaction_types is not None:
+                for datatype in self.interaction_types:
+                    if datatype == "mirna":
+                        check_and_symlink(
+                            src=self.shared_data_dir
+                            / "interaction"
+                            / self.interaction["mirnatargets"],
+                            dst=self.tissue_dir
+                            / "interaction"
+                            / self.interaction["mirnatargets"],
+                            boolean=True,
+                        )
+                    else:
+                        check_and_symlink(
+                            src=interact_files[datatype],
+                            dst=self.tissue_dir
+                            / "interaction"
+                            / self.interaction[datatype],
+                            boolean=False,
+                        )
 
     # def _download_shared_files(self) -> None:
     #     """Download shared local features if not already present"""
@@ -286,7 +280,7 @@ class GenomeDataPreprocessor:
     def _normalize_mirna(self, file: str) -> None:
         """CPM (counts per million) normalization for miRNA-seq counts"""
         # get miRNA reference
-        mirnaref = _mirna_ref(self.references["mirna"])
+        mirnaref = _mirna_ref(self.attribute_references["mirna"])
 
         mirna = pd.read_csv(
             file,
@@ -372,13 +366,13 @@ class GenomeDataPreprocessor:
             gt_gc = f"awk -v FS='\t' -v OFS='\t' '${cpg_percent_col} >= 80' {self.tissue_dir}/unprocessed/{bed} \
                 > {file}"
             self._run_cmd(gt_gc)
-        elif self.methylation["cpg_filetype"] == "GEO":
-            file = f"{self.tissue_dir}/unprocessed/{bed}_gt80"
-            gt_gc = f"sed -e 's/\//\t/g' \
-                | tr -d '\ \
-                | awk '{{print $4/$5}}' \
-                | awk '$4 >= 0.8' \
-                > {file}"
+        # elif self.methylation["cpg_filetype"] == "GEO":
+        #     file = f"{self.tissue_dir}/unprocessed/{bed}_gt80"
+        #     gt_gc = f"sed -e 's/\//\t/g' \
+        #         | tr -d '\ \
+        #         | awk '{{print $4/$5}}' \
+        #         | awk '$4 >= 0.8' \
+        #         > {file}"
         else:
             file = f"{self.tissue_dir}/unprocessed/{bed}"
 
@@ -401,9 +395,9 @@ class GenomeDataPreprocessor:
         """
 
         ### Make symlinks for shared data files
-        for file in self.shared.values():
-            src = f"{self.shared_data_dir}/local/{file}"
-            dst = f"{self.tissue_dir}/local/{file}"
+        for file in self.local.values():
+            src = self.shared_data_dir / "local" / file
+            dst = self.tissue_dir / "local" / file
             if (
                 file in NODETYPES_LOCAL
                 and file in self.nodes
@@ -417,21 +411,22 @@ class GenomeDataPreprocessor:
         ### Make symlinks for histone marks
         for datatype in self.features:
             check_and_symlink(
-                src=f"{self.data_dir}/{self.features[datatype]}",
-                dst=f"{self.tissue_dir}/local/{datatype}_{self.tissue}.bed",
+                src=self.data_dir / self.features[datatype],
+                dst=self.tissue_dir / "local" / f"{datatype}_{self.tissue}.bed",
             )
 
         ### Make symlinks for regulatory data
-        regulatory_elements = REGULATORY_ELEMENTS[self.regulatory]
+        regulatory_elements = REGULATORY_ELEMENTS[self.regulatory_schema]
         for element in regulatory_elements:
-            check_and_symlink(
-                src=f"{self.reg_dir}/{regulatory_elements[element]}",
-                dst=f"{self.tissue_dir}/local/{element}_{self.tissue}.bed",
-            )
+            if regulatory_elements[element]:
+                check_and_symlink(
+                    src=self.reg_dir / regulatory_elements[element],
+                    dst=self.tissue_dir / "local" / f"{element}_{self.tissue}.bed",
+                )
 
         ### Make symlink for cpg
-        src = f"{self.data_dir}/{self.methylation['cpg']}"
-        dst = f"{self.tissue_dir}/unprocessed/{self.methylation['cpg']}"
+        src = self.data_dir / self.methylation["cpg"]
+        dst = self.tissue_dir / "unprocessed" / self.methylation["cpg"]
         check_and_symlink(
             src=src,
             dst=dst,
@@ -440,8 +435,8 @@ class GenomeDataPreprocessor:
         if self.nodes is not None:
             if "crms" in self.nodes:
                 check_and_symlink(
-                    src=f"{self.data_dir}/{self.tissue_specific_nodes['crms']}",
-                    dst=f"{self.tissue_dir}/local/crms_{self.tissue}.bed",
+                    src=self.data_dir / self.tissue_specific_nodes["crms"],
+                    dst=self.tissue_dir / "local" / f"crms_{self.tissue}.bed",
                 )
             if "tads" in self.nodes:
                 self._add_tad_id(self.tissue_specific_nodes["tads"])

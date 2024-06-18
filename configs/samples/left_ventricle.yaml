@@ -1,9 +1,4 @@
 ---
-dirs:
-  # circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
-  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/left_ventricle
-  root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
-
 features:
   ATAC: ATAC-seq_narrow_merged.bed
   CTCF: CTCF_narrow_merged.bed
@@ -24,7 +19,6 @@ features:
 interaction:
   # circuits: left_ventricle_adult.txt
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
-  gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
   # mirna: left.ventricle_mirdip
   # ppis: IID_annotated_PPI.txt
@@ -42,7 +36,7 @@ local:
   microsatellites: microsatellites_hg38_parsed.bed
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
-  rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  rbpbindingsites: rbpbindingsites_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
   repg2: repg2_hg38.bed
@@ -61,32 +55,18 @@ methylation:
   cpg_filetype: ENCODE
   cpg_liftover: false
 
-references:
-  genes: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
-  mirna: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/interaction/ensembl_mirna_coordinates_hg38.bed
-  mirnatargets: mirtargets_filtered.txt
-  reftss: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  regulatory_elements: /ocean/projects/bio210019p/stevesho/resources/regulatory_elements_node_attr.bed
-  super_enhancers: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
-
 resources:
-  blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/hg38-blacklist.v2.bed
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
   key_protein_abundance: heart_ventricle
   key_tpm: heart_left_ventricle
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
   marker_name: Heart
   ppi_tissue: heart
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/left_ventricle_ENCFF370RMR_0.05.tsv
   tissue: left_ventricle
   tissue_name: Heart - Left Ventricle
   tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt
-  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/left_ventricle_ENCFF370RMR_0.05.tsv
 
 tissue_specific_nodes:
   crms: consensuses.bed
   super_enhancer: SE_00_0014_SE_hg38.bed
   tads: VentricleLeft_STL003_Leung_2015-raw_TADs.txt
-  tf_binding: interval.all.fps.0.0001.bed
+  tf_footprints: interval.all.fps.0.0001.bed

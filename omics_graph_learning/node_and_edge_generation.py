@@ -9,55 +9,43 @@ arguments to use."""
 
 import argparse
 import contextlib
-import pathlib
-from typing import Dict, List, Optional, Union
+from typing import Optional
 
-import graph_constructor
-from prepare_bedfiles import GenomeDataPreprocessor
-
+from config_handlers import ExperimentConfig
+from config_handlers import TissueConfig
+import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
 from linear_context_parser import LinearContextParser
-import utils
+from preprocessor import GenomeDataPreprocessor
+from utils import _generate_hic_dict
+from utils import _listdir_isfile_wrapper
+from utils import dir_check_make
 
-NODES = [
-    "dyadic",
-    "enhancers",
-    "gencode",
-    "promoters",
-]
-
-
-def _get_regulatory_element_references(regulatory: str) -> Optional[str]:
-    """Returns the filename corresponding to the given regulatory element
-    scheme."""
-    regulatory_map = {
-        "intersect": "intersect_node_attr.bed",
-        "union": "union_node_attr.bed",
-        "epimap": "epimap_node_attr.bed",
-        "encode": "encode_node_attr.bed",
-    }
-    return regulatory_map.get(regulatory)
+# def _get_regulatory_element_references(regulatory: str) -> Optional[str]:
+#     """Returns the filename corresponding to the given regulatory element
+#     scheme."""
+#     regulatory_map = {
+#         "intersect": "intersect_node_attr.bed",
+#         "union": "union_node_attr.bed",
+#         "epimap": "epimap_node_attr.bed",
+#         "encode": "encode_node_attr.bed",
+#     }
+#     return regulatory_map.get(regulatory)
 
 
 def preprocess_bedfiles(
-    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    nodes: List[str],
+    experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> None:
     """Directory set-up, bedfile symlinking and preprocessing
 
     Args:
-        experiment_params (Dict[str, Union[str, list]]): experiment config
-        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+        experiment_config (Dict[str, Union[str, list]]): experiment config
+        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
         nodes (List[str]): nodes to include in graph
     """
     preprocessObject = GenomeDataPreprocessor(
-        experiment_name=experiment_params["experiment_name"],
-        interaction_types=experiment_params["interaction_types"],
-        nodes=nodes,
-        regulatory=experiment_params["regulatory"],
-        working_directory=experiment_params["working_directory"],
-        params=tissue_params,
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
 
     preprocessObject.prepare_data_files()
@@ -65,39 +53,31 @@ def preprocess_bedfiles(
 
 
 def parse_edges(
-    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
+    experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> None:
     """Parse nodes and edges to create base graph and for local context
     augmentation
 
     Args:
-        experiment_params (Dict[str, Union[str, list]]): experiment config
-        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+        experiment_config (Dict[str, Union[str, list]]): experiment config
+        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
     """
-    resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
-    regulatory_attr = (
-        resource_dir
-        + "/"
-        + _get_regulatory_element_references(experiment_params["regulatory"])
-    )
+    # resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
+    # regulatory_attr = (
+    #     resource_dir
+    #     + "/"
+    #     + _get_regulatory_element_references(experiment_config.regulatory_schema)
+    # )
 
-    baseloop_directory = experiment_params["baseloop_directory"]
-    baseloops = experiment_params["baseloops"]
-    loopfiles = utils._generate_hic_dict(
-        resolution=experiment_params["loop_resolution"]
-    )
-    loopfile = loopfiles[tissue_params["resources"]["tissue"]]
+    baseloop_directory = experiment_config.baseloop_dir
+    baseloops = experiment_config.baseloops
+    loopfiles = _generate_hic_dict(resolution=experiment_config.loop_resolution)
+    loopfile = loopfiles[tissue_config.resources["tissue"]]
 
     edgeparserObject = EdgeParser(
-        experiment_name=experiment_params["experiment_name"],
-        interaction_types=experiment_params["interaction_types"],
-        gene_gene=experiment_params["gene_gene"],
-        working_directory=experiment_params["working_directory"],
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
         loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
-        regulatory=experiment_params["regulatory"],
-        regulatory_attr=regulatory_attr,
-        params=tissue_params,
     )
 
     edgeparserObject.parse_edges()
@@ -105,40 +85,32 @@ def parse_edges(
 
 
 def parse_linear_context(
-    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    nodes: List[str],
+    experiment_config: ExperimentConfig,
+    tissue_config: TissueConfig,
 ) -> None:
     """Add local context edges based on basenode input
 
     Args:
-        experiment_params (Dict[str, Union[str, list]]): experiment config
-        tissue_params (Dict[str, Union[str, list]]): tissie-specific configs
+        experiment_config (Dict[str, Union[str, list]]): experiment config
+        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
         nodes (List[str]): nodes to include in graph
     """
-    experiment_name = experiment_params["experiment_name"]
-    working_directory = experiment_params["working_directory"]
+    local_dir = (
+        experiment_config.working_directory
+        / tissue_config.resources["tissue"]
+        / "local"
+    )
 
-    remove_nodes = [node for node in utils.POSSIBLE_NODES if node not in nodes]
-
-    local_dir = f"{working_directory}/{experiment_name}/{tissue_params['resources']['tissue']}/local"
-    bedfiles = utils._listdir_isfile_wrapper(dir=local_dir)
-
+    bedfiles = _listdir_isfile_wrapper(dir=local_dir)
     adjusted_bedfiles = [
-        bed for bed in bedfiles if all(node not in bed for node in remove_nodes)
+        bed for bed in bedfiles if all(node in bed for node in experiment_config.nodes)
     ]
 
-    if experiment_params["regulatory"] == "encode":
-        with contextlib.suppress(ValueError):
-            nodes.remove("dyadic")
-
+    # instantiate object
     localparseObject = LinearContextParser(
-        experiment_name=experiment_name,
-        nodes=nodes,
-        working_directory=working_directory,
-        feat_window=experiment_params["feat_window"],
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
         bedfiles=adjusted_bedfiles,
-        params=tissue_params,
     )
 
     localparseObject.parse_context_data()
@@ -146,36 +118,23 @@ def parse_linear_context(
 
 
 def create_tissue_graph(
-    experiment_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    tissue_params: Dict[str, Union[str, List[str], Dict[str, str]]],
-    nodes: List[str],
+    experiment_config: ExperimentConfig,
+    tissue_config: TissueConfig,
 ) -> None:
     """Creates a graph for the individual tissue. Concatting is dealt with after
     this initial pipeline.
 
     Args:
-        experiment_params (Dict[str, Union[str, list]]): _description_
-        tissue_params (Dict[str, Union[str, list]]): _description_
+        experiment_config (Dict[str, Union[str, list]]): _description_
+        tissue_config (Dict[str, Union[str, list]]): _description_
         nodes (List[str]): _description_
     """
-    nodes = (
-        experiment_params["nodes"] + NODES
-        if experiment_params["nodes"] is not None
-        else NODES
-    )
+    tissue = tissue_config.resources["tissue"]
 
-    if experiment_params["regulatory"] == "encode":
-        with contextlib.suppress(ValueError):
-            nodes.remove("dyadic")
-
-    experiment_name = experiment_params["experiment_name"]
-    working_directory = experiment_params["working_directory"]
-    tissue = tissue_params["resources"]["tissue"]
-
-    graph_constructor.make_tissue_graph(
-        nodes=nodes,
-        experiment_name=experiment_name,
-        working_directory=working_directory,
+    construct_graphs.make_tissue_graph(
+        nodes=experiment_config.nodes,
+        experiment_name=experiment_config.experiment_name,
+        working_directory=experiment_config.working_directory,
         graph_type="full",
         tissue=tissue,
     )
@@ -196,37 +155,44 @@ def main() -> None:
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
     )
     args = parser.parse_args()
-    experiment_params = utils.parse_yaml(args.experiment_config)
-    tissue_params = utils.parse_yaml(args.tissue_config)
-    try:
-        nodes = experiment_params["nodes"] + NODES
-    except TypeError:
-        nodes = NODES
-    print(f"Starting pipeline for {experiment_params['experiment_name']}!")
+
+    # Load in the experiment and tissue config files
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
+    tissue_config = TissueConfig.from_yaml(args.tissue_config)
+
+    # remove dyadic if encode regulatory schema
+    if experiment_config.regulatory_schema == "encode":
+        with contextlib.suppress(ValueError):
+            experiment_config.nodes.remove("dyadic")
+
+    # make the experiment specific graph directory
+    dir_check_make(
+        dir=experiment_config.working_directory,
+    )
+
+    print(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # create working directory for experimnet
-    utils.dir_check_make(
-        dir=f"{experiment_params['working_directory']}/{experiment_params['experiment_name']}",
+    dir_check_make(
+        dir=f"{experiment_config.root_dir}/{experiment_config.experiment_name}",
     )
 
+    # pipeline!
     preprocess_bedfiles(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
-        nodes=nodes,
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
     parse_edges(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
     parse_linear_context(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
-        nodes=nodes,
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
     create_tissue_graph(
-        experiment_params=experiment_params,
-        tissue_params=tissue_params,
-        nodes=nodes,
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
 
 

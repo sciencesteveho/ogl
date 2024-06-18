@@ -10,7 +10,7 @@
 import argparse
 import logging
 import math
-import pathlib
+from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
 import torch
@@ -26,6 +26,7 @@ from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.utils import degree  # type: ignore
 from tqdm import tqdm  # type: ignore
 
+from config_handlers import ExperimentConfig
 from graph_to_pytorch import graph_to_pytorch
 from models import DeeperGCN
 from models import GATv2
@@ -35,7 +36,11 @@ from models import MLP
 from models import PNA
 from models import UniMPTransformer
 from ogl import parse_pipeline_arguments
-import utils
+from utils import _set_matplotlib_publication_parameters
+from utils import _tensor_out_to_array
+from utils import dir_check_make
+from utils import plot_predicted_versus_expected
+from utils import plot_training_losses
 
 
 def get_cosine_schedule_with_warmup(
@@ -384,14 +389,14 @@ def construct_save_string(components: List[str], args: argparse.Namespace) -> st
 def _plot_loss_and_performance(
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
-    model_dir: pathlib.PosixPath,
+    model_dir: Path,
     savestr: str,
     model: Optional[torch.nn.Module],
     best_validation: Optional[float] = None,
 ) -> None:
     """Plot training losses and performance"""
     # set params for plotting
-    utils._set_matplotlib_publication_parameters()
+    _set_matplotlib_publication_parameters()
 
     # plot either final model or best validation model
     if best_validation:
@@ -413,18 +418,18 @@ def _plot_loss_and_performance(
         epoch=0,
     )
 
-    predictions_median = utils._tensor_out_to_array(outs, 0)
-    labels_median = utils._tensor_out_to_array(labels, 0)
+    predictions_median = _tensor_out_to_array(outs, 0)
+    labels_median = _tensor_out_to_array(labels, 0)
 
     # plot training losses
-    utils.plot_training_losses(
+    plot_training_losses(
         outfile=model_dir / "plots" / f"{savestr}_loss.png",
         savestr=savestr,
         log=model_dir / "logs" / "training_log.txt",
     )
 
     # plot performance
-    utils.plot_predicted_versus_expected(
+    plot_predicted_versus_expected(
         outfile=model_dir / "plots" / f"{savestr}_performance.png",
         savestr=savestr,
         predicted=predictions_median,
@@ -437,14 +442,13 @@ def main() -> None:
     """Main function to train GNN on graph data!"""
     # Parse training settings
     args = parse_arguments()
-    params = utils.parse_yaml(args.experiment_yaml)
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
 
     # set up helper variables
-    working_directory = pathlib.Path(params["working_directory"])
-    root_dir = working_directory / params["experiment_name"]
+    experiment_name = experiment_config.experiment_name
     savestr = construct_save_string(
         [
-            f"{params['experiment_name']}",
+            experiment_name,
             f"{args.model}",
             f"target-{args.target}",
             f"gnnlayers{args.gnn_layers}",
@@ -457,11 +461,11 @@ def main() -> None:
         ],
         args,
     )
-    model_dir = working_directory / "models" / f"{savestr}"
+    model_dir = experiment_config.root_dir / "models" / f"{savestr}"
 
     # make directories and set up training log
     for folder in ["logs", "plots"]:
-        utils.dir_check_make(model_dir / folder)
+        dir_check_make(model_dir / folder)
 
     logging.basicConfig(
         filename=model_dir / "logs" / "training_log.txt",
@@ -473,9 +477,8 @@ def main() -> None:
 
     # get graph data
     data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
+        experiment_config=experiment_config,
         graph_type=args.graph_type,
-        root_dir=root_dir,
         split_name=args.split_name,
         regression_target="rna_seq" if args.rna_seq else args.target,
         randomize_feats=args.randomize_node_feats,

@@ -12,30 +12,18 @@ are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node.
 """
 
-import pathlib
+from pathlib import Path
 import pickle
 from typing import Any, Dict, List, Tuple
 
-import networkx as nx
+import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
 
-import utils
+from utils import time_decorator
 
 
-def _set_directories(
-    working_directory: str, experiment_name: str, tissue: str
-) -> Tuple[pathlib.PosixPath, pathlib.PosixPath, pathlib.PosixPath]:
-    """Create directories for the experiment"""
-    root_dir = pathlib.Path(f"{working_directory}/{experiment_name}")
-    graph_dir = root_dir / "graphs"
-    interaction_dir = root_dir / tissue / "interaction"
-    parse_dir = root_dir / tissue / "parsing"
-    utils.dir_check_make(graph_dir)
-    return graph_dir, interaction_dir, parse_dir
-
-
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _get_edges(
     edge_file: str,
     local: bool = False,
@@ -67,7 +55,7 @@ def _base_graph(edges: pd.DataFrame):
     )
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _prepare_reference_attributes(
     reference_dir: str, nodes: List[str]
 ) -> Dict[str, Dict[str, Any]]:
@@ -108,11 +96,11 @@ def _remove_blacklist_nodes(
     return graph
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def graph_constructor(
     tissue: str,
-    interaction_dir: pathlib.PosixPath,
-    parse_dir: pathlib.PosixPath,
+    interaction_dir: Path,
+    parse_dir: Path,
     graph_type: str,
     nodes: List[str],
 ) -> nx.Graph:
@@ -171,10 +159,10 @@ def graph_constructor(
     return graph
 
 
-@utils.time_decorator(print_args=False)
+@time_decorator(print_args=False)
 def _nx_to_tensors(
     graph: nx.Graph,
-    graph_dir: pathlib.PosixPath,
+    graph_dir: Path,
     graph_type: str,
     prefix: str,
     rename: Dict[str, int],
@@ -216,24 +204,16 @@ def _nx_to_tensors(
 def make_tissue_graph(
     nodes: List[str],
     experiment_name: str,
-    working_directory: str,
+    working_directory: Path,
     graph_type: str,
     tissue: str,
 ) -> None:
     """Pipeline to generate individual graphs"""
 
-    # working_directory = (
-    #     "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing"
-    # )
-    # tissue = "aorta"
-    # experiment_name = "regulatory_only_hic_gte2"
-
-    # get directories
-    graph_dir, interaction_dir, parse_dir = _set_directories(
-        working_directory=working_directory,
-        experiment_name=experiment_name,
-        tissue=tissue,
-    )
+    # set directories
+    graph_dir = working_directory / "graphs"
+    interaction_dir = working_directory / tissue / "interaction"
+    parse_dir = working_directory / tissue / "parsing"
 
     # instantiate objects and process graphs
     graph = graph_constructor(

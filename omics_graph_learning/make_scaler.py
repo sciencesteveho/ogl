@@ -1,25 +1,23 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# // TO-DO //
-# - [ ]
 
 """Fit a scaler for node feats"""
 
 from contextlib import ExitStack
-import pathlib
+from pathlib import Path
 import pickle
 from typing import Dict, List
 
-import joblib
+import joblib  # type: ignore
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler  # type: ignore
 
-import utils
+from utils import dir_check_make
 from utils import ScalerUtils
 
 
-def load_training_split(partition: pathlib.PosixPath) -> Dict[str, list]:
+def load_training_split(partition: Path) -> Dict[str, list]:
     """Load the training split from a file."""
     with open(partition, "rb") as file:
         split = pickle.load(file)
@@ -28,7 +26,7 @@ def load_training_split(partition: pathlib.PosixPath) -> Dict[str, list]:
 
 def fit_scaler_and_save(
     node_features: int,
-    skip_idxs: List[str],
+    skip_idxs: List[int],
     feat: int,
     scaler_dir: str,
 ) -> None:
@@ -55,7 +53,7 @@ def main() -> None:
         _,
     ) = ScalerUtils._handle_scaler_prep()
 
-    utils.dir_check_make(scaler_dir)
+    dir_check_make(scaler_dir)
 
     # set up other vars from functions
     split = load_training_split(partition=split_path / "training_targets_split.pkl")

@@ -117,7 +117,7 @@ TISSUES = [
     # "npc",
 ]
 
-REGULATORY_ELEMENTS: Dict[str, Dict[str, Union[str, None]]] = {
+REGULATORY_ELEMENTS: Dict[str, Dict[str, str]] = {
     "intersect": {
         "enhancers": "enhancers_epimap_screen_overlap.bed",
         "promoters": "promoters_epimap_screen_overlap.bed",
@@ -136,6 +136,5 @@ REGULATORY_ELEMENTS: Dict[str, Dict[str, Union[str, None]]] = {
     "encode": {
         "enhancers": "GRCh38-ELS.bed",
         "promoters": "GRCh38-PLS.bed",
-        "dyadic": None,
     },
 }

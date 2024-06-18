@@ -4,19 +4,19 @@
 
 """Code to scale node_feats"""
 
-import pathlib
+from pathlib import Path
 import pickle
 from typing import Any, Dict
 
-import joblib
+import joblib  # type: ignore
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler  # type: ignore
 
 from utils import ScalerUtils
 
 
 def load_scalers(
-    scaler_dir: pathlib.PosixPath,
+    scaler_dir: Path,
     feat_range: int,
 ) -> Dict[int, MinMaxScaler]:
     """_summary_
@@ -34,7 +34,7 @@ def load_scalers(
 
 
 def scale_node_features(
-    node_feat: np.array,
+    node_feat: np.ndarray,
     scalers: Dict[int, MinMaxScaler],
     feat_range: int,
 ) -> np.array:
@@ -59,7 +59,7 @@ def scale_node_features(
 
 def save_scaled_graph(
     graph: Dict[str, Any],
-    split_path: pathlib.PosixPath,
+    split_path: Path,
     prefix: str,
 ) -> None:
     """Save the scaled graph to a pickle file"""
@@ -74,7 +74,7 @@ def main() -> None:
         _,
         split_path,
         scaler_dir,
-        prefix,
+        _,
         graphdir_prefix,
         filename,
     ) = ScalerUtils._handle_scaler_prep()

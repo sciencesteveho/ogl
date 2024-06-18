@@ -61,7 +61,7 @@ local:
   tss: tss_parsed_hg38.bed
 
 methylation:
-  cpg: CpgMethly_hippocampus_GSE46644.bed
+  cpg: GSM916050_BI.Brain_Hippocampus_Middle.Bisulfite-Seq.150.merged.bed
   cpg_filetype: GEO
   cpg_liftover: true
 

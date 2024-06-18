@@ -9,13 +9,13 @@
 indexes"""
 
 import argparse
-import pathlib
+from pathlib import Path
 import pickle
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import numpy as np
 
-import utils
+from config_handlers import ExperimentConfig
 
 
 def _open_graph_and_idxs(prefix: str) -> Tuple[Dict, Dict]:
@@ -39,7 +39,7 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
 
 
 def concatenate_graphs(
-    pre_prefix: pathlib.PosixPath,
+    pre_prefix: Path,
     tissues: List[str],
 ) -> None:
     """Concatenate multiple graphs into a single graph. The first tissue in the
@@ -106,17 +106,11 @@ def main() -> None:
         help="Path to .yaml file with experimental conditions",
     )
     args = parser.parse_args()
-    params = utils.parse_yaml(args.experiment_config)
-
-    # set up variables
-    experiment_name = params["experiment_name"]
-    working_directory = params["working_directory"]
-    working_dir = pathlib.Path(working_directory)
-    graph_dir = working_dir / experiment_name / "graphs"
-    pre_prefix = graph_dir / f"{experiment_name}_{args.graph_type}_graph"
+    params = ExperimentConfig.from_yaml(args.experiment_config)
 
     # concat all graphs! and save to file
-    concatenate_graphs(pre_prefix=pre_prefix, tissues=params["tissues"])
+    pre_prefix = params.graph_dir / f"{params.experiment_name}_{args.graph_type}_graph"
+    concatenate_graphs(pre_prefix=pre_prefix, tissues=params.tissues)
 
 
 if __name__ == "__main__":

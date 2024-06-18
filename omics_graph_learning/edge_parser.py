@@ -8,6 +8,7 @@
 import contextlib
 import csv
 import os
+from pathlib import Path
 from typing import (
     Callable,
     Dict,
@@ -23,6 +24,8 @@ from typing import (
 import pandas as pd
 import pybedtools  # type: ignore
 
+from config_handlers import ExperimentConfig
+from config_handlers import TissueConfig
 from constants import REGULATORY_ELEMENTS
 from utils import genes_from_gencode
 from utils import time_decorator
@@ -32,13 +35,11 @@ class EdgeParser:
     """Object to construct tensor based graphs from parsed bedfiles
 
     Attributes:
-        experiment_name (str): The name of the experiment. interaction_types
-        (List[str]): The types of interactions to consider. working_directory
-        (str): The working directory. loop_file (str): The loop file. params
-        (Dict[str, Dict[str, str]]): Configuration values from YAML.
+        experiment_config: Dataclass containing the experiment configuration.
+        tissue_config: Dataclass containing the tissue configuration.
 
     Methods
-    ----------
+    --------
     _initialize_directories_and_vars:
         Initialize directory paths.
     _initialize_references:
@@ -67,13 +68,8 @@ class EdgeParser:
     Examples:
     --------
     >>> edgeparserObject = EdgeParser(
-            experiment_name=experiment_params["experiment_name"],
-            interaction_types=experiment_params["interaction_types"],
-            working_directory=experiment_params["working_directory"],
-            loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
-            regulatory=experiment_params["regulatory"],
-            regulatory_attr=regulatory_attr,
-            params=tissue_params,
+            experiment_config=experiment_config,
+            tissue_config=tissue_config,
         )
 
     >>> edgeparserObject.parse_edges()
@@ -85,68 +81,63 @@ class EdgeParser:
 
     def __init__(
         self,
-        experiment_name: str,
-        interaction_types: List[str],
-        gene_gene: bool,
-        working_directory: str,
+        experiment_config: ExperimentConfig,
+        tissue_config: TissueConfig,
         loop_file: str,
-        regulatory: str,
-        regulatory_attr: str,
-        params: Dict[str, Dict[str, str]],
     ):
         """Initialize the class"""
-        self.experiment_name = experiment_name
-        self.interaction_types = interaction_types
-        self.gene_gene = gene_gene
-        self.working_directory = working_directory
+        self.tissue_config = tissue_config
+
+        self.experiment_name = experiment_config.experiment_name
+        self.interaction_types = experiment_config.interaction_types
+        self.gene_gene = experiment_config.gene_gene
+        self.root_dir = experiment_config.root_dir
+        self.attribute_references = experiment_config.attribute_references
+        self.regulatory_schema = experiment_config.regulatory_schema
         self.loop_file = loop_file
-        self.regulatory = regulatory
-        self.regulatory_attr = regulatory_attr
-
-        self._initialize_directories_and_vars(params)
-        self._initialize_references(params)
-
-    def _initialize_directories_and_vars(
-        self, params: Dict[str, Dict[str, str]]
-    ) -> None:
-        """Initialize directory paths"""
-        self.gencode = params["local"]["gencode"]
-        self.interaction_files = params["interaction"]
-        self.blacklist_file = params["resources"]["blacklist"]
-        self.tissue = params["resources"]["tissue"]
-        self.chromfile = params["resources"]["chromfile"]
-        self.marker_name = params["resources"]["marker_name"]
-        self.ppi_tissue = params["resources"]["ppi_tissue"]
-        self.tss = params["resources"]["reftss_genes"]
-        self.shared = params["local"]
-
-        self.root_dir = params["dirs"]["root_dir"]
-        self.shared_dir = f"{self.root_dir}/shared_data"
-        self.tissue_dir = (
-            f"{self.working_directory}/{self.experiment_name}/{self.tissue}"
-        )
-        self.local_dir = f"{self.tissue_dir}/local"
-        self.parse_dir = f"{self.tissue_dir}/parsing"
-        self.interaction_dir = f"{self.tissue_dir}/interaction"
-        self.shared_interaction_dir = f"{self.shared_dir}/interaction"
 
         self.tf_extension = ""
-        if params["differentiate"] == True:
+        if experiment_config.differentiate_tf == True:
             self.tf_extension += "_tf"
 
-    def _initialize_references(self, params: Dict[str, Dict[str, str]]) -> None:
+        self._initialize_directories_and_vars()
+        self._initialize_references()
+
+    def _initialize_directories_and_vars(self) -> None:
+        """Initialize directory paths"""
+        self.gencode = self.tissue_config.local["gencode"]
+        self.interaction_files = self.tissue_config.interaction
+        self.blacklist_file = self.tissue_config.resources["blacklist"]
+        self.tissue = self.tissue_config.resources["tissue"]
+        self.chromfile = self.tissue_config.resources["chromfile"]
+        self.marker_name = self.tissue_config.resources["marker_name"]
+        self.ppi_tissue = self.tissue_config.resources["ppi_tissue"]
+        self.tss = self.tissue_config.local["tss"]
+
+        self.shared_dir = self.root_dir / "shared_data"
+        self.tissue_dir = self.root_dir / self.experiment_name / self.tissue
+        self.local_dir = self.tissue_dir / "local"
+        self.parse_dir = self.tissue_dir / "parsing"
+        self.interaction_dir = self.tissue_dir / "interaction"
+        self.shared_interaction_dir = self.shared_dir / "interaction"
+
+    def _initialize_references(self) -> None:
         """Initialize reference dictionaries"""
         self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
-        self.gencode_ref = pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
+        self.gencode_ref = pybedtools.BedTool(
+            self.local_dir / self.tissue_config.local["gencode"]
+        )
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
         self.gencode_attr_ref = self._create_reference_dict(
-            params["resources"]["gencode_attr"]
+            self.attribute_references["gencode_attr"]
         )
-        self.regulatory_attr_ref = self._create_reference_dict(self.regulatory_attr)
-        self.se_ref = self._create_reference_dict(params["resources"]["se_ref"])
+        self.regulatory_attr_ref = self._create_reference_dict(
+            self.attribute_references["regulatory_elements"]
+        )
+        self.se_ref = self._create_reference_dict(self.attribute_references["se_ref"])
         self.mirna_ref = self._create_reference_dict(
-            params["reference"]["mirna"], mirna=True
+            self.attribute_references["mirna"], mirna=True
         )
         self.footprint_ref = self._create_reference_dict(
             f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
@@ -175,7 +166,7 @@ class EdgeParser:
         """Remove blacklist regions from a BedTool object."""
         return bed.intersect(self.blacklist, v=True, sorted=True)
 
-    def _create_bedtool(self, path: str) -> Union[pybedtools.BedTool, None]:
+    def _create_bedtool(self, path: Path) -> Union[pybedtools.BedTool, None]:
         """Create a BedTool object if the file exists."""
         return (
             self._remove_blacklist(pybedtools.BedTool(path))
@@ -187,14 +178,14 @@ class EdgeParser:
         self,
     ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool, Optional[pybedtools.BedTool]]:
         """Simple wrapper to load regulatory elements and return BedTools"""
-        reg_elements = REGULATORY_ELEMENTS[self.regulatory]
+        reg_elements = REGULATORY_ELEMENTS[self.regulatory_schema]
         bedtools_objects = {
-            key: self._create_bedtool(f"{self.local_dir}/{key}_{self.tissue}.bed")
+            key: self._create_bedtool(self.local_dir / f"{key}_{self.tissue}.bed")
             for key in reg_elements
             if key in ["enhancers", "promoters", "dyadic"]
         }
 
-        if self.regulatory == "encode":
+        if self.regulatory_schema == "encode":
             bedtools_objects["dyadic"] = None
 
         return (
@@ -204,7 +195,7 @@ class EdgeParser:
         )
 
         # Code for filtering distal enhancers. Ignoring for now.
-        # if self.regulatory in ["encode", "intersect"]:
+        # if self.regulatory_schema in ["encode", "intersect"]:
         #     bedtools_objects["distal_enhancers"] = (
         #         bedtools_objects["enhancers"].filter(lambda x: x[3] == "dELS").saveas()
         #     )
@@ -424,13 +415,13 @@ class EdgeParser:
 
     def _write_node_list(self, node: List[str]) -> None:
         """Write gencode nodes to file"""
-        with open(f"{self.local_dir}/basenodes_hg38.txt", "a") as output:
+        with open(self.local_dir / "basenodes_hg38.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(node)
 
     def _write_edges(self, edge: Tuple[Union[str, int]]) -> None:
         """Write edge to file"""
-        with open(f"{self.interaction_dir}/interaction_edges.txt", "a") as output:
+        with open(self.interaction_dir / "interaction_edges.txt", "a") as output:
             writer = csv.writer(output, delimiter="\t")
             writer.writerow(edge)
 
@@ -442,17 +433,20 @@ class EdgeParser:
 
         if "mirna" in self.interaction_types:
             mirna_generator = self._mirna_targets(
-                target_list=f"{self.interaction_dir}/active_mirna_{self.tissue}.txt",
-                tissue_active_mirnas=f"{self.interaction_dir}/{self.interaction_files['mirdip']}",
+                target_list=self.interaction_dir / "active_mirna_{self.tissue}.txt",
+                tissue_active_mirnas=self.interaction_dir
+                / self.interaction_files["mirdip"],
             )
         if "tf_marker" in self.interaction_types:
             tf_generator = self._tf_markers(
-                interaction_file=f"{self.interaction_dir}/{self.interaction_files['tf_marker']}",
+                interaction_file=self.interaction_dir
+                / self.interaction_files["tf_marker"],
             )
         if "tfbinding" in self.interaction_types:
             tfbinding_generator = self._tfbinding_footprints(
-                tfbinding_file=f"{self.shared_interaction_dir}/{self.interaction_files['tfbinding']}",
-                footprint_file=f"{self.local_dir}/{self.shared['footprints']}",
+                tfbinding_file=self.shared_interaction_dir
+                / self.interaction_files["tfbinding"],
+                footprint_file=self.local_dir / self.shared["footprints"],
             )
         # if "ppis" in self.interaction_types:
         #     ppi_generator = self._iid_ppi(
@@ -560,7 +554,7 @@ class EdgeParser:
     def _write_loop_edges(
         self,
         edges_df: pd.DataFrame,
-        file_path: str,
+        file_path: Path,
         tss=False,
     ) -> Set[str]:
         """Write the edges to a file in bulk."""
@@ -611,7 +605,7 @@ class EdgeParser:
                 df2=second_anchor_overlaps.to_dataframe(),
                 edge_type=edge_type,
             ),
-            file_path=f"{self.interaction_dir}/interaction_edges.txt",
+            file_path=self.interaction_dir / "interaction_edges.txt",
             tss=tss,
         )
 
@@ -688,7 +682,7 @@ class EdgeParser:
         with contextlib.suppress(TypeError):
             if "superenhancers" in self.interaction_types:
                 super_enhancers = pybedtools.BedTool(
-                    f"{self.local_dir}/superenhancers_{self.tissue}.bed"
+                    self.local_dir / "superenhancers_{self.tissue}.bed"
                 )
                 overlaps += [
                     (self.tss, super_enhancers, "g_se"),

@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# // TO-DO //
-# - [ ]
-#
 
 """Convert graphs from np tensors to pytorch geometric Data objects.
 
@@ -14,12 +11,14 @@ consider the nodes that pass the TPM filter.
 
 import pathlib
 import pickle
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-import torch_geometric
-from torch_geometric.data import Data
+import torch_geometric  # type: ignore
+from torch_geometric.data import Data  # type: ignore
+
+from config_handlers import ExperimentConfig
 
 NODE_FEATURE_IDXS = {
     "atac": 4,
@@ -42,9 +41,9 @@ NODE_FEATURE_IDXS = {
 def _get_mask_idxs(
     index: str,
     split: Dict[str, List[str]],
-    percentile_cutoff: int = None,
-    cutoff_file: str = None,
-) -> np.ndarray:
+    percentile_cutoff: Optional[int] = None,
+    cutoff_file: Optional[str] = None,
+) -> Tuple[Any, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Get the mask indexes for train, test, and validation sets.
 
     Args:
@@ -192,7 +191,7 @@ def create_node_tensors(
     return torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
 
-def create_mask(num_nodes: int, indices: List[int]) -> torch.Tensor:
+def create_mask(num_nodes: int, indices: torch.Tensor) -> torch.Tensor:
     """Create a boolean mask tensor, so that only gene nodes are regressed
 
     Args:
@@ -222,34 +221,34 @@ def _get_target_indices(regression_target):
 
 
 def _load_data_object_prerequisites(
-    experiment_name: str,
+    experiment_config: ExperimentConfig,
     graph_type: str,
-    root_dir: str,
     split_name: str,
     scaled: bool = False,
 ):
     """Load specific files needed to make the PyG Data object"""
-    graph_dir = pathlib.Path(root_dir) / "graphs" / split_name
+    graph_dir = experiment_config.graph_dir
+    experiment_name = experiment_config.experiment_name
 
     # get training split
-    with open(f"{graph_dir}/training_targets_split.pkl", "rb") as f:
+    with open(graph_dir / "training_targets_split.pkl", "rb") as f:
         split = pickle.load(f)
 
     # get training targets
     if scaled:
-        targets = f"{graph_dir}/training_targets_scaled.pkl"
+        targets = graph_dir / "training_targets_scaled.pkl"
     else:
-        targets = f"{graph_dir}/training_targets.pkl"
+        targets = graph_dir / "training_targets.pkl"
 
     # load the graph!
     with open(
-        f"{graph_dir}/{experiment_name}_{graph_type}_{split_name}_graph_scaled.pkl",
+        graph_dir / f"{experiment_name}_{graph_type}_{split_name}_graph_scaled.pkl",
         "rb",
     ) as file:
         graph_data = pickle.load(file)
 
     return (
-        f"{root_dir}/graphs/{experiment_name}_{graph_type}_graph_idxs.pkl",
+        f"{experiment_config.working_directory}/graphs/{experiment_name}_{graph_type}_graph_idxs.pkl",
         split,
         graph_data,
         targets,
@@ -257,9 +256,8 @@ def _load_data_object_prerequisites(
 
 
 def graph_to_pytorch(
-    experiment_name: str,
+    experiment_config: ExperimentConfig,
     graph_type: str,
-    root_dir: str,
     split_name: str,
     regression_target: str,
     randomize_feats: bool = False,
@@ -276,7 +274,7 @@ def graph_to_pytorch(
     """_summary_
 
     Args:
-        root_dir (str): _description_
+        working_dir (str): _description_
         graph_type (str): _description_
 
     Returns:
@@ -284,9 +282,8 @@ def graph_to_pytorch(
     """
 
     index, split, graph_data, targets = _load_data_object_prerequisites(
-        experiment_name=experiment_name,
+        experiment_config=experiment_config,
         graph_type=graph_type,
-        root_dir=root_dir,
         split_name=split_name,
         scaled=scaled,
     )

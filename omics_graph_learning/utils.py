@@ -11,7 +11,7 @@ from datetime import timedelta
 import functools
 import inspect
 import os
-import pathlib
+from pathlib import Path
 import pickle
 import random
 import subprocess
@@ -27,6 +27,8 @@ import seaborn as sns  # type: ignore
 import torch
 import yaml  # type: ignore
 
+from config_handlers import ExperimentConfig
+
 
 def _load_pickle(file_path: str) -> Any:
     """Wrapper to load a pkl"""
@@ -34,7 +36,7 @@ def _load_pickle(file_path: str) -> Any:
         return pickle.load(file)
 
 
-def _save_pickle(data: object, file_path: str) -> Any:
+def _save_pickle(data: object, file_path: Union[str, Path]) -> Any:
     """Wrapper to save a pkl"""
     with open(file_path, "wb") as output:
         pickle.dump(data, output)
@@ -46,7 +48,7 @@ def parse_yaml(config_file: str) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-def dir_check_make(dir: str) -> None:
+def dir_check_make(dir: Union[str, Path]) -> None:
     """Utility to make directories only if they do not already exist"""
     with suppress(FileExistsError):
         os.makedirs(dir)
@@ -113,32 +115,18 @@ class ScalerUtils:
         return parser.parse_args()
 
     @staticmethod
-    def _unpack_params(params: Dict[str, Union[str, List[str], Dict[str, str]]]):
-        """Unpack params from the .yaml"""
-        experiment_name = params["experiment_name"]
-        working_directory = str(params["working_directory"])  # Convert to str
-        # target_params = params["training_targets"]
-        return (
-            experiment_name,
-            pathlib.Path(working_directory),
-        )
-
-    @staticmethod
     def _handle_scaler_prep():
         """Handle scaler prep"""
         args = ScalerUtils._parse_args()
-        params = parse_yaml(args.experiment_config)
-        experiment_name, working_directory = ScalerUtils._unpack_params(params)
-
-        working_path = pathlib.Path(working_directory)
-        graph_dir = working_path / experiment_name / "graphs"
-        prefix = f"{experiment_name}_{args.graph_type}"
+        experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
+        split_dir = experiment_config.graph_dir / args.split_name
+        prefix = f"{experiment_config.experiment_name}_{args.graph_type}"
         return (
             args.feat,
-            graph_dir / args.split_name,
-            graph_dir / args.split_name / "scalers",
+            split_dir,
+            split_dir / "scalers",
             prefix,
-            graph_dir / prefix,
+            experiment_config.graph_dir / prefix,
             f"{prefix}_{args.split_name}_graph",
         )
 
@@ -192,8 +180,8 @@ def _dataset_split_name(
 
 
 def check_and_symlink(
-    src: str,
-    dst: str,
+    src: Union[str, Path],
+    dst: Path,
     boolean: bool = False,
 ) -> None:
     """Check if a symlink exists at the destination path and create a symlink
@@ -214,7 +202,7 @@ def check_and_symlink(
             os.symlink(src, dst)
 
 
-def _listdir_isfile_wrapper(dir: str) -> List[str]:
+def _listdir_isfile_wrapper(dir: Path) -> List[str]:
     """Returns a list of files within the directory"""
     return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
 
@@ -324,74 +312,6 @@ def prepare_tss_file(
             bed.append([line[0], line[1], line[2], f"tss_{line[3]}"])
 
     bed = pybedtools.BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
-
-
-def genes_from_gff(gff: str) -> Dict[str, str]:
-    """Get list of gtex genes from GFF file
-
-    Args:
-        gff (str): /path/to/genes.gtf
-
-    Returns:
-        List[str]: genes
-    """
-    with open(gff, newline="") as file:
-        return {
-            line[3]: line[0]
-            for line in csv.reader(file, delimiter="\t")
-            if line[0] not in ["chrX", "chrY", "chrM"]
-        }
-
-
-def filter_pybedtools_by_genes(
-    bed: pybedtools.BedTool,
-    genes: List[str],
-    autosomes_only: bool = True,
-) -> pybedtools.BedTool:
-    """Filter a pybedtools object by a list of genes."""
-    filter_term = lambda x: x[3] in genes
-    if autosomes_only:
-        filter_term = lambda x: x[3] in genes and x[0] not in ["chrX", "chrY", "chrM"]
-    return bed.filter(filter_term).saveas()
-
-
-def filter_gtex_dataframe_by_tpm(
-    df: pd.DataFrame,
-    tpm_filter: Union[float, int],
-    percent_of_samples_filter: float,
-) -> List[str]:
-    """Filter out genes in a GTEx dataframe."""
-    sample_n = len(df.columns)
-    sufficient_tpm = df.select_dtypes("number").ge(tpm_filter).sum(axis=1)
-    return list(df.loc[sufficient_tpm >= (percent_of_samples_filter * sample_n)].index)
-
-
-@time_decorator(print_args=True)
-def filter_genes_by_tpm(
-    gencode: str,
-    tpm_file: str,
-    tpm_filter: Union[float, int],
-    percent_of_samples_filter: float,
-) -> Tuple[pybedtools.BedTool, List[str]]:
-    """
-    Filter out genes in a GTEx tissue with less than 1 tpm across 20% of
-    samples in that tissue. Additionally, we exclude analysis of sex
-    chromosomes.
-
-    Returns:
-        pybedtools object with +/- <window> windows around that gene
-    """
-    df = pd.read_table(tpm_file, index_col=0, header=[2])
-    tpm_filtered_genes = filter_gtex_dataframe_by_tpm(
-        df=df,
-        tpm_filter=tpm_filter,
-        percent_of_samples_filter=percent_of_samples_filter,
-    )
-
-    genes = pybedtools.BedTool(gencode)
-    genes_filtered = filter_pybedtools_by_genes(genes, tpm_filtered_genes)
-
-    return genes_filtered.sort()
 
 
 @time_decorator(print_args=True)
