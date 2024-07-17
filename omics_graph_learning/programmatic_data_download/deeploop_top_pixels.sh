@@ -56,6 +56,23 @@ function _deeploop_txt_to_bedpe () {
     }' "$input_dir/$input_prefix.txt" > "$output_dir/$output_prefix.pixels"
 }
 
+
+function _deeploop_gse_txt_to_bedpe () {
+    input_file="$1"
+    output_file="$2"
+
+    # Check if input file exists
+    if [ ! -f "$input_file" ]; then
+        echo "Error: Input file $input_file does not exist."
+        return 1
+    fi
+
+    # Process the file and sort the output
+    sed -e 's/:/\t/g' "$input_file" | sed 's/-/\t/' | sed 's/-/\t/' > "$output_file"
+
+    echo "Reformatted coordinates have been saved to $output_file"
+}
+
 # =============================================================================
 # Liftover deeploop files
 # =============================================================================
@@ -114,7 +131,7 @@ function _extract_top_pixels () {
     local liftover=$5  # bool to liftover to hg38
 
     local pixels_dir="${working_dir}/pixels"
-    local coolers_dir="${working_dir}/coolers"
+    local coolers_dir="/ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing/deeploop_coolers"
     local liftover_resources_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references"
     local tmp_dir="${working_dir}/tmp"
 
@@ -220,6 +237,6 @@ echo "Finished in $(convertsecs "${SECONDS}")"
 # sbatch top_pixels.sh small_intestine false false true
 
 # _extract_top_pixels adrenal /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing false false true
-# sbatch top_pixels.sh adrenal false false true
-# sbatch top_pixels.sh ovary false false true
-# sbatch top_pixels.sh spleen false false true
+# sbatch top_pixels.sh adrenal true true true
+# sbatch top_pixels.sh ovary true true true
+# sbatch top_pixels.sh spleen true true true
