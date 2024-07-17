@@ -28,7 +28,7 @@ from torch_geometric.data import DataLoader
 from tqdm import tqdm
 
 from gnn import create_model
-from gnn import get_loader
+from gnn import prep_loader
 from graph_to_pytorch import graph_to_pytorch
 
 EPOCHS = 50
@@ -192,6 +192,7 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     heads = trial.suggest_int(name="heads", low=1, high=4, step=1)
     dimensions = trial.suggest_int("dimensions", low=32, high=1024, step=32)
     batch_size = trial.suggest_int("batch_size", low=16, high=512, step=16)
+    avg_connectivity = trial.suggest_categorical("avg_connectivity", [True, False])
     # loader = trial.suggest_categorical("loader", ["neighbor", "data"])
 
     # get dataloaders
@@ -209,17 +210,18 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         print(f"Number of edges: {data.num_edges}")
 
         # set up data loaders
-        train_loader = get_loader(
+        train_loader = prep_loader(
             data=data,
             mask="train_mask",
             batch_size=batch_size,
             shuffle=True,
             layers=gnn_layers,
+            avg_connectivity=avg_connectivity,
         )
-        test_loader = get_loader(
+        test_loader = prep_loader(
             data=data, mask="test_mask", batch_size=batch_size, layers=gnn_layers
         )
-        val_loader = get_loader(
+        val_loader = prep_loader(
             data=data, mask="val_mask", batch_size=batch_size, layers=gnn_layers
         )
         return train_loader, test_loader, val_loader

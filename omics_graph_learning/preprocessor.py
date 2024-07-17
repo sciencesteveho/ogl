@@ -21,6 +21,7 @@ import pandas as pd
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 from constants import REGULATORY_ELEMENTS
+from utils import _get_chromatin_loop_file
 from utils import check_and_symlink
 from utils import dir_check_make
 from utils import time_decorator
@@ -113,6 +114,11 @@ class GenomeDataPreprocessor:
         self._symlink_rawdata()
         # self._download_shared_files()
 
+        if "loops" in self.nodes:
+            self.loops = _get_chromatin_loop_file(
+                experiment_config=experiment_config, tissue_config=tissue_config
+            )
+
     def _make_directories(self) -> None:
         """Make directories for processing"""
         dir_check_make(self.tissue_dir)
@@ -186,6 +192,13 @@ class GenomeDataPreprocessor:
             > {self.tissue_dir}/local/tads_{self.tissue}.txt"
 
         self._run_cmd(cmd)
+
+    @time_decorator(print_args=True)
+    def _add_loop_id(self, bed: str) -> None:
+        """Add identification number to each chr loop"""
+        cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $6, \"loop_\"NR}}' \
+            {self.tissue_dir}/unprocessed/{bed} \
+            > {self.tissue_dir}/local/loops_{self.tissue}.txt"
 
     @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
@@ -440,6 +453,8 @@ class GenomeDataPreprocessor:
                 )
             if "tads" in self.nodes:
                 self._add_tad_id(self.tissue_specific_nodes["tads"])
+            if "loops" in self.nodes:
+                self._add_loop_id(self.loops)
             if "superenhancers" in self.nodes:
                 self._superenhancers(self.tissue_specific_nodes["super_enhancer"])
             if "tfbindingsites" in self.nodes:

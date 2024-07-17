@@ -9,10 +9,12 @@ numbers, saved as a pytorch geometric Data object, and a mask is applied to only
 consider the nodes that pass the TPM filter.
 """
 
+from dataclasses import dataclass
 import pathlib
 import pickle
 from typing import Any, Dict, List, Optional, Tuple
 
+import networkx as nx  # type: ignore
 import numpy as np
 import torch
 import torch_geometric  # type: ignore
@@ -38,12 +40,59 @@ NODE_FEATURE_IDXS = {
 }
 
 
+@dataclass
+class GraphConfig:
+    randomize_feats: bool = False
+    zero_node_feats: bool = False
+    node_perturbation: Optional[str] = None
+    node_remove_edges: Optional[List[str]] = None
+    single_gene: Optional[str] = None
+    randomize_edges: bool = False
+    total_random_edges: int = 0
+    scaled: bool = False
+    positional_encoding: bool = False
+    remove_node: Optional[str] = None
+    percentile_cutoff: Optional[int] = None
+
+
+def _assign_nodes_to_split(
+    graph_data: Dict[str, Any],
+    test_chrs: List[str],
+    val_chrs: List[str],
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Assign nodes to train, test, and validation sets.
+
+    Args:
+        graph (nx.Graph): The graph object.
+        test_chrs (List[str]): The list of test chromosomes.
+        val_chrs (List[str]): The list of validation chromosomes.
+
+    Returns:
+        Dict[str, List[str]]: The split dictionary containing train, test, and
+        validation gene lists.
+    """
+    coordinates = graph_data["coordinates"]
+    train, test, validation = [], [], []
+    for node in range(graph_data["num_nodes"]):
+        if coordinates[node]["chr"] in test_chrs:
+            train.append(node)
+        elif coordinates[node]["chr"] in val_chrs:
+            test.append(node)
+        else:
+            validation.append(node)
+    return (
+        torch.tensor(train, dtype=torch.float),
+        torch.tensor(test, dtype=torch.float),
+        torch.tensor(validation, dtype=torch.float),
+    )
+
+
 def _get_mask_idxs(
-    index: str,
+    graph_index: Dict[str, int],
     split: Dict[str, List[str]],
     percentile_cutoff: Optional[int] = None,
     cutoff_file: Optional[str] = None,
-) -> Tuple[Any, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Get the mask indexes for train, test, and validation sets.
 
     Args:
@@ -61,18 +110,16 @@ def _get_mask_idxs(
 
     def get_tensor_for_genes(gene_list: List[str]) -> torch.Tensor:
         return torch.tensor(
-            [graph_index[gene] for gene in gene_list if gene in graph_index.keys()],
+            [graph_index[gene] for gene in gene_list if gene in graph_index],
             dtype=torch.long,
         )
 
-    # load graph indexes
-    with open(index, "rb") as f:
-        graph_index = pickle.load(f)
-
+    # get masks used for calculating loss, so these masks only contain gene
+    # nodes
     all_genes = split["train"] + split["test"] + split["validation"]
-    train_tensor = get_tensor_for_genes(split["train"])
-    validation_tensor = get_tensor_for_genes(split["validation"])
-    all_genes_tensor = get_tensor_for_genes(all_genes)
+    train_mask_loss = get_tensor_for_genes(split["train"])
+    val_mask_loss = get_tensor_for_genes(split["validation"])
+    all_genes_mask = get_tensor_for_genes(all_genes)
 
     if percentile_cutoff:
         with open(
@@ -81,19 +128,18 @@ def _get_mask_idxs(
         ) as f:
             test_genes = pickle.load(f)
         test_genes = list(test_genes.keys())
-        test_tensor = torch.tensor(
+        test_mask_loss = torch.tensor(
             [graph_index.get(gene, -1) for gene in test_genes],
             dtype=torch.long,
         )
     else:
-        test_tensor = get_tensor_for_genes(split["test"])
+        test_mask_loss = get_tensor_for_genes(split["test"])
 
     return (
-        graph_index,
-        train_tensor,
-        test_tensor,
-        validation_tensor,
-        all_genes_tensor,
+        train_mask_loss,
+        test_mask_loss,
+        val_mask_loss,
+        all_genes_mask,
     )
 
 
@@ -144,8 +190,8 @@ def create_edge_index(
     if node_remove_edges:
         return torch.tensor(
             [
-                np.delete(graph_data["edge_index"][0], node_remove_edges),
-                np.delete(graph_data["edge_index"][1], node_remove_edges),
+                np.delete(graph_data["edge_index"][0], np.array(node_remove_edges)),
+                np.delete(graph_data["edge_index"][1], np.array(node_remove_edges)),
             ],
             dtype=torch.long,
         )
@@ -167,6 +213,7 @@ def create_node_tensors(
     node_perturbation: Optional[str],
     zero_node_feats: bool,
     randomize_feats: bool,
+    positional_encoding: bool = False,
 ) -> torch.Tensor:
     """Create the node tensors for the graph, perturbing if necessary according
     to input args
@@ -188,6 +235,14 @@ def create_node_tensors(
         return torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
     elif randomize_feats:
         return torch.rand(graph_data["node_feat"].shape, dtype=torch.float)
+    elif positional_encoding:
+        return torch.tensor(
+            np.concatenate(
+                (graph_data["node_feat"], graph_data["node_positional_encoding"]),
+                axis=1,
+            ),
+            dtype=torch.float,
+        )
     return torch.tensor(graph_data["node_feat"], dtype=torch.float)
 
 
@@ -229,6 +284,7 @@ def _load_data_object_prerequisites(
     """Load specific files needed to make the PyG Data object"""
     graph_dir = experiment_config.graph_dir
     experiment_name = experiment_config.experiment_name
+    index_file = f"{experiment_config.working_directory}/graphs/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
     # get training split
     with open(graph_dir / "training_targets_split.pkl", "rb") as f:
@@ -247,8 +303,12 @@ def _load_data_object_prerequisites(
     ) as file:
         graph_data = pickle.load(file)
 
+    # load index
+    with open(index_file, "rb") as f:
+        index = pickle.load(f)
+
     return (
-        f"{experiment_config.working_directory}/graphs/{experiment_name}_{graph_type}_graph_idxs.pkl",
+        index,
         split,
         graph_data,
         targets,
@@ -268,6 +328,7 @@ def graph_to_pytorch(
     randomize_edges: bool = False,
     total_random_edges: int = 0,
     scaled: bool = False,
+    positional_encoding: bool = False,
     remove_node: Optional[str] = None,
     percentile_cutoff: Optional[int] = None,
 ) -> torch_geometric.data.Data:
@@ -281,7 +342,8 @@ def graph_to_pytorch(
         _type_: _description_
     """
 
-    index, split, graph_data, targets = _load_data_object_prerequisites(
+    # load necessary files
+    graph_index, split, graph_data, targets = _load_data_object_prerequisites(
         experiment_config=experiment_config,
         graph_type=graph_type,
         split_name=split_name,
@@ -296,27 +358,44 @@ def graph_to_pytorch(
 
     # get nodes, perturb if according to args
     node_tensors = create_node_tensors(
-        graph_data, node_perturbation, zero_node_feats, randomize_feats
+        graph_data,
+        node_perturbation,
+        zero_node_feats,
+        randomize_feats,
+        positional_encoding,
     )
 
-    # get mask indexes
+    # get mask indexes for train_loss, test_loss, val_loss, and all_loss
     if percentile_cutoff:
-        graph_index, train, test, val, all_idx = _get_mask_idxs(
-            index=index, split=split, percentile_cutoff=percentile_cutoff
+        train_loss_idxs, test_loss_idxs, val_loss_idxs, all_loss_idxs = _get_mask_idxs(
+            graph_index=graph_index,
+            split=split,
+            percentile_cutoff=percentile_cutoff,
         )
     else:
-        graph_index, train, test, val, all_idx = _get_mask_idxs(
-            index=index, split=split
+        train_loss_idxs, test_loss_idxs, val_loss_idxs, all_loss_idxs = _get_mask_idxs(
+            graph_index=graph_index,
+            split=split,
         )
+
+    # get indexes used for convolutions, so these masks contain all nodes
+    train_idxs, test_idxs, val_idxs = _assign_nodes_to_split(
+        graph_data=graph_data,
+        test_chrs=experiment_config.test_chrs,
+        val_chrs=experiment_config.val_chrs,
+    )
 
     # set up pytorch geometric Data object
     data = Data(x=node_tensors.contiguous(), edge_index=edge_index.contiguous())
 
     # create masks
-    train_mask = create_mask(data.num_nodes, train)
-    test_mask = create_mask(data.num_nodes, test)
-    val_mask = create_mask(data.num_nodes, val)
-    all_mask = create_mask(data.num_nodes, all_idx)
+    train_mask_loss = create_mask(data.num_nodes, train_loss_idxs)
+    test_mask_loss = create_mask(data.num_nodes, test_loss_idxs)
+    val_mask_loss = create_mask(data.num_nodes, val_loss_idxs)
+    all_mask_loss = create_mask(data.num_nodes, all_loss_idxs)
+    train_mask = create_mask(data.num_nodes, train_idxs)
+    test_mask = create_mask(data.num_nodes, test_idxs)
+    val_mask = create_mask(data.num_nodes, val_idxs)
 
     if single_gene:
         gene_idx = torch.tensor([single_gene], dtype=torch.long)
@@ -346,9 +425,15 @@ def graph_to_pytorch(
 
     # add mask and target values to data object
     data.train_mask = train_mask.contiguous()
-    data.test_mask = gene_mask.contiguous() if single_gene else test_mask.contiguous()
+    data.test_mask = test_mask.contiguous()
     data.val_mask = val_mask.contiguous()
+
+    data.train_mask_loss = train_mask_loss.contiguous()
+    data.test_mask_loss = (
+        gene_mask.contiguous() if single_gene else test_mask_loss.contiguous()
+    )
+    data.val_mask = val_mask_loss.contiguous()
+    data.all_mask_loss = all_mask_loss.contiguous()
     data.y = y_vals.T.contiguous()
-    data.all_mask = all_mask.contiguous()
 
     return data

@@ -28,6 +28,14 @@ import torch
 import yaml  # type: ignore
 
 from config_handlers import ExperimentConfig
+from config_handlers import TissueConfig
+
+
+def _get_chromatin_loop_file(
+    experiment_config: ExperimentConfig, tissue_config: TissueConfig
+) -> str:
+    """Returns the specified loop file"""
+    return f"{experiment_config.baseloop_dir}/{experiment_config.baseloops}/{tissue_config.resources['tissue']}_loops.bedpe"
 
 
 def _load_pickle(file_path: str) -> Any:
@@ -146,8 +154,8 @@ class ScalerUtils:
 
 
 def _dataset_split_name(
-    test_chrs: Optional[List[int]] = None,
-    val_chrs: Optional[List[int]] = None,
+    test_chrs: Optional[List[str]] = None,
+    val_chrs: Optional[List[str]] = None,
     tpm_filter: Union[float, int] = 0.1,
     percent_of_samples_filter: float = 0.2,
 ) -> str:

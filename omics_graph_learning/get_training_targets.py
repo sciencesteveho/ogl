@@ -7,6 +7,7 @@ training the network."""
 
 import argparse
 from pathlib import Path
+import pickle
 from typing import Dict, List
 
 import numpy as np
@@ -100,6 +101,19 @@ def get_training_targets(
             )
         unique_genes.update(_append_tissue_to_genes(filtered_genes, tissue))
     target_genes = list(unique_genes)
+
+    # remove RBP genes, if active and stored
+    if "rbp_network" in experiment_config.interaction_types:
+        active_rbp_file = (
+            experiment_config.interaction_dir
+            / experiment_config.experiment_name
+            / tissue_config.resources["tissue"]
+            / "interaction"
+            / "active_rbps.pkl"
+        )
+        with open(active_rbp_file, "rb") as f:
+            active_rbps = pickle.load(f)
+        target_genes = [gene for gene in target_genes if gene not in active_rbps]
 
     # get dataset split
     splitter = GeneTrainTestSplitter(target_genes=target_genes)

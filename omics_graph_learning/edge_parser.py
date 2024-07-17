@@ -9,17 +9,9 @@ import contextlib
 import csv
 import os
 from pathlib import Path
-from typing import (
-    Callable,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+import pickle
+from typing import (Callable, Dict, Generator, Iterator, List, Optional, Set,
+                    Tuple, Union)
 
 import pandas as pd
 import pybedtools  # type: ignore
@@ -27,6 +19,8 @@ import pybedtools  # type: ignore
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 from constants import REGULATORY_ELEMENTS
+from rbp_network_filter import RBPNetworkFilter
+from utils import _get_chromatin_loop_file
 from utils import genes_from_gencode
 from utils import time_decorator
 
@@ -83,9 +77,10 @@ class EdgeParser:
         self,
         experiment_config: ExperimentConfig,
         tissue_config: TissueConfig,
-        loop_file: str,
+        # loop_file: str,
     ):
         """Initialize the class"""
+        self.experiment_config = experiment_config
         self.tissue_config = tissue_config
 
         self.experiment_name = experiment_config.experiment_name
@@ -94,7 +89,10 @@ class EdgeParser:
         self.root_dir = experiment_config.root_dir
         self.attribute_references = experiment_config.attribute_references
         self.regulatory_schema = experiment_config.regulatory_schema
-        self.loop_file = loop_file
+
+        self.loop_file = _get_chromatin_loop_file(
+            experiment_config=experiment_config, tissue_config=tissue_config
+        )
 
         self.tf_extension = ""
         if experiment_config.differentiate_tf == True:
@@ -230,6 +228,33 @@ class EdgeParser:
         for node in basenodes:
             self._write_noderef_combination(node)
         print("Node references complete!")
+
+    def _rbp_network(
+        self,
+        tpm_filter: int = 10,
+        # ) -> Generator[Tuple[str, str, float, str], None, None]:
+    ) -> Generator[Tuple[str, str, str], None, None]:
+        """Filters RBP interactions based on tpm filter, derived from POSTAR3"""
+        rbp_network_obj = RBPNetworkFilter(
+            rbp_proteins=self.experiment_config.rbp_proteins,
+            gencode=self.gencode,
+            network_file=self.experiment_config.rbp_network,
+            tpm_filter=tpm_filter,
+            rna_seq_file=self.tissue_config.resources["rna"],
+        )
+        rbp_network_obj.filter_rbp_network()
+
+        # save gene list to file
+        with open(self.interaction_dir / "active_rbps.pkl", "wb") as file:
+            pickle.dump(rbp_network_obj.active_rbps, file)
+
+        for tup in rbp_network_obj.filtered_network:
+            yield (
+                tup[0],
+                tup[1],
+                # -1,
+                "rbp",
+            )
 
     def _mirna_targets(
         self,

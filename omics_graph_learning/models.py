@@ -1,11 +1,15 @@
+# sourcery skip: avoid-single-character-names-variables, upper-camel-case-classes
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
 
-"""GNN model architectures for node regression. The models include four
-different types of architectures:
+"""GNN model architectures for node regression. We adopt a base class for the
+GNN architecture space. Specific GNN models inherit from the baseclass to
+allow flexible and module GNN design. Model args specific for each convolutional
+operator are hardcoded into the class definition.
 
-(1) Classic message passing neural networks (MPNNs):
+The models include four different classes of architectures:
+
+(1) Classic message passing neural networks (MPNNs): 
     Graph convolutional networks (GCN)
     GraphSAGE
     Principle neighborhood aggregation (PNA - MPNN w/ aggregators and scalers)
@@ -14,15 +18,15 @@ different types of architectures:
     Graph attention networks V2 (GATv2)
     UniMPTransformer (GCN with UniMP transformer operator)
 
-(3) Large scale models (transformers, or GNN with large number of layers):
+(3) Large scale models (GNN with large number of layers):
     DeeperGCN
-    Transformer based? To be implemented
 
-(4) Basline:
-    3-layer MLP
+(4) Baseline: 3-layer MLP
 """
 
-from typing import Any, Callable, List, Optional
+from __future__ import annotations
+
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.nn import Linear
@@ -31,7 +35,6 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv  # type: ignore
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import GENConv
-from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn import GraphNorm
 from torch_geometric.nn import LayerNorm
 from torch_geometric.nn import PNAConv
@@ -40,133 +43,162 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
 
-def _define_activation(activation: str) -> Callable:
+def define_activation(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
     """Defines the activation function according to the given string"""
-    activations = {"gelu": F.gelu, "leakyrelu": F.leaky_relu, "relu": F.relu}
-    if activation in activations:
+    activations: dict[str, Callable[[torch.Tensor], torch.Tensor]] = {
+        "gelu": F.gelu,
+        "leakyrelu": F.leaky_relu,
+        "relu": F.relu,
+    }
+    try:
         return activations[activation]
-    else:
+    except KeyError as error:
         raise ValueError(
             "Invalid activation function. Supported: relu, leakyrelu, gelu"
-        )
+        ) from error
 
 
-def _create_norm_layers(embedding_size: int, layers: int) -> nn.ModuleList:
-    """Create normalization layers for GNN."""
-    return nn.ModuleList([GraphNorm(embedding_size) for _ in range(layers)])
-
-
-def _create_gnn_layers(
-    in_size: int, embedding_size: int, layers: int, config: dict
-) -> nn.ModuleList:
-    """Create gnn layers for models that support lazy initialization.
+class MLP(nn.Module):
+    """Simple three layer MLP model architecture.
 
     Args:
-        in_size (int): Size of the input tensor.
-        embedding_size (int): Size of hidden dimensions.
-        gnn_layers (int): Number of convolutional layers.
-        operator (Callable): The convolutional operator to use.
+        in_size: The input size of the MLP model.
+        embedding_size: The size of the embedding dimension.
+        out_channels: The number of output channels.
+        activation: String specifying the activation function between linear
+        layers. Defaults to `relu`.
 
     Returns:
-        nn.ModuleList: Module list containing the convolutional layers.
+        torch.Tensor: The output tensor.
     """
-    convs = nn.ModuleList()
-    for i in range(layers):
-        layer_config = {**config, "in_channels": in_size if i == 0 else embedding_size}
-        convs.append(layer_config["operator"](**layer_config))
-    return convs
-
-
-def _initialize_linear_layers(
-    in_size: int, out_size: int, layers: int, include_projection: bool = False
-) -> nn.ModuleList:
-    """Create linear layers for models that support lazy initialization.
-
-    Args:
-        in_size: The input size of the linear layers.
-        out_size: The output size of the final layer.
-        gnn_layers: The number of linear layers.
-
-    Returns:
-        nn.ModuleList: The module list containing the linear layers.
-    """
-    linear_layers = nn.ModuleList()
-    for _ in range(layers - 1):
-        linear_layers.append(nn.Linear(in_size, in_size))
-
-    linear_layers.append(nn.Linear(in_size, out_size))
-
-    linear_projection = (
-        nn.Linear(in_size, in_size, bias=False) if include_projection else None
-    )
-
-    return linear_layers, linear_projection
-
-
-def _get_linear_layer_sizes_attn_models(
-    heads: int, embedding_size: int, linear_layers: int, out_channels: int
-) -> List[int]:
-    """Get the sizes of the linear layers for models w/ attention heads."""
-    return (
-        [heads * embedding_size]
-        + [embedding_size] * (linear_layers - 1)
-        + [out_channels]
-    )
-
-
-def _create_linear_layers_attn_models(sizes: List[int]) -> nn.ModuleList:
-    """Create linear layers for models w/ attention heads.
-
-    Args:
-        sizes: A list of sizes for the linear layers.
-
-    Returns:
-        nn.ModuleList: The module list containing the linear layers.
-    """
-    return nn.ModuleList(
-        [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
-    )
-
-
-class FlexibleGNNModule(torch.nn.Module):
-    """Modular GNN model architecture"""
 
     def __init__(
         self,
         in_size: int,
         embedding_size: int,
         out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
+        activation: str = "relu",
+    ):
+        """Initialize the MLP model."""
+        super().__init__()
+        self.linears = nn.ModuleList(
+            [
+                nn.Linear(in_size, embedding_size),
+                nn.Linear(embedding_size, embedding_size),
+                nn.Linear(embedding_size, out_channels),
+            ]
+        )
+        self.activation = define_activation(activation)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the MLP model.
+
+        Args:
+            x: The input tensor.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        for linear in self.linears[:-1]:
+            x = self.activation(linear(x))
+
+        return self.linears[-1](x)
+
+
+class ModularGNN(nn.Module):
+    """Highly modular and flexible GNN model architecture.
+
+    Attributes:
+        activation: The activation function to use, from `relu`, `leakyrelu`, `gelu`.
+        dropout_rate: The dropout rate.
+        num_tasks: The number of output tasks. When set to 1, a single output head
+            is used as a shared MLP. When set to greater than 1, multiple output heads are used.
+        skip_connection: The type of skip connection.
+        positional_encoding: Boolean indicating if positional encoding is used.
+        positional_encoding_dim: The number of dimensions for positional encoding.
+        convs: The graph convolutional layers.
+        norms: The normalization layers.
+        linears: The linear layers.
+        task_head: The task specific heads.
+        linear_projection: The linear projection for skip connections.
+    """
+
+    def __init__(
+        self,
         activation: str,
-        gnn_operator_config: dict,
-        residual: bool = False,
+        in_size: int,
+        embedding_size: int,
+        out_channels: int,
+        gnn_layers: int,
+        shared_mlp_layers: int,
+        gnn_operator_config: Dict[str, Any],
         dropout_rate: Optional[float] = None,
+        positional_encoding: bool = False,
+        skip_connection: Optional[str] = None,
+        task_specific_mlp: bool = False,
     ):
         """Initialize the model"""
         super().__init__()
-        self.residual = residual
         self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
+        self.skip_connection = skip_connection
+        self.task_specific_mlp = task_specific_mlp
+        self.activation = define_activation(activation)
+        self.positional_encoding = positional_encoding
+        self.positional_encoding_dim = (
+            5  # positional encoding is hardcoded at 5 dimensions
+        )
+        if "heads" in gnn_operator_config:
+            heads = gnn_operator_config["heads"]
+
+        # Adjust dimensions if positional encoding is used
+        if self.positional_encoding:
+            in_size += self.positional_encoding_dim
 
         # Initialize GNN layers and batch normalization
-        self.convs = _create_gnn_layers(
+        self.convs = self._create_gnn_layers(
             in_size=in_size,
             embedding_size=embedding_size,
             layers=gnn_layers,
             config=gnn_operator_config,
         )
 
-        # Initialize linear layers with optional residual connection
-        self.linear_layers, self.linear_projection = _initialize_linear_layers(
-            in_size=embedding_size,
-            out_size=out_channels,
-            layers=linear_layers,
-            include_projection=residual,
+        # Initialize normalization layers
+        self.norms = self._get_normalization_layers(
+            layers=gnn_layers,
+            embedding_size=embedding_size,
         )
 
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the GraphSAGE model.
+        # Initialize linear layers (task-specific MLP)
+        self.linears = self._get_linear_layers(
+            in_size=embedding_size,
+            layers=shared_mlp_layers,
+            heads=heads if "heads" in gnn_operator_config else None,
+        )
+
+        # get task specific heads
+        self.task_head = self._get_task_head(
+            in_size=embedding_size,
+            out_size=out_channels,
+        )
+
+        # Create linear projection for skip connections
+        if self.skip_connection:
+            self.linear_projection = self._residuals(
+                in_size=in_size,
+                embedding_size=(
+                    embedding_size
+                    if "heads" not in gnn_operator_config
+                    else heads * embedding_size
+                ),
+            )
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        node_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of the neural network.
 
         Args:
             x: The input tensor.
@@ -175,453 +207,287 @@ class FlexibleGNNModule(torch.nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                residual = self.linear_projection(x) if conv == self.convs[0] else x
-                x = self.activation(batch_norm(conv(x, edge_index))) + residual
+        h1 = x  # save input for skip connections
+
+        # graph convolutions with normalization and optional skip connections.
+        # the skip connections are handled by their instance types
+        for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
+            if self.linear_projection:
+                if isinstance(self.linear_projection, nn.Linear):
+                    residual = (
+                        self.linear_projection(h1) if conv == self.convs[0] else x
+                    )
+                    x = self.activation(batch_norm(conv(x, edge_index))) + residual
+                elif isinstance(self.linear_projection, nn.ModuleList):
+                    residual = self.linear_projection[i](
+                        h1 if conv == self.convs[0] else x
+                    )
+                    x = self.activation(batch_norm(conv(x, edge_index))) + residual
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
 
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linears[:-1]:
+        # shared linear layers
+        for linear_layer in self.linears:
             x = self.activation(linear_layer(x))
-            if apply_dropout:
+            if isinstance(self.dropout_rate, float):
+                assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
 
-        return self.linears[-1](x)
+        # task specific heads, also handled by their instance types
+        if isinstance(self.task_head, nn.Linear):
+            return self.task_head(x)
 
+        if node_mask is None:
+            raise ValueError("Node mask must be provided for task specific MLPs.")
 
-class GCN(torch.nn.Module):
-    """GCN model architecture.
+        node_specific_x = x[node_mask]
+        node_specific_x = F.relu(self.task_head[0](node_specific_x))
+        node_specific_out = self.node_specific_task_head(node_specific_x)
 
-    Args:
-        in_size: The input size of the GCN model.
-        embedding_size: The size of the embedding dimension.
-        out_channels: The number of output channels.
-        gnn_layers: The number of GCN layers.
+        # create output tensor
+        out = torch.zeros(x.size(0), 1, device=x.device)
+        out[node_mask] = node_specific_out
+        return out
 
-    Returns:
-        torch.Tensor: The output tensor.
-    """
-
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        heads: int = 0,
-        residual: bool = False,
-        dropout_rate: Optional[float] = None,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.residual = residual
-        self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
-        self.heads = heads
-
-        # Create graph convolution layers
-        self.convs, self.norms = _initialize_lazy_gnn_layers(
-            in_size=in_size,
-            embedding_size=embedding_size,
-            gnn_layers=gnn_layers,
-            operator=GCNConv,
-        )
-
-        # Create linear layers, ending with a single combined layer
-        self.combined_linear = nn.Linear(
-            in_features=embedding_size, out_features=embedding_size
-        )
-
-        # Create additional task heads if required
-        if heads:
-            self.task_heads = nn.ModuleList()
-            for _ in range(heads):
-                # Each head has two linear layers before output
-                if self.dropout_rate:
-                    task_layers = nn.Sequential(
-                        nn.Linear(
-                            in_features=embedding_size, out_features=embedding_size
-                        ),
-                        self.activation,
-                        nn.Dropout(p=self.dropout_rate),
-                        nn.Linear(
-                            in_features=embedding_size, out_features=out_channels
-                        ),
-                    )
-                else:
-                    task_layers = nn.Sequential(
-                        nn.Linear(
-                            in_features=embedding_size, out_features=embedding_size
-                        ),
-                        self.activation,
-                        nn.Linear(
-                            in_features=embedding_size, out_features=out_channels
-                        ),
-                    )
-                self.task_heads.append(task_layers)
-
-        # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        # sourcery skip: assign-if-exp, swap-if-else-branches
-        """Forward pass of the GCN model.
+    @staticmethod
+    def _create_gnn_layers(
+        in_size: int, embedding_size: int, layers: int, config: dict
+    ) -> nn.ModuleList:
+        """Create graph convolutional layers and normalization layers for GNN
+        models.
 
         Args:
-            x: The input tensor. edge_index: The edge index tensor.
+            in_size (int): Size of the input tensor.
+            embedding_size (int): Size of hidden dimensions.
+            layers (int): Number of convolutional layers.
+            config (dict): Configuration for operator specific params.
 
         Returns:
-            torch.Tensor: The output tensor.
+            nn.ModuleList: Module list containing the convolutional layers.
         """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                residual = self.linear_projection(x) if conv == self.convs[0] else x
-                x = self.activation(batch_norm(conv(x, edge_index))) + residual
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+        convs = nn.ModuleList()
 
-        # shared linear layer
-        x = self.activation(self.combined_linear(x))
-        if isinstance(self.dropout_rate, float):
-            x = F.dropout(x, p=self.dropout_rate)
+        operator = config.pop("operator")
+        base_config = {
+            "out_channels": embedding_size,
+            **config,
+        }
 
-        if self.heads:
-            return torch.stack([head(x) for head in self.task_heads], dim=-1)
+        for i in range(layers):
+            layer_config = {
+                "in_channels": (
+                    in_size
+                    if i == 0
+                    else (
+                        config["heads"] * embedding_size
+                        if "heads" in config
+                        else embedding_size
+                    )
+                ),
+            } | base_config
+            convs.append(operator(**layer_config))
+        return convs
+
+    @staticmethod
+    def _get_normalization_layers(
+        layers: int,
+        embedding_size: int,
+    ) -> nn.ModuleList:
+        """Create GraphNorm normalization layers for the model."""
+        return nn.ModuleList([GraphNorm(embedding_size) for _ in range(layers)])
+
+    @classmethod
+    def _residuals(
+        cls, in_size: int, embedding_size: int
+    ) -> Union[nn.ModuleList, nn.Linear]:
+        """Create skip connection linear projections"""
+        if cls.skip_connection == "shared_source":
+            return nn.Linear(in_size, embedding_size, bias=False)
+        elif cls.skip_connection == "distinct_source":
+            return nn.ModuleList(
+                [
+                    nn.Linear(
+                        in_size if i == 0 else embedding_size,
+                        embedding_size,
+                        bias=False,
+                    )
+                    for i in range(len(cls.convs))
+                ]
+            )
+        else:
+            raise ValueError(
+                "Invalid skip connection type: must be `shared_source` or `distinct_source`."
+            )
+
+    @classmethod
+    def _get_linear_layers(
+        cls,
+        in_size: int,
+        layers: int,
+        heads: Optional[int] = None,
+    ) -> nn.ModuleList:
+        """Create linear layers for the model along with optional linear
+        projection for residual connections.
+
+        Args:
+            in_size: The input size of the linear layers.
+            out_size: The output size of the final layer.
+            gnn_layers: The number of linear layers.
+
+        Returns:
+            nn.ModuleList: The module list containing the linear layers.
+        """
+        if cls.task_specific_mlp:
+            layers -= 1
+        return cls._linear_module(cls._linear_layer_dimensions(in_size, layers, heads))
+
+    @classmethod
+    def _get_task_head(
+        cls,
+        in_size: int,
+        out_size: int,
+    ) -> Union[nn.ModuleList, nn.Linear]:
+        """Create the task head for the model. If num_tasks is greater than 1,
+        then creates task specific heads for each output. If num_tasks is 1,
+        then creates a single output head (shared MLP layer)"""
+        if cls.task_specific_mlp:
+            node_specific_linear = nn.Linear(in_size, in_size)
+            node_specific_task_head = nn.Linear(in_size, out_size)
+            return nn.ModuleList([node_specific_linear, node_specific_task_head])
+        return nn.Linear(in_size, out_size)
+
+    @staticmethod
+    def _linear_layer_dimensions(
+        embedding_size: int,
+        linear_layers: int,
+        heads: Optional[int],
+    ) -> List[int]:
+        """Get the sizes of the linear layers for models w/ attention heads."""
+        if heads:
+            return [heads * embedding_size] + [embedding_size] * (linear_layers - 1)
+        return [embedding_size] * linear_layers
+
+    @staticmethod
+    def _linear_module(sizes: List[int]) -> nn.ModuleList:
+        """Create linear layers for models w/ attention heads.
+
+        Args:
+            sizes: A list of sizes for the linear layers.
+
+        Returns:
+            nn.ModuleList: The module list containing the linear layers.
+        """
+        return nn.ModuleList(
+            [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
+        )
 
 
-class GraphSAGE(torch.nn.Module):
-    """GraphSAGE model architecture.
+class GCN(ModularGNN):
+    """Classic Graph Convolutional Network (GCN) model architecture."""
 
-    Args:
-        in_size: Dimensions of the node features.
-        embedding_size: Dimensions of the hidden layers.
-        out_channels: The number of output channels.
-        gnn_layers: The number of GraphSAGE layers.
-        linear_layers: The number of linear layers.
-        dropout_rate: The dropout rate.
+    def __init__(self, *args: Any, **kwargs: Any):
+        gcn_config = {
+            "operator": GCNConv,
+        }
+        kwargs["gnn_operator_config"] = {
+            **gcn_config,
+            **kwargs.get("gnn_operator_config", {}),
+        }
+        super().__init__(*args, **kwargs)
 
-    Returns:
-        torch.Tensor: The output tensor.
-    """
 
-    def __init__(
-        self,
-        in_size,
-        embedding_size,
-        out_channels,
-        gnn_layers,
-        linear_layers,
-        activation,
-        residual,
-        dropout_rate,
-    ):
-        gnn_operator_config = {
+class GraphSAGE(ModularGNN):
+    """GraphSAGE model architecture."""
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        sage_config = {
             "operator": SAGEConv,
             "aggr": "mean",
         }
-        super().__init__(
-            in_size,
-            embedding_size,
-            out_channels,
-            gnn_layers,
-            linear_layers,
-            activation,
-            gnn_operator_config,
-            residual,
-            dropout_rate,
-        )
+        kwargs["gnn_operator_config"] = {
+            **sage_config,
+            **kwargs.get("gnn_operator_config", {}),
+        }
+        super().__init__(*args, **kwargs)
 
 
-class PNA(torch.nn.Module):
-    """Principle neighborhood aggregation.
-
-    Args:
-        in_size: Dimensions of the node features.
-        embedding_size: Dimensions of the hidden layers.
-        out_channels: The number of output channels.
-        gnn_layers: The number of GATv2 layers.
-        linear_layers: The number of linear layers.
-        heads: The number of attention heads.
-        dropout_rate: The dropout rate.
+class PNA(ModularGNN):
+    """GCN architecture with multiple aggregators (Principle Neighborhood
+    Aggregation).
     """
 
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        deg: torch.Tensor,
-        residual: bool = False,
-        dropout_rate: Optional[float] = 0.5,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.residual = residual
-        self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
-        self.deg = deg
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
-
-        aggregators = ["mean", "min", "max", "std"]
-        scalers = ["identity", "amplification", "attenuation"]
-
-        # create graph convolution layers
-        self.convs.append(
-            PNAConv(
-                in_channels=in_size,
-                out_channels=embedding_size,
-                aggregators=aggregators,
-                scalers=scalers,
-                deg=deg,
-                towers=2,  # double check this
-                divide_input=False,
-            )
-        )
-        self.norms.append(GraphNorm(embedding_size))
-        for _ in range(gnn_layers - 1):
-            self.convs.append(
-                PNAConv(
-                    in_channels=embedding_size,
-                    out_channels=embedding_size,
-                    aggregators=aggregators,
-                    scalers=scalers,
-                    deg=deg,
-                    towers=2,
-                    divide_input=False,
-                )
-            )
-            self.norms.append(GraphNorm(embedding_size))
-
-        # Create linear layers
-        self.linear_layers = _create_lazy_linear_layers(
-            in_size=embedding_size, out_size=out_channels, linear_layers=linear_layers
-        )
-
-        # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size, bias=False)
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the GATv2 model.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor.
-        """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                if conv == self.convs[0]:
-                    x = self.activation(
-                        batch_norm(conv(x, edge_index))
-                    ) + self.linear_projection(x)
-                else:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
-
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linear_layers[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
-
-        return self.linear_layers[-1](x)
+    def __init__(self, deg: torch.Tensor, *args: Any, **kwargs: Any):
+        pna_config = {
+            "operator": PNAConv,
+            "aggregators": ["mean", "min", "max", "std"],
+            "scalers": ["identity", "amplification", "attenuation"],
+            "deg": deg,
+            "towers": 2,
+            "divide_input": False,
+        }
+        kwargs["gnn_operator_config"] = {
+            **pna_config,
+            **kwargs.get("gnn_operator_config", {}),
+        }
+        super().__init__(*args, **kwargs)
 
 
-class GATv2(torch.nn.Module):
-    """GATv2 model architecture.
+class GATv2(ModularGNN):
+    """Graph Attention Network (GAT) model architecture using the V2 operator
+    using dynamic attention.
 
-    Args:
-        in_size: Dimensions of the node features.
-        embedding_size: Dimensions of the hidden layers.
-        out_channels: The number of output channels.
-        gnn_layers: The number of GATv2 layers.
-        linear_layers: The number of linear layers.
-        heads: The number of attention heads.
-        dropout_rate: The dropout rate.
-    """
-
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        heads: int,
-        residual: bool = False,
-        dropout_rate: Optional[float] = 0.5,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.residual = residual
-        self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
-
+    The dimensions should look like:
         # create graph convolution layers
         for i in range(gnn_layers):
             in_channels = in_size if i == 0 else heads * embedding_size
             self.convs.append(GATv2Conv(in_channels, embedding_size, heads))
             self.norms.append(GraphNorm(heads * embedding_size))
-
-        # Create linear layers
-        linear_sizes = _get_linear_layer_sizes_attn_models(
-            heads=heads,
-            embedding_size=embedding_size,
-            linear_layers=linear_layers,
-            out_channels=out_channels,
-        )
-        self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
-
-        # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size * heads, bias=False)
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the GATv2 model.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor.
-        """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                if conv == self.convs[0]:
-                    x = self.activation(
-                        batch_norm(conv(x, edge_index))
-                    ) + self.linear_projection(x)
-                else:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
-
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linear_layers[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
-
-        return self.linear_layers[-1](x)
-
-
-# Define/Instantiate GNN models
-class UniMPTransformer(torch.nn.Module):
-    """Model utilizing the graph transformer operator from UniMP, but not the
-    masked labelling task.
-
-    Args:
-        in_size: Dimensions of the node features.
-        embedding_size: Dimensions of the hidden layers.
-        out_channels: The number of output channels.
-        gnn_layers: The number of GATv2 layers.
-        linear_layers: The number of linear layers.
-        heads: The number of attention heads.
-        dropout_rate: The dropout rate.
     """
 
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        heads: int,
-        residual: bool = False,
-        dropout_rate: Optional[float] = 0.5,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.embedding_size = embedding_size
-        self.residual = residual
-        self.dropout_rate = dropout_rate
-        self.activation = _define_activation(activation)
-        self.convs = nn.ModuleList()
-        self.norms = nn.ModuleList()
-
-        # create graph convoluton layers
-        for i in range(gnn_layers):
-            in_channels = in_size if i == 0 else embedding_size
-            concat = i != gnn_layers - 1
-            self.convs.append(
-                TransformerConv(
-                    in_channels=in_channels,
-                    out_channels=embedding_size,
-                    heads=heads,
-                    concat=concat,
-                    beta=True,
-                )
-            )
-            self.norms.append(GraphNorm(embedding_size * heads))
-
-        # Create linear layers
-        linear_sizes = _get_linear_layer_sizes_attn_models(
-            heads=heads,
-            embedding_size=embedding_size,
-            linear_layers=linear_layers,
-            out_channels=out_channels,
-        )
-        self.linear_layers = _create_linear_layers_attn_models(linear_sizes)
-
-        # Create linear projection for skip connection
-        self.linear_projection = nn.Linear(in_size, embedding_size * heads, bias=False)
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the GATv2 model.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor.
-        """
-        for conv, batch_norm in zip(self.convs, self.norms):
-            if self.residual:
-                if conv == self.convs[0]:
-                    x = self.activation(
-                        batch_norm(conv(x, edge_index))
-                    ) + self.linear_projection(x)
-                else:
-                    x = self.activation(batch_norm(conv(x, edge_index))) + x
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
-
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linear_layers[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
-
-        return self.linear_layers[-1](x)
+    def __init__(self, heads: int, *args: Any, **kwargs: Any):
+        gat_config = {
+            "operator": GATv2Conv,
+            "heads": heads,
+        }
+        kwargs["gnn_operator_config"] = {
+            **gat_config,
+            **kwargs.get("gnn_operator_config", {}),
+        }
+        super().__init__(*args, **kwargs)
 
 
-class DeeperGCN(torch.nn.Module):
-    """DeeperGCN model architecture.
+class UniMPTransformer(ModularGNN):
+    """UniMP Transformer model architecture.
+
+    The dimensions should be exactly the same as the GATv2 model, especially as
+    we do not pass an argument for concat. It will default to `true` and provide
+    and output size of `heads * embedding_size`.
+    """
+
+    def __init__(self, heads: int, *args: Any, **kwargs: Any):
+        transformer_config = {
+            "operator": TransformerConv,
+            "heads": heads,
+        }
+        kwargs["gnn_operator_config"] = {
+            **transformer_config,
+            **kwargs.get("gnn_operator_config", {}),
+        }
+        super().__init__(*args, **kwargs)
+
+
+class DeeperGCN(nn.Module):
+    """DeeperGCN model architecture.Does not inherit from the ModularGNN class
+    as it uses the DeepGCNLayer as well as a different initial layer and
+    unshared params and activations. Additionally, skip connections are not
+    coded into the forward pass because they're inherent to the architecture and
+    handled by the DeepGCNLayer class.
 
     Args:
         in_size: The input size of the DeeperGCN model.
         embedding_size: The size of the embedding dimension.
         out_channels: The number of output channels.
-        gnn_layers: The number of GATv2 layers.
+        gnn_layers: The number of convolutional layers.
         linear_layers: The number of linear layers.
         activation: The activation function.
         dropout_rate: The dropout rate.
@@ -639,111 +505,34 @@ class DeeperGCN(torch.nn.Module):
     ):
         """Initialize the model"""
         super().__init__()
-        self.activation = _define_activation(activation)
         self.dropout_rate = dropout_rate
-        self.layers = nn.ModuleList()
-        self.node_encoder = Linear(in_size, embedding_size)
 
-        layer_act = self._define_activation_nonfunctional(activation)
+        self.convs = nn.ModuleList()
+        self.linears = nn.ModuleList()
+        self.layer_act = self.nonfunctional_activation(activation)
 
-        for i in range(gnn_layers):
-            conv = GENConv(
-                in_channels=embedding_size,
-                out_channels=embedding_size,
-                aggr="softmax",
-                t=1.0,
-                learn_t=True,
-                num_layers=2,
-                norm="layer",
+        # Create deeper layers
+        self.convs.append(
+            self.get_deepergcn_layers(
+                in_channels=in_size, out_channels=embedding_size, layer_number=1
             )
-            norm = LayerNorm(embedding_size)
-            act = layer_act(inplace=True)
-            layer = DeepGCNLayer(
-                conv=conv,
-                norm=norm,
-                act=act,
-                block="res+",
-                dropout=0.1,
-                ckpt_grad=i % 3,
+        )
+        for layer_number in range(2, gnn_layers + 1):
+            self.convs.append(
+                self.get_deepergcn_layers(
+                    in_channels=embedding_size,
+                    out_channels=embedding_size,
+                    layer_number=layer_number,
+                )
             )
-            self.layers.append(layer)
 
         # Create linear layers
-        self.linears = _create_lazy_linear_layers(
-            embedding_size, out_channels, linear_layers
-        )
+        for _ in range(linear_layers - 1):
+            self.linears.append(Linear(embedding_size, embedding_size))
+        self.linears.append(Linear(embedding_size, out_channels))
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the DeeperGCN model.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor."""
-        x = self.node_encoder(x)
-        for layer in self.layers:
-            x = layer(x, edge_index)
-
-        apply_dropout = isinstance(self.dropout_rate, float)
-        for linear_layer in self.linears[:-1]:
-            x = self.activation(linear_layer(x))
-            if apply_dropout:
-                x = F.dropout(x, p=self.dropout_rate)
-
-        return self.linears[-1](x)
-
-    @staticmethod
-    def _define_activation_nonfunctional(activation: str) -> Callable:
-        """Defines the activation function according to the given string"""
-        activations = {
-            "gelu": torch.nn.GELU,
-            "leakyrelu": torch.nn.LeakyReLU,
-            "relu": torch.nn.ReLU,
-        }
-        if activation in activations:
-            return activations[activation]
-        else:
-            raise ValueError(
-                "Invalid activation function. Supported: relu, leakyrelu, gelu"
-            )
-
-
-class MLP(torch.nn.Module):
-    """Simple three layer MLP model architecture.
-
-    Args:
-        in_size: The input size of the MLP model.
-        embedding_size: The size of the embedding dimension.
-        out_channels: The number of output channels.
-        activation: String specifying the activation function between linear
-        layers.
-
-    Returns:
-        torch.Tensor: The output tensor.
-    """
-
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        activation: str,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.linears = nn.ModuleList(
-            [
-                nn.Linear(in_size, embedding_size),
-                nn.Linear(embedding_size, embedding_size),
-                nn.Linear(embedding_size, out_channels),
-            ]
-        )
-        self.activation = _define_activation(activation)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the MLP model.
+        """Forward pass of the neural network.
 
         Args:
             x: The input tensor.
@@ -752,108 +541,56 @@ class MLP(torch.nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        for linear in self.linears[:-1]:
-            x = self.activation(linear(x))
+        for conv in self.convs:
+            x = conv(x, edge_index)
+
+        for linear_layer in self.linears[:-1]:
+            x = self.layer_act(linear_layer(x))
+            if isinstance(self.dropout_rate, float):
+                assert self.dropout_rate is not None
+                x = F.dropout(x, p=self.dropout_rate)
 
         return self.linears[-1](x)
 
+    @classmethod
+    def get_deepergcn_layers(
+        cls,
+        in_channels: int,
+        out_channels: int,
+        layer_number: int,
+    ) -> DeepGCNLayer:
+        """Create DeeperGCN layers"""
+        conv = GENConv(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            aggr="softmax",
+            t=1.0,
+            learn_t=True,
+            num_layers=2,
+            norm="layer",
+        )
+        norm = LayerNorm(out_channels, elementwise_affine=True)
+        act = cls.layer_act(inplace=True)
+        return DeepGCNLayer(
+            conv=conv,
+            norm=norm,
+            act=act,
+            block="res+",
+            dropout=0.1,
+            ckpt_grad=1 if layer_number == 1 else (layer_number % 3),
+        )
 
-# class GPSTransformer(torch.nn.Module):
-#     """GPSTransformer model architecture.
-
-#     Args:
-#         in_size: The input size of the GPSTransformer model.
-#         embedding_size: The size of the embedding dimension.
-#         walk_length: The length of the random walk.
-#         channels: The number of channels.
-#         pe_dim: The dimension of positional encoding.
-#         gnn_layers: The number of layers.
-
-#     Returns:
-#         torch.Tensor: The output tensor.
-#     """
-
-#     def __init__(
-#         self,
-#         in_size,
-#         embedding_size,
-#         walk_length: int,
-#         channels: int,
-#         pe_dim: int,
-#         gnn_layers: int,
-#     ):
-#         """Initialize the model"""
-#         super().__init__()
-
-#         self.node_emb = nn.Linear(in_size, embedding_size - pe_dim)
-#         self.pe_lin = nn.Linear(walk_length, pe_dim)
-#         self.pe_norm = nn.BatchNorm1d(walk_length)
-
-#         self.convs = torch.nn.ModuleList()
-#         for _ in range(gnn_layers):
-#             gcnconv = GCNConv(embedding_size, embedding_size)
-#             conv = GPSConv(channels, gcnconv, heads=4, attn_kwargs={"dropout": 0.5})
-#             self.convs.append(conv)
-
-#         self.mlp = Sequential(
-#             Linear(channels, channels // 2),
-#             ReLU(),
-#             Linear(channels // 2, channels // 4),
-#             ReLU(),
-#             Linear(channels // 4, 1),
-#         )
-
-#         self.redraw_projection = RedrawProjection(self.convs, None)
-
-#     def forward(self, x, pe, edge_index, batch):
-#         """Forward pass of the GPSTransformer model.
-
-#         Args:
-#             x: The input tensor.
-#             pe: The positional encoding tensor.
-#             edge_index: The edge index tensor.
-#             batch: The batch tensor.
-
-#         Returns:
-#             torch.Tensor: The output tensor.
-#         """
-#         x_pe = self.pe_norm(pe)
-#         x = torch.cat((self.node_emb(x.squeeze(-1)), self.pe_lin(x_pe)), 1)
-
-#         for conv in self.convs:
-#             x = conv(x, edge_index, batch)
-#         return self.mlp(x)
-
-
-# class RedrawProjection:
-#     """RedrawProjection class.
-
-#     Args:
-#         model: The model to perform redraw projections on.
-#         redraw_interval: The interval at which to redraw projections.
-
-#     Returns:
-#         None
-#     """
-
-#     def __init__(self, model: torch.nn.Module, redraw_interval: Optional[int] = None):
-#         """Initialize the RedrawProjection object"""
-#         self.model = model
-#         self.redraw_interval = redraw_interval
-#         self.num_last_redraw = 0
-
-#     def redraw_projections(self):
-#         """Redraw the projections"""
-#         if not self.model.training or self.redraw_interval is None:
-#             return
-#         if self.num_last_redraw >= self.redraw_interval:
-#             fast_attentions = [
-#                 module
-#                 for module in self.model.modules()
-#                 if isinstance(module, PerformerAttention)
-#             ]
-#             for fast_attention in fast_attentions:
-#                 fast_attention.redraw_projection_matrix()
-#             self.num_last_redraw = 0
-#             return
-#         self.num_last_redraw += 1
+    @staticmethod
+    def nonfunctional_activation(activation: str) -> Callable:
+        """Defines the activation function according to the given string"""
+        activations = {
+            "gelu": torch.nn.GELU,
+            "leakyrelu": torch.nn.LeakyReLU,
+            "relu": torch.nn.ReLU,
+        }
+        try:
+            return activations[activation]
+        except ValueError as error:
+            raise ValueError(
+                "Invalid activation function. Supported: relu, leakyrelu, gelu"
+            ) from error

@@ -58,6 +58,8 @@ def concatenate_graphs(
     concat_edges = concat_graph["edge_index"]
     concat_edge_feat = concat_graph["edge_feat"]
     concat_node_feat = concat_graph["node_feat"]
+    concat_node_positional_encoding = concat_graph["node_positional_encoding"]
+    concat_node_coordinates = concat_graph["node_coordinates"]
     concat_num_nodes = concat_graph["num_nodes"]
     concat_num_edges = concat_graph["num_edges"]
 
@@ -74,6 +76,12 @@ def concatenate_graphs(
         )
         concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
         concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
+        concat_node_positional_encoding = np.concatenate(
+            (concat_node_positional_encoding, graph["node_positional_encoding"])
+        )
+        concat_node_coordinates = np.concatenate(
+            (concat_node_coordinates, graph["node_coordinates"])
+        )
         concat_num_nodes += graph["num_nodes"]
         concat_num_edges += graph["num_edges"]
 
@@ -82,6 +90,8 @@ def concatenate_graphs(
             {
                 "edge_index": concat_edges,
                 "node_feat": concat_node_feat,
+                "node_positional_encoding": concat_node_positional_encoding,
+                "node_coordinates": concat_node_coordinates,
                 "edge_feat": concat_edge_feat,
                 "num_nodes": concat_num_nodes,
                 "num_edges": concat_num_edges,

@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
 
 
 """Parse local genomic data to nodes and attributes"""
+
 
 from itertools import repeat
 from multiprocessing import Pool
@@ -20,6 +20,7 @@ from pybedtools.featurefuncs import extend_fields  # type: ignore
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 from constants import ATTRIBUTES
+from positional_encoding import PositionalEncoding
 from utils import dir_check_make
 from utils import genes_from_gencode
 from utils import time_decorator
@@ -38,7 +39,7 @@ class LinearContextParser:
     ----------
     _make_directories:
         Prepare necessary directories.
-    _region_specific_features_dict:
+    _prepare_local_features:
         Creates a dict of local context datatypes and their bedtools objects.
     _slop_sort:
         Slop each line of a bedfile to get all features within a window.
@@ -61,7 +62,7 @@ class LinearContextParser:
     """
 
     # list helpers
-    DIRECT = ["tads"]
+    DIRECT = ["tads", "loops"]
     NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
     # var helpers - for CPU cores
@@ -79,13 +80,15 @@ class LinearContextParser:
         self.chromfile = experiment_config.chromfile
         self.experiment_name = experiment_config.experiment_name
         self.fasta = experiment_config.fasta
-        self.nodes = experiment_config.nodes
         self.feat_window = experiment_config.feat_window
+        self.nodes = experiment_config.nodes
         self.working_directory = experiment_config.working_directory
+        self.positional_encoding = experiment_config.positional_encoding
 
         self.resources = tissue_config.resources
         self.gencode = tissue_config.local["gencode"]
         self.tissue = tissue_config.resources["tissue"]
+        self.tss = tissue_config.local["tss"]
 
         self.node_processes = len(self.nodes) + 1
         self._set_directories()
@@ -131,10 +134,10 @@ class LinearContextParser:
             dir_check_make(self.attribute_dir / attribute)
 
     @time_decorator(print_args=True)
-    def _region_specific_features_dict(
+    def _prepare_local_features(
         self,
         bed: str,
-    ) -> Dict[str, pybedtools.BedTool]:
+    ) -> Tuple[str, pybedtools.BedTool]:
         """
         Creates a dict of local context datatypes and their bedtools objects.
         Renames features if necessary. Intersects each bed to get only features
@@ -158,20 +161,21 @@ class LinearContextParser:
             return feature
 
         # prepare data as pybedtools objects and intersect -v against blacklist
-        beds = {}
-        prefix = bed.split("_")[0].lower()
+        # beds = {}
         local_bed = pybedtools.BedTool(self.local_dir / bed).sort()
-        ab = local_bed.intersect(self.blacklist, sorted=True, v=True)
-        ab = self._remove_alt_configs(ab)  # remove alt contigs
+        ab = self._remove_blacklist_and_alt_configs(
+            bed=local_bed, blacklist=self.blacklist
+        )
 
-        # take specific windows and format each file
+        # rename features if necessary and only keep coords
+        prefix = bed.split("_")[0].lower()
         if prefix in self.nodes and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
-            beds[prefix] = pybedtools.BedTool(str(result), from_string=True)
+            prepared_bed = pybedtools.BedTool(str(result), from_string=True)
         else:
-            beds[prefix] = ab.cut([0, 1, 2, 3])
+            prepared_bed = ab.cut([0, 1, 2, 3])
 
-        return beds
+        return prefix, prepared_bed
 
     @time_decorator(print_args=True)
     def _slop_sort(
@@ -300,9 +304,12 @@ class LinearContextParser:
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
-        ref_file = pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
         ref_file = (
-            ref_file.filter(lambda x: "alt" not in x[0]).each(add_size).sort().saveas()
+            pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
+            .filter(lambda x: "alt" not in x[0])
+            .each(add_size)
+            .sort()
+            .saveas()
         )
 
         for attribute in ATTRIBUTES:
@@ -360,13 +367,19 @@ class LinearContextParser:
         self,
         node: str,
     ) -> None:
+        """Save attributes for all node entries to create node attributes during
+        graph construction.
         """
-        Save attributes for all node entries. Used during graph construction for
-        gene_nodes that fall outside of the gene window and for some gene_nodes
-        from interaction data
-        """
+        # initialize position encoding
+        if self.positional_encoding:
+            positional_encoding = PositionalEncoding(
+                chromfile=self.chromfile,
+                binsize=50000,
+            )
 
-        stored_attributed: Dict[str, Dict[str, Union[str, float]]] = {}
+        stored_attributed: Dict[str, Dict[str, Union[str, float, Dict[str, float]]]] = (
+            {}
+        )
         bedfile_lines = {}
         for attribute in ATTRIBUTES:
             filename = self.attribute_dir / attribute / f"{node}_{attribute}_percentage"
@@ -379,11 +392,18 @@ class LinearContextParser:
                         "chr": line[0].replace("chr", ""),
                     }
                     stored_attributed[f"{line[3]}_{self.tissue}"] = {
-                        "start": float(line[1]),
+                        "coordinates": {"start": float(line[1]), "end": float(line[2])},
                         "end": float(line[2]),
                         "size": float(line[4]),
                         "gc": float(line[5]),
                     }
+                    if self.positional_encoding:
+                        encoding = positional_encoding(
+                            chromosome=line[0], start=line[1], end=line[2]
+                        )
+                        stored_attributed[f"{line[3]}_{self.tissue}"][
+                            "positional_encoding"
+                        ] = encoding
                 else:
                     try:
                         stored_attributed[f"{line[3]}_{self.tissue}"][attribute] = (
@@ -397,18 +417,7 @@ class LinearContextParser:
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
-        """_summary_
-
-        Args:
-            a // _description_
-            b // _description_
-
-        Raises:
-            AssertionError: _description_
-
-        Returns:
-            c -- _description_
-        """
+        """_summary_"""
 
         @time_decorator(print_args=True)
         def _save_intermediate(
@@ -437,15 +446,12 @@ class LinearContextParser:
 
         # process windows and renaming
         pool = Pool(processes=self.node_processes)
-        bedinstance = pool.map(self._region_specific_features_dict, list(self.bedfiles))
+        bedinstance_flat = dict(
+            pool.starmap(
+                self._prepare_local_features, [(bed,) for bed in self.bedfiles]
+            )
+        )
         pool.close()  # re-open and close pool after every multi-process
-
-        # convert back to dictionary
-        bedinstance_flat = {
-            key.casefold(): value
-            for element in bedinstance
-            for key, value in element.items()
-        }
 
         # sort and extend windows according to FEAT_WINDOWS
         bedinstance_sorted, bedinstance_slopped = self._slop_sort(
@@ -485,6 +491,14 @@ class LinearContextParser:
         for item in os.listdir(self.edge_dir):
             if item not in retain:
                 os.remove(self.edge_dir / item)
+
+    def _remove_blacklist_and_alt_configs(
+        self,
+        bed: pybedtools.bedtool.BedTool,
+        blacklist: pybedtools.bedtool.BedTool,
+    ) -> pybedtools.bedtool.BedTool:
+        """Remove blacklist and alternate chromosomes from bedfile"""
+        return self._remove_alt_configs(bed.intersect(blacklist, sorted=True, v=True))
 
     @staticmethod
     def _remove_alt_configs(

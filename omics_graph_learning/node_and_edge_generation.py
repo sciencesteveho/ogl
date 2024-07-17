@@ -69,15 +69,15 @@ def parse_edges(
     #     + _get_regulatory_element_references(experiment_config.regulatory_schema)
     # )
 
-    baseloop_directory = experiment_config.baseloop_dir
-    baseloops = experiment_config.baseloops
-    loopfiles = _generate_hic_dict(resolution=experiment_config.loop_resolution)
-    loopfile = loopfiles[tissue_config.resources["tissue"]]
+    # baseloop_directory = experiment_config.baseloop_dir
+    # baseloops = experiment_config.baseloops
+    # loopfiles = _generate_hic_dict(resolution=experiment_config.loop_resolution)
+    # loopfile = loopfiles[tissue_config.resources["tissue"]]
 
     edgeparserObject = EdgeParser(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
-        loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
+        # loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
     )
 
     edgeparserObject.parse_edges()

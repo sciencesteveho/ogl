@@ -11,15 +11,17 @@ import argparse
 import logging
 import math
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
 from torch.nn import Parameter
 import torch.nn.functional as F
 from torch.optim import Optimizer
 import torch.optim as optim
+from torch.optim.lr_scheduler import LambdaLR
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils import k_hop_subgraph
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
@@ -51,10 +53,10 @@ def get_cosine_schedule_with_warmup(
     last_epoch: int = -1,
 ) -> LRScheduler:
     """
-    Implementation by Huggingface:
-    https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
+    Adapted from HuggingFace:
+        https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
 
-    Create a schedule with a learning rate that decreases following the values
+    Create a scheduler with a learning rate that decreases following the values
     of the cosine function between the initial lr set in the optimizer to 0,
     after a warmup period during which it increases linearly between 0 and the
     initial lr set in the optimizer.
@@ -85,10 +87,42 @@ def get_cosine_schedule_with_warmup(
     return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
+def get_linear_schedule_with_warmup(
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+) -> LRScheduler:
+    """Creates a learning rate scheduler with linear warmup where the learning
+    rate increases linearly from 0 to the initial optimizer learning rate over
+    `num_warmup_steps`. After completing the warmup, the learning rate will
+    decrease from the initial optimizer learning rate to 0 linearly over the
+    remaining steps until `num_training_steps`.
+    """
+
+    def lr_lambda(current_step: int) -> float:
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        return max(
+            0.0,
+            1.0
+            - (
+                float(current_step - num_warmup_steps)
+                / float(max(1, num_training_steps - num_warmup_steps))
+            ),
+        )
+
+    return LambdaLR(optimizer, lr_lambda)
+
+
 def _compute_pna_histogram_tensor(
     train_dataset: torch_geometric.data.DataLoader,
 ) -> torch.Tensor:
-    """Adapted from pytorch geometric's PNA example"""
+    """Computes the maximum in-degree in the training data and the in-degree
+    histogram tensor for principle neighborhood aggregation (PNA).
+
+    Adapted from pytorch geometric's PNA example here:
+        https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
+    """
     # Compute the maximum in-degree in the training data.
     max_degree = -1
     for data in train_dataset:
@@ -155,10 +189,10 @@ def create_model(
 def train(
     model: torch.nn.Module,
     device: torch.cuda.device,
-    optimizer,
+    optimizer: Optimizer,
     train_loader: torch_geometric.data.DataLoader,
     epoch: int,
-):
+) -> float:
     """Train GNN model on graph data"""
     model.train()
     pbar = tqdm(total=len(train_loader))
@@ -168,14 +202,18 @@ def train(
     for data in train_loader:
         optimizer.zero_grad()
         data = data.to(device)
-        out = model(data.x, data.edge_index)
 
-        loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
+        if model.task_specific_mlp:
+            out = model(data.x, data.edge_index, data.train_mask_loss)
+        else:
+            out = model(data.x, data.edge_index)
+
+        loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
         loss.backward()
         optimizer.step()
 
-        total_loss += float(loss) * int(data.train_mask.sum())
-        total_examples += int(data.train_mask.sum())
+        total_loss += float(loss) * int(data.train_mask_loss.sum())
+        total_examples += int(data.train_mask_loss.sum())
 
         pbar.update(1)
 
@@ -189,8 +227,8 @@ def test(
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
-    mask: torch.Tensor,
-):
+    mask: str,
+) -> float:
     """Test GNN model on test set"""
     model.eval()
     pbar = tqdm(total=len(data_loader))
@@ -202,9 +240,9 @@ def test(
         out = model(data.x, data.edge_index)
 
         if mask == "val":
-            idx_mask = data.val_mask
+            idx_mask = data.val_mask_loss
         elif mask == "test":
-            idx_mask = data.test_mask
+            idx_mask = data.test_mask_loss
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
         loss = torch.stack(mse)
         pbar.update(1)
@@ -214,48 +252,12 @@ def test(
 
 
 @torch.no_grad()
-def test_genes_all_neighbors(
-    model: torch.nn.Module,
-    device: torch.cuda.device,
-    data: torch_geometric.data.Data,
-    epoch: int,
-    mask: str,
-):
-    """Modified testing function. Uses neighborloader with num_neighbors=-1 and
-    batch_size=1 to ensure that the entire neighborhood is loaded for each node
-    during evaluation.  Stores each prediction in a dictionary of key, list and
-    takes a mean of all predictions for each node to get the final
-    prediction."""
-    model.eval()
-    loader = NeighborLoader(data, num_neighbors=[-1], batch_size=1, shuffle=False)
-    predictions = {}
-    for batch in tqdm(loader, desc=f"Evaluating epoch: {epoch:04d}"):
-        batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
-        node_idx = batch.batch.item()
-        if node_idx in predictions:
-            predictions[node_idx].append(out.squeeze())
-        else:
-            predictions[node_idx] = [out.squeeze()]
-
-    all_preds = torch.tensor(
-        [torch.mean(torch.stack(preds), dim=0) for preds in predictions.values()]
-    )
-    if mask == "val":
-        idx_mask = data.val_mask
-    elif mask == "test":
-        idx_mask = data.test_mask
-    mse = F.mse_loss(all_preds[idx_mask], data.y[idx_mask])
-    return math.sqrt(float(mse.cpu()))
-
-
-@torch.no_grad()
 def inference(
     model: torch.nn.Module,
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
-):
+) -> Tuple[float, torch.Tensor, torch.Tensor]:
     """Use model for inference or to evaluate on validation set"""
     model.eval()
     pbar = tqdm(total=len(data_loader))
@@ -266,9 +268,11 @@ def inference(
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
-        outs.extend(out[data.test_mask])
-        labels.extend(data.y[data.test_mask])
-        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
+        outs.extend(out[data.test_mask_loss])
+        labels.extend(data.y[data.test_mask_loss])
+        mse.append(
+            F.mse_loss(out[data.test_mask_loss], data.y[data.test_mask_loss]).cpu()
+        )
 
         loss = torch.stack(mse)
 
@@ -283,7 +287,7 @@ def inference_all_neighbors(
     device: torch.cuda.device,
     data: torch_geometric.data.Data,
     epoch: int,
-):
+) -> Tuple[float, torch.Tensor, torch.Tensor]:
     """Use model for inference or to evaluate on validation set"""
     model.eval()
     loader = NeighborLoader(data, num_neighbors=[-1], batch_size=1, shuffle=False)
@@ -300,20 +304,142 @@ def inference_all_neighbors(
     all_preds = torch.tensor(
         [torch.mean(torch.stack(preds), dim=0) for preds in predictions.values()]
     )
-    outs = all_preds[data.test_mask]
-    labels = data.y[data.test_mask]
+    outs = all_preds[data.test_mask_loss]
+    labels = data.y[data.test_mask_loss]
     mse = F.mse_loss(outs, labels)
     return math.sqrt(float(mse.cpu())), outs, labels
 
 
-def get_loader(
+def get_max_hop_subgraph(
+    node: int,
+    edge_index: torch.Tensor,
+    num_nodes: int,
+) -> Tuple[torch.Tensor, int, int]:
+    """Finds the maximum hop subgraph for a given node."""
+    hop = 0
+    node_idx = torch.tensor([node])
+    prev_size = 0
+
+    while True:
+        node_idx, _, mapping, _ = k_hop_subgraph(
+            node, hop + 1, edge_index, relabel_nodes=True, num_nodes=num_nodes
+        )
+        if len(node_idx) == prev_size:  # no new nodes added
+            break
+        prev_size = len(node_idx)
+        hop += 1
+
+    return node_idx, mapping[0], hop
+
+
+@torch.no_grad()
+def test_all_neighbors(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data: torch_geometric.data.Data,
+    epoch: int,
+    mask: str,
+    batch_size: int = 32,
+) -> Tuple[float, float, float, Dict[int, int]]:
+    """Modified testing function. Uses neighborloader with num_neighbors=-1 and
+    batch_size=1 to ensure that the entire neighborhood is loaded for each node
+    during evaluation.  Stores each prediction in a dictionary of key, list and
+    takes a mean of all predictions for each node to get the final
+    prediction."""
+    model.eval()
+    if mask == "val":
+        eval_mask = data.val_mask
+        loss_mask = data.val_mask_loss
+    elif mask == "test":
+        eval_mask = data.test_mask
+        loss_mask = data.test_mask_loss
+    else:
+        raise ValueError("Invalid mask type. Use 'val' or 'test'.")
+
+    predictions = {}
+    hops_used = {}
+    nodes_of_interest = torch.where(eval_mask)[0].tolist()
+
+    for i in tqdm(
+        range(0, len(nodes_of_interest), batch_size),
+        desc=f"Evaluating epoch: {epoch:04d}",
+    ):
+        batch_nodes = nodes_of_interest[i : i + batch_size]
+        batch_subgraphs = []
+        batch_mappings = []
+
+        for node in batch_nodes:
+            node_idx, mapping, hops = get_max_hop_subgraph(
+                node, data.edge_index, data.num_nodes
+            )
+            batch_subgraphs.append(node_idx)
+            batch_mappings.append(mapping)
+            hops_used[node] = hops
+
+        # combine subgraphs
+        combined_nodes = torch.cat(batch_subgraphs).unique()
+        combined_subgraph, combined_edge_index, combined_mapping, _ = k_hop_subgraph(
+            combined_nodes,
+            1,
+            data.edge_index,
+            relabel_nodes=True,
+            num_nodes=data.num_nodes,
+        )
+
+        # prepare the subgraph data
+        sub_x = data.x[combined_subgraph].to(device)
+        sub_edge_index = combined_edge_index.to(device)
+
+        # forward pass
+        if model.task_specific_mlp:
+            sub_mask = torch.zeros(
+                len(combined_subgraph), dtype=torch.bool, device=device
+            )
+            sub_mask[combined_mapping[torch.tensor(batch_nodes)]] = True
+            out = model(sub_x, sub_edge_index, sub_mask)
+        else:
+            out = model(sub_x, sub_edge_index)
+
+        # Store predictions for nodes of interest
+        for j, node in enumerate(batch_nodes):
+            node_in_subgraph = combined_mapping[batch_mappings[j]]
+            predictions[node] = out[node_in_subgraph].cpu()
+
+    # convert predictions to tensor
+    nodes = torch.tensor(list(predictions.keys()))
+    preds = torch.stack(list(predictions.values()))
+
+    # sort predictions to match the order of nodes in the original graph
+    sorted_indices = torch.argsort(nodes)
+    all_preds = preds[sorted_indices]
+
+    # calculate MSE only on nodes in loss_mask
+    mse = torch.nn.functional.mse_loss(all_preds[loss_mask], data.y[loss_mask])
+
+    # calculate average and max hops used
+    avg_hops = sum(hops_used.values()) / len(hops_used)
+    max_hops = max(hops_used.values())
+
+    return torch.sqrt(mse).item(), avg_hops, max_hops, hops_used
+
+
+def prep_loader(
     data: torch_geometric.data.Data,
     mask: torch.Tensor,
     batch_size: int,
     shuffle: bool = False,
     layers: int = 2,
+    avg_connectivity: bool = True,
 ) -> torch_geometric.data.DataLoader:
     """Loads data into NeighborLoader for GNN training"""
+    if avg_connectivity:
+        return NeighborLoader(
+            data,
+            num_neighbors=[data.avg_edges] * layers,
+            batch_size=batch_size,
+            input_nodes=getattr(data, mask),
+            shuffle=shuffle,
+        )
     return NeighborLoader(
         data,
         num_neighbors=[10] * layers,
@@ -339,20 +465,38 @@ def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
             model_params,
             lr=args.learning_rate,
         )
-        scheduler = ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
-        )
     elif args.optimizer == "AdamW":
         optimizer = torch.optim.AdamW(
             model_params,
             lr=args.learning_rate,
         )
+    return optimizer
+
+
+def _set_scheduler(
+    args: argparse.Namespace,
+    optimizer: Optimizer,
+    warmup_steps: int,
+    training_steps: int,
+):
+    """Set learning rate scheduler"""
+    if args.scheduler == "plateau":
+        return ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+        )
+    if args.scheduler == "cosine":
         scheduler = get_cosine_schedule_with_warmup(
             optimizer=optimizer,
-            num_warmup_steps=5,
-            num_training_steps=args.epochs,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=training_steps,
         )
-    return optimizer, scheduler
+    if args.scheduler == "linearwarmup":
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer=optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=training_steps,
+        )
+    return scheduler
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -383,6 +527,8 @@ def construct_save_string(components: List[str], args: argparse.Namespace) -> st
         components.append("zeronodefeats")
     if args.total_random_edges:
         components.append(f"totalrandomedges{args.total_random_edges}")
+    if args.gene_only_loader:
+        components.append("geneonlyloader")
     return "_".join(components)
 
 
@@ -411,7 +557,7 @@ def _plot_loss_and_performance(
         savestr += "_final_"
 
     # get predictions
-    rmse, outs, labels = inference(
+    rmse, outs, labels = inference_all_neighbors(
         model=model,
         device=device,
         data_loader=data_loader,
@@ -436,6 +582,88 @@ def _plot_loss_and_performance(
         expected=labels_median,
         rmse=rmse,
     )
+
+
+def calculate_training_steps(
+    train_loader: torch_geometric.data.DataLoader,
+    batch_size: int,
+    epochs: int,
+    warmup_ratio: float = 0.1,
+) -> int:
+    """Calculate number of training steps"""
+    steps_per_epoch = math.ceil(len(train_loader.dataset) / batch_size)
+    total_steps = steps_per_epoch * epochs
+    warmup_steps = int(total_steps * warmup_ratio)
+    return total_steps, warmup_steps
+
+
+def training_loop(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    optimizer: Optimizer,
+    scheduler: LRScheduler,
+    train_loader: torch_geometric.data.DataLoader,
+    val_loader: torch_geometric.data.DataLoader,
+    test_loader: torch_geometric.data.DataLoader,
+    epochs: int,
+    writer: SummaryWriter,
+    model_dir: Path,
+    args: argparse.Namespace,
+) -> Tuple[torch.nn.Module, float]:
+    """Execute training loop!"""
+    best_validation = stop_counter = 0  # set up early stopping variable
+    for epoch in range(epochs + 1):
+        loss = train(
+            model=model,
+            device=device,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            epoch=epoch,
+        )
+        print(f"Epoch: {epoch:03d}, Train: {loss}")
+        writer.add_scalar("Training loss", loss, epoch)
+        logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
+
+        val_acc = test(
+            model=model,
+            device=device,
+            data=val_loader.dataset,
+            epoch=epoch,
+            mask="val",
+        )
+        print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        writer.add_scalar("Validation RMSE", val_acc, epoch)
+
+        test_acc = test_all_neighbors(
+            model=model,
+            device=device,
+            data=test_loader.dataset,
+            epoch=epoch,
+            mask="test",
+            num_hops=args.gnn_layers,
+            batch_size=args.batch_size,
+        )
+        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        writer.add_scalar("Test RMSE", test_acc, epoch)
+
+        scheduler.step(val_acc)
+        if args.early_stop:
+            if epoch == 0 or val_acc < best_validation:
+                stop_counter = 0
+                best_validation = val_acc
+                model_path = (
+                    model_dir / f"{args.model}_{epoch}_mse_{best_validation}.pt"
+                )
+                torch.save(model.state_dict(), model_path)
+            elif best_validation < val_acc:
+                stop_counter += 1
+            if stop_counter == 20:
+                print("***********Early stopping!")
+                break
+
+    return model, val_acc
 
 
 def main() -> None:
@@ -490,23 +718,24 @@ def main() -> None:
     )
 
     # set up data loaders
-    train_loader = get_loader(
+    mask_suffix = "_loss" if args.gene_only_loader else ""
+    train_loader = prep_loader(
         data=data,
-        mask="train_mask",
+        mask=f"train_mask{mask_suffix}",
         batch_size=args.batch_size,
         shuffle=True,
         layers=args.gnn_layers,
     )
-    test_loader = get_loader(
+    test_loader = prep_loader(
         data=data,
-        mask="test_mask",
+        mask=f"test_mask{mask_suffix}",
         batch_size=args.batch_size,
         shuffle=False,
         layers=args.gnn_layers,
     )
-    val_loader = get_loader(
+    val_loader = prep_loader(
         data=data,
-        mask="val_mask",
+        mask=f"val_mask{mask_suffix}",
         batch_size=args.batch_size,
         shuffle=False,
         layers=args.gnn_layers,
@@ -527,12 +756,24 @@ def main() -> None:
     ).to(device)
 
     # set up optimizer & scheduler
-    optimizer, scheduler = _set_optimizer(args=args, model_params=model.parameters())
+    total_steps, warmup_steps = calculate_training_steps(
+        train_loader=train_loader,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        warmup_ratio=0.1,
+    )
+
+    optimizer = _set_optimizer(args=args, model_params=model.parameters())
+    scheduler = _set_scheduler(
+        args=args,
+        optimizer=optimizer,
+        warmup_steps=warmup_steps,
+        total_steps=total_steps,
+    )
 
     # start model training and initialize tensorboard utilities
     writer = SummaryWriter(model_dir / "logs")
     epochs = args.epochs
-    best_validation = stop_counter = 0
     prof = torch.profiler.profile(
         # activities=[
         #     torch.profiler.ProfilerActivity.CPU,
@@ -547,62 +788,26 @@ def main() -> None:
 
     prof.start()
     print(f"Training for {epochs} epochs")
-    for epoch in range(epochs + 1):
-        loss = train(
-            model=model,
-            device=device,
-            optimizer=optimizer,
-            train_loader=train_loader,
-            epoch=epoch,
-        )
-        print(f"Epoch: {epoch:03d}, Train: {loss}")
-        writer.add_scalar("Training loss", loss, epoch)
-        logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
-
-        val_acc = test(
-            model=model,
-            device=device,
-            data_loader=val_loader,
-            epoch=epoch,
-            mask="val",
-        )
-        print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
-        writer.add_scalar("Validation RMSE", val_acc, epoch)
-
-        test_acc = test(
-            model=model,
-            device=device,
-            data_loader=test_loader,
-            epoch=epoch,
-            mask="test",
-        )
-        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        writer.add_scalar("Test RMSE", test_acc, epoch)
-
-        scheduler.step(val_acc)
-        if args.early_stop:
-            if epoch == 0 or val_acc < best_validation:
-                stop_counter = 0
-                best_validation = val_acc
-                model_path = (
-                    model_dir / f"{args.model}_{epoch}_mse_{best_validation}.pt"
-                )
-                torch.save(model.state_dict(), model_path)
-            elif best_validation < val_acc:
-                stop_counter += 1
-            if stop_counter == 20:
-                print("***********Early stopping!")
-                final_acc = val_acc
-                break
+    model, final_val_acc = training_loop(
+        model=model,
+        device=device,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader,
+        epochs=epochs,
+        writer=writer,
+        model_dir=model_dir,
+        args=args,
+    )
 
     # close out tensorboard utilities
     writer.flush()
     prof.stop()
 
     # Save final model
-    model_path = model_dir / f"{args.model}_final_mse_{val_acc}.pt"
+    model_path = model_dir / f"{args.model}_final_mse_{final_val_acc}.pt"
     torch.save(model.state_dict(), model_path)
 
     # generate loss and prediction plots
@@ -613,37 +818,6 @@ def main() -> None:
         model_dir=model_dir,
         savestr=savestr,
     )
-
-    # # GNN Explainer!
-    # if args.model != "MLP":
-    #     with open(
-    #         "/ocean/projects/bio210019p/stevesho/data/preprocess/graphs/explainer_node_ids.pkl",
-    #         "rb",
-    #     ) as file:
-    #         ids = pickle.load(file)
-    #     explain_path = "/ocean/projects/bio210019p/stevesho/data/preprocess/explainer"
-    #     explainer = Explainer(
-    #         model=model,
-    #         algorithm=GNNExplainer(epochs=200),
-    #         explanation_type="model",
-    #         node_mask_type="attributes",
-    #         edge_mask_type="object",
-    #         model_config=dict(mode="regression", task_level="node", return_type="raw"),
-    #     )
-
-    #     data = data.to(device)
-    #     for index in random.sample(ids, 5):
-    #         explanation = explainer(data.x, data.edge_index, index=index)
-
-    #         print(f"Generated explanations in {explanation.available_explanations}")
-
-    #         path = f"{explain_path}/feature_importance_{savestr}_{best_validation}.png"
-    #         explanation.visualize_feature_importance(path, top_k=10)
-    #         print(f"Feature importance plot has been saved to '{path}'")
-
-    #         path = f"{explain_path}/subgraph_{savestr}_{best_validation}.pdf"
-    #         explanation.visualize_graph(path)
-    #         print(f"Subgraph visualization plot has been saved to '{path}'")
 
 
 if __name__ == "__main__":

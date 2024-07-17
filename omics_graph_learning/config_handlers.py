@@ -57,11 +57,15 @@ class ExperimentConfig:
     feat_window: int
     gene_gene: bool
     interaction_types: List[str]
+    k_fold: int
     liftover: str
     liftover_chain: str
     log_transform: str
     loop_resolution: float
     nodes: List[str]
+    positional_encoding: bool
+    rbp_proteins: str
+    rbp_network: str
     regulatory_schema: str
     root_dir: Path
     tissues: List[str]

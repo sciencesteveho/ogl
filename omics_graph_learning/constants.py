@@ -4,9 +4,11 @@
 
 """Constants for omics graph learning modules."""
 
-from typing import Dict, Union
+from typing import Dict, List
 
-ATTRIBUTES = [
+HG38_TOTAL_BASEPAIRS = 3088269227
+
+ATTRIBUTES: List[str] = [
     "gc",
     "atac",
     "cnv",
@@ -45,7 +47,7 @@ ATTRIBUTES = [
     "snp",
 ]
 
-NODE_FEAT_IDXS = {
+NODE_FEAT_IDXS: Dict[str, int] = {
     "start": 0,
     "end": 1,
     "size": 2,
@@ -87,7 +89,7 @@ NODE_FEAT_IDXS = {
     "snp": 38,
 }
 
-POSSIBLE_NODES = [
+POSSIBLE_NODES: List[str] = [
     "cpgislands",
     "crms",
     "ctcfccre",
@@ -101,7 +103,7 @@ POSSIBLE_NODES = [
     "tss",
 ]
 
-TISSUES = [
+TISSUES: List[str] = [
     "aorta",
     "hippocampus",
     "left_ventricle",

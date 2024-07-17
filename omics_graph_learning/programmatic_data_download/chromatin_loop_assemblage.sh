@@ -19,7 +19,7 @@ function convertsecs() {
 
 
 # Function to echo script progress to stdout
-log_progress() {
+log_progress () {
     echo -e "[$(date +%Y-%m-%dT%H:%M:%S%z)] "
 }
 
@@ -65,24 +65,28 @@ function _main () {
     local deepanchor_dir=$2
     local deeploop_dir=$3
     local fdr_dir=$4
+    local coarsegrain_dir=$5
 
     # set up directories
     local shared_data_dir=${root_dir}/shared_data
     local processed_loops_dir=${shared_data_dir}/processed_loops
     local reference_dir=${shared_data_dir}/references
 
-    for folder in deepanchor deeploop peakachu combined_loop_callers fdr_filtered_hic adaptive_coarsegrain hic_combined loops_and_fdrhic loops_and_coarsegrain all_loops_all_hic; do
+    # for folder in deepanchor deeploop peakachu combined_loop_callers fdr_filtered_hic adaptive_coarsegrain hic_combined loops_and_fdrhic loops_and_coarsegrain all_loops_all_hic; do
+    for folder in deepanchor deeploop peakachu combined_loop_callers fdr_filtered_hic adaptive_coarsegrain; do
         mkdir -p "${processed_loops_dir}/${folder}"
     done
 
-    for folder in 100000 1000000 150000 200000 300000 50000 500000 gte1 gte2;
-    do
+    for folder in 100000 200000 300000 gte1 gte2; do
         mkdir -p "${processed_loops_dir}/deeploop/${folder}"
     done
 
     # set up tissue array
+    # declare -a tissues=(
+    #     "adrenal" "aorta" "gm12878" "h1_esc" "hepg2" "hippocampus" "hmec" "imr90" "k562" "left_ventricle" "liver" "lung" "mammary" "nhek" "ovary" "pancreas" "skeletal_muscle" "skin" "small_intestine" "spleen"
+    # )
     declare -a tissues=(
-        "adrenal" "aorta" "gm12878" "h1_esc" "hepg2" "hippocampus" "hmec" "imr90" "k562" "left_ventricle" "liver" "lung" "mammary" "nhek" "ovary" "pancreas" "skeletal_muscle" "skin" "small_intestine" "spleen"
+        "adrenal" "aorta" "gm12878" "h1_esc" "hepg2" "hippocampus" "hmec" "imr90" "k562" "left_ventricle" "liver" "lung" "nhek" "ovary" "pancreas" "skeletal_muscle" "small_intestine" "spleen"
     )
 
     local -A peakachu_files=(
@@ -108,92 +112,67 @@ function _main () {
         ["spleen"]="Schmitt_2016.Spleen.hg38.peakachu-merged.loops"
     )
 
-    local -A combine_files=(
-        ["aorta_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Aorta.top300K_300000_loops.bedpe.hg38"
-        ["hippocampus_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Hippocampus.top300K_300000_loops.bedpe.hg38"
-        ["left_ventricle_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_LeftVentricle.top300K_300000_loops.bedpe.hg38"
-        ["liver_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Liver.top300K_300000_loops.bedpe.hg38"
-        ["lung_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Lung.top300K_300000_loops.bedpe.hg38"
-        ["pancreas_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Pancreas.top300K_300000_loops.bedpe.hg38"
-        ["skeletal_muscle_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Psoas_Muscle.top300K_300000_loops.bedpe.hg38"
-        ["small_intestine_peakachu_deepanchor.hg38.combined_loops"]="GSE167200_Small_Intenstine.top300K_300000_loops.bedpe.hg38"
-    )
-
     # symlink peakachu loops
     for tissue in "${!peakachu_files[@]}"; do
         ln -s \
-            "${reference_dir}/${peakachu_files[$tissue]}" \
-            "${processed_loops_dir}/peakachu/${peakachu_files[$tissue]}"
+            "${reference_dir}/peakachu_loops/${peakachu_files[$tissue]}" \
+            "${processed_loops_dir}/peakachu/${tissue}_loops.bedpe"
     done
 
     # symlink deepanchor loops
     for tissue in "${tissues[@]}"; do
         ln -s \
             "${deepanchor_dir}/${tissue}_deepanchor.bedpe.hg38" \
-            "${processed_loops_dir}/deepanchor/${tissue}_deepanchor.bedpe.hg38"
+            "${processed_loops_dir}/deepanchor/${tissue}_loops.bedpe"
     done
 
     # symlink deeploop loops
-    for folder in 100000 1000000 150000 200000 300000 50000 500000 gte1 gte2; do
+    for folder in 100000 200000 300000 gte1 gte2; do
         for tissue in "${tissues[@]}"; do
             ln -s \
                 "${deeploop_dir}/${folder}/${tissue}_${folder}.pixels" \
-                "${processed_loops_dir}/deeploop/${folder}/${tissue}_${folder}.pixels"
+                "${processed_loops_dir}/deeploop/${folder}/${tissue}_loops.bedpe"
         done
     done
 
     # symlink fdr filtered hic loops
     for tissue in "${tissues[@]}"; do
         for fdr in 0.1 0.01 0.001; do
+            mkdir -p "${processed_loops_dir}/fdr_filtered_hic/${fdr}"
             ln -s \
                 "${fdr_dir}/${tissue}/${tissue}_${fdr}_filtered.txt" \
-                "${processed_loops_dir}/fdr_filtered_hic/${tissue}_${fdr}_filtered.txt"
+                "${processed_loops_dir}/fdr_filtered_hic/${fdr}/${tissue}_contacts.bedpe"
         done
     done
 
-    # combine files...
-    for file in "${!combine_files[@]}"; do
-        tissue=$(echo "${file}" | sed 's/_peakachu_deepanchor.hg38.combined_loops//g')
-        cat "${deepanchor_peakachu_dir}/${file}" "${deeploop_only_dir}/${combine_files[$file]}" \
-            | sort -k1,1 -k2,2n \
-            > "${final_dir}/${tissue}_alloops.bed"
+    # adaptive coarsegrain 
+    for tissue in "${tissues[@]}"; do
+        for k in 100000 300000 500000; do
+            mkdir -p "${processed_loops_dir}/adaptive_coarsegrain/${k}"
+            ln -s \
+                "${coarsegrain_dir}/${tissue}_contacts_${k}.bed" \
+                "${processed_loops_dir}/adaptive_coarsegrain/${k}/${tissue}_contacts.bedpe"
+        done
     done
+
+    # # combine loop calls
+    # for key in "${!peakachu_file[@]}"; do
+    #     cat "${deepanchor_peakachu_dir}/${file}" \
+    #         "${deeploop_only_dir}/${combine_files[$file]}" \
+    #         | sort -k1,1 -k2,2n \
+    #         > "${final_dir}/${tissue}_alloops.bed"
+    # done
 }
 
 
 # =============================================================================
 # run main_func function! 
 # =============================================================================
-main_func \
-     \  # description for arg1
-     \  # description for arg2
-
-
-# Find unique cutoff values
-cutoffs=$(ls ovary_chr*_balanced_coarse_grain_*.bedpe | rev | cut -d_ -f1 | rev | sort -u)
-
-# Iterate over each cutoff value
-for cutoff in $cutoffs; do
-    # The output file for this cutoff
-    output_file="all_chrs_balanced_coarse_grain_${cutoff}.bedpe"
-
-    # Find all files with this cutoff value and concatenate them
-    cat ovary_chr*"_balanced_coarse_grain_${cutoff}" > "$output_file"
-done
-
-
-# mkdirs 
-# processed_loops / deepanchor
-# processed_loops / peakachu
-# processed_loops / deeploop
-# processed_loops / hi-c
-# processed_loops / combined_catalogue
-# 
-# /ocean/projects/bio210019p/stevesho/raw_tissue_hic/deepanchor
-# /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/peakachu_loops
-# /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing/top_n_pixels
-# /ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices/fdr_filtered
-# Adaptive coarsegrain - /ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices/coolers
-
+_main \
+    /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/deepanchor \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing/top_n_pixels \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices/fdr_filtered \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/contact_matrices/coolers/topk
 
 echo "Total time: $(convertsecs SECONDS)"

@@ -9,7 +9,8 @@
 #
 # All of the tissue data need to be lifted over to hg38.
 # The cell lines: H1, IMR90, and GM12878 need to be lifted over to hg38.
-# The cell lines: HepG2, HMEC, K562, and NHEK are already in hg38, but need start and end positions to be adjust by -1.
+# The cell lines: HepG2, HMEC, K562, and NHEK are already in hg38, but need
+# start and end positions to be adjust by -1.
 
 
 # =============================================================================
@@ -62,7 +63,7 @@ function _liftover_deeploop_bedpe () {
     local input_file=$1  # directory of deeploop files
     local resource_dir=$2  # directory of liftover and liftover chain
     local output_dir=$3  # directory to place processed file
-    local chain_file="${resource_dir}/hg19ToHg38.over.chain"
+    local chain_file="${resource_dir}/hg19ToHg38.over.chain.gz"
 
     local tissue_file=$(basename "${input_file}")
     local input_dir=$(dirname "${input_file}")
@@ -86,7 +87,7 @@ function _liftover_deeploop_bedpe () {
             "${output_dir}/${tissue_file}${file}.hg38" \
             "${output_dir}/${tissue_file}${file}.unmapped"
 
-        sort -k5,5 -o "${output_dir}/${tissue_file}${file}.hg38" "${output_dir}/${tissue_file}.${file}.hg38"
+        sort -k5,5 -o "${output_dir}/${tissue_file}${file}.hg38" "${output_dir}/${tissue_file}${file}.hg38"
     done
 
     # join the lifted files
@@ -114,7 +115,7 @@ function _extract_top_pixels () {
 
     local pixels_dir="${working_dir}/pixels"
     local coolers_dir="${working_dir}/coolers"
-    local liftover_resources_dir="/ocean/projects/bio210019p/stevesho/resources"
+    local liftover_resources_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references"
     local tmp_dir="${working_dir}/tmp"
 
     mkdir -p "${pixels_dir}" "${coolers_dir}" "${tmp_dir}"
@@ -189,7 +190,7 @@ function _format_downloaded_deeploop () {
 # run main function
 _extract_top_pixels \
     ${1} \
-    /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic \
+    /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing \
     ${2} \
     ${3} \
     ${4}
@@ -217,3 +218,8 @@ echo "Finished in $(convertsecs "${SECONDS}")"
 # sbatch top_pixels.sh pancreas false false true
 # sbatch top_pixels.sh skeletal_muscle false false true
 # sbatch top_pixels.sh small_intestine false false true
+
+# _extract_top_pixels adrenal /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing false false true
+# sbatch top_pixels.sh adrenal false false true
+# sbatch top_pixels.sh ovary false false true
+# sbatch top_pixels.sh spleen false false true
