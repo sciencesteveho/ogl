@@ -131,7 +131,7 @@ function _extract_top_pixels () {
     local liftover=$5  # bool to liftover to hg38
 
     local pixels_dir="${working_dir}/pixels"
-    local coolers_dir="/ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing/deeploop_coolers"
+    local coolers_dir="${working_dir}/coolers"
     local liftover_resources_dir="/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references"
     local tmp_dir="${working_dir}/tmp"
 
