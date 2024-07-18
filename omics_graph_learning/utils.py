@@ -7,6 +7,7 @@ import argparse
 from collections import defaultdict
 from contextlib import suppress
 import csv
+import datetime
 from datetime import timedelta
 import functools
 import inspect
@@ -15,6 +16,7 @@ from pathlib import Path
 import pickle
 import random
 import subprocess
+import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
@@ -29,6 +31,47 @@ import yaml  # type: ignore
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
+
+
+def _log_progress(message: str) -> None:
+    """Print a log message with timestamp to stdout"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")
+    print(f"[{timestamp}] {message}\n")
+
+
+def _run_command(command: str, get_output: bool = False) -> Optional[str]:
+    """Runs a shell command."""
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+            shell=True,
+        )
+        if get_output:
+            return result.stdout.strip()
+        else:
+            print(result.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running command: {command}")
+        print(e.output)
+        sys.exit(1)
+    return None
+
+
+def _check_file(filename: str) -> bool:
+    """Check if a file already exists"""
+    return os.path.isfile(filename)
+
+
+def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
+    """Submits a SLURM job and returns its job ID."""
+    dependency_addendum = f"--dependency=afterok:{dependency}" if dependency else ""
+    command = f"sbatch {dependency_addendum} {job_script} {args}"
+    job_id = _run_command(command, get_output=True)
+    assert job_id is not None
+    return job_id.split()[-1]  # extract job ID
 
 
 def _get_chromatin_loop_file(

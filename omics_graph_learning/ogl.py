@@ -2,59 +2,206 @@
 # -*- coding: utf-8 -*-
 
 
-"""Main script for running Omics Graph Learning"""
+"""Main script for running the Omics Graph Learning pipeline, built for running
+on a HPC via the SLURM scheduler."""
 
 
 import argparse
-import datetime
 import os
-import subprocess
-import sys
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from config_handlers import ExperimentConfig
+from utils import _check_file
 from utils import _dataset_split_name
+from utils import _log_progress
+from utils import _run_command
+from utils import submit_slurm_job
 
 
-def _log_progress(message: str) -> None:
-    """Print a log message with timestamp to stdout"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")
-    print(f"[{timestamp}] {message}\n")
+class PipelineRunner:
+    """Class for handling the entire pipeline, from data parsing to graph
+    construction and GNN training."""
 
+    def __init__(self, config: ExperimentConfig, args: argparse.Namespace) -> None:
+        self.config = config
+        self.args = args
 
-def _run_command(command: str, get_output: bool = False) -> Optional[str]:
-    """Runs a shell command."""
-    try:
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            text=True,
-            check=True,
-            shell=True,
+    def _get_file_paths(self, split_name: str) -> Tuple[str, str]:
+        """Construct file paths for graphs to check if files exist"""
+        experiment_name = self.config.experiment_name
+        graph_dir = self.config.graph_dir
+        final_graph = os.path.join(
+            graph_dir,
+            split_name,
+            f"{experiment_name}_{self.args.graph_type}_{split_name}_graph_scaled.pkl",
         )
-        if get_output:
-            return result.stdout.strip()
+        intermediate_graph = os.path.join(
+            graph_dir,
+            f"{experiment_name}_{self.args.graph_type}_graph.pkl",
+        )
+        return final_graph, intermediate_graph
+
+    def get_splits(self, slurm_dependency: str, split_name: str = "split") -> str:
+        """Submit a SLURM job to get splits."""
+        sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} get_training_targets.sh {self.args.experiment_yaml} {self.args.tpm_filter} {self.args.percent_of_samples_filter} {split_name}"
+        if self.args.rna_seq:
+            sbatch_command += " --rna_seq"
+        return _run_command(command=sbatch_command, get_output=True) or ""
+
+    def run_node_and_edge_generation(self) -> List[str]:
+        """Run node and edge generation jobs."""
+        tissues = self.config.tissues
+        partition_specific_script = (
+            "pipeline_node_and_edge_generation_mem.sh"
+            if self.args.partition == "EM"
+            else "pipeline_node_and_edge_generation.sh"
+        )
+        pipeline_a_ids = []
+        for tissue in tissues:
+            job_id = submit_slurm_job(
+                job_script=partition_specific_script,
+                args=f"{self.args.experiment_yaml} omics_graph_learning/configs/{tissue}.yaml",
+                dependency=None,
+            )
+            pipeline_a_ids.append(job_id)
+        return pipeline_a_ids
+
+    def run_graph_concatenation(self, pipeline_a_ids: List[str]) -> str:
+        """Run graph concatenation job."""
+        constructor = "concat.sh"
+        return submit_slurm_job(
+            job_script=constructor,
+            args=f"full {self.args.experiment_yaml}",
+            dependency=":".join(pipeline_a_ids),
+        )
+
+    def create_scalers(self, split_id: str, split_name: str) -> List[str]:
+        """Create scalers for node features."""
+        slurmids = []
+        for num in range(39):
+            job_id = submit_slurm_job(
+                job_script="make_scaler.sh",
+                args=f"{num} full {self.args.experiment_yaml} {split_name}",
+                dependency=split_id,
+            )
+            slurmids.append(job_id)
+        return slurmids
+
+    def scale_node_features(self, slurmids: List[str], split_name: str) -> str:
+        """Run node feature scaling job."""
+        return submit_slurm_job(
+            job_script="scale_node_feats.sh",
+            args=f"full {self.args.experiment_yaml} {split_name}",
+            dependency=":".join(slurmids),
+        )
+
+    def prepare_gnn_training_args(
+        self, args: argparse.Namespace, split_name: str
+    ) -> str:
+        """Prepare arguments for GNN training."""
+        bool_flags = " ".join(
+            [
+                f"--{flag}"
+                for flag in [
+                    "residual",
+                    "zero_nodes",
+                    "randomize_node_feats",
+                    "early_stop",
+                    "randomize_edges",
+                    "rna_seq",
+                ]
+                if getattr(args, flag)
+            ]
+        )
+
+        train_args = (
+            f"--experiment_config {args.experiment_yaml} "
+            f"--model {args.model} "
+            f"--target {args.target} "
+            f"--gnn_layers {args.gnn_layers} "
+            f"--linear_layers {args.linear_layers} "
+            f"--activation {args.activation} "
+            f"--dimensions {args.dimensions} "
+            f"--epochs {args.epochs} "
+            f"--batch_size {args.batch_size} "
+            f"--learning_rate {args.learning_rate} "
+            f"--optimizer {args.optimizer} "
+            f"--dropout {args.dropout} "
+            f"--graph_type {args.graph_type} "
+            f"--split_name {split_name} "
+            f"{bool_flags}"
+        )
+
+        if args.heads:
+            train_args += f" --heads {args.heads}"
+        if args.total_random_edges:
+            train_args += f" --total_random_edges {args.total_random_edges}"
+
+        return train_args
+
+    def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
+        """Submit GNN training job."""
+        train_args = self.prepare_gnn_training_args(self.args, split_name)
+        submit_slurm_job(
+            job_script="train_gnn.sh", args=train_args, dependency=dependency
+        )
+        _log_progress("GNN training job submitted.")
+
+    def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
+        """Submit all pipeline jobs if a final graph is not found."""
+        _log_progress(
+            f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
+        )
+        if not _check_file(intermediate_graph):
+            split_id = self.graph_construction_jobs(split_name)
         else:
-            print(result.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while running command: {command}")
-        print(e.output)
-        sys.exit(1)
-    return None
+            _log_progress(
+                "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
+            )
+            split_id = self.get_splits("-1", split_name)
 
+        slurmids = self.create_scalers(split_id, split_name)
+        _log_progress("Scaler jobs submitted.")
 
-def _check_file(filename: str) -> bool:
-    """Check if a file already exists"""
-    return os.path.isfile(filename)
+        scale_id = self.scale_node_features(slurmids, split_name)
+        _log_progress("Node feature scaling job submitted.")
 
+        self.submit_gnn_job(split_name, scale_id)
 
-def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
-    """Submits a SLURM job and returns its job ID."""
-    dependency_addendum = f"--dependency=afterok:{dependency}" if dependency else ""
-    command = f"sbatch {dependency_addendum} {job_script} {args}"
-    job_id = _run_command(command, get_output=True)
-    assert job_id is not None
-    return job_id.split()[-1]  # Extract just the job ID
+    def graph_construction_jobs(self, split_name: str) -> str:
+        """Submit jobs for node and edge generation, local context parsing, and
+        graph construction."""
+        _log_progress("No intermediates found. Running entire pipeline!")
+
+        pipeline_a_ids = self.run_node_and_edge_generation()
+        _log_progress("Node and edge generation job submitted.")
+
+        construct_id = self.run_graph_concatenation(pipeline_a_ids)
+        _log_progress("Graph concatenation job submitted.")
+
+        split_id = self.get_splits(construct_id, split_name)
+        _log_progress("Dataset split job submitted.")
+        return split_id
+
+    def run_pipeline(self) -> None:
+        """Run the pipeline! Check for existing files and submit jobs as needed."""
+        split_name = _dataset_split_name(
+            test_chrs=self.config.test_chrs,
+            val_chrs=self.config.val_chrs,
+            tpm_filter=self.args.config.tpm_filter,
+            percent_of_samples_filter=self.args.config.percent_of_samples_filter,
+        )
+        if self.args.config.rna_seq:
+            split_name += "_rna_seq"
+
+        final_graph, intermediate_graph = self._get_file_paths(split_name=split_name)
+
+        _log_progress(f"Checking for final graph: {final_graph}")
+        if not _check_file(final_graph):
+            self.all_pipeline_jobs(intermediate_graph, split_name)
+        else:
+            _log_progress("Final graph found. Going straight to GNN training.")
+            self.submit_gnn_job(split_name, None)
 
 
 def parse_pipeline_arguments() -> argparse.Namespace:
@@ -168,197 +315,13 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_splits(
-    slurm_dependency: str, args: argparse.Namespace, split_name: str = "split"
-) -> str:
-    """Submit a SLURM job to get splits."""
-    sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} get_training_targets.sh {args.experiment_yaml} {args.tpm_filter} {args.percent_of_samples_filter} {split_name}"
-    if args.rna_seq:
-        sbatch_command += " --rna_seq"
-    return _run_command(command=sbatch_command, get_output=True) or ""
-
-
-def _get_file_paths(
-    config: ExperimentConfig, args: argparse.Namespace, split_name: str
-) -> Tuple[str, str]:
-    """Construct file paths for graphs to check if files exist"""
-    experiment_name = config.experiment_name
-    graph_dir = config.graph_dir
-    final_graph = os.path.join(
-        graph_dir,
-        split_name,
-        f"{experiment_name}_{args.graph_type}_{split_name}_graph_scaled.pkl",
-    )
-    intermediate_graph = os.path.join(
-        graph_dir,
-        f"{experiment_name}_{args.graph_type}_graph.pkl",
-    )
-    return final_graph, intermediate_graph
-
-
-def run_node_and_edge_generation(
-    config: ExperimentConfig, args: argparse.Namespace
-) -> List[str]:
-    """Run node and edge generation jobs."""
-    tissues = config.tissues
-    partition_specific_script = (
-        "pipeline_node_and_edge_generation_mem.sh"
-        if args.partition == "EM"
-        else "pipeline_node_and_edge_generation.sh"
-    )
-    pipeline_a_ids = []
-    for tissue in tissues:
-        job_id = submit_slurm_job(
-            job_script=partition_specific_script,
-            args=f"{args.experiment_yaml} omics_graph_learning/configs/{tissue}.yaml",
-            dependency=None,
-        )
-        pipeline_a_ids.append(job_id)
-    return pipeline_a_ids
-
-
-def run_graph_concatenation(pipeline_a_ids: List[str], args: argparse.Namespace) -> str:
-    """Run graph concatenation job."""
-    constructor = "concat.sh"
-    return submit_slurm_job(
-        job_script=constructor,
-        args=f"full {args.experiment_yaml}",
-        dependency=":".join(pipeline_a_ids),
-    )
-
-
-def create_scalers(
-    split_id: str, args: argparse.Namespace, split_name: str
-) -> List[str]:
-    """Create scalers for node features."""
-    slurmids = []
-    for num in range(39):
-        job_id = submit_slurm_job(
-            job_script="make_scaler.sh",
-            args=f"{num} full {args.experiment_yaml} {split_name}",
-            dependency=split_id,
-        )
-        slurmids.append(job_id)
-    return slurmids
-
-
-def scale_node_features(
-    slurmids: List[str], args: argparse.Namespace, split_name: str
-) -> str:
-    """Run node feature scaling job."""
-    return submit_slurm_job(
-        job_script="scale_node_feats.sh",
-        args=f"full {args.experiment_yaml} {split_name}",
-        dependency=":".join(slurmids),
-    )
-
-
-def prepare_gnn_training_args(args: argparse.Namespace, split_name: str) -> str:
-    """Prepare arguments for GNN training."""
-    bool_flags = " ".join(
-        [
-            f"--{flag}"
-            for flag in [
-                "residual",
-                "zero_nodes",
-                "randomize_node_feats",
-                "early_stop",
-                "randomize_edges",
-                "rna_seq",
-            ]
-            if getattr(args, flag)
-        ]
-    )
-
-    train_args = (
-        f"--experiment_config {args.experiment_yaml} "
-        f"--model {args.model} "
-        f"--target {args.target} "
-        f"--gnn_layers {args.gnn_layers} "
-        f"--linear_layers {args.linear_layers} "
-        f"--activation {args.activation} "
-        f"--dimensions {args.dimensions} "
-        f"--epochs {args.epochs} "
-        f"--batch_size {args.batch_size} "
-        f"--learning_rate {args.learning_rate} "
-        f"--optimizer {args.optimizer} "
-        f"--dropout {args.dropout} "
-        f"--graph_type {args.graph_type} "
-        f"--split_name {split_name} "
-        f"{bool_flags}"
-    )
-
-    if args.heads:
-        train_args += f" --heads {args.heads}"
-    if args.total_random_edges:
-        train_args += f" --total_random_edges {args.total_random_edges}"
-
-    return train_args
-
-
-def submit_gnn_job(
-    args: argparse.Namespace, split_name: str, dependency: Optional[str]
-) -> None:
-    """Submit GNN training job."""
-    train_args = prepare_gnn_training_args(args, split_name)
-    submit_slurm_job(job_script="train_gnn.sh", args=train_args, dependency=dependency)
-    _log_progress("GNN training job submitted.")
-
-
 def main() -> None:
     """Run OGL pipeline, from data parsing to graph constructuion to GNN
     training with checks to avoid redundant computation."""
-    # parse arguments and config
     args = parse_pipeline_arguments()
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
-
-    # get splitname
-    split_name = _dataset_split_name(
-        test_chrs=experiment_config.test_chrs,
-        val_chrs=experiment_config.val_chrs,
-        tpm_filter=args.tpm_filter,
-        percent_of_samples_filter=args.percent_of_samples_filter,
-    )
-    if args.rna_seq:
-        split_name += "_rna_seq"
-
-    # store final and intermediate graph paths to check if files exist
-    final_graph, intermediate_graph = _get_file_paths(
-        config=experiment_config, args=args, split_name=split_name
-    )
-
-    _log_progress(f"Checking for final graph: {final_graph}")
-    if not _check_file(final_graph):
-        _log_progress(
-            f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
-        )
-        if not _check_file(intermediate_graph):
-            _log_progress("No intermediates found. Running entire pipeline!")
-
-            pipeline_a_ids = run_node_and_edge_generation(experiment_config, args)
-            _log_progress("Node and edge generation job submitted.")
-
-            construct_id = run_graph_concatenation(pipeline_a_ids, args)
-            _log_progress("Graph concatenation job submitted.")
-
-            split_id = get_splits(construct_id, args, split_name)
-            _log_progress("Dataset split job submitted.")
-        else:
-            _log_progress(
-                "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
-            )
-            split_id = get_splits("-1", args, split_name)
-
-        slurmids = create_scalers(split_id, args, split_name)
-        _log_progress("Scaler jobs submitted.")
-
-        scale_id = scale_node_features(slurmids, args, split_name)
-        _log_progress("Node feature scaling job submitted.")
-
-        submit_gnn_job(args, split_name, scale_id)
-    else:
-        _log_progress("Final graph found. Going straight to GNN training.")
-        submit_gnn_job(args, split_name, None)
+    pipe_runner = PipelineRunner(config=experiment_config, args=args)
+    pipe_runner.run_pipeline()
 
 
 if __name__ == "__main__":

@@ -165,7 +165,7 @@ function _extract_top_pixels () {
     # Sort by e/o ratio to extract top pixels
     sort --parallel=8 -S 60% -k7,7nr "${intermediate_file}" > "${sorted_pixels_file}"
     
-    local thresholds=(50000 100000 150000 200000 300000 500000 1000000)
+    local thresholds=(100000 200000 300000)
     for threshold in "${thresholds[@]}"; do
         local top_n_dir="${working_dir}/top_n_pixels/${threshold}"
         mkdir -p ${top_n_dir}
@@ -174,8 +174,12 @@ function _extract_top_pixels () {
     done
 
     local gte1_dir="${working_dir}/top_n_pixels/gte1"
+    local gte2_dir="${working_dir}/top_n_pixels/gte2"
     mkdir -p "${gte1_dir}"
+    mkdir -p "${gte2_dir}"
     local gte1_file="${gte1_dir}/${tissue}_gte1.pixels"
+    local gte2_file="${gte1_dir}/${tissue}_gte2.pixels"
+    awk '$7 >= 1' "${sorted_pixels_file}" > "${gte1_file}"
     awk '$7 >= 2' "${sorted_pixels_file}" > "${gte2_file}"
 }
 
@@ -236,7 +240,6 @@ echo "Finished in $(convertsecs "${SECONDS}")"
 # sbatch top_pixels.sh skeletal_muscle false false true
 # sbatch top_pixels.sh small_intestine false false true
 
-# _extract_top_pixels adrenal /ocean/projects/bio210019p/stevesho/raw_tissue_hic/pixel_processing false false true
-# sbatch top_pixels.sh adrenal true true true
-# sbatch top_pixels.sh ovary true true true
-# sbatch top_pixels.sh spleen true true true
+# sbatch top_pixels.sh adrenal true false true
+# sbatch top_pixels.sh ovary true false true
+# sbatch top_pixels.sh spleen true false true

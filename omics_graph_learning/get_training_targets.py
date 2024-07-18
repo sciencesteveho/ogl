@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 
 """Get train / test / val splits for nodes in graphs and generate targets for
 training the network."""
+
 
 import argparse
 from pathlib import Path
@@ -57,7 +58,7 @@ def _append_tissue_to_genes(
 
 
 def get_training_targets(
-    args: argparse.namespace, experiment_config: ExperimentConfig, target_mode: str
+    args: argparse.Namespace, experiment_config: ExperimentConfig, target_mode: str
 ) -> None:
     """Get training targets for the network.
 
