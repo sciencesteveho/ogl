@@ -80,7 +80,7 @@ resources:
   ppi_tissue: K562
 
 tissue_specific_nodes:
-  crms:
-  super_enhancer:
+  crms: crms.bed
+  super_enhancer: SE_01_0039_SE_hg38.bed
   tads: K562_Rao_2014-raw_TADs.txt
-  tf_binding:
+  tf_binding: interval.all.fps.0.0001.bed
