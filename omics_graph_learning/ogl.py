@@ -232,6 +232,7 @@ class PipelineRunner:
 
         _log_progress(f"Checking for final graph: {final_graph}")
         if not _check_file(final_graph):
+            _log_progress("Final graph not found. Checking for intermediate graph.")
             self.all_pipeline_jobs(intermediate_graph, split_name)
         else:
             _log_progress("Final graph found. Going straight to GNN training.")
