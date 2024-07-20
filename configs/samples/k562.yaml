@@ -34,16 +34,16 @@ interaction:
 
 local:
   cnv: cnv_hg38.bed
-  cpgislands: cpgislands_hg38_parsed.bed
+  cpgislands: cpgislands_hg38.bed
   ctcfccre: ctcfccre_parsed_hg38.bed
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed
-  microsatellites: microsatellites_hg38_parsed.bedls
-  phastcons: phastcons_gt_0.9_h38.bed
+  microsatellites: microsatellites_hg38.bed
+  phastcons: phastcons_hg38.bed
   polyasites: polyasites_filtered_hg38.bed
-  rbpbindingistes: rbpbindingsites_parsed_hg38.bed
+  rbpbindingistes: rbpsiteclusters_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
   repg2: repg2_hg38.bed
