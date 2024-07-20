@@ -144,7 +144,6 @@ class GenomeDataPreprocessor:
             # "circuits": f"{self.dirs['circuit_dir']}/{self.interaction['circuits']}",
             # "ppis": f"{self.shared_data_dir}/interaction/{self.interaction['ppis']}",
             "tf_marker": f"{self.shared_data_dir}/interaction/{self.interaction['tf_marker']}",
-            "tf_binding": f"{self.shared_data_dir}/interaction/{self.interaction['tf_binding']}",
         }
 
         with contextlib.suppress(TypeError):

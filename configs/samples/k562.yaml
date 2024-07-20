@@ -22,15 +22,12 @@ features:
   SMC3: SMC3_merged.narrow.peaks.hg38.bed
 
 interaction:
-  circuits: None
   gct: GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
   gencode: gencode_v26_genes_only_with_GTEx_targets.bed
   id_lookup: gencode_to_genesymbol_lookup_table.txt
-  mirdip: None
-  mirnatargets: None
-  ppis: None
-  tf_binding: None
-  tf_marker: None
+  mirdip: null
+  mirnatargets: null
+  tf_marker: null
 
 local:
   cnv: cnv_hg38.bed
@@ -63,18 +60,18 @@ methylation:
   cpg_liftover: false
 
 resources:
-  blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/hg38-blacklist.v2.bed
-  chromfile: /ocean/projects/bio210019p/stevesho/resources/hg38.chrom.sizes.txt
-  fasta: /ocean/projects/bio210019p/stevesho/resources/hg38.fa
-  gencode_attr: /ocean/projects/bio210019p/stevesho/resources/gencode_v26_node_attr.bed
-  liftover: /ocean/projects/bio210019p/stevesho/resources/liftOver
-  liftover_chain: /ocean/projects/bio210019p/stevesho/resources/hg19ToHg38.over.chain.gz
+  blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38-blacklist.v2.bed
+  chromfile: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.chrom.sizes
+  fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
+  gencode_attr: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/gencode_v26_node_attr.bed
+  liftover: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/liftOver
+  liftover_chain: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg19ToHg38.over.chain.gz
   reftss_genes: /ocean/projects/bio210019p/stevesho/resources/reftss_annotated.bed
-  se_ref: /ocean/projects/bio210019p/stevesho/resources/se_node_attr.bed
-  tf_motifs: /ocean/projects/bio210019p/stevesho/resources/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
-  tpm: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/heart_left_ventricle.tpm.txt 
+  se_ref: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/se_node_attr.bed
+  tf_motifs: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
+  tpm: null
   tissue: k562
-  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/tpm/expression/k562_ENCFF611MXW_0.05.tsv
+  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/tpm/ENCFF611MXW.tsv
   marker_name: K562
   ppi_tissue: K562
 
