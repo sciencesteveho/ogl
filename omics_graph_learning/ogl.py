@@ -222,8 +222,8 @@ class PipelineRunner:
         split_name = _dataset_split_name(
             test_chrs=self.config.test_chrs,
             val_chrs=self.config.val_chrs,
-            tpm_filter=self.args.config.tpm_filter,
-            percent_of_samples_filter=self.args.config.percent_of_samples_filter,
+            tpm_filter=self.args.tpm_filter,
+            percent_of_samples_filter=self.args.percent_of_samples_filter,
         )
         if self.args.config.rna_seq:
             split_name += "_rna_seq"
