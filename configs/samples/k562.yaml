@@ -5,21 +5,21 @@ dirs:
   circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
 
 features:
-  ATAC: ATAC-seq_narrow_merged.bed
-  CTCF: CTCF_narrow_merged.bed
-  DNase: DNase-seq_narrow_merged.bed
-  H3K27ac: H3K27ac_narrow_merged.bed
-  H3K27me3: H3K27me3_narrow_merged.bed
-  H3K36me3: H3K36me3_narrow_merged.bed
-  H3K4me1: H3K4me1_narrow_merged.bed
-  H3K4me2: H3K4me2_narrow_merged.bed
-  H3K4me3: H3K4me3_narrow_merged.bed
-  H3K79me2: H3K79me2_narrow_merged.bed
-  H3K9ac: H3K9ac_narrow_merged.bed
-  H3K9me3: H3K9me3_narrow_merged.bed
-  POLR2A: POLR2A_narrow_merged.bed
-  RAD21: RAD21_narrow_merged.bed
-  SMC3: SMC3_narrow_merged.bed
+  ATAC: ATAC-seq_merged.narrow.peaks.hg38.bed
+  CTCF: CTCF_merged.narrow.peaks.hg38.bed
+  DNase: DNase-seq_merged.narrow.peaks.hg38.bed
+  H3K27ac: H3K27ac_merged.narrow.peaks.hg38.bed
+  H3K27me3: H3K27me3_merged.narrow.peaks.hg38.bed
+  H3K36me3: H3K36me3_merged.narrow.peaks.hg38.bed
+  H3K4me1: H3K4me1_merged.narrow.peaks.hg38.bed
+  H3K4me2: H3K4me2_merged.narrow.peaks.hg38.bed
+  H3K4me3: H3K4me3_merged.narrow.peaks.hg38.bed
+  H3K79me2: H3K79me2_merged.narrow.peaks.hg38.bed
+  H3K9ac: H3K9ac_merged.narrow.peaks.hg38.bed
+  H3K9me3: H3K9me3_merged.narrow.peaks.hg38.bed
+  POLR2A: POLR2A_merged.narrow.peaks.hg38.bed
+  RAD21: RAD21_merged.narrow.peaks.hg38.bed
+  SMC3: SMC3_merged.narrow.peaks.hg38.bed
 
 interaction:
   circuits: None
@@ -40,7 +40,7 @@ local:
   indels: indels_hg38.bed
   line: line_hg38.bed
   ltr: ltr_hg38.bed
-  microsatellites: microsatellites_hg38_parsed.bed
+  microsatellites: microsatellites_hg38_parsed.bedls
   phastcons: phastcons_gt_0.9_h38.bed
   polyasites: polyasites_filtered_hg38.bed
   rbpbindingistes: rbpbindingsites_parsed_hg38.bed
@@ -58,7 +58,7 @@ local:
   tss: tss_parsed_hg38.bed
 
 methylation:
-  cpg: cpg_methyl_ENCFF660IHA.bed
+  cpg: ENCFF660IHA.bed
   cpg_filetype: ENCODE
   cpg_liftover: false
 
