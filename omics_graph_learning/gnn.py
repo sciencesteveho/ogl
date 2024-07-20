@@ -490,7 +490,7 @@ def _set_scheduler(
             num_warmup_steps=warmup_steps,
             num_training_steps=training_steps,
         )
-    if args.scheduler == "linearwarmup":
+    if args.scheduler == "linear_warmup":
         scheduler = get_linear_schedule_with_warmup(
             optimizer=optimizer,
             num_warmup_steps=warmup_steps,

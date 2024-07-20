@@ -20,7 +20,9 @@ from typing import Any, Dict, List, Tuple
 import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
+import pybedtools  # type: ignore
 
+from utils import genes_from_gencode
 from utils import time_decorator
 
 
@@ -49,10 +51,8 @@ def _prune_nodes_without_gene_connections(
     graph: nx.Graph,
     gene_nodes: List[str],
 ) -> nx.Graph:
-    """
-    Remove nodes from an undirected graph if they are not in the same connected
-    component as any node in gene_nodes.
-    """
+    """Remove nodes from an undirected graph if they are not in the same
+    connected component as any node in gene_nodes."""
     connected_to_gene = set()
     for component in nx.connected_components(graph):
         if any(gene_node in component for gene_node in gene_nodes):
@@ -71,7 +71,7 @@ def _get_edges(
     add_tissue: bool = False,
     tissue: str = "",
 ) -> pd.DataFrame:
-    """Get edges from file"""
+    """Get edges from edge file."""
     if local:
         df = pd.read_csv(edge_file, sep="\t", header=None, usecols=[3, 7]).rename(
             columns={3: 0, 7: 1}
@@ -149,19 +149,20 @@ def graph_constructor(
     nodes: List[str],
     genes: List[str],
 ) -> Tuple[nx.Graph, Dict[str, Dict[str, Any]]]:
-    """_summary_
+    """Create a graph from parsed edges and from local context edges before
+    combining. Then add attributes ot each node by using the reference
+    dictionaries. The function then removes any nodes within the blacklist
+    regions.
 
     Args:
-        tissue (str): _description_
-        root_dir (str): _description_
-        graph_dir (str): _description_
-        interaction_dir (str): _description_
-
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        nx.Graph: _description_
+        tissue (str): name of the tissue
+        interaction_dir (Path): directory containing interaction edges
+        parse_dir (Path): directory containing parsed edges
+        graph_type (str): type of graph to create
+        nodes (List[str]): the nodetypes to use in the graph beyond the default
+        types included (see config handler)
+        genes (List[str]): list of nodes representing genes, for pruning other
+        nodes that do not eventually hop to a gene
     """
     # create base graph
     if graph_type == "full":
@@ -218,11 +219,7 @@ def _nx_to_tensors(
     tissue: str,
 ) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
-    nodes to new integer labels
-
-    Args:
-        graph (nx.Graph)
-    """
+    nodes to new integer labels."""
     graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
     edges = np.array(
         [[edge[0], edge[1]] for edge in nx.to_edgelist(graph, nodelist=list(rename))]
@@ -258,7 +255,7 @@ def make_tissue_graph(
     experiment_name: str,
     working_directory: Path,
     graph_type: str,
-    genes: List[str],
+    gencode_ref: str,
     tissue: str,
 ) -> None:
     """Pipeline to generate individual graphs"""
@@ -267,6 +264,9 @@ def make_tissue_graph(
     graph_dir = working_directory / "graphs"
     interaction_dir = working_directory / tissue / "interaction"
     parse_dir = working_directory / tissue / "parsing"
+
+    # get genes for removing nodes without gene connections
+    genes = genes_from_gencode(pybedtools.BedTool(gencode_ref))
 
     # instantiate objects and process graphs
     graph, positional_attributes = graph_constructor(

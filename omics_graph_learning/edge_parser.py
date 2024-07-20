@@ -10,8 +10,17 @@ import csv
 import os
 from pathlib import Path
 import pickle
-from typing import (Callable, Dict, Generator, Iterator, List, Optional, Set,
-                    Tuple, Union)
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import pandas as pd
 import pybedtools  # type: ignore

@@ -136,6 +136,7 @@ def create_tissue_graph(
         experiment_name=experiment_config.experiment_name,
         working_directory=experiment_config.working_directory,
         graph_type="full",
+        gencode_ref=experiment_config.gencode_gtf,
         tissue=tissue,
     )
     print(f"Graph for {tissue} created!")
@@ -182,18 +183,18 @@ def main() -> None:
         experiment_config=experiment_config,
         tissue_config=tissue_config,
     )
-    parse_edges(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    parse_linear_context(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    create_tissue_graph(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
+    # parse_edges(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    # parse_linear_context(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    # create_tissue_graph(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
 
 
 if __name__ == "__main__":

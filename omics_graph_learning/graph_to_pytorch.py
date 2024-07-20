@@ -10,7 +10,6 @@ consider the nodes that pass the TPM filter.
 """
 
 from dataclasses import dataclass
-import pathlib
 import pickle
 from typing import Any, Dict, List, Optional, Tuple
 

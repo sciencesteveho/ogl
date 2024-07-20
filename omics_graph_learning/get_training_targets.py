@@ -58,7 +58,9 @@ def _append_tissue_to_genes(
 
 
 def get_training_targets(
-    args: argparse.Namespace, experiment_config: ExperimentConfig, target_mode: str
+    args: argparse.Namespace,
+    experiment_config: ExperimentConfig,
+    target_mode: str,
 ) -> None:
     """Get training targets for the network.
 
@@ -66,9 +68,6 @@ def get_training_targets(
         args: argparse.namespace: The arguments for the function.
         experiment_config: ExperimentConfig: The experiment configuration.
         target_mode: str: The mode for selecting targets ("gtex" or "rna").
-
-    Returns:
-        None
     """
     # set up vars
     unique_genes = set()
