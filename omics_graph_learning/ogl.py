@@ -182,16 +182,16 @@ class PipelineRunner:
 
     def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
         """Submit all pipeline jobs if a final graph is not found."""
-        # _log_progress(
-        #     f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
-        # )
-        # if not _check_file(intermediate_graph):
-        #     split_id = self.graph_construction_jobs(split_name)
-        # else:
-        #     _log_progress(
-        #         "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
-        #     )
-        #     split_id = self.get_splits("-1", split_name)
+        _log_progress(
+            f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
+        )
+        if not _check_file(intermediate_graph):
+            split_id = self.graph_construction_jobs(split_name)
+        else:
+            _log_progress(
+                "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
+            )
+            split_id = self.get_splits("-1", split_name)
 
         # slurmids = self.create_scalers(split_id, split_name)
         # _log_progress("Scaler jobs submitted.")
@@ -232,7 +232,6 @@ class PipelineRunner:
 
         _log_progress(f"Checking for final graph: {final_graph}")
         if not _check_file(final_graph):
-            _log_progress("Final graph not found. Checking for intermediate graph.")
             self.all_pipeline_jobs(intermediate_graph, split_name)
         else:
             _log_progress("Final graph found. Going straight to GNN training.")
