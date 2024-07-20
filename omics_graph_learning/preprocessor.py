@@ -398,14 +398,7 @@ class GenomeDataPreprocessor:
 
     @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
-        """Pipeline to prepare all bedfiles.
-
-        Args:
-            self: Instance of the class.
-
-        Returns:
-            None
-        """
+        """Pipeline to prepare all bedfiles!"""
 
         ### Make symlinks for shared data files
         for file in self.local.values():

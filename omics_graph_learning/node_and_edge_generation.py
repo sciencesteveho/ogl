@@ -179,14 +179,14 @@ def main() -> None:
     )
 
     # pipeline!
-    preprocess_bedfiles(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    # parse_edges(
+    # preprocess_bedfiles(
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
     # )
+    parse_edges(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
     # parse_linear_context(
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
