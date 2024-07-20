@@ -61,7 +61,6 @@ class ExperimentConfig:
     liftover: str
     liftover_chain: str
     log_transform: str
-    loop_resolution: float
     nodes: List[str]
     positional_encoding: bool
     rbp_proteins: str
