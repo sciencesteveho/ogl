@@ -202,6 +202,7 @@ class TissueConfig:
     >>> config = TissueConfig.from_yaml("left_ventricle.yaml")
     """
 
+    dirs: Dict[str, str]
     features: Dict[str, str]
     interaction: Dict[str, str]
     local: Dict[str, str]
