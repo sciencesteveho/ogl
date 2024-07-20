@@ -93,7 +93,7 @@ class PipelineRunner:
         for tissue in tissues:
             job_id = submit_slurm_job(
                 job_script=partition_specific_script,
-                args=f"{self.args.experiment_yaml} omics_graph_learning/configs/tissue/{tissue}.yaml",
+                args=f"{self.args.experiment_yaml} omics_graph_learning/configs/tissues/{tissue}.yaml",
                 dependency=None,
             )
             pipeline_a_ids.append(job_id)
