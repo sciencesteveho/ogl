@@ -225,7 +225,7 @@ class PipelineRunner:
             tpm_filter=self.args.tpm_filter,
             percent_of_samples_filter=self.args.percent_of_samples_filter,
         )
-        if self.args.rna_seq:
+        if self.args.target == "rna_seq":
             split_name += "_rna_seq"
 
         final_graph, intermediate_graph = self._get_file_paths(split_name=split_name)
