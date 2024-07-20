@@ -93,7 +93,7 @@ class PipelineRunner:
         for tissue in tissues:
             job_id = submit_slurm_job(
                 job_script=partition_specific_script,
-                args=f"{self.args.experiment_yaml} omics_graph_learning/configs/tissues/{tissue}.yaml",
+                args=f"{self.args.experiment_yaml} {self.args.sample_config_directory}/{tissue}.yaml",
                 dependency=None,
             )
             pipeline_a_ids.append(job_id)
@@ -268,6 +268,11 @@ def parse_pipeline_arguments() -> argparse.Namespace:
         required=True,
         choices=["RM", "EM"],
         help="Partition for SLURM scheduling",
+    )
+    parser.add_argument(
+        "--sample_config_directory",
+        type=str,
+        default="omics_graph_learning/configs/samples",
     )
     parser.add_argument(
         "--model",
