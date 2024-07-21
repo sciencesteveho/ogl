@@ -78,7 +78,8 @@ def _get_chromatin_loop_file(
     experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> str:
     """Returns the specified loop file"""
-    return f"{experiment_config.baseloop_dir}/{experiment_config.baseloops}/{tissue_config.resources['tissue']}_loops.bedpe"
+    method, resolution = experiment_config.baseloops.split("_")
+    return f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}_loops.bedpe"
 
 
 def _load_pickle(file_path: str) -> Any:
