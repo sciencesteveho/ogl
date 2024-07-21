@@ -121,22 +121,22 @@ TISSUES: List[str] = [
 
 REGULATORY_ELEMENTS: Dict[str, Dict[str, str]] = {
     "intersect": {
-        "enhancers": "enhancers_epimap_screen_overlap.bed",
-        "promoters": "promoters_epimap_screen_overlap.bed",
+        "enhancer": "enhancer_epimap_screen_overlap.bed",
+        "promoter": "promoter_epimap_screen_overlap.bed",
         "dyadic": "dyadic_epimap_screen_overlap.bed",
     },
     "union": {
-        "enhancers": "enhancers_all_union_hg38.bed",
-        "promoters": "promoters_all_union_hg38.bed",
+        "enhancer": "enhancer_all_union_hg38.bed",
+        "promoter": "promoter_all_union_hg38.bed",
         "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
     },
     "epimap": {
-        "enhancers": "ENH_masterlist_locations._lifted_hg38.bed",
-        "promoters": "PROM_masterlist_locations._lifted_hg38.bed",
+        "enhancer": "ENH_masterlist_locations._lifted_hg38.bed",
+        "promoter": "PROM_masterlist_locations._lifted_hg38.bed",
         "dyadic": "DYADIC_masterlist_locations._lifted_hg38.bed",
     },
     "encode": {
-        "enhancers": "GRCh38-ELS.bed",
-        "promoters": "GRCh38-PLS.bed",
+        "enhancer": "GRCh38-ELS.bed",
+        "promoter": "GRCh38-PLS.bed",
     },
 }

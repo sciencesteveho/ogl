@@ -175,7 +175,7 @@ class EdgeParser:
         return bed.intersect(self.blacklist, v=True, sorted=True)
 
     def _create_bedtool(self, path: Path) -> Union[pybedtools.BedTool, None]:
-        """Create a BedTool object if the file exists."""
+        """Create a BedTool object if the file exists with blacklist filter."""
         return (
             self._remove_blacklist(pybedtools.BedTool(path))
             if os.path.exists(path)
@@ -190,15 +190,15 @@ class EdgeParser:
         bedtools_objects = {
             key: self._create_bedtool(self.local_dir / f"{key}_{self.tissue}.bed")
             for key in reg_elements
-            if key in ["enhancers", "promoters", "dyadic"]
+            if key in ["enhancer", "promoter", "dyadic"]
         }
 
         if self.regulatory_schema == "encode":
             bedtools_objects["dyadic"] = None
 
         return (
-            bedtools_objects["enhancers"],
-            bedtools_objects["promoters"],
+            bedtools_objects["enhancer"],
+            bedtools_objects["promoter"],
             bedtools_objects["dyadic"],
         )
 
