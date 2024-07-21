@@ -120,7 +120,7 @@ class EdgeParser:
         self.ppi_tissue = self.tissue_config.resources["ppi_tissue"]
 
         self.shared_dir = self.root_dir / "shared_data"
-        self.tissue_dir = self.root_dir / self.experiment_name / self.tissue
+        self.tissue_dir = self.experiment_config.working_directory / self.tissue
         self.local_dir = self.tissue_dir / "local"
         self.parse_dir = self.tissue_dir / "parsing"
         self.interaction_dir = self.tissue_dir / "interaction"

@@ -166,17 +166,12 @@ def main() -> None:
         with contextlib.suppress(ValueError):
             experiment_config.nodes.remove("dyadic")
 
-    # make the experiment specific graph directory
-    dir_check_make(
-        dir=experiment_config.working_directory,
-    )
+    # # make the experiment specific graph directory
+    # dir_check_make(
+    #     dir=experiment_config.working_directory,
+    # )
 
     print(f"Starting pipeline for {experiment_config.experiment_name}!")
-
-    # create working directory for experimnet
-    dir_check_make(
-        dir=f"{experiment_config.root_dir}/{experiment_config.experiment_name}",
-    )
 
     # pipeline!
     preprocess_bedfiles(
