@@ -270,6 +270,7 @@ function _phastcons () {
     # Grab areas with a score greater than 0.7
     awk -v OFS="\t" -v score_cutoff=$score_cutoff '$4 >= score_cutoff' ${unprocessed_dir}/phastcons.bedGraph \
         | bedtools merge -i - \
+        | awk -v OFS="\t" '{print $1, $2, $3, "conserved"}' \
         > ${local_dir}/phastcons_hg38.bed
 }
 
