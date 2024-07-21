@@ -86,7 +86,6 @@ class EdgeParser:
         self,
         experiment_config: ExperimentConfig,
         tissue_config: TissueConfig,
-        # loop_file: str,
     ):
         """Initialize the class"""
         self.experiment_config = experiment_config
@@ -146,18 +145,18 @@ class EdgeParser:
             self.attribute_references["super_enhancers"]
         )
         self.mirna_ref = self._create_reference_dict(
-            self.attribute_references["mirna"], mirna=True
+            self.attribute_references["mirna"], use_col_4_idx=True
         )
         self.footprint_ref = self._create_reference_dict(
             self.attribute_references["tf_motifs"]
         )
 
     def _create_reference_dict(
-        self, file: str, mirna: bool = False
+        self, file: str, use_col_4_idx: bool = False
     ) -> Dict[str, List[str]]:
         """Reads a file and stores its lines in a dictionary"""
         try:
-            key_idx = 4 if mirna else 3
+            key_idx = 4 if use_col_4_idx else 3
             return {
                 line[key_idx]: line[:4]
                 for line in csv.reader(open(file, newline=""), delimiter="\t")

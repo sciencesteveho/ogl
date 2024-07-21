@@ -98,6 +98,7 @@ function _liftover_elements_19_to_38 () {
 # =============================================================================
 # Function to overlap SCREEN regulatory regions with EpiMap regulatory regions.
 # Done for both enhancers and promoters.
+        # | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_"$4}' \
 # =============================================================================
 function _overlap_regulatory_regions () {
     local reg_dir=$1  # path/to/your working directory
@@ -114,7 +115,7 @@ function _overlap_regulatory_regions () {
         | cut -f1,2,3,6 \
         | cut -f1 -d',' \
         | uniq \
-        | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_"$4}' \
+        | awk -v OFS='\t' -v ename="${element_name}" '{print $1,$2,$3,ename}' \
         > "${reg_dir}/${element_name}_epimap_screen_overlap.bed"
 }
 
@@ -123,6 +124,7 @@ function _overlap_regulatory_regions () {
 # Function to overlap SCREEN regulatory regions with EpiMap dyadic elements.
 # Because dyadic elements can act as both enhancers and promoters, an overlap is
 # performed against both.
+        # | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_dyadic"}' \
 # =============================================================================
 function _overlap_dyadic_elements () {
     local reg_dir=$1  # path/to/your working directory
@@ -137,7 +139,7 @@ function _overlap_dyadic_elements () {
         | sort -k1,1 -k2,2n \
         | cut -f1,2,3 \
         | uniq \
-        | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_dyadic"}' \
+        | awk -v OFS='\t' '{print $1,$2,$3,dyadic"}' \
         > ${reg_dir}/dyadic_epimap_screen_overlap.bed
 }
 
