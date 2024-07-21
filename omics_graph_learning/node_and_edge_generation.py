@@ -13,6 +13,7 @@ from typing import Optional
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
+from constants import ATTRIBUTES
 import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
 from linear_context_parser import LinearContextParser
@@ -75,9 +76,11 @@ def parse_linear_context(
         / "local"
     )
 
+    keep_files = experiment_config.nodes + ATTRIBUTES
+
     bedfiles = _listdir_isfile_wrapper(dir=local_dir)
     adjusted_bedfiles = [
-        bed for bed in bedfiles if all(node in bed for node in experiment_config.nodes)
+        bed for bed in bedfiles if all(feature in bed for feature in keep_files)
     ]
 
     # instantiate object

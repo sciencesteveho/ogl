@@ -180,7 +180,7 @@ class ExperimentConfig:
     @staticmethod
     def _update_node_types(params: Dict[str, Any]) -> None:
         """Update the node_types by adding the values from the YAML file to the default node_types."""
-        default_node_types = ["dyadic", "enhancers", "gencode", "promoters"]
+        default_node_types = ["dyadic", "enhancer", "gencode", "promoter"]
         yaml_node_types = params.get("nodes", [])
         params["nodes"] = list(set(yaml_node_types + default_node_types))
 

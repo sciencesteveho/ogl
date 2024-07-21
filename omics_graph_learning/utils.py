@@ -256,7 +256,9 @@ def check_and_symlink(
 
 def _listdir_isfile_wrapper(dir: Path) -> List[str]:
     """Returns a list of files within the directory"""
-    return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
+    return [
+        file.casefold() for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")
+    ]
 
 
 def _tensor_out_to_array(tensor, idx):
