@@ -114,7 +114,7 @@ function _overlap_regulatory_regions () {
         | cut -f1,2,3,6 \
         | cut -f1 -d',' \
         | uniq \
-        | awk -v OFS='\t' -v ename="${element_name}" '{print $1,$2,$3,$1"_"$2"_ename}' \
+        | awk -v OFS='\t' -v ename="${element_name}" '{print $1,$2,$3,$1"_"$2"_"ename}' \
         > "${reg_dir}/${element_name}_epimap_screen_overlap.bed"
 }
 
@@ -137,7 +137,7 @@ function _overlap_dyadic_elements () {
         | sort -k1,1 -k2,2n \
         | cut -f1,2,3 \
         | uniq \
-        | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_"dyadic"}' \
+        | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_dyadic"}' \
         > ${reg_dir}/dyadic_epimap_screen_overlap.bed
 }
 
