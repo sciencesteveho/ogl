@@ -75,13 +75,17 @@ def parse_linear_context(
         / tissue_config.resources["tissue"]
         / "local"
     )
+    print(f"Local context directory: {local_dir}")
 
     keep_files = experiment_config.nodes + ATTRIBUTES
+    print(f"Files to keep: {keep_files}")
 
     bedfiles = _listdir_isfile_wrapper(dir=local_dir)
+    print(f"Bedfiles: {bedfiles}")
     adjusted_bedfiles = [
         bed for bed in bedfiles if all(feature in bed for feature in keep_files)
     ]
+    print(f"Adjusted bedfiles: {adjusted_bedfiles}")
 
     # instantiate object
     localparseObject = LinearContextParser(
