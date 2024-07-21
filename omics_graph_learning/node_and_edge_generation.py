@@ -18,7 +18,7 @@ import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
 from linear_context_parser import LinearContextParser
 from preprocessor import GenomeDataPreprocessor
-from utils import _listdir_isfile_wrapper
+from utils import _get_files_in_directory
 
 
 def preprocess_bedfiles(
@@ -75,15 +75,15 @@ def parse_linear_context(
         / tissue_config.resources["tissue"]
         / "local"
     )
-    print(f"Local context directory: {local_dir}")
 
     keep_files = experiment_config.nodes + ATTRIBUTES
-    print(f"Files to keep: {keep_files}")
 
-    bedfiles = _listdir_isfile_wrapper(dir=local_dir)
+    bedfiles = _get_files_in_directory(dir=local_dir)
     print(f"Bedfiles: {bedfiles}")
     adjusted_bedfiles = [
-        bedfile for bedfile in bedfiles if bedfile.split("_")[0] in keep_files
+        bedfile
+        for bedfile in bedfiles
+        if bedfile.split("_")[0].casefold() in keep_files
     ]
 
     print(f"Adjusted bedfiles: {adjusted_bedfiles}")
