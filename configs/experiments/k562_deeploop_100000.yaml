@@ -16,7 +16,7 @@ chromfile: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/
 config_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs
 
 derived_directories:
-  baseloop_dir: raw_tissue_data/chromatin_loops/processed_loops
+  baseloop_dir: shared_data/processed_loops
   expression_dir: shared_data/targets/expression
   interaction_dir: shared_data/interaction
   local_data_dir: shared_data/local
