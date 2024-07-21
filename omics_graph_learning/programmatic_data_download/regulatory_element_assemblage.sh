@@ -172,16 +172,16 @@ function _make_ref_for_regulatory_elements () {
     # intersect
     cat \
         ${reg_dir}/dyadic_epimap_screen_overlap.bed \
-        ${reg_dir}/enhancers_epimap_screen_overlap.bed \
-        ${reg_dir}/promoters_epimap_screen_overlap.bed \
+        ${reg_dir}/enhancer_epimap_screen_overlap.bed \
+        ${reg_dir}/promoter_epimap_screen_overlap.bed \
         | sort -k1,1 -k2,2n -u \
         > ${reference_dir}/regulatory_elements_intersect_node_attr.bed
 
     # union
     cat \
         ${reg_dir}/DYADIC_masterlist_locations.lifted_hg38.bed \
-        ${reg_dir}/enhancers_all_union_hg38.bed \
-        ${reg_dir}/promoters_all_union_hg38.bed \
+        ${reg_dir}/enhancer_all_union_hg38.bed \
+        ${reg_dir}/promoter_all_union_hg38.bed \
         | sort -k1,1 -k2,2n -u \
         > ${reference_dir}/regulatory_elements_union_node_attr.bed
 }
@@ -270,13 +270,13 @@ function main () {
         "${reg_dir}" \
         "ENH_masterlist_locations.lifted_hg38.bed" \
         "GRCh38-ELS.bed" \
-        "enhancers"
+        "enhancer"
 
     _overlap_regulatory_regions \
         "${reg_dir}" \
         "PROM_masterlist_locations.lifted_hg38.bed" \
         "GRCh38-PLS.bed" \
-        "promoters"
+        "promoter"
 
     _overlap_dyadic_elements \
         "${reg_dir}" \
@@ -287,18 +287,18 @@ function main () {
     # get union catalogue
     log_progress "Creating union catalogue..."
     cat \
-        "${reg_dir}/enhancers_epimap_screen_overlap.bed" \
+        "${reg_dir}/enhancer_epimap_screen_overlap.bed" \
         "${reg_dir}/GRCh38-ELS.bed" \
         | sort -k1,1 -k2,2n \
         | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_enhancer"}' \
-        > "${reg_dir}/enhancers_all_union_hg38.bed"
+        > "${reg_dir}/enhancer_all_union_hg38.bed"
 
     cat \
-        "${reg_dir}/promoters_epimap_screen_overlap.bed" \
+        "${reg_dir}/promoter_epimap_screen_overlap.bed" \
         "${reg_dir}/GRCh38-PLS.bed" \
         | sort -k1,1 -k2,2n \
         | awk -v OFS='\t' '{print $1,$2,$3,$1"_"$2"_promoter"}' \
-        > "${reg_dir}/promoters_all_union_hg38.bed"
+        > "${reg_dir}/promoter_all_union_hg38.bed"
 
     # make node attr references
     log_progress "Creating node attribute references..."
