@@ -392,7 +392,7 @@ class LinearContextParser:
                     }
                     if self.positional_encoding:
                         encoding = positional_encoding(
-                            chromosome=line[0], start=line[1], end=line[2]
+                            chromosome=line[0], node_start=line[1], node_end=line[2]
                         )
                         stored_attributed[f"{line[3]}_{self.tissue}"][
                             "positional_encoding"
