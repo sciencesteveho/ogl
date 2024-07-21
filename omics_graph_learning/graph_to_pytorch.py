@@ -20,23 +20,7 @@ import torch_geometric  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 
 from config_handlers import ExperimentConfig
-
-NODE_FEATURE_IDXS = {
-    "atac": 4,
-    "cnv": 5,
-    "cpg": 6,
-    "ctcf": 7,
-    "dnase": 8,
-    "h3k27ac": 9,
-    "h3k27me3": 10,
-    "h3k36me3": 11,
-    "h3k4me1": 12,
-    "h3k4me2": 13,
-    "h3k4me3": 14,
-    "h3k79me2": 15,
-    "h3k9ac": 16,
-    "h3k9me3": 17,
-}
+from constants import NODE_FEAT_IDXS
 
 
 @dataclass
@@ -228,8 +212,8 @@ def create_node_tensors(
 
     Returns torch.Tensor
     """
-    if node_perturbation in NODE_FEATURE_IDXS:
-        graph_data["node_feat"][:, NODE_FEATURE_IDXS[node_perturbation]] = 0
+    if node_perturbation in NODE_FEAT_IDXS:
+        graph_data["node_feat"][:, NODE_FEAT_IDXS[node_perturbation]] = 0
     elif zero_node_feats:
         return torch.zeros(graph_data["node_feat"].shape, dtype=torch.float)
     elif randomize_feats:

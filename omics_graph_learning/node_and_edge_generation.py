@@ -9,7 +9,7 @@ arguments to use."""
 
 import argparse
 import contextlib
-from typing import Optional
+from typing import List
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
@@ -70,29 +70,37 @@ def parse_linear_context(
         tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
         nodes (List[str]): nodes to include in graph
     """
-    local_dir = (
-        experiment_config.working_directory
-        / tissue_config.resources["tissue"]
-        / "local"
+
+    def _get_config_filetypes(
+        experiment_config: ExperimentConfig,
+        tissue_config: TissueConfig,
+    ) -> List[str]:
+        """Only keep bedfiles that are relevant to the nodes in the graph,
+        deriving from the constants and the configs."""
+        local_dir = (
+            experiment_config.working_directory
+            / tissue_config.resources["tissue"]
+            / "local"
+        )
+        keep_files = experiment_config.nodes + ATTRIBUTES + ["basenodes"]
+        bedfiles = _get_files_in_directory(dir=local_dir)
+
+        return [
+            bedfile
+            for bedfile in bedfiles
+            if bedfile.split("_")[0].casefold() in keep_files
+        ]
+
+    bedfiles_for_parsing = _get_config_filetypes(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
     )
-
-    keep_files = experiment_config.nodes + ATTRIBUTES + ["basenodes"]
-
-    bedfiles = _get_files_in_directory(dir=local_dir)
-    print(f"Bedfiles: {bedfiles}")
-    adjusted_bedfiles = [
-        bedfile
-        for bedfile in bedfiles
-        if bedfile.split("_")[0].casefold() in keep_files
-    ]
-
-    print(f"Adjusted bedfiles: {adjusted_bedfiles}")
 
     # instantiate object
     localparseObject = LinearContextParser(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
-        bedfiles=adjusted_bedfiles,
+        bedfiles=bedfiles_for_parsing,
     )
 
     localparseObject.parse_context_data()
@@ -151,22 +159,22 @@ def main() -> None:
     print(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # pipeline!
-    preprocess_bedfiles(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    parse_edges(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
+    # preprocess_bedfiles(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    # parse_edges(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
     parse_linear_context(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
     )
-    # create_tissue_graph(
-    #     experiment_config=experiment_config,
-    #     tissue_config=tissue_config,
-    # )
+    create_tissue_graph(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
 
 
 if __name__ == "__main__":

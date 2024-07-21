@@ -59,6 +59,16 @@ class LinearContextParser:
         ATTRIBUTES -- list of node attribute types
         DIRECT -- list of datatypes that only get direct overlaps, no slop
         ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
+
+    Examples:
+    --------
+    >>> localparseObject = LinearContextParser(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+        bedfiles=adjusted_bedfiles,
+    )
+
+    >>> localparseObject.parse_context_data()
     """
 
     # list helpers
@@ -217,18 +227,7 @@ class LinearContextParser:
         """Function to intersect a slopped bed entry with all other node types.
         Each bed is slopped then intersected twice. First, it is intersected
         with every other node type. Then, the intersected bed is filtered to
-        only keep edges within the gene region.
-
-        Additionally, there is an option to insulate regions and only create
-        interactions if they exist within the same chromatin loop.
-
-        Args:
-            node_type // _description_
-            all_files // _description_
-
-        Raises:
-            AssertionError: _description_
-        """
+        only keep edges within the gene region."""
         print(f"starting combinations {node_type}")
 
         def _unix_intersect(node_type: str, type: Optional[str] = None) -> None:
@@ -287,20 +286,16 @@ class LinearContextParser:
     @time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
         """For each node of a node_type get their overlap with gene windows then
-        aggregate total nucleotides, gc content, and all other attributes
-
-        Args:
-            node_type // node datatype in self.nodes
-        """
+        aggregate total nucleotides, gc content, and all other attributes."""
 
         def add_size(feature: Any) -> str:
-            """ """
+            """Add size as a field to the bedtool object"""
             feature = extend_fields(feature, 5)
             feature[4] = feature.end - feature.start
             return feature
 
         def sum_gc(feature: Any) -> str:
-            """ """
+            """Sum GC content for each feature"""
             feature[13] = int(feature[8]) + int(feature[9])
             return feature
 
@@ -338,7 +333,7 @@ class LinearContextParser:
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
-        """Unix concatenate and sort each edge file"""
+        """Unix concatenate and sort each edge file with parallelization options."""
 
         def _chk_file_and_run(file: str, cmd: str) -> None:
             """Check that a file does not exist before calling subprocess"""
@@ -368,8 +363,7 @@ class LinearContextParser:
         node: str,
     ) -> None:
         """Save attributes for all node entries to create node attributes during
-        graph construction.
-        """
+        graph construction."""
         # initialize position encoding
         if self.positional_encoding:
             positional_encoding = PositionalEncoding(
@@ -393,7 +387,6 @@ class LinearContextParser:
                     }
                     stored_attributed[f"{line[3]}_{self.tissue}"] = {
                         "coordinates": {"start": float(line[1]), "end": float(line[2])},
-                        "end": float(line[2]),
                         "size": float(line[4]),
                         "gc": float(line[5]),
                     }
@@ -417,7 +410,7 @@ class LinearContextParser:
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
-        """_summary_"""
+        """Parse local genomic data into graph edges."""
 
         @time_decorator(print_args=True)
         def _save_intermediate(
@@ -431,7 +424,7 @@ class LinearContextParser:
 
         @time_decorator(print_args=True)
         def _pre_concatenate_all_files(all_files: str) -> None:
-            """Lorem Ipsum"""
+            """Pre-concatenate via unix commands to save time"""
             if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
                 cat_cmd = ["cat"] + [
                     self.intermediate_sorted / f"{x}.bed" for x in bedinstance_slopped
@@ -497,12 +490,12 @@ class LinearContextParser:
         bed: pybedtools.bedtool.BedTool,
         blacklist: pybedtools.bedtool.BedTool,
     ) -> pybedtools.bedtool.BedTool:
-        """Remove blacklist and alternate chromosomes from bedfile"""
+        """Remove blacklist and alternate chromosomes from bedfile."""
         return self._remove_alt_configs(bed.intersect(blacklist, sorted=True, v=True))
 
     @staticmethod
     def _remove_alt_configs(
         bed: pybedtools.bedtool.BedTool,
     ) -> pybedtools.bedtool.BedTool:
-        """Remove alternate chromosomes from bedfile"""
+        """Remove alternate chromosomes from bedfile."""
         return bed.filter(lambda x: "_" not in x[0]).saveas()

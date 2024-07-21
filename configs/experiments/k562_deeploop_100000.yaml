@@ -50,7 +50,7 @@ log_transform: log2
 
 nodes: null
 
-positional_encoding: false
+positional_encoding: true
 
 rbp_proteins: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_proteins.txt
 

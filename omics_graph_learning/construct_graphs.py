@@ -1,16 +1,12 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] remove hardcoded files and add in the proper area, either the yaml or the processing fxn
-# - [ ] add module to create local global nodes for genes
 
-"""Create graphs from parsed edges
 
-This script will create one graph per tissue from the parsed edges. All edges
+"""This script will create one graph per tissue from the parsed edges. All edges
 are added before being filtered to only keep edges that can traverse back to a
-base node. Attributes are then added for each node.
-"""
+base node. Attributes are then added for each node as node features and parsed
+as a series of numpy arrays."""
+
 
 from collections import defaultdict
 from pathlib import Path
@@ -258,7 +254,7 @@ def make_tissue_graph(
     gencode_ref: str,
     tissue: str,
 ) -> None:
-    """Pipeline to generate individual graphs"""
+    """Pipeline to generate per-sample graphs."""
 
     # set directories
     graph_dir = working_directory / "graphs"
