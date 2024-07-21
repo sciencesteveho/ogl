@@ -119,7 +119,6 @@ class EdgeParser:
         self.chromfile = self.tissue_config.resources["chromfile"]
         self.marker_name = self.tissue_config.resources["marker_name"]
         self.ppi_tissue = self.tissue_config.resources["ppi_tissue"]
-        self.tss = self.tissue_config.local["tss"]
 
         self.shared_dir = self.root_dir / "shared_data"
         self.tissue_dir = self.root_dir / self.experiment_name / self.tissue
@@ -127,6 +126,7 @@ class EdgeParser:
         self.parse_dir = self.tissue_dir / "parsing"
         self.interaction_dir = self.tissue_dir / "interaction"
         self.shared_interaction_dir = self.shared_dir / "interaction"
+        self.tss = self.local_dir / self.tissue_config.local["tss"]
 
     def _initialize_references(self) -> None:
         """Initialize reference dictionaries"""
