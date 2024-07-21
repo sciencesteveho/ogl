@@ -10,8 +10,17 @@ import csv
 import os
 from pathlib import Path
 import pickle
-from typing import (Callable, Dict, Generator, Iterator, List, Optional, Set,
-                    Tuple, Union)
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import pandas as pd
 import pybedtools  # type: ignore
@@ -128,17 +137,19 @@ class EdgeParser:
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
         self.gencode_attr_ref = self._create_reference_dict(
-            self.attribute_references["gencode_attr"]
+            self.attribute_references["gencode"]
         )
         self.regulatory_attr_ref = self._create_reference_dict(
             self.attribute_references["regulatory_elements"]
         )
-        self.se_ref = self._create_reference_dict(self.attribute_references["se_ref"])
+        self.se_ref = self._create_reference_dict(
+            self.attribute_references["super_enhancers"]
+        )
         self.mirna_ref = self._create_reference_dict(
             self.attribute_references["mirna"], mirna=True
         )
         self.footprint_ref = self._create_reference_dict(
-            f"{self.tissue_dir}/unprocessed/tfbindingsites_ref.bed"
+            self.attribute_references["tf_motifs"]
         )
 
     def _create_reference_dict(
