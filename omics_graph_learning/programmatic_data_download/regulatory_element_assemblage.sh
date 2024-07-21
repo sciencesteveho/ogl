@@ -143,6 +143,13 @@ function _overlap_dyadic_elements () {
 
 
 # =============================================================================
+# Function to remove any duplicate elements from the catalogues because of the
+# overlap against the dyadic elements.
+# =============================================================================
+
+
+
+# =============================================================================
 # Create node attr references for the different regulatory catalogues. These
 # will be used later after the edge parser to place each node. The names are
 # hardcoded and meant to only be run after the rest of the script is completed
@@ -156,7 +163,8 @@ function _make_ref_for_regulatory_elements () {
     cat \
         ${reg_dir}/GRCh38-ELS.bed \
         ${reg_dir}/GRCh38-PLS.bed \
-        | sort -k1,1 -k2,2n -u \
+        | sort -k1,1 -k2,2n \
+        | uniq \
         > ${reference_dir}/regulatory_elements_encode_node_attr.bed
 
     # epimap only
@@ -164,7 +172,8 @@ function _make_ref_for_regulatory_elements () {
         ${reg_dir}/ENH_masterlist_locations.lifted_hg38.bed \
         ${reg_dir}/PROM_masterlist_locations.lifted_hg38.bed \
         ${reg_dir}/DYADIC_masterlist_locations.lifted_hg38.bed \
-        | sort -k1,1 -k2,2n -u \
+        | sort -k1,1 -k2,2n \
+        | uniq \
         > ${reference_dir}/regulatory_elements_epimap_node_attr.bed
 
     # intersect
@@ -172,7 +181,8 @@ function _make_ref_for_regulatory_elements () {
         ${reg_dir}/dyadic_epimap_screen_overlap.bed \
         ${reg_dir}/enhancer_epimap_screen_overlap.bed \
         ${reg_dir}/promoter_epimap_screen_overlap.bed \
-        | sort -k1,1 -k2,2n -u \
+        | sort -k1,1 -k2,2n \
+        | uniq \
         > ${reference_dir}/regulatory_elements_intersect_node_attr.bed
 
     # union
@@ -180,7 +190,8 @@ function _make_ref_for_regulatory_elements () {
         ${reg_dir}/DYADIC_masterlist_locations.lifted_hg38.bed \
         ${reg_dir}/enhancer_all_union_hg38.bed \
         ${reg_dir}/promoter_all_union_hg38.bed \
-        | sort -k1,1 -k2,2n -u \
+        | sort -k1,1 -k2,2n \
+        | uniq \
         > ${reference_dir}/regulatory_elements_union_node_attr.bed
 }
 

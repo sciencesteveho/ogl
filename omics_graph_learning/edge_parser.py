@@ -444,10 +444,6 @@ class EdgeParser:
         elif "superenhancer" in node:
             self._write_node_list(self._add_node_coordinates(node, self.se_ref))
         else:
-            print(f"Regulatory node: {node}")  # Add this line
-            print(
-                f"Keys in regulatory_attr_ref: {list(self.regulatory_attr_ref.keys())[:10]}"
-            )  # Add this line
             self._write_node_list(
                 self._add_node_coordinates(node, self.regulatory_attr_ref)
             )

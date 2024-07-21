@@ -121,7 +121,9 @@ class ExperimentConfig:
         cls._update_node_types(params=params)
 
         # add working dir and graph_dir
-        params["working_directory"] = params["root_dir"] / params["experiment_name"]
+        params["working_directory"] = (
+            params["root_dir"] / "experiments" / params["experiment_name"]
+        )
         params["graph_dir"] = params["working_directory"] / "graphs"
 
         # validate log_transform
