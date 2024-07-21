@@ -139,7 +139,7 @@ function _overlap_dyadic_elements () {
         | sort -k1,1 -k2,2n \
         | cut -f1,2,3 \
         | uniq \
-        | awk -v OFS='\t' '{print $1,$2,$3,dyadic"}' \
+        | awk -v OFS='\t' '{print $1,$2,$3,"dyadic"}' \
         > ${reg_dir}/dyadic_epimap_screen_overlap.bed
 }
 
