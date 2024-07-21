@@ -323,7 +323,7 @@ class LinearContextParser:
                 ).saveas(save_file)
             elif attribute == "recombination":
                 ref_file.intersect(
-                    self.intermediate_sorted / f"{attribute}.bed",
+                    pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
                 ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(
@@ -331,7 +331,7 @@ class LinearContextParser:
                 )
             else:
                 ref_file.intersect(
-                    self.intermediate_sorted / f"{attribute}.bed",
+                    pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
                 ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
