@@ -35,6 +35,8 @@ class PositionalEncoding(nn.Module):
 
     Examples:
     --------
+    >>> positional_encoding = PositionalEncoding(chromfile="chrom.sizes", binsize=50000)
+    >>> positional_encoding("chr1", 100000, 150000)
     """
 
     def __init__(self, chromfile: str, binsize: int, embedding_dim: int = 5):
@@ -58,12 +60,14 @@ class PositionalEncoding(nn.Module):
         return np.array(overlapping_bins.index)
 
     def forward(
-        self, chr: str, node_start: int, node_end: int, pooling: str = "average"
+        self, chromosome: str, node_start: int, node_end: int, pooling: str = "average"
     ) -> np.ndarray:
         """Return the positional encoding tensor, with pooling if the feature
         spans multiple bins."""
         # Get indices for all bins the feature spans
-        bin_idxs = self.get_bin_indices(chromosome=chr, start=node_start, end=node_end)
+        bin_idxs = self.get_bin_indices(
+            chromosome=chromosome, start=node_start, end=node_end
+        )
 
         # single bin => no pooling
         if len(bin_idxs) == 1:
