@@ -582,7 +582,7 @@ class EdgeParser:
         collapse overlaps into the same anchor"""
         return (
             overlap_func(anchor, features)
-            # .each(self._add_feat_names)
+            .each(self._add_feat_names)
             .groupby(
                 g=[1, 2, 3, 4, 5, 6],
                 c=7,
@@ -793,7 +793,8 @@ class EdgeParser:
     @staticmethod
     def _add_feat_names(feature: str) -> str:
         """Add feature name in the format of chr_start_type"""
-        feature[6] = f"{feature[6]}_{feature[7]}_{feature[9]}"  # type: ignore
+        # feature[6] = f"{feature[6]}_{feature[7]}_{feature[9]}"  # type: ignore
+        feature[6] = f"{feature[9]}"  # type: ignore
         return feature
 
     @staticmethod
