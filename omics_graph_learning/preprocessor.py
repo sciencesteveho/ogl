@@ -106,7 +106,7 @@ class GenomeDataPreprocessor:
         self.tissue = self.resources["tissue"]
         self.shared_data_dir = self.root_dir / "shared_data"
         self.reg_dir = self.shared_data_dir / "regulatory_elements"
-        self.tissue_dir = self.working_directory / self.experiment_name / self.tissue
+        self.tissue_dir = self.working_directory / self.tissue
         self.data_dir = self.root_dir / "raw_tissue_data" / self.tissue
 
         # make directories, link files, and download shared files if necessary
