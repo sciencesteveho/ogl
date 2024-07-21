@@ -17,20 +17,7 @@ import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
 from linear_context_parser import LinearContextParser
 from preprocessor import GenomeDataPreprocessor
-from utils import _generate_hic_dict
 from utils import _listdir_isfile_wrapper
-from utils import dir_check_make
-
-# def _get_regulatory_element_references(regulatory: str) -> Optional[str]:
-#     """Returns the filename corresponding to the given regulatory element
-#     scheme."""
-#     regulatory_map = {
-#         "intersect": "intersect_node_attr.bed",
-#         "union": "union_node_attr.bed",
-#         "epimap": "epimap_node_attr.bed",
-#         "encode": "encode_node_attr.bed",
-#     }
-#     return regulatory_map.get(regulatory)
 
 
 def preprocess_bedfiles(
@@ -62,22 +49,9 @@ def parse_edges(
         experiment_config (Dict[str, Union[str, list]]): experiment config
         tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
     """
-    # resource_dir = "/ocean/projects/bio210019p/stevesho/resources"
-    # regulatory_attr = (
-    #     resource_dir
-    #     + "/"
-    #     + _get_regulatory_element_references(experiment_config.regulatory_schema)
-    # )
-
-    # baseloop_directory = experiment_config.baseloop_dir
-    # baseloops = experiment_config.baseloops
-    # loopfiles = _generate_hic_dict(resolution=experiment_config.loop_resolution)
-    # loopfile = loopfiles[tissue_config.resources["tissue"]]
-
     edgeparserObject = EdgeParser(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
-        # loop_file=f"{baseloop_directory}/{baseloops}/{loopfile}",
     )
 
     edgeparserObject.parse_edges()
@@ -166,26 +140,21 @@ def main() -> None:
         with contextlib.suppress(ValueError):
             experiment_config.nodes.remove("dyadic")
 
-    # # make the experiment specific graph directory
-    # dir_check_make(
-    #     dir=experiment_config.working_directory,
-    # )
-
     print(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # pipeline!
-    preprocess_bedfiles(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    parse_edges(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    # parse_linear_context(
+    # preprocess_bedfiles(
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
     # )
+    # parse_edges(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    parse_linear_context(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
     # create_tissue_graph(
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
