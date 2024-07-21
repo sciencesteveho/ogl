@@ -83,8 +83,9 @@ def parse_linear_context(
     bedfiles = _listdir_isfile_wrapper(dir=local_dir)
     print(f"Bedfiles: {bedfiles}")
     adjusted_bedfiles = [
-        bed for bed in bedfiles if all(feature in bed for feature in keep_files)
+        bedfile for bedfile in bedfiles if bedfile.split("_")[0] in keep_files
     ]
+
     print(f"Adjusted bedfiles: {adjusted_bedfiles}")
 
     # instantiate object
