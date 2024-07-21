@@ -40,7 +40,7 @@ local:
   microsatellites: microsatellites_hg38.bed
   phastcons: phastcons_hg38.bed
   polyasites: polyasites_filtered_hg38.bed
-  rbpbindingistes: rbpsiteclusters_parsed_hg38.bed
+  rbpsiteclusters: rbpsiteclusters_parsed_hg38.bed
   recombination: recombination_hg38.bed
   repg1b: repg1b_hg38.bed
   repg2: repg2_hg38.bed

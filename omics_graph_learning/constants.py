@@ -32,7 +32,7 @@ ATTRIBUTES: List[str] = [
     "polr2a",
     "polyasites",
     "rad21",
-    "rbpbindingsites",
+    "rbpsiteclusters",
     "recombination",
     "repg1b",
     "repg2",
