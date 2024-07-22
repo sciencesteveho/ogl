@@ -200,7 +200,6 @@ def graph_constructor(
 @time_decorator(print_args=False)
 def _nx_to_tensors(
     graph: nx.Graph,
-    positional_attributes: Dict[str, Dict[str, Any]],
     graph_dir: Path,
     graph_type: str,
     prefix: str,
@@ -297,7 +296,6 @@ def make_tissue_graph(
     # save idxs and write to tensors
     _nx_to_tensors(
         graph=graph,
-        positional_attributes=positional_attributes,
         graph_dir=graph_dir,
         graph_type=graph_type,
         prefix=experiment_name,
