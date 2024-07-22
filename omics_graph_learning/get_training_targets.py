@@ -104,6 +104,7 @@ def get_training_targets(
             )
         unique_genes.update(_append_tissue_to_genes(filtered_genes, tissue))
     target_genes = list(unique_genes)
+    print(f"Number of genes after filtering: {len(target_genes)}")
 
     # remove RBP genes, if active and stored
     if "rbp_network" in experiment_config.interaction_types:
