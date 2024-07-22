@@ -188,7 +188,6 @@ def get_training_targets(
     # get dataset split
     splitter = GeneTrainTestSplitter(target_genes=target_genes)
     split = splitter.train_test_val_split(experiment_config=experiment_config)
-    _save_splits(split=split, split_path=split_path)
 
     # get targets
     assembler = TargetAssembler(
@@ -201,10 +200,13 @@ def get_training_targets(
         experiment_config=experiment_config,
         sample_config_dir=sample_config_dir,
     )
-    _save_targets(targets=targets, split_path=split_path)
 
     # scale targets
     scaled_targets = assembler.scale_targets(targets)
+
+    # save splits and targets
+    _save_splits(split=split, split_path=split_path)
+    _save_targets(targets=targets, split_path=split_path, scaled=False)
     _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
 
 
