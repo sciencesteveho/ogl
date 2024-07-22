@@ -97,6 +97,7 @@ class ExperimentConfig:
     # Params from instantiation
     working_directory: Path
     graph_dir: Path
+    sample_config_dir: Path
 
     @classmethod
     def from_yaml(cls, yaml_file: Path) -> "ExperimentConfig":
@@ -121,11 +122,12 @@ class ExperimentConfig:
         # add the default node types
         cls._update_node_types(params=params)
 
-        # add working dir and graph_dir
+        # add other common directories
         params["working_directory"] = (
             params["root_dir"] / "experiments" / params["experiment_name"]
         )
         params["graph_dir"] = params["working_directory"] / "graphs"
+        params["sample_config_dir"] = params["config_dir"] / "samples"
 
         # validate log_transform
         params["log_transform"] = cls.validate_log_transform(params["log_transform"])

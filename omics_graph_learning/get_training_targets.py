@@ -74,13 +74,13 @@ def get_training_targets(
     """
     # set up vars
     unique_genes = set()
-    config_dir = experiment_config.config_dir
+    sample_config_dir = experiment_config.sample_config_dir
     graph_dir = experiment_config.graph_dir
     split_path = _prepare_split_directories(graph_dir, args.split_name)
 
     # filter genes based on TPM and percent of samples
     for tissue in experiment_config.tissues:
-        tissue_config = TissueConfig.from_yaml(config_dir / f"{tissue}.yaml")
+        tissue_config = TissueConfig.from_yaml(sample_config_dir / f"{tissue}.yaml")
         if target_mode == "gtex":
             if args.filter_mode == "across":
                 tpm_file = experiment_config.expression_all_matrix
@@ -137,7 +137,7 @@ def get_training_targets(
             "validation": {},
         }
         for tissue in experiment_config.tissues:
-            tissue_config = TissueConfig.from_yaml(config_dir / f"{tissue}.yaml")
+            tissue_config = TissueConfig.from_yaml(sample_config_dir / f"{tissue}.yaml")
             tissue_targets = assembler.assemble_rna_targets(tissue_config=tissue_config)
             for split_key in ["train", "test", "validation"]:
                 for gene_id, target_values in tissue_targets[split_key].items():
