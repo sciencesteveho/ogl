@@ -121,6 +121,32 @@ def remove_active_rbp_genes(
     return target_genes
 
 
+def assemble_targets(
+    target_mode: str,
+    assembler: TargetAssembler,
+    experiment_config: ExperimentConfig,
+    sample_config_dir: Path,
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Assemble training targets, according to the type of target for the experiment."""
+    if target_mode == "gtex":
+        return assembler.assemble_matrix_targets()
+    collected_targets: Dict[str, Dict[str, np.ndarray]] = {
+        "train": {},
+        "test": {},
+        "validation": {},
+    }
+    for tissue in experiment_config.tissues:
+        tissue_config = TissueConfig.from_yaml(sample_config_dir / f"{tissue}.yaml")
+        tissue_targets = assembler.assemble_rna_targets(tissue_config=tissue_config)
+        for split_key in ["train", "test", "validation"]:
+            for gene_id, target_values in tissue_targets[split_key].items():
+                if gene_id in collected_targets[split_key]:
+                    collected_targets[split_key][gene_id] += target_values
+                else:
+                    collected_targets[split_key][gene_id] = target_values
+    return collected_targets
+
+
 def get_training_targets(
     args: argparse.Namespace,
     experiment_config: ExperimentConfig,
@@ -161,39 +187,23 @@ def get_training_targets(
     # get dataset split
     splitter = GeneTrainTestSplitter(target_genes=target_genes)
     split = splitter.train_test_val_split(experiment_config=experiment_config)
+    _save_splits(split=split, split_path=split_path)
 
-    print(f"Checking split: {split}")
     # get targets
     assembler = TargetAssembler(
         experiment_config=experiment_config,
         split=split,
     )
-
-    if target_mode == "gtex":
-        targets = assembler.assemble_matrix_targets()
-    else:  # target_mode == "rna"
-        collected_targets: Dict[str, Dict[str, np.ndarray]] = {
-            "train": {},
-            "test": {},
-            "validation": {},
-        }
-        for tissue in experiment_config.tissues:
-            tissue_config = TissueConfig.from_yaml(sample_config_dir / f"{tissue}.yaml")
-            tissue_targets = assembler.assemble_rna_targets(tissue_config=tissue_config)
-            for split_key in ["train", "test", "validation"]:
-                for gene_id, target_values in tissue_targets[split_key].items():
-                    if gene_id not in collected_targets[split_key]:
-                        collected_targets[split_key][gene_id] = target_values
-                    else:
-                        collected_targets[split_key][gene_id] += target_values
-        targets = collected_targets
-
-    print(f"Number of genes in training set: {len(targets['train'])}")
-    scaled_targets = assembler.scale_targets(targets)
-
-    # save splits and targets
-    _save_splits(split=split, split_path=split_path)
+    targets = assemble_targets(
+        target_mode=target_mode,
+        assembler=assembler,
+        experiment_config=experiment_config,
+        sample_config_dir=sample_config_dir,
+    )
     _save_targets(targets=targets, split_path=split_path)
+
+    # scale targets
+    scaled_targets = assembler.scale_targets(targets)
     _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
 
 

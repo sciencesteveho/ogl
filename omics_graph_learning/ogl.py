@@ -74,7 +74,9 @@ class PipelineRunner:
         )
         return final_graph, intermediate_graph
 
-    def get_splits(self, slurm_dependency: str, split_name: str = "split") -> str:
+    def get_train_test_val_split(
+        self, slurm_dependency: str, split_name: str = "split"
+    ) -> str:
         """Submit a SLURM job to get splits."""
         sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} training_targets.sh {self.args.experiment_yaml} {self.args.tpm_filter} {self.args.percent_of_samples_filter} {split_name}"
         if self.args.target == "rna_seq":
@@ -191,7 +193,7 @@ class PipelineRunner:
             _log_progress(
                 "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
             )
-            split_id = self.get_splits("-1", split_name)
+            split_id = self.get_train_test_val_split("-1", split_name)
 
         # slurmids = self.create_scalers(split_id, split_name)
         # _log_progress("Scaler jobs submitted.")
@@ -212,7 +214,7 @@ class PipelineRunner:
         # construct_id = self.run_graph_concatenation(pipeline_a_ids)
         # _log_progress("Graph concatenation job submitted.")
 
-        # split_id = self.get_splits(construct_id, split_name)
+        # split_id = self.get_train_test_val_split(construct_id, split_name)
         # _log_progress("Dataset split job submitted.")
         return "placeholder"
         # return split_id

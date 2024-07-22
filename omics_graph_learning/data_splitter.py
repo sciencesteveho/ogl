@@ -3,9 +3,7 @@
 #
 
 """Class to handle the splitting of genes into training, test, and validation
-sets.
-
-The class can split genes based based on given chrs (whole chromosome holdouts)
+sets. The class can split genes based based on given chrs (whole chromosome holdouts)
 or it can assign them randomly based on percentage."""
 
 import csv
@@ -94,9 +92,6 @@ class GeneTrainTestSplitter:
             target_genes=target_genes_only,
         )
         all_genes = list(gene_chr_pairs.keys())
-        print(f"Some target genes: {self.target_genes[:5]}")
-        print(f"Total genes: {len(all_genes)}")
-        print(f"Some genes: {all_genes[:5]}")
 
         # split genes based on input chromosome holdouts
         if test_chrs and val_chrs:
