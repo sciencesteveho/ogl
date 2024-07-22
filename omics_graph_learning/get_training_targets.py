@@ -60,25 +60,17 @@ def _append_tissue_to_genes(
     return [f"{gene}_{tissue}" for gene in filtered_genes]
 
 
-def get_training_targets(
-    args: argparse.Namespace,
+def filter_genes(
     experiment_config: ExperimentConfig,
+    sample_config_dir: Path,
+    tissue: str,
     target_mode: str,
-) -> None:
-    """Get training targets for the network.
-
-    Args:
-        args: argparse.namespace: The arguments for the function.
-        experiment_config: ExperimentConfig: The experiment configuration.
-        target_mode: str: The mode for selecting targets ("gtex" or "rna").
-    """
-    # set up vars
+    args: argparse.Namespace,
+    split_path: Path,
+) -> List[str]:
+    """Filter genes based on TPM and percent of samples, looping through all
+    tissues in the experiment."""
     unique_genes = set()
-    sample_config_dir = experiment_config.sample_config_dir
-    graph_dir = experiment_config.graph_dir
-    split_path = _prepare_split_directories(graph_dir, args.split_name)
-
-    # filter genes based on TPM and percent of samples
     for tissue in experiment_config.tissues:
         tissue_config = TissueConfig.from_yaml(sample_config_dir / f"{tissue}.yaml")
         if target_mode == "gtex":
@@ -103,11 +95,19 @@ def get_training_targets(
                 tpm_filter=args.tpm_filter,
             )
         unique_genes.update(_append_tissue_to_genes(filtered_genes, tissue))
-    target_genes = list(unique_genes)
-    print(f"Number of genes after filtering: {len(target_genes)}")
+    return list(unique_genes)
 
-    # remove RBP genes, if active and stored
-    if "rbp_network" in experiment_config.interaction_types:
+
+def remove_active_rbp_genes(
+    experiment_config: ExperimentConfig,
+    target_genes: List[str],
+) -> List[str]:
+    """Remove active RBP genes from the target genes, if rbp_network is used for
+    graph construction."""
+    for tissue in experiment_config.tissues:
+        tissue_config = TissueConfig.from_yaml(
+            experiment_config.sample_config_dir / f"{tissue}.yaml"
+        )
         active_rbp_file = (
             experiment_config.interaction_dir
             / experiment_config.experiment_name
@@ -118,12 +118,51 @@ def get_training_targets(
         with open(active_rbp_file, "rb") as f:
             active_rbps = pickle.load(f)
         target_genes = [gene for gene in target_genes if gene not in active_rbps]
+    return target_genes
+
+
+def get_training_targets(
+    args: argparse.Namespace,
+    experiment_config: ExperimentConfig,
+    target_mode: str,
+) -> None:
+    """Get training targets for the network.
+
+    Args:
+        args: argparse.namespace: The arguments for the function.
+        experiment_config: ExperimentConfig: The experiment configuration.
+        target_mode: str: The mode for selecting targets ("gtex" or "rna").
+    """
+    # set up vars
+    sample_config_dir = experiment_config.sample_config_dir
+    graph_dir = experiment_config.graph_dir
+    split_path = _prepare_split_directories(graph_dir, args.split_name)
+
+    # filter genes based on TPM and percent of samples
+    target_genes = filter_genes(
+        experiment_config=experiment_config,
+        sample_config_dir=sample_config_dir,
+        tissue="all",
+        target_mode=target_mode,
+        args=args,
+        split_path=split_path,
+    )
+
+    print(f"Number of genes after filtering: {len(target_genes)}")
+    print(f"Some genes: {target_genes[:5]}")
+
+    # remove RBP genes, if active and stored
+    if "rbp_network" in experiment_config.interaction_types:
+        target_genes = remove_active_rbp_genes(
+            experiment_config=experiment_config,
+            target_genes=target_genes,
+        )
 
     # get dataset split
     splitter = GeneTrainTestSplitter(target_genes=target_genes)
     split = splitter.train_test_val_split(experiment_config=experiment_config)
 
-    print(f"Number of genes in training set SPLIT: {len(split['train'])}")
+    print(f"Checking split: {split}")
     # get targets
     assembler = TargetAssembler(
         experiment_config=experiment_config,
