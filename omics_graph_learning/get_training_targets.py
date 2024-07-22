@@ -201,12 +201,12 @@ def get_training_targets(
     )
 
     # scale targets
-    # scaled_targets = assembler.scale_targets(targets)
+    scaled_targets = assembler.scale_targets(targets)
 
     # save splits and targets
     _save_splits(split=split, split_path=split_path)
     _save_targets(targets=targets, split_path=split_path)
-    # _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
+    _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
 
 
 def validate_args(args: argparse.Namespace) -> None:
