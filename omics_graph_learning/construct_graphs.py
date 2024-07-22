@@ -274,10 +274,7 @@ def make_tissue_graph(
     dir_check_make(graph_dir)
 
     # get genes for removing nodes without gene connections
-    genes = [
-        f"{gene}_{tissue}"
-        for gene in genes_from_gencode(pybedtools.BedTool(gencode_ref))
-    ]
+    genes = [f"{line[3]}_{tissue}" for line in pybedtools.BedTool(gencode_ref)]
     print(f"Genes: {genes[:10]}")
 
     # instantiate objects and process graphs
