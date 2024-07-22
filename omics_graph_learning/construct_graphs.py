@@ -271,7 +271,7 @@ def make_tissue_graph(
     print(f"Genes: {genes[:10]}")
 
     # instantiate objects and process graphs
-    graph, positional_attributes = graph_constructor(
+    graph = graph_constructor(
         interaction_dir=interaction_dir,
         parse_dir=parse_dir,
         graph_type=graph_type,
