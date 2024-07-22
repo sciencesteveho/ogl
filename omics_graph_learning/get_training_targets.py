@@ -47,9 +47,10 @@ def _save_targets(
     scaled: bool = False,
 ) -> None:
     """Simple utility function to pickle targets."""
-    _save_pickle(targets, split_path / "training_targets.pkl")
     if scaled:
         _save_pickle(targets, split_path / "training_targets_scaled.pkl")
+    else:
+        _save_pickle(targets, split_path / "training_targets.pkl")
 
 
 def _append_tissue_to_genes(
@@ -205,16 +206,6 @@ def get_training_targets(
     # scale targets
     scaled_targets = assembler.scale_targets(targets)
     _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
-
-    # Verify scaling
-    for split in targets:
-        for target in targets[split]:
-            original = targets[split][target]
-            scaled = scaled_targets[split][target]
-            print(f"Split: {split}, Target: {target}")
-            print(f"Original mean: {original.mean()}, std: {original.std()}")
-            print(f"Scaled mean: {scaled.mean()}, std: {scaled.std()}")
-            print("---")
 
 
 def validate_args(args: argparse.Namespace) -> None:
