@@ -86,10 +86,12 @@ class GeneTrainTestSplitter:
         tissues = experiment_config.tissues
         self._validate_chrs(test_chrs, val_chrs)
 
+        target_genes_only = [gene.split("_")[0] for gene in self.target_genes]
+
         # get dict of filtered genes as {gene: chr}
         gene_chr_pairs = self._gtf_gene_chr_pairing(
             gtf=experiment_config.gencode_gtf,
-            target_genes=self.target_genes,
+            target_genes=target_genes_only,
         )
         all_genes = list(gene_chr_pairs.keys())
         print(f"Some target genes: {self.target_genes[:5]}")
