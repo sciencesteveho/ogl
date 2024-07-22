@@ -76,7 +76,7 @@ class PipelineRunner:
 
     def get_splits(self, slurm_dependency: str, split_name: str = "split") -> str:
         """Submit a SLURM job to get splits."""
-        sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} get_training_targets.sh {self.args.experiment_yaml} {self.args.tpm_filter} {self.args.percent_of_samples_filter} {split_name}"
+        sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} training_targets.sh {self.args.experiment_yaml} {self.args.tpm_filter} {self.args.percent_of_samples_filter} {split_name}"
         if self.args.target == "rna_seq":
             sbatch_command += " --rna_seq"
         return _run_command(command=sbatch_command, get_output=True) or ""

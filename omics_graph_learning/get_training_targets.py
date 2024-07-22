@@ -195,7 +195,7 @@ def main() -> None:
 
     # load experiment config
     experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
-    if args.target_type == "rna_seq":
+    if args.target == "rna_seq":
         get_training_targets(
             args=args, experiment_config=experiment_config, target_mode="rna"
         )
