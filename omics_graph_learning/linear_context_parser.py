@@ -371,9 +371,9 @@ class LinearContextParser:
                 binsize=50000,
             )
 
-        stored_attributed: Dict[str, Dict[str, Union[str, float, Dict[str, float]]]] = (
-            {}
-        )
+        stored_attributes: Dict[
+            str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]
+        ] = {}
         bedfile_lines = {}
         for attribute in ATTRIBUTES:
             filename = self.attribute_dir / attribute / f"{node}_{attribute}_percentage"
@@ -382,11 +382,15 @@ class LinearContextParser:
                 bedfile_lines[attribute] = set(lines)
             for line in bedfile_lines[attribute]:
                 if attribute == "gc":
-                    stored_attributed[f"{line[3]}_{self.tissue}"] = {
+                    stored_attributes[f"{line[3]}_{self.tissue}"] = {
                         "chr": line[0].replace("chr", ""),
                     }
-                    stored_attributed[f"{line[3]}_{self.tissue}"] = {
-                        "coordinates": {"start": float(line[1]), "end": float(line[2])},
+                    stored_attributes[f"{line[3]}_{self.tissue}"] = {
+                        "coordinates": {
+                            "chr": line[0],
+                            "start": float(line[1]),
+                            "end": float(line[2]),
+                        },
                         "size": float(line[4]),
                         "gc": float(line[5]),
                     }
@@ -394,19 +398,19 @@ class LinearContextParser:
                         encoding = positional_encoding(
                             chromosome=line[0], node_start=line[1], node_end=line[2]
                         )
-                        stored_attributed[f"{line[3]}_{self.tissue}"][
+                        stored_attributes[f"{line[3]}_{self.tissue}"][
                             "positional_encoding"
                         ] = encoding
                 else:
                     try:
-                        stored_attributed[f"{line[3]}_{self.tissue}"][attribute] = (
+                        stored_attributes[f"{line[3]}_{self.tissue}"][attribute] = (
                             float(line[5])
                         )
                     except ValueError:
-                        stored_attributed[f"{line[3]}_{self.tissue}"][attribute] = 0
+                        stored_attributes[f"{line[3]}_{self.tissue}"][attribute] = 0
 
         with open(self.attribute_dir / f"{node}_reference.pkl", "wb") as output:
-            pickle.dump(stored_attributed, output)
+            pickle.dump(stored_attributes, output)
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:

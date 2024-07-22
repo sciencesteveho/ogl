@@ -8,10 +8,9 @@ base node. Attributes are then added for each node as node features and parsed
 as a series of numpy arrays."""
 
 
-from collections import defaultdict
 from pathlib import Path
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import networkx as nx  # type: ignore
 import numpy as np
@@ -19,7 +18,6 @@ import pandas as pd
 import pybedtools  # type: ignore
 
 from utils import dir_check_make
-from utils import genes_from_gencode
 from utils import time_decorator
 
 
@@ -100,45 +98,29 @@ def _add_tf_or_gene_onehot(
 @time_decorator(print_args=False)
 def _prepare_reference_attributes(
     reference_dir: str, nodes: List[str]
-) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+) -> Dict[str, Dict[str, Any]]:
     """Base_node attr are hard coded in as the first type to load. There are
     duplicate keys in preprocessing but they have the same attributes so they'll
     overwrite without issue. The hardcoded removed_keys are either chr, which we
     don't want the model or learn, or they contain sub dictionaries. Coordinates
     are not a learning feature and positional encodings are added at a different
     step of model training.
-
-    Returns:
-        Dict[str, Dict[str, Any]]: nested dict of attributes for each node
     """
-    removed_keys = ["coordinates", "positional_encoding"]
-    positional_attributes: Dict[str, Any] = defaultdict(lambda: defaultdict(dict))
-
     with open(f"{reference_dir}/basenodes_reference.pkl", "rb") as file:
         ref = pickle.load(file)
 
     for node in nodes:
         with open(f"{reference_dir}/{node}_reference.pkl", "rb") as file:
             ref_for_concat = pickle.load(file)
-            for key in removed_keys:
-                if key in ref_for_concat:
-                    positional_attributes[node][key] = ref_for_concat.pop(key)
-
-            if "chr" in ref_for_concat:
-                positional_attributes[node]["coordinates"]["chr"] = ref_for_concat.pop(
-                    "chr"
-                )
             ref.update(ref_for_concat)
 
-    ref = {
+    return {
         key: {
             **value,
             **_add_tf_or_gene_onehot(key),
         }
         for key, value in ref.items()
     }
-
-    return ref, {node: dict(attrs) for node, attrs in positional_attributes.items()}
 
 
 @time_decorator(print_args=False)
@@ -149,7 +131,7 @@ def graph_constructor(
     graph_type: str,
     nodes: List[str],
     genes: List[str],
-) -> Tuple[nx.Graph, Dict[str, Dict[str, Any]]]:
+) -> nx.Graph:
     """Create a graph from parsed edges and from local context edges before
     combining. Then add attributes ot each node by using the reference
     dictionaries. The function then removes any nodes within the blacklist
@@ -201,7 +183,7 @@ def graph_constructor(
     graph = _prune_nodes_without_gene_connections(graph=graph, gene_nodes=genes)
 
     # add node attributes
-    ref, positional_attributes = _prepare_reference_attributes(
+    ref = _prepare_reference_attributes(
         reference_dir=parse_dir / "attributes",
         nodes=nodes,
     )
@@ -212,7 +194,7 @@ def graph_constructor(
 
     # remove nodes without attributes
     graph = _remove_blacklist_nodes(graph)
-    return graph, positional_attributes
+    return graph
 
 
 @time_decorator(print_args=False)
@@ -228,25 +210,36 @@ def _nx_to_tensors(
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels."""
     graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
+    coordinates, positional_encodings, node_features = [], [], []
+
+    # loop through nodes to make separate arrays
+    for i in range(len(graph.nodes)):
+        node_data = graph.nodes[i]
+        coordinates.append(list(node_data["coordinates"].values()))
+        positional_encodings.append(node_data["positional_encoding"].flatten())
+        node_features.append(
+            [
+                value
+                for key, value in node_data.items()
+                if key not in ["coordinates", "positional_encoding"]
+            ]
+        )
+
     edges = np.array(
-        [[edge[0], edge[1]] for edge in nx.to_edgelist(graph, nodelist=list(rename))]
+        [
+            [edge[0], edge[1]]
+            for edge in nx.to_edgelist(graph, nodelist=list(rename.values()))
+        ]
     ).T
-    node_features = np.array(
-        [np.array(list(graph.nodes[i].values())) for i in range(len(graph.nodes))]
-    )
     edge_features = [graph[u][v][2] for u, v in edges.T]
-    positional_encoding = np.array(
-        [positional_attributes[node]["positional_encoding"] for node in rename]
-    )
-    coordinates = [positional_attributes[node]["coordinates"] for node in rename]
 
     with open(graph_dir / f"{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
         pickle.dump(
             {
                 "edge_index": edges,
-                "node_feat": node_features,
-                "node_positional_encoding": positional_encoding,
-                "node_coordinates": coordinates,
+                "node_feat": np.array(node_features),
+                "node_positional_encoding": np.array(positional_encodings),
+                "node_coordinates": np.array(coordinates),
                 "edge_feat": edge_features,
                 "num_nodes": graph.number_of_nodes(),
                 "num_edges": graph.number_of_edges(),

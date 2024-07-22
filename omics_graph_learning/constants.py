@@ -7,6 +7,7 @@
 from typing import Dict, List
 
 HG38_TOTAL_BASEPAIRS = 3088269227
+MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
 
 ATTRIBUTES: List[str] = [
     "gc",
