@@ -38,6 +38,8 @@ feat_window: 2000
 
 gene_gene: false
 
+graph_type: base
+
 interaction_types: null
 
 k_fold: null
@@ -52,9 +54,9 @@ nodes: null
 
 positional_encoding: true
 
-rbp_proteins: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_proteins.txt
-
 rbp_network: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_network.txt
+
+rbp_proteins: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_proteins.txt
 
 regulatory_schema: intersect
 

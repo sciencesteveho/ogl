@@ -125,7 +125,7 @@ def create_tissue_graph(
         nodes=experiment_config.nodes,
         experiment_name=experiment_config.experiment_name,
         working_directory=experiment_config.working_directory,
-        graph_type="full",
+        graph_type=experiment_config.graph_type,
         gencode_ref=experiment_config.gencode_gtf,
         tissue=tissue,
     )

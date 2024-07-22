@@ -210,12 +210,7 @@ class PipelineRunner:
         # _log_progress("Node and edge generation job submitted.")
 
         # construct_id = self.run_graph_concatenation(pipeline_a_ids)
-        submit_slurm_job(
-            job_script="concat.sh",
-            args=f"full {self.args.experiment_yaml}",
-            dependency=None,
-        )
-        _log_progress("Graph concatenation job submitted.")
+        # _log_progress("Graph concatenation job submitted.")
 
         # split_id = self.get_splits(construct_id, split_name)
         # _log_progress("Dataset split job submitted.")
@@ -233,6 +228,7 @@ class PipelineRunner:
         if self.args.target == "rna_seq":
             split_name += "_rna_seq"
 
+        print(f"Starting process for: {split_name}")
         final_graph, intermediate_graph = self._get_file_paths(split_name=split_name)
 
         _log_progress(f"Checking for final graph: {final_graph}")

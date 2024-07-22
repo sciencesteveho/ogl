@@ -128,7 +128,6 @@ def main() -> None:
     """Pipeline to concatenate tissue graphs"""
     # parse argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("--graph_type", type=str, default="full")
     parser.add_argument(
         "--experiment_config",
         type=str,
@@ -136,9 +135,10 @@ def main() -> None:
     )
     args = parser.parse_args()
     params = ExperimentConfig.from_yaml(args.experiment_config)
+    graph_type = params.graph_type
 
     # concat all graphs! and save to file
-    prefix = params.graph_dir / f"{params.experiment_name}_{args.graph_type}_graph"
+    prefix = params.graph_dir / f"{params.experiment_name}_{graph_type}_graph"
     concatenate_graphs(prefix=prefix, tissues=params.tissues)
 
 

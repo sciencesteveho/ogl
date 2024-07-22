@@ -3,12 +3,15 @@
 
 
 """Get train / test / val splits for nodes in graphs and generate targets for
-training the network."""
+training the network. First, genes are filtered based on a TPM cutoff across a
+percentage of the samples (e.g. gene must have at least 0.1 TPM across 20% of
+samples)."""
 
 
 import argparse
 from pathlib import Path
 import pickle
+import sys
 from typing import Dict, List
 
 import numpy as np
@@ -152,6 +155,13 @@ def get_training_targets(
     _save_targets(targets=scaled_targets, split_path=split_path, scaled=True)
 
 
+def validate_args(args: argparse.Namespace) -> None:
+    """Helper function to validate CLI arguments that have dependencies."""
+    if args.target != "rna_seq" and args.filter_mode is None:
+        print("Error: if target type is not `rna_seq`, --filter_mode is required")
+        sys.exit(1)
+
+
 def main() -> None:
     """Main function for dataset_split.py. Parses command line arguments and
     calls training split fxn.
@@ -171,25 +181,27 @@ def main() -> None:
     parser.add_argument(
         "--filter_mode",
         type=str,
-        help="Mode to filter genes (e.g. `within` or `across`)",
+        help="Mode to filter genes, specifying within the target tissue or across all possible gtex tissues (e.g. `within` or `across`). This is required if the target type is not `rna_seq`",
+        default="within",
     )
     parser.add_argument("--split_name", type=str, help="Name of the split")
     parser.add_argument(
-        "--target_type",
+        "--target",
         type=str,
-        help="Type of target to generate (e.g. `gtex` or `rna`)",
+        help="Type of target to generate",
     )
     args = parser.parse_args()
+    validate_args(args)
 
     # load experiment config
     experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
-    if args.target_type == "gtex":
-        get_training_targets(
-            args=args, experiment_config=experiment_config, target_mode="gtex"
-        )
-    elif args.target_type == "rna":
+    if args.target_type == "rna_seq":
         get_training_targets(
             args=args, experiment_config=experiment_config, target_mode="rna"
+        )
+    else:
+        get_training_targets(
+            args=args, experiment_config=experiment_config, target_mode="gtex"
         )
 
 

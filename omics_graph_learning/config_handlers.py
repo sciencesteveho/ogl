@@ -56,6 +56,7 @@ class ExperimentConfig:
     fasta: str
     feat_window: int
     gene_gene: bool
+    graph_type: str
     interaction_types: List[str]
     k_fold: int
     liftover: str
