@@ -40,7 +40,9 @@ def _remove_blacklist_nodes(
     attributes because they overlap the encode blacklist."""
     blacklist = [node for node, attrs in graph.nodes(data=True) if len(attrs) == 0]
     graph.remove_nodes_from(blacklist)
-    print(f"Initial graph had  Removed {len(blacklist)} nodes from graph")
+    print(
+        f"Removed {len(blacklist)} nodes from graph because they overlapped blacklist / have no attributes."
+    )
     return graph
 
 
@@ -57,7 +59,9 @@ def _prune_nodes_without_gene_connections(
 
     nodes_to_remove = set(graph) - connected_to_gene
     graph.remove_nodes_from(nodes_to_remove)
-    print(f"Removed {len(nodes_to_remove)} nodes from graph")
+    print(
+        f"Removed {len(nodes_to_remove)} nodes from graph that are not connected to genes."
+    )
     return graph
 
 
@@ -266,7 +270,10 @@ def make_tissue_graph(
     dir_check_make(graph_dir)
 
     # get genes for removing nodes without gene connections
-    genes = genes_from_gencode(pybedtools.BedTool(gencode_ref))
+    genes = [
+        f"{gene}_{tissue}"
+        for gene in genes_from_gencode(pybedtools.BedTool(gencode_ref))
+    ]
 
     # instantiate objects and process graphs
     graph, positional_attributes = graph_constructor(
