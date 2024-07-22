@@ -193,6 +193,10 @@ def graph_constructor(
             )
         )
 
+    print(
+        f"Base graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+    )
+
     # prune nodes without gene connections
     graph = _prune_nodes_without_gene_connections(graph=graph, gene_nodes=genes)
 
@@ -274,6 +278,7 @@ def make_tissue_graph(
         f"{gene}_{tissue}"
         for gene in genes_from_gencode(pybedtools.BedTool(gencode_ref))
     ]
+    print(f"Genes: {genes[:10]}")
 
     # instantiate objects and process graphs
     graph, positional_attributes = graph_constructor(
