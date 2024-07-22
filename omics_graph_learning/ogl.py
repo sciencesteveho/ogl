@@ -204,13 +204,14 @@ class PipelineRunner:
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
         graph construction."""
-        _log_progress("No intermediates found. Running entire pipeline!")
+        # _log_progress("No intermediates found. Running entire pipeline!")
 
-        pipeline_a_ids = self.run_node_and_edge_generation()
-        _log_progress("Node and edge generation job submitted.")
+        # pipeline_a_ids = self.run_node_and_edge_generation()
+        # _log_progress("Node and edge generation job submitted.")
 
         # construct_id = self.run_graph_concatenation(pipeline_a_ids)
-        # _log_progress("Graph concatenation job submitted.")
+        construct_id = self.run_graph_concatenation()
+        _log_progress("Graph concatenation job submitted.")
 
         # split_id = self.get_splits(construct_id, split_name)
         # _log_progress("Dataset split job submitted.")
