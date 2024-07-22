@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pybedtools  # type: ignore
 
+from utils import dir_check_make
 from utils import genes_from_gencode
 from utils import time_decorator
 
@@ -39,7 +40,7 @@ def _remove_blacklist_nodes(
     attributes because they overlap the encode blacklist."""
     blacklist = [node for node, attrs in graph.nodes(data=True) if len(attrs) == 0]
     graph.remove_nodes_from(blacklist)
-    print(f"Removed {len(blacklist)} nodes from graph")
+    print(f"Initial graph had  Removed {len(blacklist)} nodes from graph")
     return graph
 
 
@@ -196,8 +197,10 @@ def graph_constructor(
         reference_dir=parse_dir / "attributes",
         nodes=nodes,
     )
-    # graph = _remove_blacklist_nodes(graph, ref)
     nx.set_node_attributes(graph, ref)
+    print(
+        f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+    )
 
     # remove nodes without attributes
     graph = _remove_blacklist_nodes(graph)
@@ -260,6 +263,7 @@ def make_tissue_graph(
     graph_dir = working_directory / "graphs"
     interaction_dir = working_directory / tissue / "interaction"
     parse_dir = working_directory / tissue / "parsing"
+    dir_check_make(graph_dir)
 
     # get genes for removing nodes without gene connections
     genes = genes_from_gencode(pybedtools.BedTool(gencode_ref))

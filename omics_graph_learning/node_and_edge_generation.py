@@ -167,10 +167,10 @@ def main() -> None:
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
     # )
-    parse_linear_context(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
+    # parse_linear_context(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
     create_tissue_graph(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
