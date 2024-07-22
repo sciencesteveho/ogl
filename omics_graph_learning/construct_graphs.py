@@ -227,15 +227,21 @@ def _nx_to_tensors(
 ) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels."""
-    sample_node = next(iter(graph.nodes))  # get any node to check feature shape
-    feature_shape = np.array(list(graph.nodes[sample_node].values())).shape
+    # Initialize a list to store ordered features
+    ordered_features: List[np.ndarray] = [None] * len(graph.nodes)
 
-    # extract feats and order according to the node integer labels
-    ordered_features = np.zeros((len(graph.nodes),) + feature_shape, dtype=np.float32)
+    # Extract features for each node and place them in the correct position
     for node, idx in rename.items():
-        ordered_features[idx] = np.array(list(graph.nodes[node].values()))
+        node_data = graph.nodes[node]
+        # Convert node data to a list of values, handling potential non-numeric types
+        node_features = [
+            value if isinstance(value, (int, float, bool)) else str(value)
+            for value in node_data.values()
+        ]
+        ordered_features[idx] = np.array(node_features, dtype=object)
 
-    node_features = np.array(ordered_features)
+    # Convert list of numpy arrays to a numpy object array
+    node_features = np.array(ordered_features, dtype=object)
     graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
     edges = np.array(
         [
