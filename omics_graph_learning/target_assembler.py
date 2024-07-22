@@ -96,7 +96,7 @@ class TargetAssembler:
     ) -> Dict[str, Dict[str, np.ndarray]]:
         """Assemble RNA targets based on provided split information."""
         rna_matrix = tissue_config.resources["rna"]
-        rna_quantifications = self._get_rna_quantifications(rna_matrix)
+        rna_quantifications = self._get_rna_quantifications(rna_matrix=rna_matrix)
         return {
             partition: {
                 f'{gene}_{tissue_config.resources["tissue"]}': np.array(
@@ -115,7 +115,7 @@ class TargetAssembler:
             (df["TPM"] + self.pseudocount)
             .apply(
                 lambda x: self._apply_log_transform(
-                    pd.DataFrame([x]), transform_type="log2"
+                    pd.DataFrame([x]), transform_type=self.log_transform
                 )[0][0]
             )
             .to_dict()
