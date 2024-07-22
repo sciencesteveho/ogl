@@ -106,27 +106,22 @@ def concatenate_graphs(
         with open(f"{prefix}_idxs.pkl", "wb") as output:
             pickle.dump(concat_idxs, output, protocol=4)
     else:
-        print(f"Only one graph of tissue: {tissues[0]}. Manually copying files.")
-        with open(f"{prefix}.pkl", "rb") as output:
-            subprocess.run(
-                [
-                    "cp",
-                    f"{tissue_prefix}.pkl",
-                    f"{prefix}.pkl",
-                ],
-                stdout=output,
-                check=True,
-            )
-        with open(f"{prefix}_idxs.pkl", "rb") as output:
-            subprocess.run(
-                [
-                    "cp",
-                    f"{tissue_prefix}_idxs.pkl",
-                    f"{prefix}_idxs.pkl",
-                ],
-                stdout=output,
-                check=True,
-            )
+        subprocess.run(
+            [
+                "cp",
+                f"{tissue_prefix}.pkl",
+                f"{prefix}.pkl",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "cp",
+                f"{tissue_prefix}_idxs.pkl",
+                f"{prefix}_idxs.pkl",
+            ],
+            check=True,
+        )
 
 
 def main() -> None:
