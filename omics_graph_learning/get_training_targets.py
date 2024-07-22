@@ -122,6 +122,7 @@ def get_training_targets(
     splitter = GeneTrainTestSplitter(target_genes=target_genes)
     split = splitter.train_test_val_split(experiment_config=experiment_config)
 
+    print(f"Number of genes in training set SPLIT: {len(split['train'])}")
     # get targets
     assembler = TargetAssembler(
         experiment_config=experiment_config,
