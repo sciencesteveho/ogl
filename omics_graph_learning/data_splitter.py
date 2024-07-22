@@ -85,6 +85,7 @@ class GeneTrainTestSplitter:
         val_chrs = experiment_config.val_chrs
         tissues = experiment_config.tissues
         self._validate_chrs(test_chrs, val_chrs)
+        print(f"Splitting genes based on chromosomes: {test_chrs} and {val_chrs}")
 
         # get dict of filtered genes as {gene: chr}
         gene_chr_pairs = self._gtf_gene_chr_pairing(
@@ -92,6 +93,8 @@ class GeneTrainTestSplitter:
             target_genes=self.target_genes,
         )
         all_genes = list(gene_chr_pairs.keys())
+        print(f"Total genes: {len(all_genes)}")
+        print(f"Some genes: {all_genes[:5]}")
 
         # split genes based on input chromosome holdouts
         if test_chrs and val_chrs:
@@ -104,6 +107,10 @@ class GeneTrainTestSplitter:
         else:
             # split genes randomly
             train_genes, test_genes, val_genes = self._random_split(all_genes)
+
+        print(f"Number of genes in training set: {len(train_genes)}")
+        print(f"Number of genes in test set: {len(test_genes)}")
+        print(f"Number of genes in validation set: {len(val_genes)}")
 
         # append tissues to gene names for identification
         if tissue_append:
