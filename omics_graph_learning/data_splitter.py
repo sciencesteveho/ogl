@@ -110,18 +110,23 @@ class GeneTrainTestSplitter:
         print(f"Number of genes in validation set: {len(val_genes)}")
 
         # append tissues to gene names for identification
-        if tissue_append:
-            return {
-                "train": self._append_tissues(train_genes, tissues),
-                "test": self._append_tissues(test_genes, tissues),
-                "validation": self._append_tissues(val_genes, tissues),
-            }
-        else:
-            return {
-                "train": list(train_genes),
-                "test": list(test_genes),
-                "validation": list(val_genes),
-            }
+        return {
+            "train": list(train_genes),
+            "test": list(test_genes),
+            "validation": list(val_genes),
+        }
+        # if tissue_append:
+        #     return {
+        #         "train": self._append_tissues(train_genes, tissues),
+        #         "test": self._append_tissues(test_genes, tissues),
+        #         "validation": self._append_tissues(val_genes, tissues),
+        #     }
+        # else:
+        #     return {
+        #         "train": list(train_genes),
+        #         "test": list(test_genes),
+        #         "validation": list(val_genes),
+        #     }
 
     def _manual_chromosome_split(
         self,

@@ -475,7 +475,7 @@ class TargetAssembler:
         Returns:
             dict: A dictionary of scaled targets.
         """
-        scaled_targets = targets
+        scaled_targets = deepcopy(targets)
         num_target_types = len(next(iter(targets["train"].values())))
         target_scalers = {i: StandardScaler() for i in range(num_target_types)}
 
