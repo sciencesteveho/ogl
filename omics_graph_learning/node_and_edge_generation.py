@@ -159,18 +159,18 @@ def main() -> None:
     print(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # pipeline!
-    # preprocess_bedfiles(
-    #     experiment_config=experiment_config,
-    #     tissue_config=tissue_config,
-    # )
-    # parse_edges(
-    #     experiment_config=experiment_config,
-    #     tissue_config=tissue_config,
-    # )
-    # parse_linear_context(
-    #     experiment_config=experiment_config,
-    #     tissue_config=tissue_config,
-    # )
+    preprocess_bedfiles(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
+    parse_edges(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
+    parse_linear_context(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+    )
     create_tissue_graph(
         experiment_config=experiment_config,
         tissue_config=tissue_config,

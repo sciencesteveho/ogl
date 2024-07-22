@@ -1,16 +1,15 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] remove hardcoded files and add in the proper area, either the yaml or the processing fxn
-# - [ ] add module to create local global nodes for genes
+
 
 """Concatenate multiple graphs into a single graph and save their respective
 indexes"""
 
+
 import argparse
 from pathlib import Path
 import pickle
+import subprocess
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -18,11 +17,11 @@ import numpy as np
 from config_handlers import ExperimentConfig
 
 
-def _open_graph_and_idxs(prefix: str) -> Tuple[Dict, Dict]:
+def _open_graph_and_idxs(tissue_prefix: str) -> Tuple[Dict, Dict]:
     """Open graph and idxs from file."""
-    with open(f"{prefix}.pkl", "rb") as f:
+    with open(f"{tissue_prefix}.pkl", "rb") as f:
         graph = pickle.load(f)
-    with open(f"{prefix}_idxs.pkl", "rb") as f:
+    with open(f"{tissue_prefix}_idxs.pkl", "rb") as f:
         idxs = pickle.load(f)
     return graph, idxs
 
@@ -39,70 +38,95 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
 
 
 def concatenate_graphs(
-    pre_prefix: Path,
+    prefix: Path,
     tissues: List[str],
-) -> None:
+) -> None:  # sourcery skip: extract-method
     """Concatenate multiple graphs into a single graph. The first tissue in the
     list is used as the base and all subsequent graphs are reindexed then
     concatenated.
 
     Args:
-        pre_prefix (str): The prefix of the graph file names.
+        prefix (str): The prefix of the graph file names.
         tissues (List[str]): The list of tissue names.
 
     Returns:
         None
     """
-    prefix = f"{pre_prefix}_{tissues[0]}"
-    concat_graph, concat_idxs = _open_graph_and_idxs(prefix)
-    concat_edges = concat_graph["edge_index"]
-    concat_edge_feat = concat_graph["edge_feat"]
-    concat_node_feat = concat_graph["node_feat"]
-    concat_node_positional_encoding = concat_graph["node_positional_encoding"]
-    concat_node_coordinates = concat_graph["node_coordinates"]
-    concat_num_nodes = concat_graph["num_nodes"]
-    concat_num_edges = concat_graph["num_edges"]
+    tissue_prefix = f"{prefix}_{tissues[0]}"
 
-    for tissue in tissues[1:]:
-        prefix = f"{pre_prefix}_{tissue}"
-        graph, idxs = _open_graph_and_idxs(prefix)
-        end_idx = max(concat_idxs.values()) + 1
-        concat_idxs.update(_reindex_idxs(idxs=idxs, new_start_idx=end_idx))
-        concat_edges = np.hstack(
-            (
-                concat_edges,
-                _reindex_edges(edges=graph["edge_index"], new_start_idx=end_idx),
+    if len(tissues) > 1:
+        print(f"Concatenating graphs for tissues: {tissues}")
+        concat_graph, concat_idxs = _open_graph_and_idxs(tissue_prefix)
+        concat_edges = concat_graph["edge_index"]
+        concat_edge_feat = concat_graph["edge_feat"]
+        concat_node_feat = concat_graph["node_feat"]
+        concat_node_positional_encoding = concat_graph["node_positional_encoding"]
+        concat_node_coordinates = concat_graph["node_coordinates"]
+        concat_num_nodes = concat_graph["num_nodes"]
+        concat_num_edges = concat_graph["num_edges"]
+
+        for tissue in tissues[1:]:
+            tissue_prefix = f"{prefix}_{tissue}"
+            graph, idxs = _open_graph_and_idxs(tissue_prefix)
+            end_idx = max(concat_idxs.values()) + 1
+            concat_idxs.update(_reindex_idxs(idxs=idxs, new_start_idx=end_idx))
+            concat_edges = np.hstack(
+                (
+                    concat_edges,
+                    _reindex_edges(edges=graph["edge_index"], new_start_idx=end_idx),
+                )
             )
-        )
-        concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
-        concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
-        concat_node_positional_encoding = np.concatenate(
-            (concat_node_positional_encoding, graph["node_positional_encoding"])
-        )
-        concat_node_coordinates = np.concatenate(
-            (concat_node_coordinates, graph["node_coordinates"])
-        )
-        concat_num_nodes += graph["num_nodes"]
-        concat_num_edges += graph["num_edges"]
+            concat_edge_feat = np.concatenate((concat_edge_feat, graph["edge_feat"]))
+            concat_node_feat = np.concatenate((concat_node_feat, graph["node_feat"]))
+            concat_node_positional_encoding = np.concatenate(
+                (concat_node_positional_encoding, graph["node_positional_encoding"])
+            )
+            concat_node_coordinates = np.concatenate(
+                (concat_node_coordinates, graph["node_coordinates"])
+            )
+            concat_num_nodes += graph["num_nodes"]
+            concat_num_edges += graph["num_edges"]
 
-    with open(f"{pre_prefix}.pkl", "wb") as output:
-        pickle.dump(
-            {
-                "edge_index": concat_edges,
-                "node_feat": concat_node_feat,
-                "node_positional_encoding": concat_node_positional_encoding,
-                "node_coordinates": concat_node_coordinates,
-                "edge_feat": concat_edge_feat,
-                "num_nodes": concat_num_nodes,
-                "num_edges": concat_num_edges,
-                "avg_edges": concat_num_edges / concat_num_nodes,
-            },
-            output,
-            protocol=4,
-        )
+        with open(f"{prefix}.pkl", "wb") as output:
+            pickle.dump(
+                {
+                    "edge_index": concat_edges,
+                    "node_feat": concat_node_feat,
+                    "node_positional_encoding": concat_node_positional_encoding,
+                    "node_coordinates": concat_node_coordinates,
+                    "edge_feat": concat_edge_feat,
+                    "num_nodes": concat_num_nodes,
+                    "num_edges": concat_num_edges,
+                    "avg_edges": concat_num_edges / concat_num_nodes,
+                },
+                output,
+                protocol=4,
+            )
 
-    with open(f"{pre_prefix}_idxs.pkl", "wb") as output:
-        pickle.dump(concat_idxs, output, protocol=4)
+        with open(f"{prefix}_idxs.pkl", "wb") as output:
+            pickle.dump(concat_idxs, output, protocol=4)
+    else:
+        print(f"Only one graph of tissue: {tissues[0]}. Manually copying files.")
+        with open(f"{prefix}.pkl", "rb") as output:
+            subprocess.run(
+                [
+                    "cp",
+                    f"{tissue_prefix}.pkl",
+                    f"{prefix}.pkl",
+                ],
+                stdout=output,
+                check=True,
+            )
+        with open(f"{prefix}_idxs.pkl", "rb") as output:
+            subprocess.run(
+                [
+                    "cp",
+                    f"{tissue_prefix}_idxs.pkl",
+                    f"{prefix}_idxs.pkl",
+                ],
+                stdout=output,
+                check=True,
+            )
 
 
 def main() -> None:
@@ -119,8 +143,8 @@ def main() -> None:
     params = ExperimentConfig.from_yaml(args.experiment_config)
 
     # concat all graphs! and save to file
-    pre_prefix = params.graph_dir / f"{params.experiment_name}_{args.graph_type}_graph"
-    concatenate_graphs(pre_prefix=pre_prefix, tissues=params.tissues)
+    prefix = params.graph_dir / f"{params.experiment_name}_{args.graph_type}_graph"
+    concatenate_graphs(prefix=prefix, tissues=params.tissues)
 
 
 if __name__ == "__main__":
