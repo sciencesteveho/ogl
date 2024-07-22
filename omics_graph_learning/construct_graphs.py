@@ -227,29 +227,10 @@ def _nx_to_tensors(
 ) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels."""
-    # Initialize a list to store ordered features
-    ordered_features: List[np.ndarray] = [None] * len(graph.nodes)
-
-    # Extract features for each node and place them in the correct position
-    for node, idx in rename.items():
-        node_data = graph.nodes[node]
-        # Convert node data to a list of values, handling potential non-numeric types
-        node_features = [
-            value if isinstance(value, (int, float, bool)) else str(value)
-            for value in node_data.values()
-        ]
-        ordered_features[idx] = np.array(node_features, dtype=object)
-
-    # Convert list of numpy arrays to a numpy object array
-    node_features = np.array(ordered_features, dtype=object)
     graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
     edges = np.array(
-        [
-            [edge[0], edge[1]]
-            for edge in nx.to_edgelist(graph, nodelist=list(range(len(rename))))
-        ]
+        [[edge[0], edge[1]] for edge in nx.to_edgelist(graph, nodelist=list(rename))]
     ).T
-
     node_features = np.array(
         [np.array(list(graph.nodes[i].values())) for i in range(len(graph.nodes))]
     )
@@ -312,6 +293,13 @@ def make_tissue_graph(
         graph_dir / f"{experiment_name}_{graph_type}_graph_{tissue}_idxs.pkl", "wb"
     ) as output:
         pickle.dump(rename, output)
+
+    # temp save for debugging
+    with open(
+        "/ocean/projects/bio210019p/stevesho/data/preprocess/slurm_outputs/test.pkl",
+        "wb",
+    ) as output:
+        pickle.dump(graph, output)
 
     # save idxs and write to tensors
     _nx_to_tensors(
