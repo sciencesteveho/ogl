@@ -491,9 +491,12 @@ class TargetAssembler:
 
         # Scale the targets in all splits
         for split_targets in scaled_targets.values():
-            for _, values in split_targets.items():
+            for target, values in split_targets.items():
+                scaled_values = []
                 for i, scaler in target_scalers.items():
-                    values[i] = scaler.transform(values[i].reshape(-1, 1)).flatten()
+                    scaled_value = scaler.transform(values[i].reshape(-1, 1)).flatten()
+                    scaled_values.append(scaled_value)
+                split_targets[target] = np.array(scaled_values)
 
         return scaled_targets
 
