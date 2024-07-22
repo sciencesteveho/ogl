@@ -147,6 +147,7 @@ def get_training_targets(
                         collected_targets[split_key][gene_id] += target_values
         targets = collected_targets
 
+    print(f"Number of genes in training set: {len(targets['train'])}")
     scaled_targets = assembler.scale_targets(targets)
 
     # save splits and targets

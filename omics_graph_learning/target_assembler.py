@@ -76,14 +76,7 @@ class TargetAssembler:
         )
 
     def assemble_matrix_targets(self) -> Dict[str, Dict[str, np.ndarray]]:
-        """_summary_
-
-        Args:
-            split (Dict[str, List[str]]): _description_
-
-        Returns:
-            Dict[str, Dict[str, np.ndarray]]: _description_
-        """
+        """Assemble GTEx matrix targets based on provided split information."""
         tissue_keywords = self._prepare_keywords()
         return self._tissue_targets_for_training(
             average_activity=self.average_activity,
@@ -101,14 +94,7 @@ class TargetAssembler:
     def assemble_rna_targets(
         self, tissue_config: TissueConfig
     ) -> Dict[str, Dict[str, np.ndarray]]:
-        """_summary_
-
-        Args:
-            split (Dict[str, List[str]]): _description_
-
-        Returns:
-            Dict[str, Dict[str, np.ndarray]]: _description_
-        """
+        """Assemble RNA targets based on provided split information."""
         rna_matrix = tissue_config.resources["rna"]
         rna_quantifications = self._get_rna_quantifications(rna_matrix)
         return {
@@ -138,14 +124,7 @@ class TargetAssembler:
     def scale_targets(
         self, targets: Dict[str, Dict[str, np.ndarray]]
     ) -> Dict[str, Dict[str, np.ndarray]]:
-        """_summary_
-
-        Args:
-            targets (Dict[str, Dict[str, np.ndarray]]): _description_
-
-        Returns:
-            Dict[str, Dict[str, np.ndarray]]: _description_
-        """
+        """Call the static method to scale targets using StandardScaler."""
         return self._scale_targets(targets)
 
     def _prepare_keywords(self) -> Dict[str, Tuple[str, str]]:
@@ -569,7 +548,7 @@ class TargetAssembler:
     @staticmethod
     def _apply_log_transform(
         data: pd.DataFrame, transform_type: str = "log2"
-    ) -> np.ndarray[Any]:
+    ) -> np.ndarray:
         """Applies the specified log transformation to a DataFrame.
 
         Args:
