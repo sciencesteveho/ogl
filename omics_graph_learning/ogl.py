@@ -210,7 +210,11 @@ class PipelineRunner:
         # _log_progress("Node and edge generation job submitted.")
 
         # construct_id = self.run_graph_concatenation(pipeline_a_ids)
-        construct_id = self.run_graph_concatenation()
+        submit_slurm_job(
+            job_script="concat.sh",
+            args=f"full {self.args.experiment_yaml}",
+            dependency=None,
+        )
         _log_progress("Graph concatenation job submitted.")
 
         # split_id = self.get_splits(construct_id, split_name)
