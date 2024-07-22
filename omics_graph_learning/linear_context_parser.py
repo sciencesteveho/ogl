@@ -27,8 +27,7 @@ from utils import time_decorator
 
 
 class LinearContextParser:
-    """Object that parses local genomic da
-    ta into graph edges
+    """Object that parses local genomic data into graph edges
 
     Attributes:
         experiment_config: Dataclass containing the experiment configuration.

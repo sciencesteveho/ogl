@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Metadata handler for graph creation, and inputs metadata into each step to
-perform part 1 of the pipeline. Takes config to tell the next 3 steps which
-arguments to use."""
+"""Metadata handler for and pipeline execution for part 1 of OGL."""
 
 
 import argparse
@@ -18,19 +16,14 @@ import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
 from linear_context_parser import LinearContextParser
 from preprocessor import GenomeDataPreprocessor
+from target_consolidator import TrainingTargetConsolidator
 from utils import _get_files_in_directory
 
 
 def preprocess_bedfiles(
     experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> None:
-    """Directory set-up, bedfile symlinking and preprocessing
-
-    Args:
-        experiment_config (Dict[str, Union[str, list]]): experiment config
-        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
-        nodes (List[str]): nodes to include in graph
-    """
+    """Directory set-up, bedfile symlinking and preprocessing"""
     preprocessObject = GenomeDataPreprocessor(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
@@ -45,10 +38,6 @@ def parse_edges(
 ) -> None:
     """Parse nodes and edges to create base graph and for local context
     augmentation
-
-    Args:
-        experiment_config (Dict[str, Union[str, list]]): experiment config
-        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
     """
     edgeparserObject = EdgeParser(
         experiment_config=experiment_config,
@@ -63,13 +52,7 @@ def parse_linear_context(
     experiment_config: ExperimentConfig,
     tissue_config: TissueConfig,
 ) -> None:
-    """Add local context edges based on basenode input
-
-    Args:
-        experiment_config (Dict[str, Union[str, list]]): experiment config
-        tissue_config (Dict[str, Union[str, list]]): tissie-specific configs
-        nodes (List[str]): nodes to include in graph
-    """
+    """Add local context edges based on basenode input"""
 
     def _get_config_filetypes(
         experiment_config: ExperimentConfig,
@@ -107,17 +90,36 @@ def parse_linear_context(
     print("Local context parser complete!")
 
 
+def training_target_consolidator(
+    experiment_config: ExperimentConfig,
+    tissue_config: TissueConfig,
+    tpm_filter: float,
+    percent_of_samples_filter: float,
+    filter_mode: str,
+    split_name: str,
+    target: str,
+) -> List[str]:
+    """Assemble tpm-filtered training targets for the sample."""
+    consolidator = TrainingTargetConsolidator(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+        tpm_filter=tpm_filter,
+        percent_of_samples_filter=percent_of_samples_filter,
+        filter_mode=filter_mode,
+        split_name=split_name,
+        target=target,
+    )
+
+    return consolidator.consolidate_training_targets()
+
+
 def create_tissue_graph(
     experiment_config: ExperimentConfig,
     tissue_config: TissueConfig,
+    target_genes: List[str],
 ) -> None:
     """Creates a graph for the individual tissue. Concatting is dealt with after
     this initial pipeline.
-
-    Args:
-        experiment_config (Dict[str, Union[str, list]]): _description_
-        tissue_config (Dict[str, Union[str, list]]): _description_
-        nodes (List[str]): _description_
     """
     tissue = tissue_config.resources["tissue"]
 
@@ -126,8 +128,8 @@ def create_tissue_graph(
         experiment_name=experiment_config.experiment_name,
         working_directory=experiment_config.working_directory,
         graph_type=experiment_config.graph_type,
-        gencode_ref=experiment_config.gencode_gtf,
         tissue=tissue,
+        target_genes=target_genes,
     )
     print(f"Graph for {tissue} created!")
 
@@ -144,6 +146,20 @@ def main() -> None:
     )
     parser.add_argument(
         "--tissue_config", type=str, help="Path to .yaml file with filenames"
+    )
+    parser.add_argument("--tpm_filter", type=float, default=1.0)
+    parser.add_argument("--percent_of_samples_filter", type=float, default=0.2)
+    parser.add_argument(
+        "--filter_mode",
+        type=str,
+        help="Mode to filter genes, specifying within the target tissue or across all possible gtex tissues (e.g. `within` or `across`). This is required if the target type is not `rna_seq`",
+        default="within",
+    )
+    parser.add_argument("--split_name", type=str, help="Name of the split")
+    parser.add_argument(
+        "--target",
+        type=str,
+        help="Type of target to generate for training.",
     )
     args = parser.parse_args()
 
@@ -171,9 +187,19 @@ def main() -> None:
         experiment_config=experiment_config,
         tissue_config=tissue_config,
     )
+    target_genes = training_target_consolidator(
+        experiment_config=experiment_config,
+        tissue_config=tissue_config,
+        tpm_filter=args.tpm_filter,
+        percent_of_samples_filter=args.percent_of_samples_filter,
+        filter_mode=args.filter_mode,
+        split_name=args.split_name,
+        target=args.target,
+    )
     create_tissue_graph(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
+        target_genes=target_genes,
     )
 
 

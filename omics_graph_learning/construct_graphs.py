@@ -15,7 +15,6 @@ from typing import Any, Dict, List
 import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
-import pybedtools  # type: ignore
 
 from utils import dir_check_make
 from utils import time_decorator
@@ -254,8 +253,8 @@ def make_tissue_graph(
     experiment_name: str,
     working_directory: Path,
     graph_type: str,
-    gencode_ref: str,
     tissue: str,
+    target_genes: List[str],
 ) -> None:
     """Pipeline to generate per-sample graphs."""
 
@@ -265,10 +264,6 @@ def make_tissue_graph(
     parse_dir = working_directory / tissue / "parsing"
     dir_check_make(graph_dir)
 
-    # get genes for removing nodes without gene connections
-    genes = [f"{line[3]}_{tissue}" for line in pybedtools.BedTool(gencode_ref)]
-    print(f"Genes: {genes[:10]}")
-
     # instantiate objects and process graphs
     graph = graph_constructor(
         interaction_dir=interaction_dir,
@@ -276,7 +271,7 @@ def make_tissue_graph(
         graph_type=graph_type,
         tissue=tissue,
         nodes=nodes,
-        genes=genes,
+        genes=target_genes,
     )
 
     # save indexes before renaming to integers

@@ -16,7 +16,6 @@ from utils import _check_file
 from utils import _dataset_split_name
 from utils import _log_progress
 from utils import _run_command
-from utils import parse_yaml
 from utils import submit_slurm_job
 
 
@@ -74,16 +73,14 @@ class PipelineRunner:
         )
         return final_graph, intermediate_graph
 
-    def get_train_test_val_split(
-        self, slurm_dependency: str, split_name: str = "split"
-    ) -> str:
+    def get_train_test_val_split(self, slurm_dependency: str, split_name: str) -> str:
         """Submit a SLURM job to get splits."""
         sbatch_command = f"sbatch --parsable --dependency=afterok:{slurm_dependency} training_targets.sh {self.args.experiment_yaml} {self.args.tpm_filter} {self.args.percent_of_samples_filter} {split_name}"
         if self.args.target == "rna_seq":
             sbatch_command += " --rna_seq"
         return _run_command(command=sbatch_command, get_output=True) or ""
 
-    def run_node_and_edge_generation(self) -> List[str]:
+    def run_node_and_edge_generation(self, split_name: str) -> List[str]:
         """Run node and edge generation jobs."""
         tissues = self.config.tissues
         partition_specific_script = (
@@ -95,7 +92,7 @@ class PipelineRunner:
         for tissue in tissues:
             job_id = submit_slurm_job(
                 job_script=partition_specific_script,
-                args=f"{self.args.experiment_yaml} {self.config.sample_config_dir}/{tissue}.yaml",
+                args=f"{self.args.experiment_yaml} {self.config.sample_config_dir}/{tissue}.yaml {self.args.tpm_filter} {self.args.percent_of_samples_filter} {self.args.filter_mode} {split_name} {self.args.target}",
                 dependency=None,
             )
             pipeline_a_ids.append(job_id)
@@ -188,14 +185,13 @@ class PipelineRunner:
             f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
         )
         if not _check_file(intermediate_graph):
-            split_id = self.graph_construction_jobs(split_name)
+            run_id = self.graph_construction_jobs(split_name)
         else:
             _log_progress(
                 "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
             )
-            split_id = self.get_train_test_val_split("-1", split_name)
 
-        # slurmids = self.create_scalers(split_id, split_name)
+        # slurmids = self.create_scalers(split_id, run_id)
         # _log_progress("Scaler jobs submitted.")
 
         # scale_id = self.scale_node_features(slurmids, split_name)
@@ -206,18 +202,16 @@ class PipelineRunner:
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
         graph construction."""
-        # _log_progress("No intermediates found. Running entire pipeline!")
+        _log_progress("No intermediates found. Running entire pipeline!")
 
-        # pipeline_a_ids = self.run_node_and_edge_generation()
-        # _log_progress("Node and edge generation job submitted.")
+        pipeline_a_ids = self.run_node_and_edge_generation(split_name=split_name)
+        _log_progress("Node and edge generation job submitted.")
 
         # construct_id = self.run_graph_concatenation(pipeline_a_ids)
         # _log_progress("Graph concatenation job submitted.")
 
-        # split_id = self.get_train_test_val_split(construct_id, split_name)
-        # _log_progress("Dataset split job submitted.")
         return "placeholder"
-        # return split_id
+        # return construct_id
 
     def run_pipeline(self) -> None:
         """Run the pipeline! Check for existing files and submit jobs as needed."""
@@ -245,6 +239,10 @@ def validate_args(args: argparse.Namespace) -> None:
     """Helper function to validate CLI arguments that have dependencies."""
     if args.partition not in ["RM", "EM"]:
         print("Error: --partition must be 'RM' or 'EM'")
+        sys.exit(1)
+
+    if args.target != "rna_seq" and args.filter_mode is None:
+        print("Error: if target type is not `rna_seq`, --filter_mode is required")
         sys.exit(1)
 
     if args.model in ["GAT", "UniMPTransformer"] and args.heads is None:
@@ -301,6 +299,12 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--tpm_filter", type=float, default=1.0)
     parser.add_argument("--percent_of_samples_filter", type=float, default=0.2)
+    parser.add_argument(
+        "--filter_mode",
+        type=str,
+        help="Mode to filter genes, specifying within the target tissue or across all possible gtex tissues (e.g. `within` or `across`). This is required if the target type is not `rna_seq`",
+        default="within",
+    )
     parser.add_argument("--gnn_layers", type=int, default=2)
     parser.add_argument("--linear_layers", type=int, default=3)
     parser.add_argument(
