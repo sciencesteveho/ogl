@@ -130,7 +130,7 @@ class TrainingTargetConsolidator:
                 percent_of_samples_filter=self.percent_of_samples_filter,
             )
             filtered_genes = TPMFilterObj.filter_genes(
-                tissue=self.tissue, tpm_file=tpm_file, filter_mode=self.filter_mode
+                tissue=self.tissue, tpm_file=tpm_file
             )
 
         # return unique genes with tissue appended
