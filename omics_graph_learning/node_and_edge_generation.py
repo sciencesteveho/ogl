@@ -175,18 +175,18 @@ def main() -> None:
     print(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # pipeline!
-    preprocess_bedfiles(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    parse_edges(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
-    parse_linear_context(
-        experiment_config=experiment_config,
-        tissue_config=tissue_config,
-    )
+    # preprocess_bedfiles(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    # parse_edges(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
+    # parse_linear_context(
+    #     experiment_config=experiment_config,
+    #     tissue_config=tissue_config,
+    # )
     target_genes = training_target_consolidator(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
