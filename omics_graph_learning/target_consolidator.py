@@ -77,6 +77,8 @@ class TrainingTargetConsolidator:
         self.tissue = tissue_config.resources["tissue"]
         self.sample_config_dir = experiment_config.sample_config_dir
         self.graph_dir = experiment_config.graph_dir
+        self.tissue_dir = self.experiment_config.working_directory / self.tissue
+        self.local_dir = self.tissue_dir / "local"
         self.split_path = self._prepare_split_directories()
 
     def _prepare_split_directories(self) -> Path:
@@ -113,21 +115,21 @@ class TrainingTargetConsolidator:
         unique_genes = set()
 
         # filter GTEx genes
-        if self.target == "rna":
+        if self.target == "rna_seq":
             filtered_genes = TPMFilter.filtered_genes_from_encode_rna_data(
                 rna_seq_file=self.tissue_config.resources["rna"],
                 tpm_filter=self.tpm_filter,
             )
+        elif self.filter_mode == "across":
+            tpm_file = self.experiment_config.expression_all_matrix
         else:
-            if self.filter_mode == "across":
-                tpm_file = self.experiment_config.expression_all_matrix
-            else:
-                tpm_file = self.tissue_config.resources["tpm"]
+            tpm_file = self.tissue_config.resources["tpm"]
             TPMFilterObj = TPMFilter(
                 tissue_config=self.tissue_config,
                 split_path=self.split_path,
                 tpm_filter=self.tpm_filter,
                 percent_of_samples_filter=self.percent_of_samples_filter,
+                local_dir=self.local_dir,
             )
             filtered_genes = TPMFilterObj.filter_genes(
                 tissue=self.tissue, tpm_file=tpm_file

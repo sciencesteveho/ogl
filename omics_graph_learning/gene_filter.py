@@ -72,6 +72,7 @@ class TPMFilter:
         split_path: Path,
         percent_of_samples_filter: float,
         tpm_filter: Union[float, int],
+        local_dir: Path,
         filter_mode: str = "within",
     ):
         """Instantiate the data preprocessor."""
@@ -79,6 +80,7 @@ class TPMFilter:
         self.split_path = split_path
         self.tpm_filter = tpm_filter
         self.percent_of_samples_filter = percent_of_samples_filter
+        self.local_dir = local_dir
         self.filter_mode = filter_mode
         self.rna_file = tissue_config.resources["rna"]
 
@@ -99,7 +101,7 @@ class TPMFilter:
 
         if not genes.exists():
             gencode_filtered = self._filter_genes_by_tpm(
-                gencode=self.tissue_config.local["gencode"],
+                gencode=self.local_dir / self.tissue_config.local["gencode"],
                 tpm_file=tpm_file,
                 tpm_filter=self.tpm_filter,
                 percent_of_samples_filter=self.percent_of_samples_filter,
@@ -112,7 +114,7 @@ class TPMFilter:
 
     def _filter_genes_by_tpm(
         self,
-        gencode: str,
+        gencode: Path,
         tpm_file: str,
         tpm_filter: Union[float, int],
         percent_of_samples_filter: float,
