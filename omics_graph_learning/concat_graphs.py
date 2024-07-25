@@ -44,9 +44,12 @@ def concatenate_splits(
     """Concatenate the splits for each tissue into a single split."""
     if len(tissues) <= 1:
         print(f"Only one tissue provided: {tissues[0]}")
-        return pickle.load(
+        split = pickle.load(
             open(split_directory / f"training_split_{tissues[0]}.pkl", "rb")
         )
+        for key in ["train", "test", "validation"]:
+            split[key] = [f"{split[key]}_{tissues[0]}"]
+        return split
 
     print(f"Concatenating splits for tissues: {tissues}")
     result: Dict[str, List[str]] = {"train": [], "test": [], "validation": []}
