@@ -48,7 +48,7 @@ def concatenate_splits(
             open(split_directory / f"training_split_{tissues[0]}.pkl", "rb")
         )
         for key in ["train", "test", "validation"]:
-            split[key] = [f"{split[key]}_{tissues[0]}"]
+            split[key] = [f"{gene}_{tissues[0]}" for gene in split[key]]
         return split
 
     print(f"Concatenating splits for tissues: {tissues}")
@@ -58,7 +58,7 @@ def concatenate_splits(
             open(split_directory / f"training_split_{tissue}.pkl", "rb")
         )
         for key in ["train", "test", "validation"]:
-            result[key] += f"{split[key]}_{tissue}"
+            result[key] += [f"{gene}_{tissue}" for gene in split[key]]
     return result
 
 
