@@ -200,6 +200,11 @@ class PipelineRunner:
                 "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
             )
 
+        slurmids = []
+        construct_id = self.run_graph_concatenation(
+            slurmids=slurmids, split_name=split_name
+        )
+
         # slurmids = self.create_scalers(split_id, run_id)
         # _log_progress("Scaler jobs submitted.")
 
@@ -216,10 +221,10 @@ class PipelineRunner:
         # slurmids = self.run_node_and_edge_generation(split_name=split_name)
         _log_progress("Node and edge generation job submitted.")
 
-        slurmids = []
-        construct_id = self.run_graph_concatenation(
-            slurmids=slurmids, split_name=split_name
-        )
+        # slurmids = []
+        # construct_id = self.run_graph_concatenation(
+        #     slurmids=slurmids, split_name=split_name
+        # )
         # _log_progress("Graph concatenation job submitted.")
 
         return "placeholder"
