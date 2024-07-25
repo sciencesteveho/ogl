@@ -65,11 +65,11 @@ class PipelineRunner:
         final_graph = os.path.join(
             graph_dir,
             split_name,
-            f"{experiment_name}_{self.args.graph_type}_{split_name}_graph_scaled.pkl",
+            f"{experiment_name}_{self.config.graph_type}_{split_name}_graph_scaled.pkl",
         )
         intermediate_graph = os.path.join(
             graph_dir,
-            f"{experiment_name}_{self.args.graph_type}_graph.pkl",
+            f"{experiment_name}_{self.config.graph_type}_graph.pkl",
         )
         return final_graph, intermediate_graph
 
@@ -109,8 +109,7 @@ class PipelineRunner:
         constructor = "concat.sh"
         return submit_slurm_job(
             job_script=constructor,
-            args=f"{self.args.graph_type} \
-                {self.args.experiment_yaml} \
+            args=f"{self.args.experiment_yaml} \
                 {split_name}",
             dependency=":".join(slurmids),
         )
@@ -122,7 +121,6 @@ class PipelineRunner:
             job_id = submit_slurm_job(
                 job_script="make_scaler.sh",
                 args=f"{num} \
-                    {self.args.graph_type} \
                     {self.args.experiment_yaml} \
                     {split_name}",
                 dependency=split_id,
@@ -134,8 +132,7 @@ class PipelineRunner:
         """Run node feature scaling job."""
         return submit_slurm_job(
             job_script="scale_node_feats.sh",
-            args=f"{self.args.graph_type} \
-                {self.args.experiment_yaml} \
+            args=f"{self.args.experiment_yaml} \
                 {split_name}",
             dependency=":".join(slurmids),
         )
@@ -172,7 +169,6 @@ class PipelineRunner:
             f"--learning_rate {args.learning_rate} "
             f"--optimizer {args.optimizer} "
             f"--dropout {args.dropout} "
-            f"--graph_type {args.graph_type} "
             f"--split_name {split_name} "
             f"{bool_flags}"
         )
@@ -343,7 +339,6 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--heads", type=int, default=None)
     parser.add_argument("--early_stop", action="store_true")
-    parser.add_argument("--graph_type", type=str, default="full")
     parser.add_argument("--zero_nodes", action="store_true")
     parser.add_argument("--randomize_node_feats", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")

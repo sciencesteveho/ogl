@@ -80,8 +80,7 @@ def concatenate_graphs(
         experiment_graph_directory (str): The experiment_graph_directory of the graph file names.
         tissues (List[str]): The list of tissue names.
 
-    Returns:
-        None
+    Returns `None`.
     """
     tissue_graph_path = f"{experiment_graph_directory}_{tissues[0]}"
 
