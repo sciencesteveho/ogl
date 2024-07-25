@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 
 """Fit a scaler for node feats"""
+
 
 from contextlib import ExitStack
 from pathlib import Path

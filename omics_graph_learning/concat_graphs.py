@@ -38,6 +38,27 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
     return edges
 
 
+def concatenate_splits(
+    tissues: List[str], split_directory: Path
+) -> Dict[str, List[str]]:
+    """Concatenate the splits for each tissue into a single split."""
+    if len(tissues) <= 1:
+        print(f"Only one tissue provided: {tissues[0]}")
+        return pickle.load(
+            open(split_directory / f"training_split_{tissues[0]}.pkl", "rb")
+        )
+
+    print(f"Concatenating splits for tissues: {tissues}")
+    result: Dict[str, List[str]] = {"train": [], "test": [], "validation": []}
+    for tissue in tissues:
+        split = pickle.load(
+            open(split_directory / f"training_split_{tissue}.pkl", "rb")
+        )
+        for key in ["train", "test", "validation"]:
+            result[key] += f"{split[key]}_{tissue}"
+    return result
+
+
 def concatenate_targets(
     tissues: List[str], target_directory: Path
 ) -> Dict[str, Dict[str, np.ndarray]]:
@@ -180,17 +201,24 @@ def main() -> None:
     )
     target_directory = params.graph_dir / args.split_name
 
-    # concat all graphs! and save to file
-    concatenate_graphs(
-        experiment_graph_directory=experiment_graph_directory, tissues=params.tissues
+    # concat training splits
+    splits = concatenate_splits(
+        tissues=params.tissues, split_directory=target_directory
     )
+    with open(target_directory / "training_split_combined.pkl", "wb") as output:
+        pickle.dump(splits, output, protocol=4)
 
-    # concat all targets! and save to file
+    # concat all targets
     targets = concatenate_targets(
         tissues=params.tissues, target_directory=target_directory
     )
     with open(target_directory / "targets_combined.pkl", "wb") as output:
         pickle.dump(targets, output, protocol=4)
+
+    # concat all graphs
+    concatenate_graphs(
+        experiment_graph_directory=experiment_graph_directory, tissues=params.tissues
+    )
 
 
 if __name__ == "__main__":
