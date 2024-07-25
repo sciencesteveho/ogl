@@ -17,12 +17,13 @@ import numpy as np
 from config_handlers import ExperimentConfig
 
 
-def _open_graph_and_idxs(tissue_prefix: str) -> Tuple[Dict, Dict]:
+def _open_graph_and_idxs(tissue_graph_path: str) -> Tuple[Dict, Dict]:
     """Open graph and idxs from file."""
-    with open(f"{tissue_prefix}.pkl", "rb") as f:
-        graph = pickle.load(f)
-    with open(f"{tissue_prefix}_idxs.pkl", "rb") as f:
-        idxs = pickle.load(f)
+    with open(f"{tissue_graph_path}.pkl", "rb") as graph_file, open(
+        f"{tissue_graph_path}_idxs.pkl", "rb"
+    ) as idxs_file:
+        graph = pickle.load(graph_file)
+        idxs = pickle.load(idxs_file)
     return graph, idxs
 
 
@@ -37,8 +38,38 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
     return edges
 
 
+def concatenate_targets(
+    tissues: List[str], target_directory: Path
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Takes the targets from different tissues and concatenates them to create
+    one target dictionary with train / test /val keys.."""
+    if len(tissues) <= 1:
+        print(f"Only one tissue provided: {tissues[0]}")
+        return pickle.load(
+            open(target_directory / f"training_targets_{tissues[0]}.pkl", "rb")
+        )
+
+    print(f"Concatenating targets for tissues: {tissues}")
+    result: Dict[str, Dict[str, np.ndarray]] = {
+        "train": {},
+        "test": {},
+        "validation": {},
+    }
+    for tissue in tissues:
+        targets = pickle.load(
+            open(target_directory / f"training_targets_{tissue}.pkl", "rb")
+        )
+        for key in ["train", "test", "validation"]:
+            for subkey, value in targets[key].items():
+                if subkey in result[key]:
+                    result[key][subkey] += value
+                else:
+                    result[key][subkey] = value
+    return result
+
+
 def concatenate_graphs(
-    prefix: Path,
+    experiment_graph_directory: Path,
     tissues: List[str],
 ) -> None:  # sourcery skip: extract-method
     """Concatenate multiple graphs into a single graph. The first tissue in the
@@ -46,17 +77,17 @@ def concatenate_graphs(
     concatenated.
 
     Args:
-        prefix (str): The prefix of the graph file names.
+        experiment_graph_directory (str): The experiment_graph_directory of the graph file names.
         tissues (List[str]): The list of tissue names.
 
     Returns:
         None
     """
-    tissue_prefix = f"{prefix}_{tissues[0]}"
+    tissue_graph_path = f"{experiment_graph_directory}_{tissues[0]}"
 
     if len(tissues) > 1:
         print(f"Concatenating graphs for tissues: {tissues}")
-        concat_graph, concat_idxs = _open_graph_and_idxs(tissue_prefix)
+        concat_graph, concat_idxs = _open_graph_and_idxs(tissue_graph_path)
         concat_edges = concat_graph["edge_index"]
         concat_edge_feat = concat_graph["edge_feat"]
         concat_node_feat = concat_graph["node_feat"]
@@ -66,8 +97,8 @@ def concatenate_graphs(
         concat_num_edges = concat_graph["num_edges"]
 
         for tissue in tissues[1:]:
-            tissue_prefix = f"{prefix}_{tissue}"
-            graph, idxs = _open_graph_and_idxs(tissue_prefix)
+            tissue_graph_path = f"{experiment_graph_directory}_{tissue}"
+            graph, idxs = _open_graph_and_idxs(tissue_graph_path)
             end_idx = max(concat_idxs.values()) + 1
             concat_idxs.update(_reindex_idxs(idxs=idxs, new_start_idx=end_idx))
             concat_edges = np.hstack(
@@ -87,7 +118,7 @@ def concatenate_graphs(
             concat_num_nodes += graph["num_nodes"]
             concat_num_edges += graph["num_edges"]
 
-        with open(f"{prefix}.pkl", "wb") as output:
+        with open(f"{experiment_graph_directory}.pkl", "wb") as output:
             pickle.dump(
                 {
                     "edge_index": concat_edges,
@@ -103,22 +134,22 @@ def concatenate_graphs(
                 protocol=4,
             )
 
-        with open(f"{prefix}_idxs.pkl", "wb") as output:
+        with open(f"{experiment_graph_directory}_idxs.pkl", "wb") as output:
             pickle.dump(concat_idxs, output, protocol=4)
     else:
         subprocess.run(
             [
                 "cp",
-                f"{tissue_prefix}.pkl",
-                f"{prefix}.pkl",
+                f"{tissue_graph_path}.pkl",
+                f"{experiment_graph_directory}.pkl",
             ],
             check=True,
         )
         subprocess.run(
             [
                 "cp",
-                f"{tissue_prefix}_idxs.pkl",
-                f"{prefix}_idxs.pkl",
+                f"{tissue_graph_path}_idxs.pkl",
+                f"{experiment_graph_directory}_idxs.pkl",
             ],
             check=True,
         )
@@ -132,14 +163,35 @@ def main() -> None:
         "--experiment_config",
         type=str,
         help="Path to .yaml file with experimental conditions",
+        required=True,
+    )
+    parser.add_argument(
+        "--split_name",
+        type=str,
+        help="Name of the split to be concatenated",
+        required=True,
     )
     args = parser.parse_args()
     params = ExperimentConfig.from_yaml(args.experiment_config)
     graph_type = params.graph_type
 
+    # set up dirs
+    experiment_graph_directory = (
+        params.graph_dir / f"{params.experiment_name}_{graph_type}_graph"
+    )
+    target_directory = params.graph_dir / args.split_name
+
     # concat all graphs! and save to file
-    prefix = params.graph_dir / f"{params.experiment_name}_{graph_type}_graph"
-    concatenate_graphs(prefix=prefix, tissues=params.tissues)
+    concatenate_graphs(
+        experiment_graph_directory=experiment_graph_directory, tissues=params.tissues
+    )
+
+    # concat all targets! and save to file
+    targets = concatenate_targets(
+        tissues=params.tissues, target_directory=target_directory
+    )
+    with open(target_directory / "targets_combined.pkl", "wb") as output:
+        pickle.dump(targets, output, protocol=4)
 
 
 if __name__ == "__main__":

@@ -88,23 +88,31 @@ class PipelineRunner:
             if self.args.partition == "EM"
             else "pipeline_node_and_edge_generation.sh"
         )
-        pipeline_a_ids = []
+        slurmids = []
         for tissue in tissues:
             job_id = submit_slurm_job(
                 job_script=partition_specific_script,
-                args=f"{self.args.experiment_yaml} {self.config.sample_config_dir}/{tissue}.yaml {self.args.tpm_filter} {self.args.percent_of_samples_filter} {self.args.filter_mode} {split_name} {self.args.target}",
+                args=f"{self.args.experiment_yaml} \
+                    {self.config.sample_config_dir}/{tissue}.yaml \
+                    {self.args.tpm_filter} \
+                    {self.args.percent_of_samples_filter} \
+                    {self.args.filter_mode} \
+                    {split_name} \
+                    {self.args.target}",
                 dependency=None,
             )
-            pipeline_a_ids.append(job_id)
-        return pipeline_a_ids
+            slurmids.append(job_id)
+        return slurmids
 
-    def run_graph_concatenation(self, pipeline_a_ids: List[str]) -> str:
+    def run_graph_concatenation(self, slurmids: List[str], split_name: str) -> str:
         """Run graph concatenation job."""
         constructor = "concat.sh"
         return submit_slurm_job(
             job_script=constructor,
-            args=f"full {self.args.experiment_yaml}",
-            dependency=":".join(pipeline_a_ids),
+            args=f"{self.args.graph_type} \
+                {self.args.experiment_yaml} \
+                {split_name}",
+            dependency=":".join(slurmids),
         )
 
     def create_scalers(self, split_id: str, split_name: str) -> List[str]:
@@ -113,7 +121,10 @@ class PipelineRunner:
         for num in range(39):
             job_id = submit_slurm_job(
                 job_script="make_scaler.sh",
-                args=f"{num} full {self.args.experiment_yaml} {split_name}",
+                args=f"{num} \
+                    {self.args.graph_type} \
+                    {self.args.experiment_yaml} \
+                    {split_name}",
                 dependency=split_id,
             )
             slurmids.append(job_id)
@@ -123,7 +134,9 @@ class PipelineRunner:
         """Run node feature scaling job."""
         return submit_slurm_job(
             job_script="scale_node_feats.sh",
-            args=f"full {self.args.experiment_yaml} {split_name}",
+            args=f"{self.args.graph_type} \
+                {self.args.experiment_yaml} \
+                {split_name}",
             dependency=":".join(slurmids),
         )
 
@@ -204,10 +217,13 @@ class PipelineRunner:
         graph construction."""
         _log_progress("No intermediates found. Running entire pipeline!")
 
-        pipeline_a_ids = self.run_node_and_edge_generation(split_name=split_name)
+        # slurmids = self.run_node_and_edge_generation(split_name=split_name)
         _log_progress("Node and edge generation job submitted.")
 
-        # construct_id = self.run_graph_concatenation(pipeline_a_ids)
+        slurmids = []
+        construct_id = self.run_graph_concatenation(
+            slurmids=slurmids, split_name=split_name
+        )
         # _log_progress("Graph concatenation job submitted.")
 
         return "placeholder"

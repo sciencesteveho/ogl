@@ -92,7 +92,7 @@ class TrainingTargetConsolidator:
         split: Dict[str, List[str]],
     ) -> None:
         """Simple utility function to pickle splits."""
-        chr_split_dictionary = self.split_path / "training_targets_split.pkl"
+        chr_split_dictionary = self.split_path / f"training_split_{self.tissue}.pkl"
         _save_pickle(split, chr_split_dictionary)
 
     def _save_targets(
@@ -101,10 +101,11 @@ class TrainingTargetConsolidator:
         scaled: bool = False,
     ) -> None:
         """Simple utility function to pickle targets."""
+        filename = f"training_targets_{self.tissue}"
         if scaled:
-            _save_pickle(targets, self.split_path / "training_targets_scaled.pkl")
-        else:
-            _save_pickle(targets, self.split_path / "training_targets.pkl")
+            filename += "_scaled"
+        filename += ".pkl"
+        _save_pickle(targets, self.split_path / filename)
 
     def filter_genes(
         self,
