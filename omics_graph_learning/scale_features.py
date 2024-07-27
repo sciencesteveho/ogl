@@ -68,7 +68,8 @@ def load_scalers(
 ) -> Dict[int, MinMaxScaler]:
     """Load pre-fit scalers into a dictionary by feature index"""
     return {
-        i: joblib.load(scaler_dir / f"feat_{i}_scaler.pt") for i in range(feat_range)
+        i: joblib.load(scaler_dir / f"feat_{i}_scaler.joblib")
+        for i in range(feat_range)
     }
 
 
