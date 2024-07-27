@@ -8,7 +8,6 @@ genomic data can exist across. To avoid leakage, we fit the scalers only on the
 node idxs that occur in the training set."""
 
 
-from multiprocessing import cpu_count
 from multiprocessing import Pool
 from pathlib import Path
 import pickle
@@ -19,7 +18,10 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler  # type: ignore
 
 from utils import dir_check_make
+from utils import get_physical_cores
 from utils import ScalerUtils
+
+CORES = get_physical_cores()
 
 
 def scaler_fit_task(scaler_fit_arguments: Tuple[int, np.ndarray, Path]) -> int:
@@ -37,7 +39,7 @@ def fit_scalers(
     skip_idxs: List[int],
     scaler_dir: Path,
     feat_range: int,
-    n_jobs: int = cpu_count(),
+    n_jobs: int = CORES,
 ) -> None:
     """Fit the scaler and save to file in parallel. Removes any genes in the
     validation or test sets before scaling.
@@ -86,7 +88,7 @@ def scale_node_features(
     node_feat: np.ndarray,
     scalers: Dict[int, MinMaxScaler],
     feat_range: int,
-    n_jobs: int = cpu_count(),
+    n_jobs: int = CORES,
 ) -> np.ndarray:
     """Scale node features using pre-fit scalers in parallel"""
     scaled_node_feat = node_feat.copy()  # copy to avoid modifying original

@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 
-"""Parse local genomic data to nodes and attributes"""
+"""Parse local genomic data to generate nodes and attributes. Given basenodes
+from edge parsing, this module will generate edges based on the defined context
+window (i.e. 5kb). Additionally, node features are processed here as they also
+derive from the local context datatypes."""
 
 
 from itertools import repeat
@@ -23,10 +26,11 @@ from constants import ATTRIBUTES
 from positional_encoding import PositionalEncoding
 from utils import dir_check_make
 from utils import genes_from_gencode
+from utils import get_physical_cores
 from utils import time_decorator
 
 
-class LinearContextParser:
+class LocalContextParser:
     """Object that parses local genomic data into graph edges
 
     Attributes:
@@ -74,8 +78,8 @@ class LinearContextParser:
     DIRECT = ["tads", "loops"]
     NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
-    # var helpers - for CPU cores
-    ATTRIBUTE_PROCESSES = 16
+    # helper for CPU cores
+    ATTRIBUTE_PROCESSES = get_physical_cores()
 
     def __init__(
         self,

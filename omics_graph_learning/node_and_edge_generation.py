@@ -14,7 +14,7 @@ from config_handlers import TissueConfig
 from constants import ATTRIBUTES
 import construct_graphs as construct_graphs
 from edge_parser import EdgeParser
-from linear_context_parser import LinearContextParser
+from local_context_parser import LocalContextParser
 from preprocessor import GenomeDataPreprocessor
 from target_consolidator import TrainingTargetConsolidator
 from utils import _get_files_in_directory
@@ -80,7 +80,7 @@ def parse_linear_context(
     )
 
     # instantiate object
-    localparseObject = LinearContextParser(
+    localparseObject = LocalContextParser(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
         bedfiles=bedfiles_for_parsing,

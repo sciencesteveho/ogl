@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 import pandas as pd
+import psutil  # type: ignore
 import pybedtools  # type: ignore
 from scipy import stats  # type: ignore
 import seaborn as sns  # type: ignore
@@ -63,6 +64,11 @@ def _run_command(command: str, get_output: bool = False) -> Optional[str]:
 def _check_file(filename: str) -> bool:
     """Check if a file already exists"""
     return os.path.isfile(filename)
+
+
+def get_physical_cores() -> int:
+    """Return physical core count, subtracted by one to account for the main process / overhead."""
+    return psutil.cpu_count(logical=False) - 1
 
 
 def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
