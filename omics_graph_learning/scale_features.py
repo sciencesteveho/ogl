@@ -89,17 +89,38 @@ def scale_node_features(
     n_jobs: int = cpu_count(),
 ) -> np.ndarray:
     """Scale node features using pre-fit scalers in parallel"""
+    scaled_node_feat = node_feat.copy()  # copy to avoid modifying original
+
     with Pool(processes=n_jobs) as pool:
         scale_feats_arguments = [
             (node_feat[:, i], scalers[i], i) for i in range(feat_range)
         ]
         results = pool.map(scale_feature_task, scale_feats_arguments)
 
-    # Sort results by feature index and update node_feat
+    # sort results by feature index and update scaled_node_feat
     for index, scaled_feature in sorted(results):
-        node_feat[:, index] = scaled_feature
+        scaled_node_feat[:, index] = scaled_feature
 
-    return node_feat
+    return scaled_node_feat
+
+
+def verify_feature_order(
+    original: np.ndarray, scaled: np.ndarray, feat_range: int
+) -> bool:
+    """Check that the original and scaled have their node features in the
+    same order."""
+    for i in range(feat_range):
+        original_col = original[:, i]
+        scaled_col = scaled[:, i]
+
+        # get the order of the original and scaled columns
+        original_order = np.argsort(original_col)
+        scaled_order = np.argsort(scaled_col)
+
+        if not np.array_equal(original_order, scaled_order):
+            print(f"Order mismatch detected in feature {i}")
+            return False
+    return True
 
 
 def main() -> None:
@@ -137,13 +158,31 @@ def main() -> None:
     )
 
     # scale node features
-    graph["node_feat"] = scale_node_features(
+    original_node_feat: np.ndarray = graph[
+        "node_feat"
+    ].copy()  # save original shape for test
+    scaled_node_feat: np.ndarray = scale_node_features(
         node_feat=graph["node_feat"],
         scalers=scalers,
         feat_range=feat_range,
     )
 
+    # verify feature order
+    order_preserved: bool = verify_feature_order(
+        original_node_feat, scaled_node_feat, feat_range
+    )
+    print(f"Feature order preserved: {order_preserved}")
+
+    # additional sanity checks
+    assert (
+        original_node_feat.shape == scaled_node_feat.shape
+    ), "Shapes don't match after scaling!"
+    assert np.array_equal(
+        original_node_feat[:, feat_range:], scaled_node_feat[:, feat_range:]
+    ), "One-hot encoded features changed!"
+
     # save scaled graph
+    graph["node_feat"] = scaled_node_feat  # update
     final_graph = scaler_utility.split_dir / f"{scaler_utility.file_prefix}_scaled.pkl"
     with open(final_graph, "wb") as output:
         pickle.dump(graph, output, protocol=4)
