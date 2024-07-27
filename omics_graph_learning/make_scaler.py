@@ -18,13 +18,6 @@ from utils import dir_check_make
 from utils import ScalerUtils
 
 
-def load_training_split(partition: Path) -> Dict[str, list]:
-    """Load the training split from a file."""
-    with open(partition, "rb") as file:
-        split = pickle.load(file)
-    return split
-
-
 def fit_scaler_and_save(
     node_features: int,
     skip_idxs: List[int],
@@ -45,30 +38,24 @@ def fit_scaler_and_save(
 def main() -> None:
     """Main function"""
     # parse args and unpack params
-    (
-        feat,
-        split_path,
-        scaler_dir,
-        _,
-        graphdir_prefix,
-        _,
-    ) = ScalerUtils._handle_scaler_prep()
-
-    dir_check_make(scaler_dir)
+    scaler_utility = ScalerUtils()
+    dir_check_make(scaler_utility.scaler_dir)
 
     # set up other vars from functions
-    split = load_training_split(partition=split_path / "training_targets_split.pkl")
+    split = scaler_utility.load_split()
+    idxs = scaler_utility.load_idxs()
+    graph = scaler_utility.load_graph()
+
     exclude = split["validation"] + split["test"]
-    idxs, g = ScalerUtils._load_graph_data(graphdir_prefix=f"{graphdir_prefix}")
     skip_idxs = [idxs[gene] for gene in exclude if gene in idxs]
-    node_features = g["node_feat"]
+    node_features = graph["node_feat"]
 
     # fit scalers!
     fit_scaler_and_save(
         node_features=node_features,
         skip_idxs=skip_idxs,
-        feat=feat,
-        scaler_dir=scaler_dir,
+        feat=scaler_utility.feat,
+        scaler_dir=scaler_utility.scaler_dir,
     )
 
 

@@ -150,14 +150,47 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
 
 class ScalerUtils:
     """Utility class for scaling node features, as the modules for scaling share
-    most of the smae args"""
+    most of the same args"""
+
+    def __init__(self) -> None:
+        """Instantiate the class."""
+        args = self._parse_args()
+        self.experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
+        self.split_name = args.split_name
+        self.onehot_node_feats = self.experiment_config.onehot_node_feats
+        self.file_prefix = f"{self.experiment_config.experiment_name}_{self.experiment_config.graph_type}"
+
+        # directories
+        self.graph_dir = self.experiment_config.graph_dir
+        self.split_dir = self.graph_dir / self.split_name
+        self.scaler_dir = self.split_dir / "scalers"
+
+        # files
+        self.idxs = self.graph_dir / f"{self.file_prefix}_graph_idxs.pkl"
+        self.graph = self.graph_dir / f"{self.file_prefix}_graph.pkl"
+        self.split = self.split_dir / "training_targets_split.pkl"
+
+    def load_from_file(self, file_path: Union[Path, str]) -> Dict[str, Any]:
+        """Load data from a file."""
+        with open(file_path, "rb") as file:
+            return pickle.load(file)
+
+    def load_idxs(self) -> Dict[str, int]:
+        """Load indexes from file."""
+        return self.load_from_file(self.idxs)
+
+    def load_graph(self) -> Dict[str, Any]:
+        """Load graph from file."""
+        return self.load_from_file(self.graph)
+
+    def load_split(self) -> Dict[str, Any]:
+        """Load split from file."""
+        return self.load_from_file(self.split)
 
     @staticmethod
     def _parse_args():
         """Get arguments"""
         parser = argparse.ArgumentParser()
-        parser.add_argument("-f", "--feat", type=int, default=0)
-        parser.add_argument("-g", "--graph_type", type=str)
         parser.add_argument(
             "--experiment_config",
             type=str,
@@ -165,36 +198,6 @@ class ScalerUtils:
         )
         parser.add_argument("--split_name", type=str)
         return parser.parse_args()
-
-    @staticmethod
-    def _handle_scaler_prep():
-        """Handle scaler prep"""
-        args = ScalerUtils._parse_args()
-        experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
-        split_dir = experiment_config.graph_dir / args.split_name
-        prefix = f"{experiment_config.experiment_name}_{args.graph_type}"
-        return (
-            args.feat,
-            split_dir,
-            split_dir / "scalers",
-            prefix,
-            experiment_config.graph_dir / prefix,
-            f"{prefix}_{args.split_name}_graph",
-        )
-
-    @staticmethod
-    def _load_graph_data(
-        graphdir_prefix: str,
-    ) -> Tuple[Dict[str, int], Dict[str, Any]]:
-        """Load graph data from files."""
-        idxs_file_path = f"{graphdir_prefix}_graph_idxs.pkl"
-        graph_file_path = f"{graphdir_prefix}_graph.pkl"
-        with open(idxs_file_path, "rb") as idxs_file, open(
-            graph_file_path, "rb"
-        ) as graph_file:
-            idxs = pickle.load(idxs_file)
-            graph = pickle.load(graph_file)
-        return idxs, graph
 
 
 def _dataset_split_name(

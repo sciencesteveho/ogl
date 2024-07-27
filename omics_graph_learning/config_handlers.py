@@ -63,6 +63,7 @@ class ExperimentConfig:
     liftover_chain: str
     log_transform: str
     nodes: List[str]
+    onehot_node_feats: int
     positional_encoding: bool
     rbp_proteins: str
     rbp_network: str

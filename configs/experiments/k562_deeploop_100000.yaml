@@ -52,6 +52,8 @@ log_transform: log2
 
 nodes: null
 
+onehot_node_feats: 2
+
 positional_encoding: true
 
 rbp_network: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_network.txt

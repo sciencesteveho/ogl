@@ -114,20 +114,6 @@ class PipelineRunner:
             dependency=":".join(slurmids),
         )
 
-    def create_scalers(self, split_id: str, split_name: str) -> List[str]:
-        """Create scalers for node features."""
-        slurmids = []
-        for num in range(39):
-            job_id = submit_slurm_job(
-                job_script="make_scaler.sh",
-                args=f"{num} \
-                    {self.args.experiment_yaml} \
-                    {split_name}",
-                dependency=split_id,
-            )
-            slurmids.append(job_id)
-        return slurmids
-
     def scale_node_features(self, slurmids: List[str], split_name: str) -> str:
         """Run node feature scaling job."""
         return submit_slurm_job(
@@ -200,16 +186,13 @@ class PipelineRunner:
                 "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
             )
 
-        slurmids = []
-        construct_id = self.run_graph_concatenation(
-            slurmids=slurmids, split_name=split_name
-        )
+        # construct_id = self.run_graph_concatenation(
+        #     slurmids=slurmids, split_name=split_name
+        # )
 
-        # slurmids = self.create_scalers(split_id, run_id)
-        # _log_progress("Scaler jobs submitted.")
-
-        # scale_id = self.scale_node_features(slurmids, split_name)
-        # _log_progress("Node feature scaling job submitted.")
+        slurmids: list[str] = []
+        scale_id = self.scale_node_features(slurmids, split_name)
+        _log_progress("Node feature scaling job submitted.")
 
         # self.submit_gnn_job(split_name, scale_id)
 
