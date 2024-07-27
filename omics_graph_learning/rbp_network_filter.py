@@ -14,6 +14,8 @@ import pybedtools  # type: ignore
 
 
 class RBPNetworkFilter:
+    """Class to handle filtering of RNA binding proteins based on TPM values."""
+
     def __init__(
         self,
         rbp_proteins: str,

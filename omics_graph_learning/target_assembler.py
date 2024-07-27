@@ -9,7 +9,7 @@ rna-seq data from ENCODE (also TPM, but at the sample level and not median)"""
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 import numpy as np
