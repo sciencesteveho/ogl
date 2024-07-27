@@ -117,7 +117,7 @@ class PipelineRunner:
     def scale_node_features(self, slurmids: List[str], split_name: str) -> str:
         """Run node feature scaling job."""
         return submit_slurm_job(
-            job_script="scale_node_feats.sh",
+            job_script="scale_features.sh",
             args=f"{self.args.experiment_yaml} \
                 {split_name}",
             dependency=":".join(slurmids),
