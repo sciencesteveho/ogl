@@ -15,6 +15,8 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from config_handlers import ExperimentConfig
+from constants import TARGET_FILE
+from constants import TRAINING_SPLIT_FILE
 
 
 def _open_graph_and_idxs(tissue_graph_path: str) -> Tuple[Dict, Dict]:
@@ -208,14 +210,14 @@ def main() -> None:
     splits = concatenate_splits(
         tissues=params.tissues, split_directory=target_directory
     )
-    with open(target_directory / "training_split_combined.pkl", "wb") as output:
+    with open(target_directory / TRAINING_SPLIT_FILE, "wb") as output:
         pickle.dump(splits, output, protocol=4)
 
     # concat all targets
     targets = concatenate_targets(
         tissues=params.tissues, target_directory=target_directory
     )
-    with open(target_directory / "targets_combined.pkl", "wb") as output:
+    with open(target_directory / TARGET_FILE, "wb") as output:
         pickle.dump(targets, output, protocol=4)
 
     # concat all graphs

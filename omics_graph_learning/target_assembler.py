@@ -563,13 +563,12 @@ class TargetAssembler:
             pd.DataFrame: The log-transformed data.
         """
         if transform_type == "log2":
-            transformed_data = np.log2(data)
+            return np.log2(data)
         elif transform_type == "log1p":
-            transformed_data = np.log1p(data)
+            return np.log1p(data)
         elif transform_type == "log10":
-            transformed_data = np.log10(data)
+            return np.log10(data)
         else:
             raise ValueError(
                 "Invalid log transformation type specified. Choose 'log2', 'log1p', or 'log10'."
             )
-        return transformed_data

@@ -6,9 +6,15 @@
 
 from typing import Dict, List
 
+# integer constants
 HG38_TOTAL_BASEPAIRS = 3088269227
 MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
 
+# filename constants
+TARGET_FILE = "targets_combined.pkl"
+TRAINING_SPLIT_FILE = "training_split_combined.pkl"
+
+# graph construction related
 ATTRIBUTES: List[str] = [
     "gc",
     "atac",

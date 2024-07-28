@@ -3,7 +3,12 @@
 
 
 """Test the flexible GNN module and submodules. Ensure that dimensions are
-consistent, operators are proper, and layers are correctly implemented."""
+consistent, operators are proper, and layers are correctly implemented.
+
+Example usage
+--------
+>>> pytest test_models.py
+"""
 
 
 from typing import Any, Dict, Type, Union
