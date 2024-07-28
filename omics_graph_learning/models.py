@@ -208,7 +208,6 @@ class ModularGNN(nn.Module):
         h1 = x  # save input for skip connections
 
         # graph convolutions with normalization and optional skip connections.
-        print(f"Input shape: {x.shape}")
         for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
             if self.linear_projection:
                 if isinstance(self.linear_projection, nn.Linear):
@@ -223,12 +222,10 @@ class ModularGNN(nn.Module):
                     x = self.activation(batch_norm(conv(x, edge_index))) + residual
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
-            print(f"After conv {i+1} shape: {x.shape}")
 
         # shared linear layers
         for linear_layer in self.linears:
             x = self.activation(linear_layer(x))
-            print(f"After linear layer shape: {x.shape}")
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
@@ -251,22 +248,14 @@ class ModularGNN(nn.Module):
                 "Task specific MLPs must be used for task specific forward."
             )
         node_specific_x = x[node_mask]
-        print(f"Node specific x shape after masking: {node_specific_x.shape}")
-        print(f"Shape of first task head: {self.task_head[0].weight.shape}")
-        print(f"Shape of second task head: {self.task_head[1].weight.shape}")
 
-        # ensure dimensions match
+        # task-specific MLP
         node_specific_x = F.relu(self.task_head[0](node_specific_x))
-        print(f"Node specific x shape after task_head[0]: {node_specific_x.shape}")
-
         node_specific_out = self.task_head[1](node_specific_x)
-        print(f"Node specific out shape after task_head[1]: {node_specific_out.shape}")
 
         # create the output tensor and fill the masked values
         out = torch.zeros(x.size(0), 1, device=x.device)
         out[node_mask] = node_specific_out
-
-        print(f"Final output shape: {out.shape}")
         return out
 
     def _get_linear_layers(
@@ -573,20 +562,16 @@ class DeeperGCN(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        print(f"Input shape: {x.shape}")
-        for i, conv in enumerate(self.convs):
+        for conv in self.convs:
             x = conv(x, edge_index)
-            print(f"After conv {i+1} shape: {x.shape}")
 
-        for i, linear_layer in enumerate(self.linears[:-1]):
+        for linear_layer in self.linears[:-1]:
             x = self.nonfunctional_activation(self.activation)()(linear_layer(x))
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
-            print(f"After linear {i+1} shape: {x.shape}")
 
         x = self.linears[-1](x)
-        print(f"Final output shape: {x.shape}")
         return x
 
     def get_deepergcn_layers(
