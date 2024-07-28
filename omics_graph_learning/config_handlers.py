@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 import yaml  # type: ignore
 
 
-def load_yaml(yaml_file: Path) -> Dict[str, Any]:
+def load_yaml(yaml_file: Union[Path, str]) -> Dict[str, Any]:
     """Load a YAML file and return the contents as a dictionary."""
     with open(yaml_file, "r") as stream:
         return yaml.safe_load(stream)
@@ -101,7 +101,7 @@ class ExperimentConfig:
     sample_config_dir: Path
 
     @classmethod
-    def from_yaml(cls, yaml_file: Path) -> "ExperimentConfig":
+    def from_yaml(cls, yaml_file: Union[Path, str]) -> "ExperimentConfig":
         """Load the configuration from a yaml and set all configs."""
 
         # load the yaml file
@@ -217,7 +217,7 @@ class TissueConfig:
     tissue_specific_nodes: Dict[str, str]
 
     @classmethod
-    def from_yaml(cls, yaml_file: Path) -> "TissueConfig":
+    def from_yaml(cls, yaml_file: Union[Path, str]) -> "TissueConfig":
         """Load the configuration from a yaml and set all configs."""
 
         # load the yaml file

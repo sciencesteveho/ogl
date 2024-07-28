@@ -22,6 +22,7 @@ Example usage
 
 
 import argparse
+import os
 import pickle
 import random
 import sys
@@ -34,6 +35,10 @@ from omics_graph_learning.constants import TARGET_FILE
 from omics_graph_learning.gene_filter import read_encode_rna_seq_data
 import pandas as pd
 import pytest
+
+# # Hardcode these values
+# CONFIG_PATH = "../configs/experiments/k562_deeploop_100000.yaml"
+# SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_10_rna_seq"
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -116,40 +121,30 @@ def compare_target_to_true_value(
     assert np.isclose(target, transformed_value)
 
 
-def pytest_addoption(parser):
-    parser.addoption(
-        "--config", action="store", help="Path to the experiment config file"
-    )
-    parser.addoption("--split_name", action="store", help="Name of the split to test")
-
-
 @pytest.fixture(scope="module")
-def test_setup(
-    pytestconfig,
-) -> Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame]:
+def test_setup() -> Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str]:
     """A pytest fixture to prepare configuration and data for tests."""
-    config_path = pytestconfig.getoption("--config")
-    split_name = pytestconfig.getoption("--split_name")
+    config_path = os.environ.get("TEST_CONFIG_PATH")
+    split_name = os.environ.get("TEST_SPLIT_NAME")
 
     if not config_path or not split_name:
-        pytest.exit("Both config and split_name must be provided", 1)
+        raise ValueError(
+            "TEST_CONFIG_PATH and TEST_SPLIT_NAME environment variables must be set"
+        )
 
     config = ExperimentConfig.from_yaml(config_path)
     ensure_single_target(config)
-    targets, rna_seq_df, log_transform_type = pull_configuration_data(
-        config, split_name
-    )
-    return config, targets, rna_seq_df
+    return pull_configuration_data(config, split_name)
 
 
 @pytest.mark.parametrize("log_transform_type", ["log2", "log1p", "log10"])
 @pytest.mark.parametrize("split", ["train", "test", "validation"])
 def test_targets(
-    test_setup: Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame],
+    test_setup: Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str],
     split: str,
 ):
     """Test that randomly selected targets match manually calculated values."""
-    config, targets, rna_seq_df = test_setup
+    targets, rna_seq_df, log_transform_type = test_setup
 
     # sourcery skip: no-loop-in-tests
     for target in random.sample(list(targets[split].keys()), 100):
@@ -160,15 +155,12 @@ def test_targets(
         compare_target_to_true_value(
             target=target_value,
             true_value=float_true_value,
-            log_transform_type=config.log_transform,
+            log_transform_type=log_transform_type,
         )
 
 
 if __name__ == "__main__":
-    pytest_args = [sys.argv[0]]
-    pytest_args.extend(
-        arg
-        for arg in sys.argv
-        if not arg.startswith("--config") and not arg.startswith("--split_name")
-    )
-    pytest.main(pytest_args)
+    args = parse_arguments()
+    os.environ["TEST_CONFIG_PATH"] = args.config
+    os.environ["TEST_SPLIT_NAME"] = args.split_name
+    pytest.main([__file__])
