@@ -6,7 +6,7 @@
 consistent, operators are proper, and layers are correctly implemented."""
 
 
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, Type, Union
 
 from omics_graph_learning.models import DeeperGCN
 from omics_graph_learning.models import GATv2
