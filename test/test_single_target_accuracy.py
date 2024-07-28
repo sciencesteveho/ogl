@@ -116,16 +116,28 @@ def compare_target_to_true_value(
     assert np.isclose(target, transformed_value)
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--config", action="store", help="Path to the experiment config file"
+    )
+    parser.addoption("--split_name", action="store", help="Name of the split to test")
+
+
 @pytest.fixture(scope="module")
-def test_setup() -> (
-    Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame]
-):
+def test_setup(
+    pytestconfig,
+) -> Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame]:
     """A pytest fixture to prepare configuration and data for tests."""
-    args = parse_arguments()
-    config = ExperimentConfig.from_yaml(args.config)
+    config_path = pytestconfig.getoption("--config")
+    split_name = pytestconfig.getoption("--split_name")
+
+    if not config_path or not split_name:
+        pytest.exit("Both config and split_name must be provided", 1)
+
+    config = ExperimentConfig.from_yaml(config_path)
     ensure_single_target(config)
     targets, rna_seq_df, log_transform_type = pull_configuration_data(
-        config, args.split_name
+        config, split_name
     )
     return config, targets, rna_seq_df
 
