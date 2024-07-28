@@ -578,13 +578,16 @@ class DeeperGCN(nn.Module):
             x = conv(x, edge_index)
             print(f"After conv {i+1} shape: {x.shape}")
 
-        for linear_layer in self.linears[:-1]:
+        for i, linear_layer in enumerate(self.linears[:-1]):
             x = self.nonfunctional_activation(self.activation)()(linear_layer(x))
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
+            print(f"After linear {i+1} shape: {x.shape}")
 
-        return self.linears[-1](x)
+        x = self.linears[-1](x)
+        print(f"Final output shape: {x.shape}")
+        return x
 
     def get_deepergcn_layers(
         self,
@@ -602,15 +605,13 @@ class DeeperGCN(nn.Module):
             num_layers=2,
             norm="layer",
         )
-        norm = LayerNorm(
-            in_channels if layer_number == 1 else out_channels, affine=True
-        )
+        norm = LayerNorm(out_channels, affine=True)
         act = self.nonfunctional_activation(self.activation)()
         return DeepGCNLayer(
             conv=conv,
             norm=norm,
             act=act,
-            block="res+",
+            block="res+" if layer_number > 1 else "plain",
             dropout=0.1,
             ckpt_grad=1 if layer_number == 1 else (layer_number % 3),
         )

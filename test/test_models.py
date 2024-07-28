@@ -172,12 +172,10 @@ def test_modular_model_structure(
         - (2 if model_params["task_specific_mlp"] else 1),
     )
     expected_task_layers = 2 if model_params["task_specific_mlp"] else 1
-
     actual_linear_layers = len(model.linears)
     actual_task_layers = (
         len(model.task_head) if isinstance(model.task_head, nn.ModuleList) else 1
     )
-
     assert (
         actual_linear_layers == expected_linear_layers
     ), f"Incorrect number of shared linear layers. \
@@ -278,57 +276,47 @@ def test_pna(graph_data: Data, model_params: Dict[str, Any]) -> None:
     test_modular_model_structure(model, model_params)
 
 
-# def test_deeper_gcn_structure(model: DeeperGCN, model_params: Dict[str, Any]) -> None:
-#     """Test the structure of the DeeperGCN model.
+def test_deeper_gcn(
+    deepergcn: DeeperGCN, graph_data: Data, model_params: Dict[str, Any]
+) -> None:
+    """Test the DeeperGCN model structure and output.
 
-#     Raises:
-#         AssertionError: If the model structure doesn't meet the expected from
-#         the config.
-#     """
-#     assert (
-#         len(model.linears) == model_params["shared_mlp_layers"]
-#     ), f"Incorrect number of linear layers in DeeperGCN. Expected {model_params['shared_mlp_layers']}, got {len(model.linears)}"
-#     assert (
-#         len(model.convs) == model_params["gnn_layers"]
-#     ), f"Incorrect number of convolutional layers in DeeperGCN. Expected {model_params['gnn_layers']}, got {len(model.convs)}"
+    Raises:
+        AssertionError: If the model doesn't pass the output or structure tests.
+    """
+    # Test model output
+    test_model_output(deepergcn, graph_data)
 
-#     # Check if the first convolutional layer has the correct input dimension
-#     assert (
-#         model.convs[0].conv.in_channels == model_params["in_size"]
-#     ), f"Incorrect input dimension for first convolutional layer in DeeperGCN. Expected {model_params['in_size']}, got {model.convs[0].conv.in_channels}"
+    # Test model structure
+    if model_params["shared_mlp_layers"] == 1:
+        total_linears = model_params["shared_mlp_layers"] + 1  # 1 for the output layer
+    else:
+        total_linears = model_params["shared_mlp_layers"]
+    assert (
+        len(deepergcn.linears) == total_linears
+    ), f"Incorrect number of linear layers in DeeperGCN. \
+        Expected {model_params['shared_mlp_layers']}, got {len(deepergcn.linears)}"
 
-#     # Check if all convolutional layers have the correct output dimension
-#     for conv in model.convs:
-#         assert (
-#             conv.conv.out_channels == model_params["embedding_size"]
-#         ), f"Incorrect output dimension for convolutional layer in DeeperGCN. Expected {model_params['embedding_size']}, got {conv.conv.out_channels}"
+    assert (
+        len(deepergcn.convs) == model_params["gnn_layers"]
+    ), f"Incorrect number of convolutional layers in DeeperGCN. \
+        Expected {model_params['gnn_layers']}, got {len(deepergcn.convs)}"
 
-#     # Check if the last linear layer has the correct output dimension
-#     assert (
-#         model.linears[-1].out_features == model_params["out_channels"]
-#     ), f"Incorrect output dimension for last linear layer in DeeperGCN. Expected {model_params['out_channels']}, got {model.linears[-1].out_features}"
+    # Check if the first convolutional layer has the correct input dimension
+    assert (
+        deepergcn.convs[0].conv.in_channels == model_params["in_size"]
+    ), f"Incorrect input dimension for first convolutional layer in DeeperGCN. \
+        Expected {model_params['in_size']}, got {deepergcn.convs[0].conv.in_channels}"
 
+    # Check if all convolutional layers have the correct output dimension
+    for conv in deepergcn.convs:
+        assert (
+            conv.conv.out_channels == model_params["embedding_size"]
+        ), f"Incorrect output dimension for convolutional layer in DeeperGCN. \
+            Expected {model_params['embedding_size']}, got {conv.conv.out_channels}"
 
-# def test_deeper_gcn(graph_data: Data, model_params: Dict[str, Any]) -> None:
-#     """Test the DeeperGCN model.
-
-#     Raises:
-#         AssertionError: If the model doesn't pass the output or structure tests.
-#     """
-#     print("\nTesting DeeperGCN")
-#     model = DeeperGCN(
-#         in_size=model_params["in_size"],
-#         embedding_size=model_params["embedding_size"],
-#         out_channels=model_params["out_channels"],
-#         gnn_layers=model_params["gnn_layers"],
-#         linear_layers=model_params["shared_mlp_layers"],
-#         activation=model_params["activation"],
-#     )
-
-#     # Print model parameters
-#     print("Model parameters:")
-#     for name, param in model.named_parameters():
-#         print(f"{name}: {param.shape}")
-
-#     test_model_output(model, graph_data)
-#     test_deeper_gcn_structure(model, model_params)
+    # Check if the last linear layer has the correct output dimension
+    assert (
+        deepergcn.linears[-1].out_features == model_params["out_channels"]
+    ), f"Incorrect output dimension for last linear layer in DeeperGCN. \
+        Expected {model_params['out_channels']}, got {deepergcn.linears[-1].out_features}"
