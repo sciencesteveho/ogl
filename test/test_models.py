@@ -78,6 +78,8 @@ def model_params(
     }
 
 
+# use a fixture for deining model features, ensuring only attention models have
+# heads as a parameter
 @pytest.fixture(
     params=[
         (GCN, None),
@@ -124,10 +126,11 @@ def deepergcn(model_params: Dict[str, Any]) -> DeeperGCN:
 
 def test_model_output(model: Union[ModularGNN, DeeperGCN], graph_data: Data) -> None:
     """Test that the size and shape of the forward pass is correct and check
-    that a gradient can be computed.
+    that output is not empty, has no NaN values, and that a gradient can be
+    computed.
 
     Raises:
-        AssertionError: If the model output doesn't meet the expected criteria.
+        AssertionError: If the model output doesn't behave as expected.
     """
     # test with possible node mask for task-specific MLP models
     if isinstance(model, ModularGNN):
@@ -140,13 +143,13 @@ def test_model_output(model: Union[ModularGNN, DeeperGCN], graph_data: Data) -> 
     else:  # DeeperGCN does not require node mask
         out = model(graph_data.x, graph_data.edge_index)
 
-    assert out.numel() > 0, "Output tensor is empty"
-    assert not torch.isnan(out).any(), "Output contains NaN values"
+    assert out.numel() > 0
+    assert not torch.isnan(out).any()
 
     # check gradients
     out.sum().backward()
     for param in model.parameters():
-        assert param.grad is not None, "Gradients are not properly computed"
+        assert param.grad is not None
 
 
 def test_modular_model_structure(
@@ -160,10 +163,7 @@ def test_modular_model_structure(
         the config.
     """
     # check normalization layers
-    assert (
-        len(model.norms) == model_params["gnn_layers"]
-    ), f"Incorrect number of normalization layers. \
-        Expected {model_params['gnn_layers']}, got {len(model.norms)}"
+    assert len(model.norms) == model_params["gnn_layers"]
 
     # check expected linear layers
     expected_linear_layers = max(
@@ -176,52 +176,29 @@ def test_modular_model_structure(
     actual_task_layers = (
         len(model.task_head) if isinstance(model.task_head, nn.ModuleList) else 1
     )
-    assert (
-        actual_linear_layers == expected_linear_layers
-    ), f"Incorrect number of shared linear layers. \
-        Expected {expected_linear_layers}, got {actual_linear_layers}"
-    assert (
-        actual_task_layers == expected_task_layers
-    ), f"Incorrect number of task-specific layers. \
-        Expected {expected_task_layers}, got {actual_task_layers}"
+    assert actual_linear_layers == expected_linear_layers
+    assert actual_task_layers == expected_task_layers
 
     # check convolutional layers
-    assert (
-        len(model.convs) == model_params["gnn_layers"]
-    ), f"Incorrect number of convolutional layers. \
-        Expected {model_params['gnn_layers']}, got {len(model.convs)}"
+    assert len(model.convs) == model_params["gnn_layers"]
 
     # check residual connections
     if model_params["skip_connection"] is not None:
-        assert (
-            model.linear_projection is not None
-        ), "Skip connection not properly implemented"
+        assert model.linear_projection is not None
         if model_params["skip_connection"] == "shared_source":
-            assert isinstance(
-                model.linear_projection, torch.nn.Linear
-            ), f"Incorrect skip connection type. \
-                Expected torch.nn.Linear, got {type(model.linear_projection)}"
+            assert isinstance(model.linear_projection, torch.nn.Linear)
         elif model_params["skip_connection"] == "distinct_source":
-            assert isinstance(
-                model.linear_projection, torch.nn.ModuleList
-            ), f"Incorrect skip connection type. \
-                Expected torch.nn.ModuleList, got {type(model.linear_projection)}"
+            assert isinstance(model.linear_projection, torch.nn.ModuleList)
 
     # check if the first convolutional input dimension is correct
     expected_in_channels = model_params["in_size"]
     actual_in_channels = model.convs[0].in_channels
-    assert (
-        actual_in_channels == expected_in_channels
-    ), f"Incorrect input dimension for first convolutional layer. \
-        Expected {expected_in_channels}, got {actual_in_channels}"
+    assert actual_in_channels == expected_in_channels
 
     # check if the first convolutional output dimension is correct
     expected_out_channels = model_params["embedding_size"]
     actual_out_channels = model.convs[0].out_channels
-    assert (
-        actual_out_channels == expected_out_channels
-    ), f"Incorrect output dimension for first convolutional layer. \
-        Expected {expected_out_channels}, got {actual_out_channels}"
+    assert actual_out_channels == expected_out_channels
 
 
 @pytest.mark.parametrize("model_class", [GCN, GraphSAGE])
@@ -252,7 +229,8 @@ def test_attention_models(
     heads: int,
 ) -> None:
     """Test GNN models with attention mechanisms (GATv2, UniMPTransformer) which
-    requires additional size calculations.
+    have different model sizes. Input is embedding size, but size during
+    convolution and output is size * heads.
 
     Raises:
         AssertionError: If the model doesn't pass the output or structure tests.
@@ -284,39 +262,24 @@ def test_deeper_gcn(
     Raises:
         AssertionError: If the model doesn't pass the output or structure tests.
     """
-    # Test model output
     test_model_output(deepergcn, graph_data)
 
-    # Test model structure
+    # test model structure
     if model_params["shared_mlp_layers"] == 1:
         total_linears = model_params["shared_mlp_layers"] + 1  # 1 for the output layer
     else:
         total_linears = model_params["shared_mlp_layers"]
-    assert (
-        len(deepergcn.linears) == total_linears
-    ), f"Incorrect number of linear layers in DeeperGCN. \
-        Expected {model_params['shared_mlp_layers']}, got {len(deepergcn.linears)}"
+    assert len(deepergcn.linears) == total_linears
 
-    assert (
-        len(deepergcn.convs) == model_params["gnn_layers"]
-    ), f"Incorrect number of convolutional layers in DeeperGCN. \
-        Expected {model_params['gnn_layers']}, got {len(deepergcn.convs)}"
+    # check gnn layers
+    assert len(deepergcn.convs) == model_params["gnn_layers"]
 
-    # Check if the first convolutional layer has the correct input dimension
-    assert (
-        deepergcn.convs[0].conv.in_channels == model_params["in_size"]
-    ), f"Incorrect input dimension for first convolutional layer in DeeperGCN. \
-        Expected {model_params['in_size']}, got {deepergcn.convs[0].conv.in_channels}"
+    # test convolutional layer input dimension
+    assert deepergcn.convs[0].conv.in_channels == model_params["in_size"]
 
-    # Check if all convolutional layers have the correct output dimension
+    # check conv output dimension
     for conv in deepergcn.convs:
-        assert (
-            conv.conv.out_channels == model_params["embedding_size"]
-        ), f"Incorrect output dimension for convolutional layer in DeeperGCN. \
-            Expected {model_params['embedding_size']}, got {conv.conv.out_channels}"
+        assert conv.conv.out_channels == model_params["embedding_size"]
 
-    # Check if the last linear layer has the correct output dimension
-    assert (
-        deepergcn.linears[-1].out_features == model_params["out_channels"]
-    ), f"Incorrect output dimension for last linear layer in DeeperGCN. \
-        Expected {model_params['out_channels']}, got {deepergcn.linears[-1].out_features}"
+    # check linear dimensions
+    assert deepergcn.linears[-1].out_features == model_params["out_channels"]
