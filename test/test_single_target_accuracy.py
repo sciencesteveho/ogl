@@ -21,11 +21,10 @@ Example usage
 """
 
 
-import argparse
 import pickle
 import random
 import sys
-from typing import cast, Dict, Tuple, Union
+from typing import cast, Dict, List, Tuple, Union
 
 import numpy as np
 from omics_graph_learning.config_handlers import ExperimentConfig
@@ -182,7 +181,10 @@ def test_targets(
         )
 
 
+def main(args: List[str]) -> None:
+    """Main function to run pytest with custom arguments."""
+    pytest.main(args)
+
+
 if __name__ == "__main__":
-    pytest.main(
-        [__file__, "--config", "path/to/config.yaml", "--split_name", "split_name"]
-    )
+    main([__file__] + sys.argv[1:])
