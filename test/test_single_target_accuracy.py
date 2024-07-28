@@ -21,6 +21,7 @@ Example usage
 """
 
 
+import argparse
 import pickle
 import random
 import sys
@@ -35,57 +36,18 @@ import pandas as pd
 import pytest
 
 
-def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add CLI args to pytest."""
-    parser.addoption(
-        "--config", action="store", help="Path to the experiment config file"
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Run single target accuracy test")
+    parser.add_argument(
+        "--config", required=True, help="Path to the experiment config file"
     )
-    parser.addoption(
+    parser.add_argument(
         "--split_name",
-        action="store",
+        required=True,
         help="Name of the split to test (see ogl.py pipeline)",
     )
-
-
-@pytest.fixture(scope="session")
-def experiment_config(request: pytest.FixtureRequest) -> ExperimentConfig:
-    """Fixture to load the experiment config."""
-    config_path = request.config.getoption("--config")
-    if not config_path:
-        pytest.skip(
-            "No config file specified. \
-            Use --config to specify the path."
-        )
-    return ExperimentConfig.from_yaml(config_path)
-
-
-@pytest.fixture(scope="session")
-def targets_and_data(
-    experiment_config: ExperimentConfig, split_name: str
-) -> Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str]:
-    """Fixture to prepare targets and data for testing from required args."""
-    ensure_single_target(experiment_config)
-    return pull_configuration_data(config=experiment_config, split_name=split_name)
-
-
-@pytest.fixture(scope="session")
-def split_name(request: pytest.FixtureRequest) -> str:
-    """Fixture to get the split name because targets are specific to the
-    parameters of each split.
-    """
-    split_name = request.config.getoption("--split_name")
-    if not split_name:
-        pytest.skip(
-            "No split name specified. \
-            Use --split_name to specify the split."
-        )
-    return split_name
-
-
-@pytest.fixture(params=["log2", "log1p", "log10"])
-def log_transform_type(request: pytest.FixtureRequest) -> str:
-    """Return the log transformation type."""
-    return request.param
+    return parser.parse_args()
 
 
 def ensure_single_target(config: ExperimentConfig) -> None:
@@ -154,23 +116,20 @@ def compare_target_to_true_value(
     assert np.isclose(target, transformed_value)
 
 
+@pytest.mark.parametrize("log_transform_type", ["log2", "log1p", "log10"])
 @pytest.mark.parametrize("split", ["train", "test", "validation"])
-def test_targets(
-    targets_and_data: Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str],
-    log_transform_type: str,
-    split: str,
-    random_n: int = 100,
-) -> None:
-    """Test that n randomly selected targets match manually calculated values.
+def test_targets(log_transform_type: str, split: str):
+    """Test that randomly selected targets match manually calculated values."""
+    args = parse_arguments()
+    config = ExperimentConfig.from_yaml(args.config)
+    ensure_single_target(config)
+    targets, rna_seq_df, _ = pull_configuration_data(
+        config=config, split_name=args.split_name
+    )
 
-    Args:
-        targets_and_data (Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str]): Tuple containing targets, RNA-seq data, and log transform type.
-        log_transform_type (str): The type of log transformation to apply.
-        split (str): The split to test ("train", "test", or "validation").
-    """
-    targets, rna_seq_df, _ = targets_and_data
-    for target in random.sample(list(targets[split].keys()), random_n):
-        gene = _get_gene_name_without_tissue(target)
+    # sourcery skip: no-loop-in-tests
+    for target in random.sample(list(targets[split].keys()), 100):
+        gene = target.split("_")[0]  #
         true_value = rna_seq_df.loc[gene, "TPM"]
         float_true_value = cast(float, true_value)
         target_value = targets[split][target][0]
@@ -181,10 +140,5 @@ def test_targets(
         )
 
 
-def main(args: List[str]) -> None:
-    """Main function to run pytest with custom arguments."""
-    pytest.main(args)
-
-
 if __name__ == "__main__":
-    main([__file__] + sys.argv[1:])
+    pytest.main([__file__])
