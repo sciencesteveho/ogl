@@ -116,16 +116,28 @@ def compare_target_to_true_value(
     assert np.isclose(target, transformed_value)
 
 
-@pytest.mark.parametrize("log_transform_type", ["log2", "log1p", "log10"])
-@pytest.mark.parametrize("split", ["train", "test", "validation"])
-def test_targets(log_transform_type: str, split: str):
-    """Test that randomly selected targets match manually calculated values."""
+@pytest.fixture(scope="module")
+def test_setup() -> (
+    Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame]
+):
+    """A pytest fixture to prepare configuration and data for tests."""
     args = parse_arguments()
     config = ExperimentConfig.from_yaml(args.config)
     ensure_single_target(config)
-    targets, rna_seq_df, _ = pull_configuration_data(
-        config=config, split_name=args.split_name
+    targets, rna_seq_df, log_transform_type = pull_configuration_data(
+        config, args.split_name
     )
+    return config, targets, rna_seq_df
+
+
+@pytest.mark.parametrize("log_transform_type", ["log2", "log1p", "log10"])
+@pytest.mark.parametrize("split", ["train", "test", "validation"])
+def test_targets(
+    test_setup: Tuple[ExperimentConfig, Dict[str, Dict[str, np.ndarray]], pd.DataFrame],
+    split: str,
+):
+    """Test that randomly selected targets match manually calculated values."""
+    config, targets, rna_seq_df = test_setup
 
     # sourcery skip: no-loop-in-tests
     for target in random.sample(list(targets[split].keys()), 100):
@@ -136,9 +148,15 @@ def test_targets(log_transform_type: str, split: str):
         compare_target_to_true_value(
             target=target_value,
             true_value=float_true_value,
-            log_transform_type=log_transform_type,
+            log_transform_type=config.log_transform,
         )
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    pytest_args = [sys.argv[0]]
+    pytest_args.extend(
+        arg
+        for arg in sys.argv
+        if not arg.startswith("--config") and not arg.startswith("--split_name")
+    )
+    pytest.main(pytest_args)
