@@ -11,12 +11,24 @@ import os
 import sys
 from typing import List, Optional, Tuple
 
+import pytest
+
 from config_handlers import ExperimentConfig
 from utils import _check_file
 from utils import _dataset_split_name
 from utils import _log_progress
 from utils import _run_command
 from utils import submit_slurm_job
+
+
+def run_tests() -> bool:
+    """Run all unit tests to ensure pipeline code is functioning correctly.
+
+    Returns:
+        bool: `True` if all tests pass, `False` otherwise
+    """
+    exit_code = pytest.main([])
+    return exit_code == 0  # pytest.ExitCode.OK is 0
 
 
 class PipelineRunner:
@@ -333,6 +345,12 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--total_random_edges", type=int, default=None)
     parser.add_argument("--gene_only_loader", action="store_true")
     parser.add_argument("--optimize_params", action="store_true")
+    parser.add_argument(
+        "--run-tests",
+        action="store_true",
+        help="Run unit tests before executing the pipeline",
+        default=True,
+    )
     args = parser.parse_args()
     validate_args(args)
     return args
@@ -342,6 +360,15 @@ def main() -> None:
     """Run OGL pipeline, from data parsing to graph constructuion to GNN
     training with checks to avoid redundant computation."""
     args = parse_pipeline_arguments()
+
+    # run unit tests first
+    # if args.run_tests:
+    #     passed_tests = run_tests()
+    #     if not passed_tests:
+    #         print("Unit tests failed. Exiting.")
+    #         sys.exit(1)
+
+    # run OGL pipeline
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
     pipe_runner = PipelineRunner(config=experiment_config, args=args)
     pipe_runner.run_pipeline()

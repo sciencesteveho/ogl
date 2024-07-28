@@ -1,6 +1,7 @@
-# sourcery skip: avoid-single-character-names-variables, upper-camel-case-classes
+# sourcery skip: avoid-single-character-names-variables, no-complex-if-expressions, upper-camel-case-classes
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
+
 
 """GNN model architectures for node regression. We adopt a base class for the
 GNN architecture space. Specific GNN models inherit from the baseclass to
@@ -23,6 +24,7 @@ The models include four different classes of architectures:
 
 (4) Baseline: 3-layer MLP
 """
+
 
 from __future__ import annotations
 
@@ -132,8 +134,8 @@ class ModularGNN(nn.Module):
         gnn_layers: int,
         shared_mlp_layers: int,
         gnn_operator_config: Dict[str, Any],
+        heads: Optional[int] = None,
         dropout_rate: Optional[float] = None,
-        positional_encoding: bool = False,
         skip_connection: Optional[str] = None,
         task_specific_mlp: bool = False,
     ):
@@ -141,18 +143,12 @@ class ModularGNN(nn.Module):
         super().__init__()
         self.dropout_rate = dropout_rate
         self.skip_connection = skip_connection
+        self.shared_mlp_layers = shared_mlp_layers
         self.task_specific_mlp = task_specific_mlp
         self.activation = define_activation(activation)
-        self.positional_encoding = positional_encoding
-        self.positional_encoding_dim = (
-            5  # positional encoding is hardcoded at 5 dimensions
-        )
-        if "heads" in gnn_operator_config:
-            heads = gnn_operator_config["heads"]
 
-        # Adjust dimensions if positional encoding is used
-        if self.positional_encoding:
-            in_size += self.positional_encoding_dim
+        # add attention heads if specified in config
+        self.heads = gnn_operator_config.get("heads")
 
         # Initialize GNN layers and batch normalization
         self.convs = self._create_gnn_layers(
@@ -164,31 +160,33 @@ class ModularGNN(nn.Module):
 
         # Initialize normalization layers
         self.norms = self._get_normalization_layers(
-            layers=gnn_layers,
-            embedding_size=embedding_size,
+            layers=gnn_layers, embedding_size=embedding_size, heads=self.heads
         )
 
         # Initialize linear layers (task-specific MLP)
         self.linears = self._get_linear_layers(
             in_size=embedding_size,
             layers=shared_mlp_layers,
-            heads=heads if "heads" in gnn_operator_config else None,
+            heads=self.heads,
         )
 
-        # get task specific heads
-        self.task_head = self._get_task_head(
-            in_size=embedding_size,
-            out_size=out_channels,
-        )
+        # Initialize task head(s)
+        if self.task_specific_mlp:
+            self.task_head = self._task_specific_head(
+                in_size=embedding_size, out_size=out_channels
+            )
+        else:
+            self.task_head = self._general_task_head(
+                in_size=embedding_size, out_size=out_channels
+            )
 
         # Create linear projection for skip connections
+        self.linear_projection = None
         if self.skip_connection:
             self.linear_projection = self._residuals(
                 in_size=in_size,
                 embedding_size=(
-                    embedding_size
-                    if "heads" not in gnn_operator_config
-                    else heads * embedding_size
+                    self.heads * embedding_size if self.heads else embedding_size
                 ),
             )
 
@@ -210,7 +208,7 @@ class ModularGNN(nn.Module):
         h1 = x  # save input for skip connections
 
         # graph convolutions with normalization and optional skip connections.
-        # the skip connections are handled by their instance types
+        print(f"Input shape: {x.shape}")
         for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
             if self.linear_projection:
                 if isinstance(self.linear_projection, nn.Linear):
@@ -225,29 +223,124 @@ class ModularGNN(nn.Module):
                     x = self.activation(batch_norm(conv(x, edge_index))) + residual
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
+            print(f"After conv {i+1} shape: {x.shape}")
 
         # shared linear layers
         for linear_layer in self.linears:
             x = self.activation(linear_layer(x))
+            print(f"After linear layer shape: {x.shape}")
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
 
-        # task specific heads, also handled by their instance types
-        if isinstance(self.task_head, nn.Linear):
-            return self.task_head(x)
+        # task specific head(s)
+        return (
+            self.task_specific_forward(node_mask, x)
+            if self.task_specific_mlp
+            else self.task_head(x)
+        )
 
+    def task_specific_forward(
+        self, node_mask: Optional[torch.Tensor], x: torch.Tensor
+    ) -> torch.Tensor:
+        """Use task specific MLPs for each output head."""
         if node_mask is None:
             raise ValueError("Node mask must be provided for task specific MLPs.")
-
+        if not isinstance(self.task_head, nn.ModuleList):
+            raise ValueError(
+                "Task specific MLPs must be used for task specific forward."
+            )
         node_specific_x = x[node_mask]
-        node_specific_x = F.relu(self.task_head[0](node_specific_x))
-        node_specific_out = self.node_specific_task_head(node_specific_x)
+        print(f"Node specific x shape after masking: {node_specific_x.shape}")
+        print(f"Shape of first task head: {self.task_head[0].weight.shape}")
+        print(f"Shape of second task head: {self.task_head[1].weight.shape}")
 
-        # create output tensor
+        # ensure dimensions match
+        node_specific_x = F.relu(self.task_head[0](node_specific_x))
+        print(f"Node specific x shape after task_head[0]: {node_specific_x.shape}")
+
+        node_specific_out = self.task_head[1](node_specific_x)
+        print(f"Node specific out shape after task_head[1]: {node_specific_out.shape}")
+
+        # create the output tensor and fill the masked values
         out = torch.zeros(x.size(0), 1, device=x.device)
         out[node_mask] = node_specific_out
+
+        print(f"Final output shape: {out.shape}")
         return out
+
+    def _get_linear_layers(
+        self,
+        in_size: int,
+        layers: int,
+        heads: Optional[int] = None,
+    ) -> nn.ModuleList:
+        """Create linear layers for the model along with optional linear
+        projection for residual connections.
+
+        Args:
+            in_size: The input size of the linear layers.
+            out_size: The output size of the final layer.
+            gnn_layers: The number of linear layers.
+
+        Returns:
+            nn.ModuleList: The module list containing the linear layers.
+        """
+        if self.task_specific_mlp:
+            layers -= 1
+        return self._linear_module(
+            self._linear_layer_dimensions(in_size, layers, heads)
+        )
+
+    def _task_specific_head(
+        self,
+        in_size: int,
+        out_size: int,
+    ) -> Union[nn.ModuleList, nn.Linear]:
+        """Create task specific MLP for each output head."""
+        if self.shared_mlp_layers == 1:
+            in_size = in_size * self.heads if self.heads else in_size
+            node_specific_linear = nn.Linear(in_size, in_size)
+        elif self.shared_mlp_layers == 2:
+            adjusted_in_size = in_size * self.heads if self.heads else in_size
+            node_specific_linear = nn.Linear(adjusted_in_size, in_size)
+        else:
+            node_specific_linear = nn.Linear(in_size, in_size)
+
+        node_specific_task_head = nn.Linear(in_size, out_size)
+        return nn.ModuleList([node_specific_linear, node_specific_task_head])
+
+    def _general_task_head(
+        self,
+        in_size: int,
+        out_size: int,
+    ) -> nn.Linear:
+        """Create a general task head for the model."""
+        if self.shared_mlp_layers == 1:
+            in_size = in_size * self.heads if self.heads else in_size
+        return nn.Linear(in_size, out_size)
+
+    def _residuals(
+        self, in_size: int, embedding_size: int
+    ) -> Union[nn.ModuleList, nn.Linear]:
+        """Create skip connection linear projections"""
+        if self.skip_connection == "shared_source":
+            return nn.Linear(in_size, embedding_size, bias=False)
+        elif self.skip_connection == "distinct_source":
+            return nn.ModuleList(
+                [
+                    nn.Linear(
+                        in_size if i == 0 else embedding_size,
+                        embedding_size,
+                        bias=False,
+                    )
+                    for i in range(len(self.convs))
+                ]
+            )
+        else:
+            raise ValueError(
+                "Invalid skip connection type: must be `shared_source` or `distinct_source`."
+            )
 
     @staticmethod
     def _create_gnn_layers(
@@ -292,75 +385,17 @@ class ModularGNN(nn.Module):
     def _get_normalization_layers(
         layers: int,
         embedding_size: int,
-    ) -> nn.ModuleList:
-        """Create GraphNorm normalization layers for the model."""
-        return nn.ModuleList([GraphNorm(embedding_size) for _ in range(layers)])
-
-    @classmethod
-    def _residuals(
-        cls, in_size: int, embedding_size: int
-    ) -> Union[nn.ModuleList, nn.Linear]:
-        """Create skip connection linear projections"""
-        if cls.skip_connection == "shared_source":
-            return nn.Linear(in_size, embedding_size, bias=False)
-        elif cls.skip_connection == "distinct_source":
-            return nn.ModuleList(
-                [
-                    nn.Linear(
-                        in_size if i == 0 else embedding_size,
-                        embedding_size,
-                        bias=False,
-                    )
-                    for i in range(len(cls.convs))
-                ]
-            )
-        else:
-            raise ValueError(
-                "Invalid skip connection type: must be `shared_source` or `distinct_source`."
-            )
-
-    @classmethod
-    def _get_linear_layers(
-        cls,
-        in_size: int,
-        layers: int,
         heads: Optional[int] = None,
     ) -> nn.ModuleList:
-        """Create linear layers for the model along with optional linear
-        projection for residual connections.
-
-        Args:
-            in_size: The input size of the linear layers.
-            out_size: The output size of the final layer.
-            gnn_layers: The number of linear layers.
-
-        Returns:
-            nn.ModuleList: The module list containing the linear layers.
-        """
-        if cls.task_specific_mlp:
-            layers -= 1
-        return cls._linear_module(cls._linear_layer_dimensions(in_size, layers, heads))
-
-    @classmethod
-    def _get_task_head(
-        cls,
-        in_size: int,
-        out_size: int,
-    ) -> Union[nn.ModuleList, nn.Linear]:
-        """Create the task head for the model. If num_tasks is greater than 1,
-        then creates task specific heads for each output. If num_tasks is 1,
-        then creates a single output head (shared MLP layer)"""
-        if cls.task_specific_mlp:
-            node_specific_linear = nn.Linear(in_size, in_size)
-            node_specific_task_head = nn.Linear(in_size, out_size)
-            return nn.ModuleList([node_specific_linear, node_specific_task_head])
-        return nn.Linear(in_size, out_size)
+        """Create GraphNorm normalization layers for the model."""
+        embedding_size = embedding_size * heads if heads else embedding_size
+        return nn.ModuleList([GraphNorm(embedding_size) for _ in range(layers)])
 
     @staticmethod
     def _linear_layer_dimensions(
         embedding_size: int,
         linear_layers: int,
-        heads: Optional[int],
+        heads: Optional[int] = None,
     ) -> List[int]:
         """Get the sizes of the linear layers for models w/ attention heads."""
         if heads:
@@ -369,13 +404,10 @@ class ModularGNN(nn.Module):
 
     @staticmethod
     def _linear_module(sizes: List[int]) -> nn.ModuleList:
-        """Create linear layers for models w/ attention heads.
+        """Create a linear layer module.
 
         Args:
             sizes: A list of sizes for the linear layers.
-
-        Returns:
-            nn.ModuleList: The module list containing the linear layers.
         """
         return nn.ModuleList(
             [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
@@ -506,10 +538,9 @@ class DeeperGCN(nn.Module):
         """Initialize the model"""
         super().__init__()
         self.dropout_rate = dropout_rate
-
+        self.activation = activation
         self.convs = nn.ModuleList()
         self.linears = nn.ModuleList()
-        self.layer_act = self.nonfunctional_activation(activation)
 
         # Create deeper layers
         self.convs.append(
@@ -527,7 +558,8 @@ class DeeperGCN(nn.Module):
             )
 
         # Create linear layers
-        for _ in range(linear_layers - 1):
+        self.linears.append(Linear(embedding_size, embedding_size))
+        for _ in range(linear_layers - 2):
             self.linears.append(Linear(embedding_size, embedding_size))
         self.linears.append(Linear(embedding_size, out_channels))
 
@@ -541,20 +573,21 @@ class DeeperGCN(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        for conv in self.convs:
+        print(f"Input shape: {x.shape}")
+        for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
+            print(f"After conv {i+1} shape: {x.shape}")
 
         for linear_layer in self.linears[:-1]:
-            x = self.layer_act(linear_layer(x))
+            x = self.nonfunctional_activation(self.activation)()(linear_layer(x))
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
 
         return self.linears[-1](x)
 
-    @classmethod
     def get_deepergcn_layers(
-        cls,
+        self,
         in_channels: int,
         out_channels: int,
         layer_number: int,
@@ -569,8 +602,10 @@ class DeeperGCN(nn.Module):
             num_layers=2,
             norm="layer",
         )
-        norm = LayerNorm(out_channels, elementwise_affine=True)
-        act = cls.layer_act(inplace=True)
+        norm = LayerNorm(
+            in_channels if layer_number == 1 else out_channels, affine=True
+        )
+        act = self.nonfunctional_activation(self.activation)()
         return DeepGCNLayer(
             conv=conv,
             norm=norm,

@@ -6,7 +6,6 @@
 training the network."""
 
 
-import argparse
 from pathlib import Path
 import pickle
 from typing import Dict, List
@@ -166,18 +165,6 @@ class TrainingTargetConsolidator:
         if self.target == "rna_seq":
             return assembler.assemble_rna_targets(tissue_config=self.tissue_config)
         return assembler.assemble_matrix_targets()
-        # collected_targets: Dict[str, Dict[str, np.ndarray]] = {
-        #     "train": {},
-        #     "test": {},
-        #     "validation": {},
-        # }
-        # for split_key in ["train", "test", "validation"]:
-        #     for gene_id, target_values in tissue_targets[split_key].items():
-        #         if gene_id in collected_targets[split_key]:
-        #             collected_targets[split_key][gene_id] += target_values
-        #         else:
-        # #             collected_targets[split_key][gene_id] = target_values
-        # return collected_targets
 
     def consolidate_training_targets(
         self,
