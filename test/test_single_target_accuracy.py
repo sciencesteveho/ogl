@@ -22,7 +22,6 @@ Example usage
 
 
 import argparse
-import os
 import pickle
 import random
 import sys
@@ -150,6 +149,7 @@ def test_targets(
         float_true_value = cast(float, true_value)
         target_value = targets[split][target][0]
 
+        # run comparisons and print results to stdout
         try:
             compare_target_to_true_value(
                 target=target_value,
@@ -172,22 +172,30 @@ def main():
         ExperimentConfig.from_yaml(args.config), args.split_name
     )
 
+    # helpers to track tests
     total_passed = 0
     total_tests = 0
 
+    # run tests for each split
     for split in targets.keys():
         print(f"\nTesting {split} split:")
         passed, total = test_targets(targets, rna_seq_df, log_transform_type, split)
         total_passed += passed
         total_tests += total
         print(f"Passed {passed} tests out of {total} for {split} split")
-
     print(f"\nOverall: Passed {total_passed} tests out of {total_tests}")
 
+    # print final results
     if total_passed == total_tests:
-        print("All tests passed successfully!")
+        print(
+            "All tests passed successfully! \
+            Training target values match true values."
+        )
     else:
-        print(f"Some tests failed. Success rate: {total_passed/total_tests:.2%}")
+        print(
+            f"Some tests failed. \
+            Success rate: {total_passed/total_tests:.2%}"
+        )
 
 
 if __name__ == "__main__":
