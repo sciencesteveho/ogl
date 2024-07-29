@@ -1,11 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# from torch_geometric.explain import Explainer
-# from torch_geometric.explain import GNNExplainer
 
-"""Code to train GNNs on the graph data!"""
+
+"""Data set-up, training loops, evaluation, and automated plotting for GNNs in
+the OGL pipeline."""
+
 
 import argparse
 import logging
@@ -54,29 +53,19 @@ def get_cosine_schedule_with_warmup(
 ) -> LRScheduler:
     """
     Adapted from HuggingFace:
-        https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
+    https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
 
     Create a scheduler with a learning rate that decreases following the values
     of the cosine function between the initial lr set in the optimizer to 0,
     after a warmup period during which it increases linearly between 0 and the
     initial lr set in the optimizer.
-    Args:
-        optimizer ([`~torch.optim.Optimizer`]):
-            The optimizer for which to schedule the learning rate.
-        num_warmup_steps (`int`):
-            The number of steps for the warmup phase.
-        num_training_steps (`int`):
-            The total number of training steps.
-        num_cycles (`float`, *optional*, defaults to 0.5):
-            The number of waves in the cosine schedule (the defaults is to just
-            decrease from the max value to 0 following a half-cosine).
-        last_epoch (`int`, *optional*, defaults to -1):
-            The index of the last epoch when resuming training.
-    Return:
-        `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+
+    Returns:
+        an instance of LambdaLR.
     """
 
     def lr_lambda(current_step: int) -> float:
+        """Compute the learning rate lambda value based on current step."""
         if current_step < num_warmup_steps:
             return max(1e-6, float(current_step) / float(max(1, num_warmup_steps)))
         progress = float(current_step - num_warmup_steps) / float(
@@ -100,6 +89,7 @@ def get_linear_schedule_with_warmup(
     """
 
     def lr_lambda(current_step: int) -> float:
+        """Compute the learning rate lambda value based on current step."""
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
         return max(
@@ -114,14 +104,96 @@ def get_linear_schedule_with_warmup(
     return LambdaLR(optimizer, lr_lambda)
 
 
+def build_gnn_architecture(
+    model: str,
+    activation: str,
+    in_size: int,
+    embedding_size: int,
+    out_channels: int,
+    gnn_layers: int,
+    shared_mlp_layers: int,
+    heads: int = None,
+    dropout_rate: float = None,
+    skip_connection: str = None,
+    task_specific_mlp: bool = False,
+    train_dataset: torch_geometric.data.DataLoader = None,
+) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
+    """Construct a GNN model utilizing ModularGNN class from models.py."""
+    model_constructors = {
+        "GCN": GCN,
+        "GraphSAGE": GraphSAGE,
+        "PNA": PNA,
+        "GAT": GATv2,
+        "UniMPTransformer": UniMPTransformer,
+        "DeeperGCN": DeeperGCN,
+        "MLP": MLP,
+    }
+
+    # ensure model is valid
+    if model not in model_constructors:
+        raise ValueError(
+            f"Invalid model type: {model}. Choose from {model_constructors}"
+        )
+
+    kwargs = {
+        "activation": activation,
+        "in_size": in_size,
+        "embedding_size": embedding_size,
+        "out_channels": out_channels,
+        "gnn_layers": gnn_layers,
+        "shared_mlp_layers": shared_mlp_layers,
+        "dropout_rate": dropout_rate,
+        "skip_connection": skip_connection,
+        "task_specific_mlp": task_specific_mlp,
+    }
+
+    # ensure attention models have attention heads
+    if model in {"GAT", "UniMPTransformer"}:
+        if not heads:
+            raise ValueError(
+                f"Attention-based model {model} requires the 'heads' parameter to be set."
+            )
+        kwargs["heads"] = heads
+        kwargs["gnn_operator_config"] = {"heads": heads}
+    elif model == "PNA":
+        if not train_dataset:
+            raise ValueError(
+                "PNA requires `train_dataset` to compute the in-degree histogram."
+            )
+        kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
+    elif model == "DeeperGCN":
+        deepergcn_kwargs = {
+            "in_size": in_size,
+            "embedding_size": embedding_size,
+            "out_channels": out_channels,
+            "gnn_layers": gnn_layers,
+            "linear_layers": shared_mlp_layers,
+            "activation": activation,
+            "dropout_rate": dropout_rate,
+        }
+        return model_constructors[model](**deepergcn_kwargs)
+    elif model == "MLP":
+        mlp_kwargs = {
+            "in_size": in_size,
+            "embedding_size": embedding_size,
+            "out_channels": out_channels,
+            "activation": activation,
+        }
+        return model_constructors[model](**mlp_kwargs)
+
+    if model not in {"DeeperGCN", "MLP"}:
+        kwargs["gnn_operator_config"] = kwargs.get("gnn_operator_config", {})
+    return model_constructors[model](**kwargs)
+
+
 def _compute_pna_histogram_tensor(
     train_dataset: torch_geometric.data.DataLoader,
 ) -> torch.Tensor:
     """Computes the maximum in-degree in the training data and the in-degree
     histogram tensor for principle neighborhood aggregation (PNA).
 
-    Adapted from pytorch geometric's PNA example here:
-        https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
+    Adapted from pytorch geometric's PNA example:
+    https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
     """
     # Compute the maximum in-degree in the training data.
     max_degree = -1
@@ -141,57 +213,13 @@ def _compute_pna_histogram_tensor(
     return deg
 
 
-def create_model(
-    model: str,
-    in_size: int,
-    embedding_size: int,
-    out_channels: int,
-    gnn_layers: int,
-    linear_layers: int,
-    activation: str,
-    residual: bool = False,
-    dropout_rate: float = None,
-    heads: int = None,
-    train_dataset: torch_geometric.data.DataLoader = None,
-) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
-    """Create GNN model based on model type and parameters"""
-    model_constructors = {
-        "GCN": GCN,
-        "GraphSAGE": GraphSAGE,
-        "PNA": PNA,
-        "GAT": GATv2,
-        "UniMPTransformer": UniMPTransformer,
-        "DeeperGCN": DeeperGCN,
-        "MLP": MLP,
-    }
-    if model not in model_constructors:
-        raise ValueError(f"Invalid model type: {model}")
-    kwargs = {
-        "in_size": in_size,
-        "embedding_size": embedding_size,
-        "out_channels": out_channels,
-        "gnn_layers": gnn_layers,
-        "linear_layers": linear_layers,
-        "activation": activation,
-        "dropout_rate": dropout_rate,
-        "residual": residual,
-    }
-    if model in {"GAT", "UniMPTransformer"}:
-        # kwargs["heads"] = heads
-        kwargs["heads"] = 2
-    elif model == "PNA":
-        kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
-    elif model == "DeeperGCN":
-        del kwargs["residual"]
-    return model_constructors[model](**kwargs)
-
-
 def train(
     model: torch.nn.Module,
     device: torch.cuda.device,
     optimizer: Optimizer,
     train_loader: torch_geometric.data.DataLoader,
     epoch: int,
+    subset_batches: int = None,
 ) -> float:
     """Train GNN model on graph data"""
     model.train()
@@ -199,7 +227,11 @@ def train(
     pbar.set_description(f"Training epoch: {epoch:04d}")
 
     total_loss = total_examples = 0
-    for data in train_loader:
+    for batch_idx, data in enumerate(train_loader):
+        # break out of the loop if subset_batches is set and reached.
+        if subset_batches and batch_idx >= subset_batches:
+            break
+
         optimizer.zero_grad()
         data = data.to(device)
 
@@ -221,21 +253,26 @@ def train(
     return total_loss / total_examples
 
 
-@torch.no_grad()
-def test(
+def _evaluate_model(
     model: torch.nn.Module,
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
     mask: str,
-) -> float:
-    """Test GNN model on test set"""
+    subset_batches: int = None,
+    collect_outputs: bool = False,
+) -> Tuple[float, Optional[torch.Tensor], Optional[torch.Tensor]]:
+    """Base function for model evaluation or inference."""
     model.eval()
     pbar = tqdm(total=len(data_loader))
     pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+    mse, outs, labels = [], [], []
 
-    mse = []
-    for data in data_loader:
+    for batch_idx, data in enumerate(data_loader):
+        # break out of the loop if subset_batches is set and reached.
+        if subset_batches and batch_idx >= subset_batches:
+            break
+
         data = data.to(device)
         out = model(data.x, data.edge_index)
 
@@ -243,12 +280,48 @@ def test(
             idx_mask = data.val_mask_loss
         elif mask == "test":
             idx_mask = data.test_mask_loss
+        else:
+            raise ValueError("Invalid mask type. Use 'val' or 'test'.")
+
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
-        loss = torch.stack(mse)
+
+        if collect_outputs:
+            outs.extend(out[idx_mask])
+            labels.extend(data.y[idx_mask])
+
         pbar.update(1)
 
     pbar.close()
-    return math.sqrt(float(loss.mean()))
+    loss = torch.stack(mse)
+    rmse = math.sqrt(float(loss.mean()))
+
+    return (
+        rmse,
+        (torch.stack(outs) if collect_outputs else None),
+        (torch.stack(labels) if collect_outputs else None),
+    )
+
+
+@torch.no_grad()
+def test(
+    model: torch.nn.Module,
+    device: torch.cuda.device,
+    data_loader: torch_geometric.data.DataLoader,
+    epoch: int,
+    mask: str,
+    subset_batches: int = None,
+) -> float:
+    """Evaluate GNN model on validation or test set."""
+    rmse, _, _ = _evaluate_model(
+        model=model,
+        device=device,
+        data_loader=data_loader,
+        epoch=epoch,
+        mask=mask,
+        subset_batches=subset_batches,
+        collect_outputs=False,
+    )
+    return rmse
 
 
 @torch.no_grad()
@@ -257,28 +330,19 @@ def inference(
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     epoch: int,
+    subset_batches: int = None,
 ) -> Tuple[float, torch.Tensor, torch.Tensor]:
-    """Use model for inference or to evaluate on validation set"""
-    model.eval()
-    pbar = tqdm(total=len(data_loader))
-    pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-
-    mse, outs, labels = [], [], []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
-
-        outs.extend(out[data.test_mask_loss])
-        labels.extend(data.y[data.test_mask_loss])
-        mse.append(
-            F.mse_loss(out[data.test_mask_loss], data.y[data.test_mask_loss]).cpu()
-        )
-
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-    pbar.close()
-    return math.sqrt(float(loss.mean())), outs, labels
+    """Use model for inference on the test set"""
+    rmse, outs, labels = _evaluate_model(
+        model,
+        device,
+        data_loader,
+        epoch,
+        mask="test",
+        subset_batches=subset_batches,
+        collect_outputs=True,
+    )
+    return rmse, outs, labels
 
 
 @torch.no_grad()
@@ -431,7 +495,9 @@ def prep_loader(
     layers: int = 2,
     avg_connectivity: bool = True,
 ) -> torch_geometric.data.DataLoader:
-    """Loads data into NeighborLoader for GNN training"""
+    """Loads data into NeighborLoader for GNN training. Returns a DataLoader
+    with randomly sampled neighbors, either by 10 neighbors * layers or by using
+    the average connectivity in the graph."""
     if avg_connectivity:
         return NeighborLoader(
             data,
@@ -450,53 +516,69 @@ def prep_loader(
 
 
 def setup_device(args: argparse.Namespace) -> torch.device:
-    """Check for GPU and set device accordingly"""
+    """Check for GPU and set device accordingly."""
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
         return torch.device(f"cuda:{args.device}")
     return torch.device("cpu")
 
 
-def _set_optimizer(args: argparse.Namespace, model_params: Iterator[Parameter]):
-    """Choose optimizer"""
+def _set_optimizer(
+    optimizer_type: str, learning_rate: float, model_params: Iterator[Parameter]
+) -> Optimizer:
+    """Choose optimizer."""
     # set gradient descent optimizer
-    if args.optimizer == "Adam":
+    if optimizer_type == "Adam":
         optimizer = torch.optim.Adam(
             model_params,
-            lr=args.learning_rate,
+            lr=learning_rate,
         )
-    elif args.optimizer == "AdamW":
+    elif optimizer_type == "AdamW":
         optimizer = torch.optim.AdamW(
             model_params,
-            lr=args.learning_rate,
+            lr=learning_rate,
         )
     return optimizer
 
 
 def _set_scheduler(
-    args: argparse.Namespace,
+    scheduler_type: str,
     optimizer: Optimizer,
     warmup_steps: int,
     training_steps: int,
-):
+) -> LRScheduler:
     """Set learning rate scheduler"""
-    if args.scheduler == "plateau":
+    if scheduler_type == "plateau":
         return ReduceLROnPlateau(
             optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
         )
-    if args.scheduler == "cosine":
+    if scheduler_type == "cosine":
         scheduler = get_cosine_schedule_with_warmup(
             optimizer=optimizer,
             num_warmup_steps=warmup_steps,
             num_training_steps=training_steps,
         )
-    if args.scheduler == "linear_warmup":
+    elif scheduler_type == "linear_warmup":
         scheduler = get_linear_schedule_with_warmup(
             optimizer=optimizer,
             num_warmup_steps=warmup_steps,
             num_training_steps=training_steps,
         )
     return scheduler
+
+
+def calculate_training_steps(
+    train_loader: torch_geometric.data.DataLoader,
+    batch_size: int,
+    epochs: int,
+    warmup_ratio: float = 0.1,
+) -> int:
+    """Calculate the total number of projected training steps to provide a
+    percentage of warm-up steps."""
+    steps_per_epoch = math.ceil(len(train_loader.dataset) / batch_size)
+    total_steps = steps_per_epoch * epochs
+    warmup_steps = int(total_steps * warmup_ratio)
+    return total_steps, warmup_steps
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -584,19 +666,6 @@ def _plot_loss_and_performance(
     )
 
 
-def calculate_training_steps(
-    train_loader: torch_geometric.data.DataLoader,
-    batch_size: int,
-    epochs: int,
-    warmup_ratio: float = 0.1,
-) -> int:
-    """Calculate number of training steps"""
-    steps_per_epoch = math.ceil(len(train_loader.dataset) / batch_size)
-    total_steps = steps_per_epoch * epochs
-    warmup_steps = int(total_steps * warmup_ratio)
-    return total_steps, warmup_steps
-
-
 def training_loop(
     model: torch.nn.Module,
     device: torch.cuda.device,
@@ -610,7 +679,12 @@ def training_loop(
     model_dir: Path,
     args: argparse.Namespace,
 ) -> Tuple[torch.nn.Module, float]:
-    """Execute training loop!"""
+    """Execute training loop for GNN models.
+
+    The loop will train and evaluate the model on the validation set with
+    minibatching. Afterward, the model is evaluated on the test set utilizing
+    all neighbors.
+    """
     best_validation = stop_counter = 0  # set up early stopping variable
     for epoch in range(epochs + 1):
         loss = train(
@@ -666,17 +740,13 @@ def training_loop(
     return model, val_acc
 
 
-def main() -> None:
-    """Main function to train GNN on graph data!"""
-    # Parse training settings
-    args = parse_arguments()
-    experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
-
-    # set up helper variables
-    experiment_name = experiment_config.experiment_name
+def _experiment_setup(
+    args: argparse.Namespace, experiment_config: ExperimentConfig, log: bool = True
+) -> Tuple[str, Path]:
+    """Load experiment configuration from YAML file."""
     savestr = construct_save_string(
         [
-            experiment_name,
+            experiment_config.experiment_name,
             f"{args.model}",
             f"target-{args.target}",
             f"gnnlayers{args.gnn_layers}",
@@ -695,9 +765,26 @@ def main() -> None:
     for folder in ["logs", "plots"]:
         dir_check_make(model_dir / folder)
 
-    logging.basicConfig(
-        filename=model_dir / "logs" / "training_log.txt",
-        level=logging.DEBUG,
+    if log:
+        logging.basicConfig(
+            filename=model_dir / "logs" / "training_log.txt",
+            level=logging.DEBUG,
+        )
+        logging.info("Experiment setup initialized.")
+        logging.info(f"Experiment configuration: {experiment_config}")
+        logging.info(f"Model directory: {model_dir}")
+
+    return savestr, model_dir
+
+
+def main() -> None:
+    """Main function to train GNN on graph data!"""
+    # Parse training settings
+    args = parse_arguments()
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
+
+    savestr, model_dir = _experiment_setup(
+        args=args, experiment_config=experiment_config
     )
 
     # check for GPU
@@ -709,6 +796,7 @@ def main() -> None:
         graph_type=args.graph_type,
         split_name=args.split_name,
         regression_target=args.target,
+        positional_encoding=args.positional_encoding,
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,
@@ -742,16 +830,18 @@ def main() -> None:
     )
 
     # CHOOSE YOUR WEAPON
-    model = create_model(
+    model = build_gnn_architecture(
         model=args.model,
+        activation=args.activation,
         in_size=data.x.shape[1],
         embedding_size=args.dimensions,
         out_channels=1,
         gnn_layers=args.gnn_layers,
-        linear_layers=args.linear_layers,
-        activation=args.activation,
+        shared_mlp_layers=args.linear_layers,
+        heads=args.heads,
         dropout_rate=args.dropout or None,
-        heads=2 if args.model in {"GAT", "UniMPTransformer"} else None,
+        skip_connection=args.residual,
+        task_specific_mlp=args.task_specific_mlp,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 
@@ -760,15 +850,18 @@ def main() -> None:
         train_loader=train_loader,
         batch_size=args.batch_size,
         epochs=args.epochs,
-        warmup_ratio=0.1,
     )
 
-    optimizer = _set_optimizer(args=args, model_params=model.parameters())
+    optimizer = _set_optimizer(
+        optimizer_type=args.optimizer,
+        learning_rate=args.learning_rate,
+        model_params=model.parameters(),
+    )
     scheduler = _set_scheduler(
-        args=args,
+        scheduler_type=args.scheduler,
         optimizer=optimizer,
         warmup_steps=warmup_steps,
-        total_steps=total_steps,
+        training_steps=total_steps,
     )
 
     # start model training and initialize tensorboard utilities

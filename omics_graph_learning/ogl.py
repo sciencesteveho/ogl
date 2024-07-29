@@ -180,11 +180,17 @@ class PipelineRunner:
 
     def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit GNN training job."""
-        # train_args = self.prepare_gnn_training_args(self.args, split_name)
-        # submit_slurm_job(
-        #     job_script="train_gnn.sh", args=train_args, dependency=dependency
-        # )
-        # _log_progress("GNN training job submitted.")
+        train_args = self.prepare_gnn_training_args(self.args, split_name)
+        if self.args.optimize_params:
+            submit_slurm_job(
+                job_script="optimize_params.sh", args=train_args, dependency=dependency
+            )
+            _log_progress("Hyperparameter optimization job submitted.")
+        else:
+            submit_slurm_job(
+                job_script="train_gnn.sh", args=train_args, dependency=dependency
+            )
+            _log_progress("GNN training job submitted.")
 
     def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
         """Submit all pipeline jobs if a final graph is not found."""
@@ -206,7 +212,7 @@ class PipelineRunner:
         scale_id = self.scale_node_features(slurmids, split_name)
         _log_progress("Node feature scaling job submitted.")
 
-        # self.submit_gnn_job(split_name, scale_id)
+        # self.submit_gnn_job(split_name, scale_id, args.optimize_params)
 
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
@@ -322,8 +328,14 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--activation", type=str, default="relu", choices=["relu", "leakyrelu", "gelu"]
     )
+    parser.add_argument("--task_specific_mlp", action="store_true", default=False)
     parser.add_argument("--dimensions", type=int, default=256)
-    parser.add_argument("--residual", action="store_true")
+    parser.add_argument(
+        "--residual",
+        type=str,
+        default=None,
+        choices=["shared_source", "distinct_source", None],
+    )
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
@@ -338,7 +350,8 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--heads", type=int, default=None)
-    parser.add_argument("--early_stop", action="store_true")
+    parser.add_argument("--positional_encoding", action="store_true")
+    parser.add_argument("--early_stop", action="store_true", default=True)
     parser.add_argument("--zero_nodes", action="store_true")
     parser.add_argument("--randomize_node_feats", action="store_true")
     parser.add_argument("--randomize_edges", action="store_true")
@@ -349,7 +362,7 @@ def parse_pipeline_arguments() -> argparse.Namespace:
         "--run-tests",
         action="store_true",
         help="Run unit tests before executing the pipeline",
-        default=True,
+        default=False,
     )
     args = parser.parse_args()
     validate_args(args)
