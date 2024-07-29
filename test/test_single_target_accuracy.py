@@ -89,7 +89,7 @@ def pull_configuration_data(
 
     # load the tissue config and load the tsv
     tissue_config = TissueConfig.from_yaml(
-        config.config_dir / f"{config.tissues[0]}.yaml"
+        config.sample_config_dir / f"{config.tissues[0]}.yaml"
     )
     df = read_encode_rna_seq_data(tissue_config.resources["rna"])
     return targets, df.filter(items=["TPM"]), config.log_transform
