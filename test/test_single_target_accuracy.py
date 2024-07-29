@@ -15,7 +15,7 @@ tissues, use test_multi_target_accuracy.py.
 
 Example usage
 --------
->>> pytest test_single_target_accuracy.py \
+>>> python test_single_target_accuracy.py \
         --config path/to/config.yaml \
         --split_name {split_name}
 """
@@ -26,7 +26,7 @@ import os
 import pickle
 import random
 import sys
-from typing import cast, Dict, List, Tuple, Union
+from typing import cast, Dict, Tuple, Union
 
 import numpy as np
 from omics_graph_learning.config_handlers import ExperimentConfig
@@ -34,11 +34,6 @@ from omics_graph_learning.config_handlers import TissueConfig
 from omics_graph_learning.constants import TARGET_FILE
 from omics_graph_learning.gene_filter import read_encode_rna_seq_data
 import pandas as pd
-import pytest
-
-# # Hardcode these values
-# CONFIG_PATH = "../configs/experiments/k562_deeploop_100000.yaml"
-# SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_10_rna_seq"
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -121,46 +116,71 @@ def compare_target_to_true_value(
     assert np.isclose(target, transformed_value)
 
 
-@pytest.fixture(scope="module")
-def test_setup() -> Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str]:
+def test_setup(
+    args: argparse.Namespace,
+) -> Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str]:
     """A pytest fixture to prepare configuration and data for tests."""
-    config_path = os.environ.get("TEST_CONFIG_PATH")
-    split_name = os.environ.get("TEST_SPLIT_NAME")
-
-    if not config_path or not split_name:
-        raise ValueError(
-            "TEST_CONFIG_PATH and TEST_SPLIT_NAME environment variables must be set"
-        )
-
-    config = ExperimentConfig.from_yaml(config_path)
+    config = ExperimentConfig.from_yaml(args.config_path)
     ensure_single_target(config)
-    return pull_configuration_data(config, split_name)
+    return pull_configuration_data(config, args.split_name)
 
 
-@pytest.mark.parametrize("log_transform_type", ["log2", "log1p", "log10"])
-@pytest.mark.parametrize("split", ["train", "test", "validation"])
 def test_targets(
-    test_setup: Tuple[Dict[str, Dict[str, np.ndarray]], pd.DataFrame, str],
+    targets: Dict[str, Dict[str, np.ndarray]],
+    rna_seq_df: pd.DataFrame,
+    log_transform_type: str,
     split: str,
+    random_n: int = 100,
 ):
     """Test that randomly selected targets match manually calculated values."""
-    targets, rna_seq_df, log_transform_type = test_setup
+    passed_tests = 0
+    total_tests = min(random_n, len(targets[split]))
 
-    # sourcery skip: no-loop-in-tests
-    for target in random.sample(list(targets[split].keys()), 100):
-        gene = target.split("_")[0]  #
+    for target in random.sample(list(targets[split].keys()), total_tests):
+        gene = _get_gene_name_without_tissue(target)
         true_value = rna_seq_df.loc[gene, "TPM"]
         float_true_value = cast(float, true_value)
         target_value = targets[split][target][0]
-        compare_target_to_true_value(
-            target=target_value,
-            true_value=float_true_value,
-            log_transform_type=log_transform_type,
-        )
+
+        try:
+            compare_target_to_true_value(
+                target=target_value,
+                true_value=float_true_value,
+                log_transform_type=log_transform_type,
+            )
+            print(".", end="", flush=True)
+            passed_tests += 1
+        except AssertionError:
+            print("F", end="", flush=True)
+
+    print()
+    return passed_tests, total_tests
+
+
+def main():
+    """Run the tests!"""
+    args = parse_arguments()
+    targets, rna_seq_df, log_transform_type = pull_configuration_data(
+        ExperimentConfig.from_yaml(args.config), args.split_name
+    )
+
+    total_passed = 0
+    total_tests = 0
+
+    for split in targets.keys():
+        print(f"\nTesting {split} split:")
+        passed, total = test_targets(targets, rna_seq_df, log_transform_type, split)
+        total_passed += passed
+        total_tests += total
+        print(f"Passed {passed} tests out of {total} for {split} split")
+
+    print(f"\nOverall: Passed {total_passed} tests out of {total_tests}")
+
+    if total_passed == total_tests:
+        print("All tests passed successfully!")
+    else:
+        print(f"Some tests failed. Success rate: {total_passed/total_tests:.2%}")
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
-    os.environ["TEST_CONFIG_PATH"] = args.config
-    os.environ["TEST_SPLIT_NAME"] = args.split_name
-    pytest.main([__file__])
+    main()
