@@ -708,7 +708,7 @@ def main() -> None:
         experiment_config=experiment_config,
         graph_type=args.graph_type,
         split_name=args.split_name,
-        regression_target="rna_seq" if args.rna_seq else args.target,
+        regression_target=args.target,
         randomize_feats=args.randomize_node_feats,
         zero_node_feats=args.zero_nodes,
         randomize_edges=args.randomize_edges,

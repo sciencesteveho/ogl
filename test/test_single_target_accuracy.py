@@ -13,6 +13,10 @@ This test is specifically designed for experiments that have a single tissue in
 the config (i.e. single-tissue models). For models that have multiple samples /
 tissues, use test_multi_target_accuracy.py.
 
+Lastly, pytest did not play nice with the way this was designed and how args are
+parsed so this is not integrated within the pytest framework, but should work
+well enough as a diy unit test.
+
 Example usage
 --------
 >>> python test_single_target_accuracy.py \

@@ -1,12 +1,11 @@
 # sourcery skip: avoid-single-character-names-variables
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# from torch_geometric.explain import Explainer
-# from torch_geometric.explain import GNNExplainer
 
-"""Code to train GNNs on the graph data!"""
+
+"""Code to handle automated hyperparameter tuning via Optuna's Hyperband
+pruner."""
+
 
 import argparse
 import gc
@@ -15,94 +14,55 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import optuna
 from optuna.trial import TrialState
-import plotly
+import plotly  # type: ignore
 import torch
 import torch.nn.functional as F
 from torch.optim import Optimizer
 import torch.optim as optim
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torch_geometric
-from torch_geometric.data import DataListLoader
+import torch_geometric  # type: ignore
+from torch_geometric.data import DataListLoader  # type: ignore
 from torch_geometric.data import DataLoader
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
+from config_handlers import ExperimentConfig
 from gnn import create_model
 from gnn import prep_loader
 from graph_to_pytorch import graph_to_pytorch
+from ogl import parse_pipeline_arguments
 
-EPOCHS = 50
+EPOCHS = 200
 RANDOM_SEED = 42
-ROOT_DIR = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_k562_fdr001_intersect_25kb/"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SPLIT_NAME = "tpm_1.0_samples_0.2_test_8-9_val_7-13_rna_seq"
-TARGET = "rna_seq"
-
-
-def get_cosine_schedule_with_warmup(
-    optimizer: Optimizer,
-    num_warmup_steps: int,
-    num_training_steps: int,
-    num_cycles: float = 0.5,
-    last_epoch: int = -1,
-) -> LRScheduler:
-    """
-    Implementation by Huggingface:
-    https://github.com/huggingface/transformers/blob/v4.16.2/src/transformers/optimization.py
-
-    Create a schedule with a learning rate that decreases following the values
-    of the cosine function between the initial lr set in the optimizer to 0,
-    after a warmup period during which it increases linearly between 0 and the
-    initial lr set in the optimizer.
-    Args:
-        optimizer ([`~torch.optim.Optimizer`]):
-            The optimizer for which to schedule the learning rate.
-        num_warmup_steps (`int`):
-            The number of steps for the warmup phase.
-        num_training_steps (`int`):
-            The total number of training steps.
-        num_cycles (`float`, *optional*, defaults to 0.5):
-            The number of waves in the cosine schedule (the defaults is to just
-            decrease from the max value to 0 following a half-cosine).
-        last_epoch (`int`, *optional*, defaults to -1):
-            The index of the last epoch when resuming training.
-    Return:
-        `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
-    """
-
-    def lr_lambda(current_step: int) -> float:
-        if current_step < num_warmup_steps:
-            return max(1e-6, float(current_step) / float(max(1, num_warmup_steps)))
-        progress = float(current_step - num_warmup_steps) / float(
-            max(1, num_training_steps - num_warmup_steps)
-        )
-        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * num_cycles * 2.0 * progress)))
-
-    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def train(
     model: torch.nn.Module,
     device: torch.cuda.device,
-    optimizer,
+    optimizer: Optimizer,
     train_loader: torch_geometric.data.DataLoader,
     epoch: int,
     subset_batches: int = None,
 ):
-    """Train GNN model on graph data"""
+    """Train GNN model on graph data including an option to subset batches if
+    necessary."""
     model.train()
     pbar = tqdm(total=len(train_loader))
     pbar.set_description(f"Training epoch: {epoch:04d}")
 
     total_loss = total_examples = 0
     for batch_idx, data in enumerate(train_loader):
-        # Break out of the loop if subset_batches is set and reached.
+        # break out of the loop if subset_batches is set and reached.
         if subset_batches and batch_idx >= subset_batches:
             break
 
         optimizer.zero_grad()
         data = data.to(device)
-        out = model(data.x, data.edge_index)
+
+        if model.task_specific_mlp:
+            out = model(data.x, data.edge_index, data.train_mask_loss)
+        else:
+            out = model(data.x, data.edge_index)
 
         loss = F.mse_loss(out[data.train_mask], data.y[data.train_mask])
         loss.backward()
@@ -152,7 +112,9 @@ def test(
     return math.sqrt(float(loss.mean()))
 
 
-def objective(trial: optuna.Trial) -> torch.Tensor:
+def objective(
+    trial: optuna.Trial, experiment_config: ExperimentConfig, args: argparse.Namespace
+) -> torch.Tensor:
     """Objective function, optimized by Optuna
 
     Hyperparameters are based off a mix of ancedotal results and from Tönshoff
@@ -199,11 +161,10 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
     # def _load_data(batch_size, loader, neighbors):
     def _load_data(batch_size):
         data = graph_to_pytorch(
-            experiment_name="regulatory_only_k562_fdr001_intersect_25kb",
-            graph_type="full",
-            root_dir=ROOT_DIR,
-            split_name=SPLIT_NAME,
-            regression_target=TARGET,
+            experiment_config=experiment_config,
+            graph_type=args.graph_type,
+            split_name=args.split_name,
+            regression_target=args.target,
         )
 
         # temporary - to check number of edges for randomization tests
@@ -256,7 +217,8 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
         train_dataset=None,
         # train_dataset=train_loader if model == "PNA" else None,
     )
-    model = model.to(DEVICE)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
     # set optimizer
     def _set_optimizer(optimizer_type, learning_rate, model_params):
@@ -326,9 +288,17 @@ def objective(trial: optuna.Trial) -> torch.Tensor:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
-    prefix = "GAT"
+    args = parse_pipeline_arguments()
+    prefix = f"{args.model}_"
     plot_dir = "/ocean/projects/bio210019p/stevesho/data/preprocess/optuna"
-    study = optuna.create_study(direction="minimize")
+
+    # Create a study object with Hyperband Pruner
+    study = optuna.create_study(
+        direction="minimize",
+        pruner=optuna.pruners.HyperbandPruner(
+            min_resource=3, max_resource=EPOCHS, reduction_factor=10
+        ),
+    )
     study.optimize(objective, n_trials=200, gc_after_trial=True)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])

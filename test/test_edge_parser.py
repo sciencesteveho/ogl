@@ -5,6 +5,13 @@
 """Test the EdgeParser class which handles the basis of graph construction."""
 
 
+# make a fake small chr loop file
+# make a fake small enhancer file
+# make a fake small promoter file
+# make a fake small gene file
+# do the overlaps and make sure the edges are actually parsed
+
+
 from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import patch

@@ -6,6 +6,12 @@
 LocalContextParser, which form the node features of the graphs."""
 
 
+# load node
+# make a dictionary to links to noderef files, which are be accessed with a path variable
+# check that chr, start, and end are correct
+# pick 100 random nodes. Using just that single node, make a pybedtool file and manually perform the intersect and check if the derived values are the same.
+
+
 import os
 from pathlib import Path
 import pickle
