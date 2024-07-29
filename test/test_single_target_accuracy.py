@@ -31,9 +31,17 @@ from typing import cast, Dict, Tuple, Union
 import numpy as np
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.config_handlers import TissueConfig
-from omics_graph_learning.constants import TARGET_FILE
-from omics_graph_learning.gene_filter import read_encode_rna_seq_data
 import pandas as pd
+
+TARGET_FILE = "targets_combined.pkl"
+
+
+def read_encode_rna_seq_data(
+    rna_seq_file: str,
+) -> pd.DataFrame:
+    """Read an ENCODE rna-seq tsv, keep only ENSG genes"""
+    df = pd.read_table(rna_seq_file, index_col=0, header=[0])
+    return df[df.index.str.contains("ENSG")]
 
 
 def parse_arguments() -> argparse.Namespace:
