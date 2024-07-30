@@ -52,7 +52,7 @@ class GraphToPytorch:
         perturbation_config: Optional[PerturbationConfig] = None,
     ) -> None:
         """Instantiate the GraphToPytorch object."""
-        self.experiment_config = ExperimentConfig
+        self.experiment_config = experiment_config
         self.split_name = split_name
         self.regression_target = regression_target
         self.positional_encoding = positional_encoding
