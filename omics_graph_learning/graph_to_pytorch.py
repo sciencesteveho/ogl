@@ -91,6 +91,8 @@ class GraphToPytorch:
             node_perturbation = get_node_perturbation(
                 self.perturbation_config.node_perturbation
             )
+        else:
+            node_perturbation = None
 
         return create_node_tensors(
             graph_data=self.graph_data,
