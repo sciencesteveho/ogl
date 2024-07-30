@@ -174,6 +174,9 @@ class GraphToPytorch:
         # add target values to the data object
         data.y = targets.T.contiguous()
 
+        # save average edges for the graph
+        self.save_average_edges(data=data)
+
         return data
 
     @staticmethod
