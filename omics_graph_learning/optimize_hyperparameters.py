@@ -65,12 +65,6 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        "skip_connection": trial.suggest_categorical(
-            "skip_connection", ["shared_source", "distinct_source", None]
-        ),
-        "task_specific_mlp": trial.suggest_categorical(
-            "task_specific_mlp", [True, False]
-        ),
         "learning_rate": trial.suggest_float(
             "learning_rate", low=1e-6, high=1e-2, log=True
         ),
@@ -95,6 +89,15 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
         params["gnn_layers"] = trial.suggest_int("gnn_layers", low=6, high=32, step=2)
     else:
         params["gnn_layers"] = trial.suggest_int("gnn_layers", low=1, high=8, step=1)
+
+    # add task specific mlp if not DeeperGCN
+    if model != "DeeperGCN":
+        params["task_specific_mlp"] = trial.suggest_categorical(
+            "task_specific_mlp", [True, False]
+        )
+        params["skip_connection"] = trial.suggest_categorical(
+            "skip_connection", ["shared_source", "distinct_source", None]
+        )
 
     # set positional encodings
     params["positional_encoding"] = trial.suggest_categorical(
