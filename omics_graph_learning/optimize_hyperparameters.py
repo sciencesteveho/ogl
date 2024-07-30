@@ -109,7 +109,7 @@ def objective(
 ) -> torch.Tensor:
     """Objective function to be optimized by Optuna."""
     # set gpu
-    device = setup_device(args)
+    device = setup_device()
 
     # get trial hyperparameters
     params = suggest_hyperparameters(trial)
