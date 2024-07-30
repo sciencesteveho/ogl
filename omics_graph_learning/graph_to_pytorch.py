@@ -188,7 +188,7 @@ class GraphToPytorch:
         file_paths = {
             "index": graph_dir / f"{experiment_name}_{graph_type}_graph_idxs.pkl",
             "split": experiment_dir / TRAINING_SPLIT_FILE,
-            "target": graph_dir
+            "target": experiment_dir
             / (TARGET_FILE_SCALED if scaled_targets else TARGET_FILE),
             "graph_data": experiment_dir / f"{experiment_name}_{graph_type}_scaled.pkl",
         }
