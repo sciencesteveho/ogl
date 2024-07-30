@@ -220,7 +220,7 @@ def _assign_nodes_to_split(
         Dict[str, List[str]]: The split dictionary containing train, test, and
         validation gene lists.
     """
-    coordinates = graph_data["coordinates"]
+    coordinates = graph_data["node_coordinates"]
     train, test, validation = [], [], []
     for node in range(graph_data["num_nodes"]):
         if coordinates[node]["chr"] in test_chrs:
