@@ -125,8 +125,8 @@ def objective(
     gnn_layers = params["gnn_layers"]
     linear_layers = params["linear_layers"]
     dropout_rate = params["dropout_rate"]
-    skip_connection = params["skip_connection"]
-    task_specific_mlp = params["task_specific_mlp"]
+    skip_connection = params.get("skip_connection")
+    task_specific_mlp = params.get("task_specific_mlp")
     learning_rate = params["learning_rate"]
     optimizer_type = params["optimizer_type"]
     scheduler_type = params["scheduler_type"]
