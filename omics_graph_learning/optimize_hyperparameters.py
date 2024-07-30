@@ -16,14 +16,15 @@ import plotly  # type: ignore
 import torch
 
 from config_handlers import ExperimentConfig
-from gnn import _set_optimizer
-from gnn import _set_scheduler
-from gnn import build_gnn_architecture
-from gnn import calculate_training_steps
-from gnn import prep_loader
-from gnn import test
-from gnn import train
+from gnn_architecture_builder import build_gnn_architecture
 from graph_to_pytorch import GraphToPytorch
+from train_gnn import _set_optimizer
+from train_gnn import _set_scheduler
+from train_gnn import build_gnn_architecture
+from train_gnn import calculate_training_steps
+from train_gnn import prep_loader
+from train_gnn import test
+from train_gnn import train
 from utils import dir_check_make
 
 # constant helpers

@@ -11,6 +11,7 @@ derive from the local context datatypes."""
 from itertools import repeat
 from multiprocessing import Pool
 import os
+from pathlib import Path
 import pickle
 import subprocess
 from subprocess import PIPE
@@ -147,6 +148,15 @@ class LocalContextParser:
         for attribute in ATTRIBUTES:
             dir_check_make(self.attribute_dir / attribute)
 
+    def _initialize_positional_encoder(
+        self,
+    ) -> PositionalEncoding:
+        """Get object to produce positional encodings."""
+        return PositionalEncoding(
+            chromfile=self.chromfile,
+            binsize=50000,
+        )
+
     @time_decorator(print_args=True)
     def _prepare_local_features(
         self,
@@ -235,7 +245,8 @@ class LocalContextParser:
         print(f"starting combinations {node_type}")
 
         def _unix_intersect(node_type: str, type: Optional[str] = None) -> None:
-            """Intersect and cut relevant columns"""
+            """Perform a bed intersect using shell, which can be faster than
+            pybedtools for large files."""
             if type == "direct":
                 folder = "sorted"
                 cut_cmd = ""
@@ -254,14 +265,6 @@ class LocalContextParser:
                 subprocess.run(final_cmd + cut_cmd, stdout=outfile, shell=True)
             outfile.close()
 
-        def _filter_duplicate_bed_entries(
-            bedfile: pybedtools.bedtool.BedTool,
-        ) -> pybedtools.bedtool.BedTool:
-            """Filters a bedfile by removing entries that are identical"""
-            return bedfile.filter(
-                lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
-            ).saveas()
-
         def _add_distance(feature: Any) -> str:
             """Add distance as [8]th field to each overlap interval"""
             feature = extend_fields(feature, 9)
@@ -276,12 +279,12 @@ class LocalContextParser:
 
         if node_type in self.DIRECT:
             _unix_intersect(node_type, type="direct")
-            _filter_duplicate_bed_entries(
+            self._filter_duplicate_bed_entries(
                 pybedtools.BedTool(self.edge_dir / f"{node_type}.bed")
             ).sort().saveas(self.edge_dir / f"{node_type}_dupes_removed")
         else:
             _unix_intersect(node_type)
-            _filter_duplicate_bed_entries(
+            self._filter_duplicate_bed_entries(
                 pybedtools.BedTool(self.edge_dir / f"{node_type}.bed")
             ).each(_add_distance).saveas().sort().saveas(
                 self.edge_dir / f"{node_type}_dupes_removed"
@@ -298,11 +301,7 @@ class LocalContextParser:
             feature[4] = feature.end - feature.start
             return feature
 
-        def sum_gc(feature: Any) -> str:
-            """Sum GC content for each feature"""
-            feature[13] = int(feature[8]) + int(feature[9])
-            return feature
-
+        # prepare node_type reference for aggregating attributes
         ref_file = (
             pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
             .filter(lambda x: "alt" not in x[0])
@@ -311,29 +310,56 @@ class LocalContextParser:
             .saveas()
         )
 
+        # aggregate
         for attribute in ATTRIBUTES:
             save_file = (
                 self.attribute_dir / attribute / f"{node_type}_{attribute}_percentage"
             )
             print(f"{attribute} for {node_type}")
-            if attribute == "gc":
-                ref_file.nucleotide_content(fi=self.fasta).each(sum_gc).sort().groupby(
-                    g=[1, 2, 3, 4], c=[5, 14], o=["sum"]
-                ).saveas(save_file)
-            elif attribute == "recombination":
+            self._overlap_with_attribute(ref_file, attribute, save_file)
+
+    def _overlap_with_attribute(
+        self, ref_file: pybedtools.bedtool.BedTool, attribute: str, save_file: Path
+    ) -> None:
+        """Get overlap with gene windows then aggregate total nucleotides, gc
+        content, and all other attributes.
+        """
+
+        def sum_gc(feature: Any) -> str:
+            """Sum GC content for each feature"""
+            feature[13] = int(feature[8]) + int(feature[9])
+            return feature
+
+        if attribute == "gc":
+            return (
+                ref_file.nucleotide_content(fi=self.fasta)
+                .each(sum_gc)
+                .sort()
+                .groupby(g=[1, 2, 3, 4], c=[5, 14], o=["sum"])
+                .saveas(save_file)
+            )
+        elif attribute == "recombination":
+            return (
                 ref_file.intersect(
                     pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"]).sort().saveas(
-                    save_file
                 )
-            else:
+                .groupby(g=[1, 2, 3, 4], c=[5, 9], o=["sum", "mean"])
+                .sort()
+                .saveas(save_file)
+            )
+        else:
+            return (
                 ref_file.intersect(
                     pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
-                ).groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"]).sort().saveas(save_file)
+                )
+                .groupby(g=[1, 2, 3, 4], c=[5, 10], o=["sum"])
+                .sort()
+                .saveas(save_file)
+            )
 
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
@@ -370,10 +396,7 @@ class LocalContextParser:
         graph construction."""
         # initialize position encoding
         if self.positional_encoding:
-            positional_encoding = PositionalEncoding(
-                chromfile=self.chromfile,
-                binsize=50000,
-            )
+            positional_encoding = self._initialize_positional_encoder()
 
         stored_attributes: Dict[
             str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]
@@ -507,3 +530,12 @@ class LocalContextParser:
     ) -> pybedtools.bedtool.BedTool:
         """Remove alternate chromosomes from bedfile."""
         return bed.filter(lambda x: "_" not in x[0]).saveas()
+
+    @staticmethod
+    def _filter_duplicate_bed_entries(
+        bedfile: pybedtools.bedtool.BedTool,
+    ) -> pybedtools.bedtool.BedTool:
+        """Filters a bedfile by removing entries that are identical"""
+        return bedfile.filter(
+            lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
+        ).saveas()

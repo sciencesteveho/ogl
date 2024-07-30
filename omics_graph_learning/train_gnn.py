@@ -10,7 +10,7 @@ import argparse
 import logging
 import math
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import torch
 from torch.nn import Parameter
@@ -23,19 +23,12 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
-from torch_geometric.utils import degree  # type: ignore
-from torch_geometric.utils import k_hop_subgraph
+from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from config_handlers import ExperimentConfig
+from gnn_architecture_builder import build_gnn_architecture
 from graph_to_pytorch import GraphToPytorch
-from models import DeeperGCN
-from models import GATv2
-from models import GCN
-from models import GraphSAGE
-from models import MLP
-from models import PNA
-from models import UniMPTransformer
 from ogl import parse_pipeline_arguments
 from perturbation import PerturbationConfig
 from utils import _set_matplotlib_publication_parameters
@@ -103,115 +96,6 @@ def get_linear_schedule_with_warmup(
         )
 
     return LambdaLR(optimizer, lr_lambda)
-
-
-def build_gnn_architecture(
-    model: str,
-    activation: str,
-    in_size: int,
-    embedding_size: int,
-    out_channels: int,
-    gnn_layers: int,
-    shared_mlp_layers: int,
-    heads: int = None,
-    dropout_rate: float = None,
-    skip_connection: str = None,
-    task_specific_mlp: bool = False,
-    train_dataset: torch_geometric.data.DataLoader = None,
-) -> torch.nn.Module:  # sourcery skip: dict-assign-update-to-union
-    """Construct a GNN model utilizing ModularGNN class from models.py."""
-    model_constructors = {
-        "GCN": GCN,
-        "GraphSAGE": GraphSAGE,
-        "PNA": PNA,
-        "GAT": GATv2,
-        "UniMPTransformer": UniMPTransformer,
-        "DeeperGCN": DeeperGCN,
-        "MLP": MLP,
-    }
-
-    # ensure model is valid
-    if model not in model_constructors:
-        raise ValueError(
-            f"Invalid model type: {model}. Choose from {model_constructors}"
-        )
-
-    kwargs = {
-        "activation": activation,
-        "in_size": in_size,
-        "embedding_size": embedding_size,
-        "out_channels": out_channels,
-        "gnn_layers": gnn_layers,
-        "shared_mlp_layers": shared_mlp_layers,
-        "dropout_rate": dropout_rate,
-        "skip_connection": skip_connection,
-        "task_specific_mlp": task_specific_mlp,
-    }
-
-    # ensure attention models have attention heads
-    if model in {"GAT", "UniMPTransformer"}:
-        if not heads:
-            raise ValueError(
-                f"Attention-based model {model} requires the 'heads' parameter to be set."
-            )
-        kwargs["heads"] = heads
-        kwargs["gnn_operator_config"] = {"heads": heads}
-    elif model == "PNA":
-        if not train_dataset:
-            raise ValueError(
-                "PNA requires `train_dataset` to compute the in-degree histogram."
-            )
-        kwargs["deg"] = _compute_pna_histogram_tensor(train_dataset)
-    elif model == "DeeperGCN":
-        deepergcn_kwargs = {
-            "in_size": in_size,
-            "embedding_size": embedding_size,
-            "out_channels": out_channels,
-            "gnn_layers": gnn_layers,
-            "linear_layers": shared_mlp_layers,
-            "activation": activation,
-            "dropout_rate": dropout_rate,
-        }
-        return model_constructors[model](**deepergcn_kwargs)
-    elif model == "MLP":
-        mlp_kwargs = {
-            "in_size": in_size,
-            "embedding_size": embedding_size,
-            "out_channels": out_channels,
-            "activation": activation,
-        }
-        return model_constructors[model](**mlp_kwargs)
-
-    if model not in {"DeeperGCN", "MLP"}:
-        kwargs["gnn_operator_config"] = kwargs.get("gnn_operator_config", {})
-    return model_constructors[model](**kwargs)
-
-
-def _compute_pna_histogram_tensor(
-    train_dataset: torch_geometric.data.DataLoader,
-) -> torch.Tensor:
-    """Computes the maximum in-degree in the training data and the in-degree
-    histogram tensor for principle neighborhood aggregation (PNA).
-
-    Adapted from pytorch geometric's PNA example:
-    https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
-    """
-    # Compute the maximum in-degree in the training data.
-    max_degree = -1
-    for data in train_dataset:
-        computed_degree = degree(
-            data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long
-        )
-        max_degree = max(max_degree, int(computed_degree.max()))
-
-    # Compute the in-degree histogram tensor
-    deg = torch.zeros(max_degree + 1, dtype=torch.long)
-    for data in train_dataset:
-        computed_degree = degree(
-            data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long
-        )
-        deg += torch.bincount(computed_degree, minlength=deg.numel())
-    return deg
 
 
 def train(
@@ -517,16 +401,12 @@ def prep_loader(
     with randomly sampled neighbors, either by 10 neighbors * layers or by using
     the average connectivity in the graph."""
     if avg_connectivity:
-        return NeighborLoader(
-            data,
-            num_neighbors=[data.avg_edges] * layers,
-            batch_size=batch_size,
-            input_nodes=getattr(data, mask),
-            shuffle=shuffle,
-        )
+        num_neighbors = [data.avg_edges] * layers
+    else:
+        num_neighbors = [10] * layers
     return NeighborLoader(
         data,
-        num_neighbors=[10] * layers,
+        num_neighbors=num_neighbors,
         batch_size=batch_size,
         input_nodes=getattr(data, mask),
         shuffle=shuffle,
