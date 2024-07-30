@@ -78,7 +78,7 @@ class PipelineRunner:
         final_graph = os.path.join(
             graph_dir,
             split_name,
-            f"{experiment_name}_{self.config.graph_type}_{split_name}_graph_scaled.pkl",
+            f"{experiment_name}_{self.config.graph_type}_graph_scaled.pkl",
         )
         intermediate_graph = os.path.join(
             graph_dir,
