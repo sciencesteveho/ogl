@@ -184,7 +184,7 @@ def objective(
     optimizer = _set_optimizer(
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
-        model_parameters=model.parameters(),
+        model_params=model.parameters(),
     )
     scheduler = _set_scheduler(
         scheduler_type=scheduler_type,
