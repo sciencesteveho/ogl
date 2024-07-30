@@ -51,6 +51,7 @@ def parse_edges(
 def parse_linear_context(
     experiment_config: ExperimentConfig,
     tissue_config: TissueConfig,
+    positional_encoding: bool,
 ) -> None:
     """Add local context edges based on basenode input"""
 
@@ -84,6 +85,7 @@ def parse_linear_context(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
         bedfiles=bedfiles_for_parsing,
+        positional_encoding=positional_encoding,
     )
 
     localparseObject.parse_context_data()
@@ -161,6 +163,11 @@ def main() -> None:
         type=str,
         help="Type of target to generate for training.",
     )
+    parser.add_argument(
+        "--positional_encoding",
+        action="store_true",
+        help="Whether to generate positional encodings.",
+    )
     args = parser.parse_args()
 
     # Load in the experiment and tissue config files
@@ -186,6 +193,7 @@ def main() -> None:
     # parse_linear_context(
     #     experiment_config=experiment_config,
     #     tissue_config=tissue_config,
+    #     positional_encoding=args.positional_encoding,
     # )
     target_genes = training_target_consolidator(
         experiment_config=experiment_config,

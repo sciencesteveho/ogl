@@ -86,6 +86,7 @@ class LocalContextParser:
         experiment_config: ExperimentConfig,
         tissue_config: TissueConfig,
         bedfiles: List[str],
+        positional_encoding: bool = True,
     ):
         """Initialize the class"""
         self.bedfiles = bedfiles
@@ -96,7 +97,7 @@ class LocalContextParser:
         self.feat_window = experiment_config.feat_window
         self.nodes = experiment_config.nodes
         self.working_directory = experiment_config.working_directory
-        self.positional_encoding = experiment_config.positional_encoding
+        self.positional_encoding = positional_encoding
 
         self.resources = tissue_config.resources
         self.gencode = tissue_config.local["gencode"]

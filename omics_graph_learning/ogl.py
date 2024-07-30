@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 import pytest
 
 from config_handlers import ExperimentConfig
+from constants import NodePerturbation
 from utils import _check_file
 from utils import _dataset_split_name
 from utils import _log_progress
@@ -100,17 +101,23 @@ class PipelineRunner:
             if self.args.partition == "EM"
             else "pipeline_node_and_edge_generation.sh"
         )
+
         slurmids = []
         for tissue in tissues:
+            args = f"{self.args.experiment_yaml} \
+                {self.config.sample_config_dir}/{tissue}.yaml \
+                {self.args.tpm_filter} \
+                {self.args.percent_of_samples_filter} \
+                {self.args.filter_mode} \
+                {split_name} \
+                {self.args.target}"
+
+            if self.args.positional_encoding:
+                args += " --positional_encoding"
+
             job_id = submit_slurm_job(
                 job_script=partition_specific_script,
-                args=f"{self.args.experiment_yaml} \
-                    {self.config.sample_config_dir}/{tissue}.yaml \
-                    {self.args.tpm_filter} \
-                    {self.args.percent_of_samples_filter} \
-                    {self.args.filter_mode} \
-                    {split_name} \
-                    {self.args.target}",
+                args=args,
                 dependency=None,
             )
             slurmids.append(job_id)
@@ -143,12 +150,12 @@ class PipelineRunner:
             [
                 f"--{flag}"
                 for flag in [
-                    "residual",
-                    "zero_nodes",
-                    "randomize_node_feats",
                     "early_stop",
-                    "randomize_edges",
-                    "rna_seq",
+                    "task_specific_mlp",
+                    "positional_encoding",
+                    "gene_only_loader",
+                    "optimize_params",
+                    "run-tests",
                 ]
                 if getattr(args, flag)
             ]
@@ -162,21 +169,30 @@ class PipelineRunner:
             f"--linear_layers {args.linear_layers} "
             f"--activation {args.activation} "
             f"--dimensions {args.dimensions} "
+            f"--residual {args.residual}"
             f"--epochs {args.epochs} "
             f"--batch_size {args.batch_size} "
             f"--learning_rate {args.learning_rate} "
             f"--optimizer {args.optimizer} "
+            f"--scheduler {args.scheduler}"
             f"--dropout {args.dropout} "
             f"--split_name {split_name} "
-            f"{bool_flags}"
         )
 
         if args.heads:
             train_args += f" --heads {args.heads}"
         if args.total_random_edges:
-            train_args += f" --total_random_edges {args.total_random_edges}"
-
-        return train_args
+            if args.edge_perturbation == "randomize_edges":
+                train_args += f" --total_random_edges {args.total_random_edges}"
+            else:
+                raise ValueError(
+                    "`total_random_edges` should only be set when `randomize_edges` is True"
+                )
+        if args.node_perturbation:
+            train_args += f" --node_perturbation {args.node_perturbation}"
+        if args.edge_perturbation:
+            train_args += f" --edge_perturbation {args.edge_perturbation}"
+        return train_args + bool_flags
 
     def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit GNN training job."""
@@ -267,13 +283,20 @@ def validate_args(args: argparse.Namespace) -> None:
         print(f"Error: --heads is required when model is {args.model}")
         sys.exit(1)
 
-    if args.randomize_edges and args.total_random_edges is None:
-        print("Error: --total_random_edges is required when --randomize_edges is set")
+    if args.total_random_edges and args.edge_perturbation != "randomize_edges":
+        print(
+            "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
+        )
         sys.exit(1)
 
 
 def parse_pipeline_arguments() -> argparse.Namespace:
     """Parse command-line arguments for the entire pipeline."""
+    # set up list of perturbation options
+    perturbation_choices: List[str] = [
+        perturbation.name for perturbation in NodePerturbation
+    ]
+
     parser = argparse.ArgumentParser(description="Omics Graph Learning Pipeline")
     parser.add_argument(
         "--experiment_yaml",
@@ -352,9 +375,20 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--heads", type=int, default=None)
     parser.add_argument("--positional_encoding", action="store_true")
     parser.add_argument("--early_stop", action="store_true", default=True)
-    parser.add_argument("--zero_nodes", action="store_true")
-    parser.add_argument("--randomize_node_feats", action="store_true")
-    parser.add_argument("--randomize_edges", action="store_true")
+    parser.add_argument(
+        "--node_perturbation",
+        type=str,
+        default=None,
+        choices=perturbation_choices,
+        help="Type of node based perturbation to apply. Choose from either `zero_node_feats`, `randomize_node_feats`, `randomize_node_feat_order`, or pick the name of a specific feat to perturb",
+    )
+    parser.add_argument(
+        "--edge_perturbation",
+        type=str,
+        default=None,
+        choices=["randomize_edges", "remove_all_edges", "remove_specific_edges"],
+        help="Type of node based perturbation to apply. Choose from either `zero_node_feats`, `randomize_node_feats`, `randomize_node_feat_order`, or pick the name of a specific feat to perturb",
+    )
     parser.add_argument("--total_random_edges", type=int, default=None)
     parser.add_argument("--gene_only_loader", action="store_true")
     parser.add_argument("--optimize_params", action="store_true")

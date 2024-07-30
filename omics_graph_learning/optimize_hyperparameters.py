@@ -24,7 +24,7 @@ from gnn import prep_loader
 from gnn import setup_device
 from gnn import test
 from gnn import train
-from graph_to_pytorch import graph_to_pytorch
+from graph_to_pytorch import GraphToPytorch
 from ogl import parse_arguments
 from utils import dir_check_make
 
@@ -122,16 +122,15 @@ def objective(
     scheduler_type = params["scheduler_type"]
     batch_size = params["batch_size"]
     avg_connectivity = params["avg_connectivity"]
-    positional_encodings = params["positional_encoding"]
+    positional_encoding = params["positional_encoding"]
 
     # load graph data
-    data = graph_to_pytorch(
+    data = GraphToPytorch(
         experiment_config=experiment_config,
-        graph_type=args.graph_type,
         split_name=args.split_name,
         regression_target=args.target,
-        positional_encoding=positional_encodings,
-    )
+        positional_encoding=positional_encoding,
+    ).make_data_object()
 
     # set up train, test, and validation loaders
     train_loader = prep_loader(

@@ -28,7 +28,7 @@ from torch_geometric.utils import degree  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from config_handlers import ExperimentConfig
-from graph_to_pytorch import graph_to_pytorch
+from graph_to_pytorch import GraphToPytorch
 from models import DeeperGCN
 from models import GATv2
 from models import GCN
@@ -37,6 +37,7 @@ from models import MLP
 from models import PNA
 from models import UniMPTransformer
 from ogl import parse_pipeline_arguments
+from perturbation import PerturbationConfig
 from utils import _set_matplotlib_publication_parameters
 from utils import _tensor_out_to_array
 from utils import dir_check_make
@@ -777,6 +778,20 @@ def _experiment_setup(
     return savestr, model_dir
 
 
+def prepare_pertubation_config(
+    args: argparse.Namespace,
+) -> Optional[PerturbationConfig]:
+    """Set up perturbation config, if applicable."""
+    if args.node_perturbation or args.edge_perturbation:
+        perturbations = {
+            "node_perturbation": args.node_perturbation or None,
+            "edge_perturbation": args.edge_perturbation or None,
+            "total_random_edges": args.total_random_edges or None,
+        }
+        return PerturbationConfig(**perturbations)
+    return None
+
+
 def main() -> None:
     """Main function to train GNN on graph data!"""
     # Parse training settings
@@ -791,19 +806,13 @@ def main() -> None:
     device = setup_device(args)
 
     # get graph data
-    data = graph_to_pytorch(
+    data = GraphToPytorch(
         experiment_config=experiment_config,
-        graph_type=args.graph_type,
         split_name=args.split_name,
         regression_target=args.target,
         positional_encoding=args.positional_encoding,
-        randomize_feats=args.randomize_node_feats,
-        zero_node_feats=args.zero_nodes,
-        randomize_edges=args.randomize_edges,
-        total_random_edges=(
-            args.total_random_edges if args.randomize_edges > 0 else None
-        ),
-    )
+        perturbation_config=prepare_pertubation_config(args),
+    ).make_data_object()
 
     # set up data loaders
     mask_suffix = "_loss" if args.gene_only_loader else ""
@@ -851,7 +860,6 @@ def main() -> None:
         batch_size=args.batch_size,
         epochs=args.epochs,
     )
-
     optimizer = _set_optimizer(
         optimizer_type=args.optimizer,
         learning_rate=args.learning_rate,

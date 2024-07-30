@@ -4,7 +4,54 @@
 
 """Constants for omics graph learning modules."""
 
+from enum import Enum
 from typing import Dict, List
+
+
+class NodePerturbation(Enum):
+    """Enum class to handle node perturbation types."""
+
+    size = 0
+    gc = 1
+    atac = 2
+    cnv = 3
+    cpg = 4
+    ctcf = 5
+    dnase = 6
+    h3k27ac = 7
+    h3k27me3 = 8
+    h3k36me3 = 9
+    h3k4me1 = 10
+    h3k4me2 = 11
+    h3k4me3 = 12
+    h3k79me2 = 13
+    h3k9ac = 14
+    h3k9me3 = 15
+    indels = 16
+    line = 17
+    ltr = 18
+    microsatellites = 19
+    phastcons = 20
+    polr2a = 21
+    polyasites = 22
+    rad21 = 23
+    rbpbindingsites = 24
+    recombination = 25
+    repg1b = 26
+    repg2 = 27
+    reps1 = 28
+    reps2 = 29
+    reps3 = 30
+    reps4 = 31
+    rnarepeat = 32
+    simplerepeats = 33
+    sine = 34
+    smc3 = 35
+    snp = 36
+    zero_node_feats = -1
+    randomize_node_feats = -2
+    randomize_node_feat_order = -3
+
 
 # integer constants
 HG38_TOTAL_BASEPAIRS = 3088269227
@@ -12,9 +59,10 @@ MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
 
 # filename constants
 TARGET_FILE = "targets_combined.pkl"
+TARGET_FILE_SCALED = "targets_combined_scaled.pkl"
 TRAINING_SPLIT_FILE = "training_split_combined.pkl"
 
-# graph construction related
+# graph construction related helpers
 ATTRIBUTES: List[str] = [
     "gc",
     "atac",
@@ -93,6 +141,7 @@ NODE_FEAT_IDXS: Dict[str, int] = {
     "smc3": 35,
     "snp": 36,
 }
+
 
 POSSIBLE_NODES: List[str] = [
     "cpgislands",

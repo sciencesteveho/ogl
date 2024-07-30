@@ -1,239 +1,110 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
-#
-# Load model
-# Load data w/ modification
-# loader = NeighborLoader(new_data, input_nodes=new_node_ids, ...)
-# out = model(new_data.x, new_data.edge_index)
-# compare co-essential perturbations to random perturbation
 
 
-"""_summary_ of project"""
+"""Code that handles perturbation of the graph data."""
 
-import argparse
-import csv
-import math
-import pickle
-import random
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from typing import List, Optional
 
+import networkx as nx  # type: ignore
 import numpy as np
-from scipy import stats
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
-from tqdm import tqdm
+from torch_geometric.data import Data  # type: ignore
 
-from gnn import GATv2
-from graph_to_pytorch import graph_to_pytorch
-import utils
+from constants import NodePerturbation
 
 
-def _load_GAT_model_for_inference(
-    in_size,
-    embedding_size,
-    num_layers,
-    checkpoint,
-    map_location,
-    device,
-):
-    """_summary_ of function"""
-    model = GATv2(
-        in_size=in_size,
-        embedding_size=embedding_size,
-        out_channels=1,
-        num_layers=num_layers,
-        heads=2,
-    ).to(device)
+@dataclass
+class PerturbationConfig:
+    """Data class to store the perturbation configuration."""
 
-    checkpoint = torch.load(checkpoint, map_location=map_location)
-    model.load_state_dict(checkpoint, strict=False)
-    model.to(device)
-
-    return model
+    node_perturbation: Optional[str] = None
+    edge_perturbation: Optional[str] = None
+    node_remove_edges: Optional[List[str]] = None
+    total_random_edges: Optional[int] = None
+    remove_node: Optional[str] = None
+    # single_gene: Optional[str] = None
+    # percentile_cutoff: Optional[float] = None
 
 
-def _device_check():
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
-        return torch.device("cuda:" + str(0)), torch.device("cuda:" + str(0))
+def get_node_perturbation(
+    perturbation_name: Optional[str],
+) -> Optional[NodePerturbation]:
+    """Return the perturbation enum value for the provided perturbation name."""
+    if perturbation_name is not None:
+        return NodePerturbation[perturbation_name]
+    return None
+
+
+def perturb_node_features(
+    perturbation: NodePerturbation, node_features: np.ndarray
+) -> np.ndarray:
+    """Perturb node features according to the provided perturbation."""
+    if perturbation.value >= 0:
+        node_features[:, perturbation.value] = 0
+        return node_features
+    elif perturbation == NodePerturbation.zero_node_feats:
+        return np.zeros(node_features.shape)
+    elif perturbation == NodePerturbation.randomize_node_feats:
+        return np.random.rand(*node_features.shape)
+    elif perturbation == NodePerturbation.randomize_node_feat_order:
+        return np.apply_along_axis(np.random.permutation, 1, node_features)
     else:
-        return torch.device("cpu"), torch.device("cpu")
+        raise ValueError(
+            f"Invalid perturbation provided. Valid perturbations are: {', '.join([p.name for p in NodePerturbation])}"
+        )
 
 
-@torch.no_grad()
-def inference(model, device, data_loader):
-    model.eval()
-
-    pbar = tqdm(total=len(data_loader))
-
-    mse, outs, labels = [], [], []
-    for data in data_loader:
-        data = data.to(device)
-        out = model(data.x, data.edge_index)
-
-        # calculate loss
-        outs.extend(out[data.test_mask])
-        labels.extend(data.y[data.test_mask])
-        mse.append(F.mse_loss(out[data.test_mask], data.y[data.test_mask]).cpu())
-        loss = torch.stack(mse)
-
-        pbar.update(1)
-
-    pbar.close()
-    # print(spearman(torch.stack(outs), torch.stack(labels)))
-    return math.sqrt(float(loss.mean())), outs, labels
-
-
-def main() -> None:
-    """Main function"""
-
-    # # prepare stuff
-    # graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_scaled.pkl"
-    # graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/curated/graphs/curated_full_graph_idxs.pkl"
-    # checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only/curated_GAT_2_500_0.0001_batch32_neighbor_full_idx_dropout_scaled_expression_only_mse_1.8369761025042963.pt"
-    # savedir='/ocean/projects/bio210019p/stevesho/data/preprocess/pickles'
-    # savestr='curated'
-
-    # # parse yaml for params, used to load data
-    # config = '/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/curated.yaml'
-
-    # prepare stuff
-    graph = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_scaled.pkl"
-    graph_idxs = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm/graphs/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_full_graph_idxs.pkl"
-    checkpoint_file = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm_GAT_2_256_0.0001_batch32_neighbor_full_targetnoscale_idx_expression_only_mse_1.843210432337007.pt"
-    savedir = "/ocean/projects/bio210019p/stevesho/data/preprocess/pickles"
-    savestr = "regulatory_only_all_loops_test_8_9_val_7_13_mediantpm"
-
-    # parse yaml for params, used to load data
-    config = "/ocean/projects/bio210019p/stevesho/data/preprocess/genomic_graph_mutagenesis/configs/ablation_experiments/regulatory_only_all_loops_test_8_9_val_7_13_mediantpm.yaml"
-    # parser = argparse.ArgumentParser()
-    params = utils.parse_yaml(config)
-
-    # open graph
-    with open(graph, "rb") as file:
-        graph = pickle.load(file)
-
-    # open idxs
-    with open(graph_idxs, "rb") as file:
-        graph_idxs = pickle.load(file)
-
-    # check for device
-    device, map_location = _device_check()
-
-    # initialize model and load checkpoint weights
-    model = _load_GAT_model_for_inference(
-        in_size=41,
-        embedding_size=256,
-        num_layers=2,
-        checkpoint=checkpoint_file,
-        map_location=map_location,
-        device=device,
+def remove_specific_edges(edge_index: np.ndarray, node_idxs: List[str]) -> np.ndarray:
+    """Remove specific edges from the edge index."""
+    return np.array(
+        [
+            np.delete(edge_index[0], np.array(node_idxs)),
+            np.delete(edge_index[1], np.array(node_idxs)),
+        ]
     )
 
-    working_directory = params["working_directory"]
-    root_dir = f"{working_directory}/{params['experiment_name']}"
 
-    # load data
-    data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type="full",
-        root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-    )
-
-    # get test data cuz we here
-    batch_size = 32
-    test_loader = NeighborLoader(
-        data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=data.test_mask,
-    )
-    _, outs, labels = inference(
-        model=model,
-        device=device,
-        data_loader=test_loader,
-    )
-
-    predictions_median = utils._tensor_out_to_array(outs, 0)
-    labels_median = utils._tensor_out_to_array(labels, 0)
-
-    with open(f"{savedir}/{savestr}_median_predictions.pkl", "wb") as file:
-        pickle.dump(predictions_median, file)
-
-    with open(f"{savedir}/{savestr}_median_labels.pkl", "wb") as file:
-        pickle.dump(labels_median, file)
-
-    # perform feature perturbations
-    # remove h3k27ac
-    perturbed_data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type="full",
-        root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-        node_perturbation="h3k27ac",
-    )
-    loader = NeighborLoader(
-        data=perturbed_data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=perturbed_data.test_mask,
-    )
-    _, outs, labels = inference(
-        model=model,
-        device=device,
-        data_loader=loader,
-    )
-    labels = utils._tensor_out_to_array(labels, 0)
-    h3k27ac_perturbed = utils._tensor_out_to_array(outs, 0)
-
-    with open(f"{savedir}/{savestr}_h3k27ac_perturbed_expression.pkl", "wb") as f:
-        pickle.dump(h3k27ac_perturbed, f)
-
-    with open(f"{savedir}/{savestr}_h3k27ac_labels.pkl", "wb") as f:
-        pickle.dump(labels, f)
-
-    # remove h3k4me3
-    perturbed_data = graph_to_pytorch(
-        experiment_name=params["experiment_name"],
-        graph_type="full",
-        root_dir=root_dir,
-        targets_types=params["training_targets"]["targets_types"],
-        test_chrs=params["training_targets"]["test_chrs"],
-        val_chrs=params["training_targets"]["val_chrs"],
-        node_perturbation="h3k4me3",
-    )
-    loader = NeighborLoader(
-        data=perturbed_data,
-        num_neighbors=[5, 5, 5, 5, 5, 3],
-        batch_size=batch_size,
-        input_nodes=perturbed_data.test_mask,
-    )
-    _, outs, labels = inference(
-        model=model,
-        device=device,
-        data_loader=loader,
-    )
-
-    labels = utils._tensor_out_to_array(labels, 0)
-    h3k4me3_perturbed = utils._tensor_out_to_array(outs, 0)
-
-    with open(f"{savedir}/{savestr}_h3k4me3_perturbed_expression.pkl", "wb") as f:
-        pickle.dump(h3k4me3_perturbed, f)
-
-    with open(f"{savedir}/{savestr}_h3k4me3_labels.pkl", "wb") as f:
-        pickle.dump(labels, f)
+def randomize_edges(
+    edge_index: np.ndarray, total_random_edges: Optional[int]
+) -> np.ndarray:
+    """Randomize the edges in the edge index."""
+    total_range = max(np.ptp(edge_index[0]), np.ptp(edge_index[1]))
+    total_edges = total_random_edges or len(edge_index[0])
+    return np.random.randint(0, total_range, (2, total_edges))
 
 
-if __name__ == "__main__":
-    main()
+def perturb_edge_index(
+    edge_perturbation: str,
+    edge_index: np.ndarray,
+    node_idxs: Optional[List[str]],
+    total_random_edges: Optional[int],
+) -> np.ndarray:
+    """Perturb edge index according to the provided perturbation."""
+    if edge_perturbation == "randomize_edges":
+        return randomize_edges(
+            edge_index=edge_index, total_random_edges=total_random_edges
+        )
+    elif edge_perturbation == "remove_all_edges":
+        return np.array([], dtype=int).reshape(2, 0)
+    elif edge_perturbation == "remove_specific_edges":
+        if node_idxs:
+            return remove_specific_edges(edge_index=edge_index, node_idxs=node_idxs)
+        else:
+            raise ValueError("node_idxs must be provided when removing specific edges")
+    else:
+        raise ValueError(
+            f"Invalid edge perturbation provided. \
+            Valid perturbations are: `remove_all_edges`,`remove_specific_edges`,`randomize_edge`."
+        )
+
+
+# def perturb_single_gene(
+#     perturbation_config: PerturbationConfig, num_nodes: int
+# ) -> torch.Tensor:
+#     """Create a mask to remove a single gene from the graph data."""
+#     gene_idx = torch.tensor([perturbation_config.single_gene], dtype=torch.long)
+#     gene_mask = torch.zeros(num_nodes, dtype=torch.bool)
+#     gene_mask[gene_idx] = True
+#     return gene_mask
