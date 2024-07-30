@@ -155,7 +155,7 @@ class PipelineRunner:
                     "positional_encoding",
                     "gene_only_loader",
                     "optimize_params",
-                    "run-tests",
+                    "run_tests",
                 ]
                 if getattr(args, flag)
             ]
