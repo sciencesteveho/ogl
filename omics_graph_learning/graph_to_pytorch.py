@@ -383,6 +383,7 @@ def create_mask(num_nodes: int, indices: torch.Tensor) -> torch.Tensor:
         indices (List[int]): The indices to set to True in the mask.
     """
     mask = torch.zeros(num_nodes, dtype=torch.bool)
+    indices = indices.to(torch.long)
     mask[indices] = True
     return mask
 
