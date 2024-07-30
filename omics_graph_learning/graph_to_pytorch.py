@@ -223,9 +223,9 @@ def _assign_nodes_to_split(
     coordinates = graph_data["node_coordinates"]
     train, test, validation = [], [], []
     for node in range(graph_data["num_nodes"]):
-        if coordinates[node]["chr"] in test_chrs:
+        if coordinates[node][0] in test_chrs:
             train.append(node)
-        elif coordinates[node]["chr"] in val_chrs:
+        elif coordinates[node][0] in val_chrs:
             test.append(node)
         else:
             validation.append(node)
