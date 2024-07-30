@@ -224,9 +224,9 @@ class PipelineRunner:
         #     slurmids=slurmids, split_name=split_name
         # )
 
-        slurmids: list[str] = []
-        scale_id = self.scale_node_features(slurmids, split_name)
-        _log_progress("Node feature scaling job submitted.")
+        # slurmids: list[str] = []
+        # scale_id = self.scale_node_features(slurmids, split_name)
+        # _log_progress("Node feature scaling job submitted.")
 
         # self.submit_gnn_job(split_name, scale_id, args.optimize_params)
 
