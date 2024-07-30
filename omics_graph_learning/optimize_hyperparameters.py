@@ -21,7 +21,6 @@ from gnn import _set_scheduler
 from gnn import build_gnn_architecture
 from gnn import calculate_training_steps
 from gnn import prep_loader
-from gnn import setup_device
 from gnn import test
 from gnn import train
 from graph_to_pytorch import GraphToPytorch
@@ -32,6 +31,15 @@ EPOCHS = 200
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 200
+RANDOM_SEED = 42
+
+
+def setup_device() -> torch.device:
+    """Check for GPU and set device accordingly."""
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(RANDOM_SEED)
+        return torch.device("cuda:0")
+    return torch.device("cpu")
 
 
 def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
