@@ -201,7 +201,7 @@ class PipelineRunner:
             submit_slurm_job(
                 # job_script="optimize_params.sh", args=train_args, dependency=dependency
                 job_script="test.sh",
-                args=train_args,
+                args=f"{self.args.experiment_yaml} {self.args.target} {split_name}",
                 dependency=dependency,
             )
             _log_progress("Hyperparameter optimization job submitted.")

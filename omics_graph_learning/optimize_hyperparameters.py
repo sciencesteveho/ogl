@@ -25,7 +25,6 @@ from gnn import setup_device
 from gnn import test
 from gnn import train
 from graph_to_pytorch import GraphToPytorch
-from ogl import parse_arguments
 from utils import dir_check_make
 
 # constant helpers
@@ -219,7 +218,33 @@ def objective(
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
-    args = parse_arguments()
+    parser = argparse.ArgumentParser(
+        description="Optimize hyperparameters with Optuna."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to experiment YAML file",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="expression_median_only",
+        choices=[
+            "expression_median_only",
+            "expression_media_and_foldchange",
+            "difference_from_average",
+            "foldchange_from_average",
+            "protein_targets",
+            "rna_seq",
+        ],
+    )
+    parser.add_argument(
+        "--split_name",
+        type=str,
+    )
+    args = parser.parse_arguments()
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
     model_dir = (

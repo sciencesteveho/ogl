@@ -20,11 +20,11 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils import k_hop_subgraph
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.utils import degree  # type: ignore
+from torch_geometric.utils import k_hop_subgraph
 from tqdm import tqdm  # type: ignore
 
 from config_handlers import ExperimentConfig
