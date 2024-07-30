@@ -154,6 +154,12 @@ class GraphToPytorch:
 
         return torch.stack(y_tensors).view(len(y_tensors), -1)
 
+    def save_average_edges(self, data: Data) -> None:
+        """Save average edges for the graph as part of the data object."""
+        data.avg_edges = torch.tensor(
+            round(self.graph_data["avg_edges"]), dtype=torch.int
+        )
+
     def make_data_object(self) -> Data:
         """Create the PyG Data object."""
         # create the data object with node features and edge index
