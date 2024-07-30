@@ -199,7 +199,10 @@ class PipelineRunner:
         train_args = self.prepare_gnn_training_args(self.args, split_name)
         if self.args.optimize_params:
             submit_slurm_job(
-                job_script="optimize_params.sh", args=train_args, dependency=dependency
+                # job_script="optimize_params.sh", args=train_args, dependency=dependency
+                job_script="test.sh",
+                args=train_args,
+                dependency=dependency,
             )
             _log_progress("Hyperparameter optimization job submitted.")
         else:
