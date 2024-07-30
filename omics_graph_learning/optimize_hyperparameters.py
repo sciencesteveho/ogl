@@ -244,7 +244,7 @@ def main() -> None:
         "--split_name",
         type=str,
     )
-    args = parser.parse_arguments()
+    args = parser.parse_args()
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
     model_dir = (
