@@ -38,6 +38,72 @@ from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
 
 
+def setup_device(args: argparse.Namespace) -> torch.device:
+    """Check for GPU and set device accordingly."""
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+        return torch.device(f"cuda:{args.device}")
+    return torch.device("cpu")
+
+
+def calculate_training_steps(
+    train_loader: torch_geometric.data.DataLoader,
+    batch_size: int,
+    epochs: int,
+    warmup_ratio: float = 0.1,
+) -> int:
+    """Calculate the total number of projected training steps to provide a
+    percentage of warm-up steps."""
+    steps_per_epoch = math.ceil(len(train_loader.dataset) / batch_size)
+    total_steps = steps_per_epoch * epochs
+    warmup_steps = int(total_steps * warmup_ratio)
+    return total_steps, warmup_steps
+
+
+def _set_optimizer(
+    optimizer_type: str, learning_rate: float, model_params: Iterator[Parameter]
+) -> Optimizer:
+    """Choose optimizer."""
+    # set gradient descent optimizer
+    if optimizer_type == "Adam":
+        optimizer = torch.optim.Adam(
+            model_params,
+            lr=learning_rate,
+        )
+    elif optimizer_type == "AdamW":
+        optimizer = torch.optim.AdamW(
+            model_params,
+            lr=learning_rate,
+        )
+    return optimizer
+
+
+def _set_scheduler(
+    scheduler_type: str,
+    optimizer: Optimizer,
+    warmup_steps: int,
+    training_steps: int,
+) -> LRScheduler:
+    """Set learning rate scheduler"""
+    if scheduler_type == "plateau":
+        return ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+        )
+    if scheduler_type == "cosine":
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer=optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=training_steps,
+        )
+    elif scheduler_type == "linear_warmup":
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer=optimizer,
+            num_warmup_steps=warmup_steps,
+            num_training_steps=training_steps,
+        )
+    return scheduler
+
+
 def get_cosine_schedule_with_warmup(
     optimizer: Optimizer,
     num_warmup_steps: int,
@@ -411,72 +477,6 @@ def prep_loader(
         input_nodes=getattr(data, mask),
         shuffle=shuffle,
     )
-
-
-def setup_device(args: argparse.Namespace) -> torch.device:
-    """Check for GPU and set device accordingly."""
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
-        return torch.device(f"cuda:{args.device}")
-    return torch.device("cpu")
-
-
-def _set_optimizer(
-    optimizer_type: str, learning_rate: float, model_params: Iterator[Parameter]
-) -> Optimizer:
-    """Choose optimizer."""
-    # set gradient descent optimizer
-    if optimizer_type == "Adam":
-        optimizer = torch.optim.Adam(
-            model_params,
-            lr=learning_rate,
-        )
-    elif optimizer_type == "AdamW":
-        optimizer = torch.optim.AdamW(
-            model_params,
-            lr=learning_rate,
-        )
-    return optimizer
-
-
-def _set_scheduler(
-    scheduler_type: str,
-    optimizer: Optimizer,
-    warmup_steps: int,
-    training_steps: int,
-) -> LRScheduler:
-    """Set learning rate scheduler"""
-    if scheduler_type == "plateau":
-        return ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
-        )
-    if scheduler_type == "cosine":
-        scheduler = get_cosine_schedule_with_warmup(
-            optimizer=optimizer,
-            num_warmup_steps=warmup_steps,
-            num_training_steps=training_steps,
-        )
-    elif scheduler_type == "linear_warmup":
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer=optimizer,
-            num_warmup_steps=warmup_steps,
-            num_training_steps=training_steps,
-        )
-    return scheduler
-
-
-def calculate_training_steps(
-    train_loader: torch_geometric.data.DataLoader,
-    batch_size: int,
-    epochs: int,
-    warmup_ratio: float = 0.1,
-) -> int:
-    """Calculate the total number of projected training steps to provide a
-    percentage of warm-up steps."""
-    steps_per_epoch = math.ceil(len(train_loader.dataset) / batch_size)
-    total_steps = steps_per_epoch * epochs
-    warmup_steps = int(total_steps * warmup_ratio)
-    return total_steps, warmup_steps
 
 
 def parse_arguments() -> argparse.Namespace:

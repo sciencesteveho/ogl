@@ -118,22 +118,24 @@ def objective(
     # get trial hyperparameters
     params = suggest_hyperparameters(trial)
 
-    # Use the suggested parameters
+    # use params!
     model = params["model"]
-    heads = params.get("heads")  # Only exists for GAT and UniMPTransformer
     activation = params["activation"]
     embedding_size = params["embedding_size"]
     gnn_layers = params["gnn_layers"]
     linear_layers = params["linear_layers"]
     dropout_rate = params["dropout_rate"]
-    skip_connection = params.get("skip_connection")
-    task_specific_mlp = params.get("task_specific_mlp")
     learning_rate = params["learning_rate"]
     optimizer_type = params["optimizer_type"]
     scheduler_type = params["scheduler_type"]
     batch_size = params["batch_size"]
     avg_connectivity = params["avg_connectivity"]
     positional_encoding = params["positional_encoding"]
+
+    # params that are not part of every model
+    heads = params.get("heads")
+    skip_connection = params.get("skip_connection")
+    task_specific_mlp = params.get("task_specific_mlp")
 
     # load graph data
     data = GraphToPytorch(
