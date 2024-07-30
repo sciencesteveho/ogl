@@ -275,8 +275,19 @@ def _evaluate_model(
             break
 
         data = data.to(device)
-        out = model(data.x, data.edge_index)
 
+        # task specific or general mlp forward pass
+        if model.task_specific_mlp:
+            if mask == "val":
+                out = model(data.x, data.edge_index, data.val_mask_loss)
+            elif mask == "test":
+                out = model(data.x, data.edge_index, data.test_mask_loss)
+            else:
+                raise ValueError("Invalid mask type. Use 'val' or 'test'.")
+        else:
+            out = model(data.x, data.edge_index)
+
+        # use proper mask for loss calculation
         if mask == "val":
             idx_mask = data.val_mask_loss
         elif mask == "test":
@@ -359,7 +370,13 @@ def inference_all_neighbors(
     predictions = {}
     for batch in tqdm(loader, desc=f"Evaluating epoch: {epoch:04d}"):
         batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
+
+        # forward pass
+        if model.task_specific_mlp:
+            out = model(batch.x, batch.edge_index, batch.test_mask_loss)
+        else:
+            out = model(batch.x, batch.edge_index)
+
         node_idx = batch.batch.item()
         if node_idx in predictions:
             predictions[node_idx].append(out.squeeze())
