@@ -9,6 +9,7 @@ derive from the local context datatypes."""
 
 
 from itertools import repeat
+import logging
 from multiprocessing import Pool
 import os
 from pathlib import Path
@@ -118,6 +119,10 @@ class LocalContextParser:
         # make directories
         self._make_directories()
 
+        # set up logger
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
     def _set_directories(self) -> None:
         """Set directories from yaml"""
         self.tissue_dir = self.working_directory / self.tissue
@@ -163,6 +168,50 @@ class LocalContextParser:
             chromfile=self.chromfile,
             binsize=50000,
         )
+
+    @time_decorator(print_args=True)
+    def parse_context_data(self) -> None:
+        """Parse local genomic data into graph edges."""
+        # process windows and renaming
+        with Pool(processes=self.node_processes) as pool:
+            bedcollection_flat = dict(
+                pool.starmap(
+                    self._prepare_local_features, [(bed,) for bed in self.bedfiles]
+                )
+            )
+
+        # sort and extend windows according to FEAT_WINDOWS
+        bedcollection_sorted, bedcollection_slopped = self.process_bedcollection(
+            bedcollection=bedcollection_flat,
+            chromfile=self.chromfile,
+            feat_window=self.feat_window,
+        )
+
+        # save intermediate files
+        self._save_intermediate(bedcollection_sorted, folder="sorted")
+        self._save_intermediate(bedcollection_slopped, folder="slopped")
+
+        # pre-concatenate to save time
+        all_files = self.intermediate_sorted / "all_files_concatenated.bed"
+        self._pre_concatenate_all_files(all_files, bedcollection_slopped)
+
+        # perform intersects across all feature types - one process per nodetype
+        with Pool(processes=self.node_processes) as pool:
+            pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
+
+        # get size and all attributes - one process per nodetype
+        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+            pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
+
+        # parse edges into individual files
+        self._generate_edges()
+
+        # save node attributes as reference for later - one process per nodetype
+        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+            pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
+
+        # cleanup
+        self._cleanup_edge_files()
 
     @time_decorator(print_args=True)
     def _prepare_local_features(
@@ -307,7 +356,7 @@ class LocalContextParser:
             save_file = (
                 self.attribute_dir / attribute / f"{node_type}_{attribute}_percentage"
             )
-            print(f"{attribute} for {node_type}")
+            self.logger.info(f"Processing {attribute} for {node_type}")
             self._overlap_with_attribute(ref_file, attribute, save_file)
 
     def _reference_nodes_for_feature_aggregation(
@@ -483,50 +532,6 @@ class LocalContextParser:
             stored_attributes[node_key][attribute] = float(line[5])
         except ValueError:
             stored_attributes[node_key][attribute] = 0
-
-    @time_decorator(print_args=True)
-    def parse_context_data(self) -> None:
-        """Parse local genomic data into graph edges."""
-        # process windows and renaming
-        with Pool(processes=self.node_processes) as pool:
-            bedcollection_flat = dict(
-                pool.starmap(
-                    self._prepare_local_features, [(bed,) for bed in self.bedfiles]
-                )
-            )
-
-        # sort and extend windows according to FEAT_WINDOWS
-        bedcollection_sorted, bedcollection_slopped = self.process_bedcollection(
-            bedcollection=bedcollection_flat,
-            chromfile=self.chromfile,
-            feat_window=self.feat_window,
-        )
-
-        # save intermediate files
-        self._save_intermediate(bedcollection_sorted, folder="sorted")
-        self._save_intermediate(bedcollection_slopped, folder="slopped")
-
-        # pre-concatenate to save time
-        all_files = self.intermediate_sorted / "all_files_concatenated.bed"
-        self._pre_concatenate_all_files(all_files, bedcollection_slopped)
-
-        # perform intersects across all feature types - one process per nodetype
-        with Pool(processes=self.node_processes) as pool:
-            pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
-
-        # get size and all attributes - one process per nodetype
-        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
-            pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
-
-        # parse edges into individual files
-        self._generate_edges()
-
-        # save node attributes as reference for later - one process per nodetype
-        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
-            pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
-
-        # cleanup
-        self._cleanup_edge_files()
 
     def _remove_blacklist_and_alt_configs(
         self,
