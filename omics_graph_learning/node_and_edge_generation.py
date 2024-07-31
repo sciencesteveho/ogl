@@ -12,7 +12,7 @@ from typing import List
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 from constants import ATTRIBUTES
-import construct_graphs as construct_graphs
+from construct_graphs import construct_tissue_graph
 from edge_parser import EdgeParser
 from local_context_parser import LocalContextParser
 from preprocessor import GenomeDataPreprocessor
@@ -125,7 +125,7 @@ def create_tissue_graph(
     """
     tissue = tissue_config.resources["tissue"]
 
-    construct_graphs.make_tissue_graph(
+    construct_tissue_graph(
         nodes=experiment_config.nodes,
         experiment_name=experiment_config.experiment_name,
         working_directory=experiment_config.working_directory,

@@ -7,6 +7,7 @@ indexes"""
 
 
 import argparse
+import logging
 from pathlib import Path
 import pickle
 import subprocess
@@ -17,6 +18,9 @@ import numpy as np
 from config_handlers import ExperimentConfig
 from constants import TARGET_FILE
 from constants import TRAINING_SPLIT_FILE
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _load_graph_and_idxs(
@@ -45,7 +49,7 @@ def _reindex_edges(edges: np.ndarray, new_start_idx: int) -> np.ndarray:
 def combine_splits(tissues: List[str], split_directory: Path) -> Dict[str, List[str]]:
     """Concatenate the splits for each tissue into a single split."""
     if len(tissues) <= 1:
-        print(f"Only one tissue provided: {tissues[0]}")
+        logger.info(f"Only one tissue provided: {tissues[0]}")
         split = pickle.load(
             open(split_directory / f"training_split_{tissues[0]}.pkl", "rb")
         )
@@ -53,7 +57,7 @@ def combine_splits(tissues: List[str], split_directory: Path) -> Dict[str, List[
             split[key] = [f"{gene}_{tissues[0]}" for gene in split[key]]
         return split
 
-    print(f"Concatenating splits for tissues: {tissues}")
+    logger.info(f"Concatenating splits for tissues: {tissues}")
     result: Dict[str, List[str]] = {"train": [], "test": [], "validation": []}
     for tissue in tissues:
         split = pickle.load(
@@ -70,12 +74,12 @@ def combine_targets(
     """Takes the targets from different tissues and concatenates them to create
     one target dictionary with train / test / val keys.."""
     if len(tissues) <= 1:
-        print(f"Only one tissue provided: {tissues[0]}")
+        logger.info(f"Only one tissue provided: {tissues[0]}")
         return pickle.load(
             open(target_directory / f"training_targets_{tissues[0]}.pkl", "rb")
         )
 
-    print(f"Concatenating targets for tissues: {tissues}")
+    logger.info(f"Concatenating targets for tissues: {tissues}")
     result: Dict[str, Dict[str, np.ndarray]] = {
         "train": {},
         "test": {},
@@ -95,7 +99,7 @@ def _concatenate_graphs(
     tissues: List[str], base_graph_path: str, experiment_graph_directory: Path
 ) -> None:
     """Combine the graphs for multiple tissues into a single graph."""
-    print(f"Concatenating graphs for tissues: {tissues}")
+    logger.info(f"Concatenating graphs for tissues: {tissues}")
     concat_graph, concat_idxs = _load_graph_and_idxs(base_graph_path)
     concat_edges = concat_graph["edge_index"]
     concat_edge_feat = concat_graph["edge_feat"]
@@ -159,8 +163,6 @@ def combined_graphs(
         experiment_graph_directory (str): The experiment_graph_directory of the
         graph file names.
         tissues (List[str]): The list of tissue names.
-
-    Returns `None`.
     """
     base_graph_path = f"{experiment_graph_directory}_{tissues[0]}"
 

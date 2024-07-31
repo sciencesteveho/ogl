@@ -5,12 +5,14 @@
 """This script will create one graph per tissue from the parsed edges. All edges
 are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node as node features and parsed
-as a series of numpy arrays."""
+as a series of numpy arrays.
+"""
 
 
+import logging
 from pathlib import Path
 import pickle
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Union
 
 import networkx as nx  # type: ignore
 import numpy as np
@@ -19,236 +21,318 @@ import pandas as pd
 from utils import dir_check_make
 from utils import time_decorator
 
-
-def _base_graph(edges: pd.DataFrame):
-    """Create a graph from list of edges"""
-    return nx.from_pandas_edgelist(
-        edges,
-        source=0,
-        target=1,
-        edge_attr=2,
-    )
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def _remove_blacklist_nodes(
-    graph: nx.Graph,
-) -> nx.Graph:
-    """Remove nodes from graph if they have no attributes. These nodes have no
-    attributes because they overlap the encode blacklist."""
-    blacklist = [node for node, attrs in graph.nodes(data=True) if len(attrs) == 0]
-    graph.remove_nodes_from(blacklist)
-    print(
-        f"Removed {len(blacklist)} nodes from graph because they overlapped blacklist / have no attributes."
-    )
-    return graph
+class GraphConstructor:
+    """Class to handle constructing graphs from parsed edges and local
+    context."""
 
+    # hardcoded helpers
+    SOURCE_IDX = 0
+    TARGET_IDX = 1
+    EDGE_ATTR_IDX = 2
+    FIRST_NODE_IDX = 3
+    SECOND_NODE_IDX = 7
 
-def _prune_nodes_without_gene_connections(
-    graph: nx.Graph,
-    gene_nodes: List[str],
-) -> nx.Graph:
-    """Remove nodes from an undirected graph if they are not in the same
-    connected component as any node in gene_nodes."""
-    connected_to_gene = set()
-    for component in nx.connected_components(graph):
-        if any(gene_node in component for gene_node in gene_nodes):
-            connected_to_gene.update(component)
+    def __init__(
+        self,
+        tissue: str,
+        interaction_dir: Path,
+        parse_dir: Path,
+        graph_type: str,
+        nodes: List[str],
+        genes: List[str],
+    ) -> None:
+        """Instantiate a GraphConstructor object."""
+        self.tissue = tissue
+        self.interaction_dir = interaction_dir
+        self.parse_dir = parse_dir
+        self.graph_type = graph_type
+        self.nodes = nodes
+        self.genes = genes
 
-    nodes_to_remove = set(graph) - connected_to_gene
-    graph.remove_nodes_from(nodes_to_remove)
-    print(
-        f"Removed {len(nodes_to_remove)} nodes from graph that are not connected to genes."
-    )
-    return graph
+    @time_decorator(print_args=False)
+    def construct_graph(self) -> nx.Graph:
+        """Create and process the graph based on the given parameters."""
+        # make base graph
+        graph = self._create_base_graph()
 
+        # keep only nodes that eventually hop to a gene, given max hops
+        graph = self._prune_nodes_without_gene_connections(graph)
 
-@time_decorator(print_args=False)
-def _get_edges(
-    edge_file: str,
-    local: bool = False,
-    add_tissue: bool = False,
-    tissue: str = "",
-) -> pd.DataFrame:
-    """Get edges from edge file."""
-    if local:
-        df = pd.read_csv(edge_file, sep="\t", header=None, usecols=[3, 7]).rename(
-            columns={3: 0, 7: 1}
+        # populate graph with features
+        graph = self._add_node_attributes(graph)
+
+        # remove nodes in blacklist regions
+        graph = self._remove_blacklist_nodes(graph)
+
+        return graph
+
+    def _create_base_graph(self) -> nx.Graph:
+        """Create the initial graph from edge data."""
+        edges = self._get_edges()
+        graph = nx.from_pandas_edgelist(
+            edges,
+            source=self.SOURCE_IDX,
+            target=self.TARGET_IDX,
+            edge_attr=self.EDGE_ATTR_IDX,
         )
-        df[2] = "local"
-    else:
-        df = pd.read_csv(edge_file, sep="\t", header=None)
-    suffix = f"_{tissue}" if add_tissue else ""
-    df[0] += suffix
-    df[1] += suffix
+        logger.info(
+            f"Base graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+        )
+        return graph
 
-    return df
-
-
-def _add_tf_or_gene_onehot(
-    node: str,
-) -> Dict[str, int]:
-    """Add one hot encoding for TFs and genes"""
-    return {
-        "is_gene": int("_tf" not in node and "ENSG" in node),
-        "is_tf": int("_tf" in node),
-    }
-
-
-@time_decorator(print_args=False)
-def _prepare_reference_attributes(
-    reference_dir: str, nodes: List[str]
-) -> Dict[str, Dict[str, Any]]:
-    """Base_node attr are hard coded in as the first type to load. There are
-    duplicate keys in preprocessing but they have the same attributes so they'll
-    overwrite without issue. The hardcoded removed_keys are either chr, which we
-    don't want the model or learn, or they contain sub dictionaries. Coordinates
-    are not a learning feature and positional encodings are added at a different
-    step of model training.
-    """
-    with open(f"{reference_dir}/basenodes_reference.pkl", "rb") as file:
-        ref = pickle.load(file)
-
-    for node in nodes:
-        with open(f"{reference_dir}/{node}_reference.pkl", "rb") as file:
-            ref_for_concat = pickle.load(file)
-            ref.update(ref_for_concat)
-
-    return {
-        key: {
-            **value,
-            **_add_tf_or_gene_onehot(key),
-        }
-        for key, value in ref.items()
-    }
-
-
-@time_decorator(print_args=False)
-def graph_constructor(
-    tissue: str,
-    interaction_dir: Path,
-    parse_dir: Path,
-    graph_type: str,
-    nodes: List[str],
-    genes: List[str],
-) -> nx.Graph:
-    """Create a graph from parsed edges and from local context edges before
-    combining. Then add attributes ot each node by using the reference
-    dictionaries. The function then removes any nodes within the blacklist
-    regions.
-
-    Args:
-        tissue (str): name of the tissue
-        interaction_dir (Path): directory containing interaction edges
-        parse_dir (Path): directory containing parsed edges
-        graph_type (str): type of graph to create
-        nodes (List[str]): the nodetypes to use in the graph beyond the default
-        types included (see config handler)
-        genes (List[str]): list of nodes representing genes, for pruning other
-        nodes that do not eventually hop to a gene
-    """
-    # create base graph
-    if graph_type == "full":
-        graph = _base_graph(
-            edges=pd.concat(
+    def _get_edges(self) -> pd.DataFrame:
+        """Parse the edge data from the interaction and local context files."""
+        if self.graph_type == "full":
+            return pd.concat(
                 [
-                    _get_edges(
-                        edge_file=interaction_dir / "interaction_edges.txt",
+                    self._get_edge_data(
+                        self.interaction_dir / "interaction_edges.txt",
                         add_tissue=True,
-                        tissue=tissue,
                     ),
-                    _get_edges(
-                        edge_file=parse_dir / "edges" / "all_concat_sorted.bed",
+                    self._get_edge_data(
+                        self.parse_dir / "edges" / "all_concat_sorted.bed",
                         local=True,
                         add_tissue=True,
-                        tissue=tissue,
                     ),
-                ],
+                ]
             )
-        )
-    else:
-        graph = _base_graph(
-            edges=_get_edges(
-                edge_file=interaction_dir / "interaction_edges.txt",
-                add_tissue=True,
-                tissue=tissue,
+        else:
+            return self._get_edge_data(
+                self.interaction_dir / "interaction_edges.txt", add_tissue=True
             )
+
+    @time_decorator(print_args=False)
+    def _prepare_reference_attributes(self) -> Dict[str, Dict[str, Any]]:
+        """Base_node attr are hard coded in as the first type to load. There are
+        duplicate keys in preprocessing but they have the same attributes so they'll
+        overwrite without issue. The hardcoded removed_keys are either chr, which we
+        don't want the model or learn, or they contain sub dictionaries. Coordinates
+        are not a learning feature and positional encodings are added at a different
+        step of model training.
+        """
+        # load basenodes
+        with open(f"{self.parse_dir}/attributes/basenodes_reference.pkl", "rb") as file:
+            ref = pickle.load(file)
+
+        # add attributes for all nodes
+        for node in self.nodes:
+            with open(
+                f"{self.parse_dir}/attributes/{node}_reference.pkl", "rb"
+            ) as file:
+                ref_for_concat = pickle.load(file)
+                ref.update(ref_for_concat)
+
+        return {
+            key: {**value, **self._add_tf_or_gene_onehot(key)}
+            for key, value in ref.items()
+        }
+
+    def _add_node_attributes(self, graph: nx.Graph) -> nx.Graph:
+        """Add attributes to graph nodes."""
+        ref = self._prepare_reference_attributes()
+        nx.set_node_attributes(graph, ref)
+        logger.info(
+            f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+        )
+        return graph
+
+    def _prune_nodes_without_gene_connections(self, graph: nx.Graph) -> nx.Graph:
+        """Remove nodes from an undirected graph if they are not in the same
+        connected component as any node in gene_nodes."""
+        connected_to_gene = set()
+        for component in nx.connected_components(graph):
+            if any(gene_node in component for gene_node in self.genes):
+                connected_to_gene.update(component)
+
+        nodes_to_remove = set(graph) - connected_to_gene
+        graph.remove_nodes_from(nodes_to_remove)
+        logger.info(
+            f"Removed {len(nodes_to_remove)} nodes from graph that are not connected to genes."
+        )
+        return graph
+
+    @time_decorator(print_args=False)
+    def _get_edge_data(
+        self,
+        edge_file: str,
+        local: bool = False,
+        add_tissue: bool = False,
+    ) -> pd.DataFrame:
+        """Load edge data from file and process it."""
+        if local:
+            df = pd.read_csv(
+                edge_file,
+                sep="\t",
+                header=None,
+                usecols=[self.FIRST_NODE_IDX, self.SECOND_NODE_IDX],
+            ).rename(columns={self.FIRST_NODE_IDX: 0, self.SECOND_NODE_IDX: 1})
+            df[2] = "local"
+        else:
+            df = pd.read_csv(edge_file, sep="\t", header=None)
+
+        suffix = f"_{self.tissue}" if add_tissue else ""
+        df[0] += suffix
+        df[1] += suffix
+
+        return df
+
+    @staticmethod
+    def _add_tf_or_gene_onehot(node: str) -> Dict[str, int]:
+        """Add one-hot encoding for TFs and genes."""
+        return {
+            "is_gene": int("_tf" not in node and "ENSG" in node),
+            "is_tf": int("_tf" in node),
+        }
+
+    @staticmethod
+    def _remove_blacklist_nodes(graph: nx.Graph) -> nx.Graph:
+        """Remove nodes from graph if they have no attributes."""
+        blacklist = [node for node, attrs in graph.nodes(data=True) if len(attrs) == 0]
+        graph.remove_nodes_from(blacklist)
+        logger.info(
+            f"Removed {len(blacklist)} nodes from graph because they overlapped blacklist / have no attributes."
+        )
+        return graph
+
+
+class GraphSerializer:
+    """Class to handle serialization of graphs into np.arrays."""
+
+    def __init__(
+        self,
+        graph: nx.Graph,
+        graph_dir: Path,
+        graph_type: str,
+        prefix: str,
+        tissue: str,
+    ) -> None:
+        """Instantiate a GraphSerializer object."""
+        self.graph = graph
+        self.graph_dir = graph_dir
+        self.graph_type = graph_type
+        self.prefix = prefix
+        self.tissue = tissue
+
+    def serialize(self) -> None:
+        """Serialize the graph to numpy tensors and save to file."""
+        # save node mapping dictionary: node name -> index
+        rename = self._create_node_mapping()
+        self._save_node_mapping(rename)
+
+        # convert graph to numpy tensors
+        self._nx_to_tensors(rename)
+
+    def _create_node_mapping(self) -> Dict[str, int]:
+        """Create a mapping of node names to integer indices."""
+        return {node: idx for idx, node in enumerate(sorted(self.graph.nodes))}
+
+    def _save_node_mapping(self, rename: Dict[str, int]):
+        """Save the node mapping to a file."""
+        with open(
+            self.graph_dir
+            / f"{self.prefix}_{self.graph_type}_graph_{self.tissue}_idxs.pkl",
+            "wb",
+        ) as output:
+            pickle.dump(rename, output)
+
+    @time_decorator(print_args=False)
+    def _nx_to_tensors(self, rename: Dict[str, int]):
+        """Convert the networkx graph to numpy tensors and save to file."""
+        # relabel nodes to integers, according to determined mapping with
+        # `rename`
+        graph = nx.relabel_nodes(self.graph, mapping=rename)
+
+        # node specific data
+        coordinates, positional_encodings, node_features = self._extract_node_data(
+            graph
         )
 
-    print(
-        f"Base graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
-    )
+        # edge specific data
+        edges, edge_features = self._extract_edge_data(graph, rename)
 
-    # prune nodes without gene connections
-    graph = _prune_nodes_without_gene_connections(graph=graph, gene_nodes=genes)
+        # save graph to file
+        self._dump_graph_data(
+            coordinates=coordinates,
+            positional_encodings=positional_encodings,
+            node_features=node_features,
+            edges=edges,
+            edge_features=edge_features,
+            graph=graph,
+        )
 
-    # add node attributes
-    ref = _prepare_reference_attributes(
-        reference_dir=parse_dir / "attributes",
-        nodes=nodes,
-    )
-    nx.set_node_attributes(graph, ref)
-    print(
-        f"Graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
-    )
+    def _dump_graph_data(
+        self,
+        coordinates: List[List[Union[str, float]]],
+        positional_encodings: List[np.ndarray],
+        node_features: List[Union[int, float]],
+        edges: np.ndarray,
+        edge_features: List[str],
+        graph,
+    ):
+        """Save the extracted graph data to a file."""
+        with open(
+            self.graph_dir / f"{self.prefix}_{self.graph_type}_graph_{self.tissue}.pkl",
+            "wb",
+        ) as output:
+            pickle.dump(
+                {
+                    "edge_index": edges,
+                    "node_feat": np.array(node_features),
+                    "node_positional_encoding": np.array(positional_encodings),
+                    "node_coordinates": np.array(coordinates),
+                    "edge_feat": edge_features,
+                    "num_nodes": graph.number_of_nodes(),
+                    "num_edges": graph.number_of_edges(),
+                    "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
+                },
+                output,
+                protocol=4,
+            )
 
-    # remove nodes without attributes
-    graph = _remove_blacklist_nodes(graph)
-    return graph
+    @staticmethod
+    def _extract_node_data(
+        graph: nx.Graph,
+    ) -> Tuple[List[List[Union[str, float]]], List[np.ndarray], List[Any]]:
+        """Extract node-specific data from the graph."""
+        # prepare lists to store node data
+        coordinates: List[List[Union[str, float]]] = []
+        positional_encodings: List[np.ndarray] = []
+        node_features: List[Any] = []
 
+        # extraction, not featuring chris hemsworth
+        for i in range(len(graph.nodes)):
+            node_data = graph.nodes[i]
+            coordinates.append(list(node_data["coordinates"].values()))
+            positional_encodings.append(node_data["positional_encoding"].flatten())
+            node_features.append(
+                [
+                    value
+                    for key, value in node_data.items()
+                    if key not in ["coordinates", "positional_encoding"]
+                ]
+            )
+        return coordinates, positional_encodings, node_features
 
-@time_decorator(print_args=False)
-def _nx_to_tensors(
-    graph: nx.Graph,
-    graph_dir: Path,
-    graph_type: str,
-    prefix: str,
-    rename: Dict[str, int],
-    tissue: str,
-) -> None:
-    """Save graphs as np tensors, additionally saves a dictionary to map
-    nodes to new integer labels."""
-    graph = nx.relabel_nodes(graph, mapping=rename)  # manually rename nodes to idx
-    coordinates, positional_encodings, node_features = [], [], []
-
-    # loop through nodes to make separate arrays
-    for i in range(len(graph.nodes)):
-        node_data = graph.nodes[i]
-        coordinates.append(list(node_data["coordinates"].values()))
-        positional_encodings.append(node_data["positional_encoding"].flatten())
-        node_features.append(
+    @staticmethod
+    def _extract_edge_data(
+        graph: nx.Graph, rename: Dict[str, int]
+    ) -> Tuple[np.ndarray, List[str]]:
+        """Extract edge-specific data from the graph."""
+        edges = np.array(
             [
-                value
-                for key, value in node_data.items()
-                if key not in ["coordinates", "positional_encoding"]
+                [edge[0], edge[1]]
+                for edge in nx.to_edgelist(graph, nodelist=list(rename.values()))
             ]
-        )
-
-    edges = np.array(
-        [
-            [edge[0], edge[1]]
-            for edge in nx.to_edgelist(graph, nodelist=list(rename.values()))
-        ]
-    ).T
-    edge_features = [graph[u][v][2] for u, v in edges.T]
-
-    with open(graph_dir / f"{prefix}_{graph_type}_graph_{tissue}.pkl", "wb") as output:
-        pickle.dump(
-            {
-                "edge_index": edges,
-                "node_feat": np.array(node_features),
-                "node_positional_encoding": np.array(positional_encodings),
-                "node_coordinates": np.array(coordinates),
-                "edge_feat": edge_features,
-                "num_nodes": graph.number_of_nodes(),
-                "num_edges": graph.number_of_edges(),
-                "avg_edges": graph.number_of_edges() / graph.number_of_nodes(),
-            },
-            output,
-            protocol=4,
-        )
+        ).T
+        edge_features = [graph[u][v][2] for u, v in edges.T]
+        return edges, edge_features
 
 
-def make_tissue_graph(
+def construct_tissue_graph(
     nodes: List[str],
     experiment_name: str,
     working_directory: Path,
@@ -264,36 +348,22 @@ def make_tissue_graph(
     parse_dir = working_directory / tissue / "parsing"
     dir_check_make(graph_dir)
 
-    # instantiate objects and process graphs
-    graph = graph_constructor(
+    # construct graph
+    graph = GraphConstructor(
+        tissue=tissue,
         interaction_dir=interaction_dir,
         parse_dir=parse_dir,
         graph_type=graph_type,
-        tissue=tissue,
         nodes=nodes,
         genes=target_genes,
-    )
+    ).construct_graph()
 
-    # save indexes before renaming to integers
-    rename = {node: idx for idx, node in enumerate(sorted(graph.nodes))}
-    with open(
-        graph_dir / f"{experiment_name}_{graph_type}_graph_{tissue}_idxs.pkl", "wb"
-    ) as output:
-        pickle.dump(rename, output)
-
-    # temp save for debugging
-    with open(
-        "/ocean/projects/bio210019p/stevesho/data/preprocess/slurm_outputs/test.pkl",
-        "wb",
-    ) as output:
-        pickle.dump(graph, output)
-
-    # save idxs and write to tensors
-    _nx_to_tensors(
+    # serialize to arrays
+    serializer = GraphSerializer(
         graph=graph,
         graph_dir=graph_dir,
         graph_type=graph_type,
         prefix=experiment_name,
-        rename=rename,
         tissue=tissue,
     )
+    serializer.serialize()
