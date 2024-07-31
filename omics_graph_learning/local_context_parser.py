@@ -32,21 +32,22 @@ from utils import time_decorator
 
 
 class LocalContextParser:
-    """Object that parses local genomic data into graph edges
+    """Object that parses local genomic data into graph edges, connected all
+    nodes within a given linear context window.
 
     Attributes:
         experiment_config: Dataclass containing the experiment configuration.
         tissue_config: Dataclass containing the tissue configuration.
         bedfiles: dictionary containing each local genomic data file
+        positional_encoding: boolean to determine if positional encoding is used
 
     Methods
     ----------
-    _make_directories:
-        Prepare necessary directories.
     _prepare_local_features:
         Creates a dict of local context datatypes and their bedtools objects.
-    _slop_sort:
-        Slop each line of a bedfile to get all features within a window.
+    _process_bedcollection:
+        Process a collection of bedfiles by sorting then adding a window (slop)
+        around each feature.
     _bed_intersect:
         Function to intersect a slopped bed entry with all other node types.
     _aggregate_attributes:
@@ -62,7 +63,8 @@ class LocalContextParser:
     # Helpers
         ATTRIBUTES -- list of node attribute types
         DIRECT -- list of datatypes that only get direct overlaps, no slop
-        ONEHOT_NODETYPE -- dictionary of node type one-hot vectors
+        ALL_CONCATENATED_FILE -- name of concatenated file
+        SORTED_CONCATENATED_FILE -- name of sorted concatenated file
 
     Examples:
     --------
@@ -74,6 +76,10 @@ class LocalContextParser:
 
     >>> localparseObject.parse_context_data()
     """
+
+    # var helpers
+    ALL_CONCATENATED_FILE = "all_concat.bed"
+    SORTED_CONCATENATED_FILE = "all_concat_sorted.bed"
 
     # list helpers
     DIRECT = ["tads", "loops"]
@@ -120,7 +126,8 @@ class LocalContextParser:
         self.attribute_dir = self.parse_dir / "attributes"
 
         self.edge_dir = self.parse_dir / "edges"
-        self.intermediate_sorted = self.parse_dir / "intermediate" / "sorted"
+        self.intermediate_dir = self.parse_dir / "intermediate"
+        self.intermediate_sorted = self.intermediate_dir / "sorted"
 
     def _prepare_bed_references(
         self,
@@ -225,29 +232,10 @@ class LocalContextParser:
     ) -> Dict[str, pybedtools.BedTool]:
         """Slop bedfiles that are not 3D chromatin files."""
         return {
-            key: self._slop_and_rewrite_bed(value, chromfile, feat_window)
+            key: self._slop_and_keep_original(value, chromfile, feat_window)
             for key, value in bedcollection.items()
             if key not in ATTRIBUTES + self.DIRECT
         }
-
-    @staticmethod
-    def _sort_bedcollection(
-        bedcollection: Dict[str, pybedtools.BedTool]
-    ) -> Dict[str, pybedtools.BedTool]:
-        """Sort bedfiles in a collection"""
-        return {key: value.sort() for key, value in bedcollection.items()}
-
-    @staticmethod
-    def _slop_and_rewrite_bed(
-        bedfile: pybedtools.BedTool, chromfile: str, feat_window: int
-    ) -> pybedtools.BedTool:
-        """Slop a single bedfile and process the result."""
-        slopped = bedfile.slop(g=chromfile, b=feat_window).sort()
-        newstrings = [
-            str(line_1).split("\n")[0] + "\t" + str(line_2)
-            for line_1, line_2 in zip(slopped, bedfile)
-        ]
-        return pybedtools.BedTool("".join(newstrings), from_string=True).sort()
 
     @time_decorator(print_args=True)
     def _bed_intersect(
@@ -275,7 +263,7 @@ class LocalContextParser:
                 -wa \
                 -wb \
                 -sorted \
-                -a {self.parse_dir}/intermediate/{folder}/{node_type}.bed \
+                -a {self.intermediate_dir}/{folder}/{node_type}.bed \
                 -b {all_files}"
 
             with open(self.edge_dir / f"{node_type}.bed", "w") as outfile:
@@ -290,9 +278,9 @@ class LocalContextParser:
             )
             return feature
 
-        def _insulate_regions(deduped_edges: str, loopfile: str) -> None:
-            """Insulate regions by intersection with chr loops and making sure
-            both sides overlap"""
+        # def _insulate_regions(deduped_edges: str, loopfile: str) -> None:
+        #     """Insulate regions by intersection with chr loops and making sure
+        #     both sides overlap"""
 
         if node_type in self.DIRECT:
             _unix_intersect(node_type, type="direct")
@@ -311,21 +299,8 @@ class LocalContextParser:
     def _aggregate_attributes(self, node_type: str) -> None:
         """For each node of a node_type get their overlap with gene windows then
         aggregate total nucleotides, gc content, and all other attributes."""
-
-        def add_size(feature: Any) -> str:
-            """Add size as a field to the bedtool object"""
-            feature = extend_fields(feature, 5)
-            feature[4] = feature.end - feature.start
-            return feature
-
-        # prepare node_type reference for aggregating attributes
-        ref_file = (
-            pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
-            .filter(lambda x: "alt" not in x[0])
-            .each(add_size)
-            .sort()
-            .saveas()
-        )
+        # prepare reference file
+        ref_file = self._reference_nodes_for_feature_aggregation(node_type)
 
         # aggregate
         for attribute in ATTRIBUTES:
@@ -334,6 +309,25 @@ class LocalContextParser:
             )
             print(f"{attribute} for {node_type}")
             self._overlap_with_attribute(ref_file, attribute, save_file)
+
+    def _reference_nodes_for_feature_aggregation(
+        self, node_type: str
+    ) -> pybedtools.bedtool.BedTool:
+        """Prepare node_type reference for aggregating attributes"""
+
+        def add_size(feature: Any) -> str:
+            """Add size as a field to the bedtool object"""
+            feature = extend_fields(feature, 5)
+            feature[4] = feature.end - feature.start
+            return feature
+
+        return (
+            pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
+            .filter(lambda x: "alt" not in x[0])
+            .each(add_size)
+            .sort()
+            .saveas()
+        )
 
     def _overlap_with_attribute(
         self, ref_file: pybedtools.bedtool.BedTool, attribute: str, save_file: Path
@@ -389,12 +383,12 @@ class LocalContextParser:
 
         cmds = {
             "cat_cmd": [
-                f"cat {self.parse_dir}/edges/*_dupes_removed* >",
-                f"{self.parse_dir}/edges/all_concat.bed",
+                f"cat {self.edge_dir}/*_dupes_removed* >",
+                f"{self.edge_dir}/{self.ALL_CONCATENATED_FILE}",
             ],
             "sort_cmd": [
-                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.parse_dir}/edges/all_concat.bed |",
-                "uniq >" f"{self.parse_dir}/edges/all_concat_sorted.bed",
+                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.edge_dir}/{self.ALL_CONCATENATED_FILE} |",
+                "uniq >" f"{self.edge_dir}/{self.SORTED_CONCATENATED_FILE}",
             ],
         }
 
@@ -404,57 +398,91 @@ class LocalContextParser:
                 cmds[cmd][0] + cmds[cmd][1],
             )
 
-    @time_decorator(print_args=True)
-    def _save_node_attributes(
-        self,
-        node: str,
-    ) -> None:
+    def _save_node_attributes(self, node: str) -> None:
         """Save attributes for all node entries to create node attributes during
         graph construction."""
-        # initialize position encoding
-        if self.positional_encoding:
-            positional_encoding = self._initialize_positional_encoder()
+        # process attributes
+        stored_attributes = self._process_node_attributes(node)
 
-        stored_attributes: Dict[
-            str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]
-        ] = {}
-        bedfile_lines = {}
-        for attribute in ATTRIBUTES:
-            filename = self.attribute_dir / attribute / f"{node}_{attribute}_percentage"
-            with open(filename, "r") as file:
-                lines = [tuple(line.rstrip().split("\t")) for line in file]
-                bedfile_lines[attribute] = set(lines)
-            for line in bedfile_lines[attribute]:
-                if attribute == "gc":
-                    stored_attributes[f"{line[3]}_{self.tissue}"] = {
-                        "chr": line[0].replace("chr", ""),
-                    }
-                    stored_attributes[f"{line[3]}_{self.tissue}"] = {
-                        "coordinates": {
-                            "chr": line[0],
-                            "start": float(line[1]),
-                            "end": float(line[2]),
-                        },
-                        "size": float(line[4]),
-                        "gc": float(line[5]),
-                    }
-                    if self.positional_encoding:
-                        encoding = positional_encoding(
-                            chromosome=line[0], node_start=line[1], node_end=line[2]
-                        )
-                        stored_attributes[f"{line[3]}_{self.tissue}"][
-                            "positional_encoding"
-                        ] = encoding
-                else:
-                    try:
-                        stored_attributes[f"{line[3]}_{self.tissue}"][attribute] = (
-                            float(line[5])
-                        )
-                    except ValueError:
-                        stored_attributes[f"{line[3]}_{self.tissue}"][attribute] = 0
-
+        # save
         with open(self.attribute_dir / f"{node}_reference.pkl", "wb") as output:
             pickle.dump(stored_attributes, output)
+
+    def _read_attribute_file(self, filename: Path) -> set:
+        """Read the attribute file and return their aggregated contents."""
+        with open(filename, "r") as file:
+            return {tuple(line.rstrip().split("\t")) for line in file}
+
+    def _process_node_attributes(
+        self, node: str
+    ) -> Dict[str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]]:
+        """Add node attributes to reference dictionary for each feature type."""
+        # initialize positional encoder
+        positional_encoding = (
+            self._initialize_positional_encoder() if self.positional_encoding else None
+        )
+
+        stored_attributes = {}
+        for attribute in ATTRIBUTES:
+            filename = self.attribute_dir / attribute / f"{node}_{attribute}_percentage"
+            lines = self._read_attribute_file(filename)
+            for line in lines:
+                node_key = f"{line[3]}_{self.tissue}"
+                if attribute == "gc":
+                    stored_attributes[node_key] = self._add_first_attribute(
+                        line=line, positional_encoding=positional_encoding
+                    )
+                else:
+                    self._add_remaining_attributes(
+                        stored_attributes=stored_attributes,
+                        node_key=node_key,
+                        attribute=attribute,
+                        line=line,
+                    )
+        return stored_attributes
+
+    def _add_first_attribute(
+        self,
+        line: tuple,
+        positional_encoding: Optional[PositionalEncoding],
+    ) -> Dict[str, Union[str, float, Dict[str, Union[str, float]]]]:
+        """Because gc is the first attribute processed, we take this time to
+        initialize some of the dictionary values and produce the positional
+        encodings."""
+        attributes: Dict[str, Union[str, float, Dict[str, Union[str, float]]]] = {
+            "coordinates": {
+                "chr": line[0],
+                "start": float(line[1]),
+                "end": float(line[2]),
+            },
+            "size": float(line[4]),
+            "gc": float(line[5]),
+        }
+
+        if positional_encoding:
+            attributes["positional_encoding"] = positional_encoding(
+                chromosome=line[0], node_start=line[1], node_end=line[2]
+            )
+
+        return attributes
+
+    def _add_remaining_attributes(
+        self,
+        stored_attributes: Dict[
+            str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]
+        ],
+        node_key: str,
+        attribute: str,
+        line: tuple,
+    ) -> None:
+        """Add remaining attributes to the stored attributes dictionary. If the
+        attribute aggregate provided no value, defaults to 0."""
+        if node_key not in stored_attributes:
+            stored_attributes[node_key] = {}
+        try:
+            stored_attributes[node_key][attribute] = float(line[5])
+        except ValueError:
+            stored_attributes[node_key][attribute] = 0
 
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
@@ -498,7 +526,7 @@ class LocalContextParser:
             pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
 
         # cleanup
-        self._cleanup_edge_files(self.edge_dir)
+        self._cleanup_edge_files()
 
     def _remove_blacklist_and_alt_configs(
         self,
@@ -535,6 +563,33 @@ class LocalContextParser:
                 )
             outfile.close()
 
+    def _cleanup_edge_files(self) -> None:
+        """Remove intermediate files"""
+        retain = [self.SORTED_CONCATENATED_FILE]
+        for item in os.listdir(self.edge_dir):
+            if item not in retain:
+                os.remove(self.edge_dir / item)
+
+    @staticmethod
+    def _sort_bedcollection(
+        bedcollection: Dict[str, pybedtools.BedTool]
+    ) -> Dict[str, pybedtools.BedTool]:
+        """Sort bedfiles in a collection"""
+        return {key: value.sort() for key, value in bedcollection.items()}
+
+    @staticmethod
+    def _slop_and_keep_original(
+        bedfile: pybedtools.BedTool, chromfile: str, feat_window: int
+    ) -> pybedtools.BedTool:
+        """Slop a single bedfile and re-write each line to keep the original
+        entry."""
+        slopped = bedfile.slop(g=chromfile, b=feat_window).sort()
+        newstrings = [
+            str(line_1).split("\n")[0] + "\t" + str(line_2)
+            for line_1, line_2 in zip(slopped, bedfile)
+        ]
+        return pybedtools.BedTool("".join(newstrings), from_string=True).sort()
+
     @staticmethod
     def _remove_alt_configs(
         bed: pybedtools.bedtool.BedTool,
@@ -550,11 +605,3 @@ class LocalContextParser:
         return bedfile.filter(
             lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
         ).saveas()
-
-    @staticmethod
-    def _cleanup_edge_files(path: Path) -> None:
-        """Remove intermediate files"""
-        retain = ["all_concat_sorted.bed"]
-        for item in os.listdir(path):
-            if item not in retain:
-                os.remove(path / item)
