@@ -18,9 +18,9 @@ import numpy as np
 from config_handlers import ExperimentConfig
 from constants import TARGET_FILE
 from constants import TRAINING_SPLIT_FILE
+from utils import setup_logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 
 def _load_graph_and_idxs(

@@ -12,7 +12,6 @@ file formatting."""
 from collections import defaultdict
 import contextlib
 import csv
-from pathlib import Path
 import subprocess
 from typing import Dict, List, Union
 
@@ -225,32 +224,6 @@ class GenomeDataPreprocessor:
         ** Removed clustering of Funk binding sites. The commented code is
         deprecated. **
         """
-        # if study == "Funk":
-        #     cmd = f"awk -v FS='\t' -v OFS='\t' '$5 >= 200' {self.tissue_dir}/unprocessed/{bed} \
-        #         | cut -f1,2,3,4 \
-        #         | sed 's/-/\t/g' \
-        #         | cut -f1,2,3,6 \
-        #         | sed 's/\..*$//g' \
-        #         | sort -k1,1 -k2,2n \
-        #         | bedtools merge -i - -d 46 -c 4 -o distinct \
-        #         > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-        # else:
-        # cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-        #     | bedtools merge -i - -d 46 \
-        #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
-        #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
-        #     > {self.tissue_dir}/local/tfbindingclusters_{self.tissue}.bed"
-
-        # cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-        #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} -F 0.9 \
-        #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
-        #     > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
-
-        # cmd = f"cut -f1,2,3 {self.tissue_dir}/unprocessed/{bed} \
-        #     | bedtools intersect -wa -wb -a - -b {self.resources['tf_motifs']} \
-        #     | bedtools groupby -i - -g 1,2,3 -c 7 -o distinct \
-        #     > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
-
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"footprint\"}}' {self.tissue_dir}/unprocessed/{bed} \
             > {self.tissue_dir}/local/tfbindingsites_{self.tissue}.bed"
         rename = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, $1\"_\"$2\"_footprint\"}}' {self.tissue_dir}/unprocessed/{bed} \

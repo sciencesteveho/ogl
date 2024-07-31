@@ -7,6 +7,7 @@ on a HPC via the SLURM scheduler."""
 
 
 import argparse
+import logging
 import os
 import sys
 from typing import List, Optional, Tuple
@@ -15,11 +16,12 @@ import pytest
 
 from config_handlers import ExperimentConfig
 from constants import NodePerturbation
-from utils import _check_file
 from utils import _dataset_split_name
-from utils import _log_progress
 from utils import _run_command
+from utils import setup_logging
 from utils import submit_slurm_job
+
+logger = setup_logging()
 
 
 def run_tests() -> bool:
@@ -67,9 +69,12 @@ class PipelineRunner:
         --optimize_params
     """
 
-    def __init__(self, config: ExperimentConfig, args: argparse.Namespace) -> None:
+    def __init__(
+        self, config: ExperimentConfig, args: argparse.Namespace, logger=logging.logger
+    ) -> None:
         self.config = config
         self.args = args
+        logger = logger
 
     def _get_file_paths(self, split_name: str) -> Tuple[str, str]:
         """Construct file paths for graphs to check if files exist"""
@@ -85,6 +90,20 @@ class PipelineRunner:
             f"{experiment_name}_{self.config.graph_type}_graph.pkl",
         )
         return final_graph, intermediate_graph
+
+    def _check_all_intermediates(self, split_name: str) -> bool:
+        """Check if all intermediate graphs are present."""
+        tissues = self.config.tissues
+        graph_dir = self.config.graph_dir
+        for tissue in tissues:
+            intermediate_graph = os.path.join(
+                graph_dir,
+                split_name,
+                f"{tissue}_{self.config.graph_type}_graph.pkl",
+            )
+            if not os.path.isfile(intermediate_graph):
+                return False
+        return True
 
     def get_train_test_val_split(self, slurm_dependency: str, split_name: str) -> str:
         """Submit a SLURM job to get splits."""
@@ -203,54 +222,53 @@ class PipelineRunner:
                 args=f"{self.args.experiment_yaml} {self.args.target} {split_name}",
                 dependency=dependency,
             )
-            _log_progress("Hyperparameter optimization job submitted.")
+            logger.info("Hyperparameter optimization job submitted.")
         else:
             submit_slurm_job(
                 job_script="train_gnn.sh", args=train_args, dependency=dependency
             )
-            _log_progress("GNN training job submitted.")
+            logger.info("GNN training job submitted.")
 
     def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
         """Submit all pipeline jobs if a final graph is not found."""
-        _log_progress(
-            f"Final graph not found. Checking for intermediate graph: {intermediate_graph}"
-        )
-        if not _check_file(intermediate_graph):
+        if not os.path.isfile(intermediate_graph):
             run_id = self.graph_construction_jobs(split_name)
         else:
-            _log_progress(
-                "Intermediate graph found. Submitting jobs for dataset split, scaler, and training."
+            logger.info(
+                "Intermediate graph found. Checking if all other tissues are done..."
             )
+            if not self._check_all_intermediates(split_name):
+                logger.info("Not all intermediates found. Re-running entire pipeline.")
+                run_id = self.graph_construction_jobs(split_name)
 
-        # construct_id = self.run_graph_concatenation(
-        #     slurmids=slurmids, split_name=split_name
-        # )
+        construct_id = self.run_graph_concatenation(split_name=split_name)
+        logger.info("Graph concatenation job submitted.")
 
-        # slurmids: list[str] = []
-        # scale_id = self.scale_node_features(slurmids, split_name)
-        # _log_progress("Node feature scaling job submitted.")
+        scale_id = self.scale_node_features(slurmids, split_name)
+        logger.info("Node feature scaling job submitted.")
 
-        # self.submit_gnn_job(split_name, scale_id, args.optimize_params)
+        self.submit_gnn_job(split_name, scale_id, args.optimize_params)
 
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
         graph construction."""
-        _log_progress("No intermediates found. Running entire pipeline!")
+        logger.info("No intermediates found. Running entire pipeline!")
 
-        # slurmids = self.run_node_and_edge_generation(split_name=split_name)
-        _log_progress("Node and edge generation job submitted.")
+        # node and edge generation
+        slurmids = self.run_node_and_edge_generation(split_name=split_name)
+        logger.info("Node and edge generation job submitted.")
 
-        # slurmids = []
-        # construct_id = self.run_graph_concatenation(
-        #     slurmids=slurmids, split_name=split_name
-        # )
-        # _log_progress("Graph concatenation job submitted.")
+        # concatenate graphs
+        construct_id = self.run_graph_concatenation(
+            slurmids=slurmids, split_name=split_name
+        )
+        logger.info("Graph concatenation job submitted.")
 
-        return "placeholder"
-        # return construct_id
+        return construct_id
 
     def run_pipeline(self) -> None:
         """Run the pipeline! Check for existing files and submit jobs as needed."""
+        # get split name
         split_name = _dataset_split_name(
             test_chrs=self.config.test_chrs,
             val_chrs=self.config.val_chrs,
@@ -260,33 +278,44 @@ class PipelineRunner:
         if self.args.target == "rna_seq":
             split_name += "_rna_seq"
 
-        print(f"Starting process for: {split_name}")
+        # get final and intermediate graph paths
+        logger.info(f"Starting process for: {split_name}")
         final_graph, intermediate_graph = self._get_file_paths(split_name=split_name)
 
-        _log_progress(f"Checking for final graph: {final_graph}")
-        if not _check_file(final_graph):
+        # decide which jobs to submit
+        logger.info(f"Checking for final graph: {final_graph}")
+        if not os.path.isfile(final_graph):
             self.all_pipeline_jobs(intermediate_graph, split_name)
+            logger.info(
+                f"Final graph not found. \
+                Checking for intermediate graph: {intermediate_graph}"
+            )
         else:
-            _log_progress("Final graph found. Going straight to GNN training.")
+            logger.info(
+                "Final graph found. \
+                Going straight to GNN training."
+            )
             self.submit_gnn_job(split_name, None)
 
 
 def validate_args(args: argparse.Namespace) -> None:
     """Helper function to validate CLI arguments that have dependencies."""
     if args.partition not in ["RM", "EM"]:
-        print("Error: --partition must be 'RM' or 'EM'")
+        logger.error("Error: --partition must be 'RM' or 'EM'")
         sys.exit(1)
 
     if args.target != "rna_seq" and args.filter_mode is None:
-        print("Error: if target type is not `rna_seq`, --filter_mode is required")
+        logger.error(
+            "Error: if target type is not `rna_seq`, --filter_mode is required"
+        )
         sys.exit(1)
 
     if args.model in ["GAT", "UniMPTransformer"] and args.heads is None:
-        print(f"Error: --heads is required when model is {args.model}")
+        logger.error(f"Error: --heads is required when model is {args.model}")
         sys.exit(1)
 
     if args.total_random_edges and args.edge_perturbation != "randomize_edges":
-        print(
+        logger.error(
             "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
         )
         sys.exit(1)
@@ -410,6 +439,9 @@ def main() -> None:
     training with checks to avoid redundant computation."""
     args = parse_pipeline_arguments()
 
+    # set up logging
+    logger = setup_logging()
+
     # run unit tests first
     # if args.run_tests:
     #     passed_tests = run_tests()
@@ -419,7 +451,11 @@ def main() -> None:
 
     # run OGL pipeline
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
-    pipe_runner = PipelineRunner(config=experiment_config, args=args)
+    pipe_runner = PipelineRunner(
+        config=experiment_config,
+        args=args,
+        logger=logger,
+    )
     pipe_runner.run_pipeline()
 
 

@@ -9,7 +9,6 @@ as a series of numpy arrays.
 """
 
 
-import logging
 from pathlib import Path
 import pickle
 from typing import Any, Dict, List, Tuple, Union
@@ -19,10 +18,10 @@ import numpy as np
 import pandas as pd
 
 from utils import dir_check_make
+from utils import setup_logging
 from utils import time_decorator
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 
 class GraphConstructor:

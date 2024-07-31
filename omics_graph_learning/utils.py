@@ -1,16 +1,18 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 """Utilities for omics graph learning modules."""
+
 
 import argparse
 from collections import defaultdict
 from contextlib import suppress
 import csv
-import datetime
 from datetime import timedelta
 import functools
 import inspect
+import logging
 import os
 from pathlib import Path
 import pickle
@@ -34,96 +36,7 @@ from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 
 
-def _log_progress(message: str) -> None:
-    """Print a log message with timestamp to stdout"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S%z")
-    print(f"[{timestamp}] {message}\n")
-
-
-def _run_command(command: str, get_output: bool = False) -> Optional[str]:
-    """Runs a shell command."""
-    try:
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            text=True,
-            check=True,
-            shell=True,
-        )
-        if get_output:
-            return result.stdout.strip()
-        else:
-            print(result.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while running command: {command}")
-        print(e.output)
-        sys.exit(1)
-    return None
-
-
-def _check_file(filename: str) -> bool:
-    """Check if a file already exists"""
-    return os.path.isfile(filename)
-
-
-def get_physical_cores() -> int:
-    """Return physical core count, subtracted by one to account for the main process / overhead."""
-    return psutil.cpu_count(logical=False) - 1
-
-
-def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
-    """Submits a SLURM job and returns its job ID."""
-    dependency_addendum = f"--dependency=afterok:{dependency}" if dependency else ""
-    command = f"sbatch {dependency_addendum} {job_script} {args}"
-    job_id = _run_command(command, get_output=True)
-    assert job_id is not None
-    return job_id.split()[-1]  # extract job ID
-
-
-def _get_chromatin_loop_file(
-    experiment_config: ExperimentConfig, tissue_config: TissueConfig
-) -> str:
-    """Returns the specified loop file"""
-    method, resolution = experiment_config.baseloops.split("_")
-    return f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}_loops.bedpe"
-
-
-def _load_pickle(file_path: str) -> Any:
-    """Wrapper to load a pkl"""
-    with open(file_path, "rb") as file:
-        return pickle.load(file)
-
-
-def _save_pickle(data: object, file_path: Union[str, Path]) -> Any:
-    """Wrapper to save a pkl"""
-    with open(file_path, "wb") as output:
-        pickle.dump(data, output)
-
-
-def parse_yaml(config_file: str) -> Dict[str, Any]:
-    """Load yaml for parsing"""
-    with open(config_file, "r") as stream:
-        return yaml.safe_load(stream)
-
-
-def dir_check_make(dir: Union[str, Path]) -> None:
-    """Utility to make directories only if they do not already exist"""
-    with suppress(FileExistsError):
-        os.makedirs(dir)
-
-
-def _generate_hic_dict(resolution: float) -> Dict[str, str]:
-    """Generate a dictionary of Hi-C filenames for a given resolution"""
-    special_tissues = {
-        "left_ventricle": "leftventricle",
-    }
-    tissues = ["left_ventricle", "k562"]
-    return {
-        tissue: f"{special_tissues.get(tissue, tissue)}_all_chr_{resolution}.tsv"
-        for tissue in tissues
-    }
-
-
+# decorator to track execution time
 def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
     """Decorator to time functions.
 
@@ -145,7 +58,8 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
             end_time = time.monotonic()
             args_to_print = list(fxn_args.values()) if print_args else display_arg
             print(
-                f"Finished {function.__name__} {args_to_print} - Time: {timedelta(seconds=end_time - start_time)}"
+                f"Finished {function.__name__} {args_to_print} - \
+                Time: {timedelta(seconds=end_time - start_time)}"
             )
             return result
 
@@ -154,6 +68,117 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
     return _time_decorator_func
 
 
+# logging setup
+def setup_logging() -> logging.Logger:
+    """Prepare a logger that prints to stderr."""
+    logging.basicConfig(level=logging.INFO)
+    return logging.getLogger(__name__)
+
+
+# file and directory operations
+def dir_check_make(dir: Union[str, Path]) -> None:
+    """Utility to make directories only if they do not already exist"""
+    with suppress(FileExistsError):
+        os.makedirs(dir)
+
+
+def check_and_symlink(src: Union[str, Path], dst: Path, boolean: bool = False) -> None:
+    """Create a symlink from src to dst if it doesn't exist. If boolean is True,
+    also check that src exists before creating the symlink.
+    """
+    if boolean and not os.path.exists(src):
+        return
+    if not os.path.exists(dst):
+        with suppress(FileExistsError):
+            os.symlink(src, dst)
+
+
+def _get_files_in_directory(dir: Path) -> List[str]:
+    """Return a list of files within the directory."""
+    return [file for file in os.listdir(dir) if os.path.isfile(os.path.join(dir, file))]
+
+
+# data loading and saving
+def _load_pickle(file_path: str) -> Any:
+    """Wrapper to load a pkl"""
+    with open(file_path, "rb") as file:
+        return pickle.load(file)
+
+
+def _save_pickle(data: object, file_path: Union[str, Path]) -> None:
+    """Wrapper to save a pkl"""
+    with open(file_path, "wb") as output:
+        pickle.dump(data, output)
+
+
+def parse_yaml(config_file: str) -> Dict[str, Any]:
+    """Load yaml for parsing"""
+    with open(config_file, "r") as stream:
+        return yaml.safe_load(stream)
+
+
+# command line operations
+def _run_command(command: str, get_output: bool = False) -> Optional[str]:
+    """Run a shell command and optionally return its output."""
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+            shell=True,
+        )
+        if get_output:
+            return result.stdout.strip()
+        else:
+            print(result.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running command: {command}")
+        print(e.output)
+        sys.exit(1)
+    return None
+
+
+# slurm operations
+def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
+    """Submits a SLURM job and returns its job ID."""
+    dependency_arg = f"--dependency=afterok:{dependency}" if dependency else ""
+    command = f"sbatch {dependency_arg} {job_script} {args}"
+    job_id = _run_command(command, get_output=True)
+    assert job_id is not None
+    return job_id.split()[-1]  # extract job ID
+
+
+# system operations
+def get_physical_cores() -> int:
+    """Return physical core count, subtracted by one to account for the main
+    process / overhead.
+    """
+    return psutil.cpu_count(logical=False) - 1
+
+
+# graph data and gnn operations
+def _tensor_out_to_array(tensor, idx):
+    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+
+
+def _calculate_max_distance_base_graph(bed: List[List[str]]) -> Set[int]:
+    """Calculate the max distance between nodes in the base graph. Report the
+    max, mean, and median distances for all interaction type data.
+    """
+    return {
+        max(int(line[2]), int(line[6])) - min(int(line[3]), int(line[7]))
+        for line in bed
+    }
+
+
+def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
+    """Combines stored edge index and returns dedupe'd array of nodes"""
+    combined = np.concatenate((edge_index[0], edge_index[1]))
+    return np.unique(combined)
+
+
+# genome data utils
 class ScalerUtils:
     """Utility class for scaling node features, as the modules for scaling share
     most of the same args"""
@@ -206,23 +231,22 @@ class ScalerUtils:
         return parser.parse_args()
 
 
+def _get_chromatin_loop_file(
+    experiment_config: ExperimentConfig, tissue_config: TissueConfig
+) -> str:
+    """Returns the specified loop file"""
+    method, resolution = experiment_config.baseloops.split("_")
+    return f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}_loops.bedpe"
+
+
 def _dataset_split_name(
     test_chrs: Optional[List[str]] = None,
     val_chrs: Optional[List[str]] = None,
     tpm_filter: Union[float, int] = 0.1,
     percent_of_samples_filter: float = 0.2,
 ) -> str:
-    """Save the partitioning split to a file based on provided chromosome
-    information.
-
-    Args:
-        save_dir (str): The directory where the split file will be saved.
-        test_chrs (List[int]): A list of test chromosomes.
-        val_chrs (List[int]): A list of validation chromosomes.
-        split (Dict[str, List[str]]): A dictionary containing the split data.
-
-    Returns:
-        None
+    """Constructs a name for the dataset based on the chromosome split and gene
+    filter arguments.
     """
     chrs = []
 
@@ -238,38 +262,6 @@ def _dataset_split_name(
         chrs.append("random_assign")
 
     return f"tpm_{tpm_filter}_samples_{percent_of_samples_filter}_{''.join(chrs).replace('chr', '')}"
-
-
-def check_and_symlink(
-    src: Union[str, Path],
-    dst: Path,
-    boolean: bool = False,
-) -> None:
-    """Check if a symlink exists at the destination path and create a symlink
-    from the source path to the destination path if it doesn't exist.
-
-    Args:
-        src (str): The source path of the symlink. dst (str): The destination
-        path of the symlink. boolean (bool, optional): A boolean flag. If True,
-        the symlink is created only if the source path exists and the
-        destination path doesn't exist. If False, the symlink is created if the
-        destination path doesn't exist. Defaults to False.
-    """
-    with suppress(FileExistsError):
-        if boolean:
-            if (bool(src) and os.path.exists(src)) and (not os.path.exists(dst)):
-                os.symlink(src, dst)
-        elif not os.path.exists(dst):
-            os.symlink(src, dst)
-
-
-def _get_files_in_directory(dir: Path) -> List[str]:
-    """Returns a list of files within the directory"""
-    return [file for file in os.listdir(dir) if os.path.isfile(f"{dir}/{file}")]
-
-
-def _tensor_out_to_array(tensor, idx):
-    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
 def chunk_genes(
@@ -375,92 +367,6 @@ def prepare_tss_file(
     bed = pybedtools.BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
 
 
-@time_decorator(print_args=True)
-def _set_matplotlib_publication_parameters() -> None:
-    plt.rcParams.update({"font.size": 7})  # set font size
-    plt.rcParams.update({"axes.titlesize": "small"})
-    plt.rcParams.update({"font.sans-serif": "Nimbus Sans"})
-    # plt.rcParams["font.family"] = "Liberation Sans"  # set font
-
-
-@time_decorator(print_args=True)
-def plot_training_losses(
-    outfile: str,
-    savestr: str,
-    log: str,
-) -> None:
-    """Plots training losses from training log"""
-    plt.figure(figsize=(3.125, 2.25))
-    _set_matplotlib_publication_parameters()
-
-    losses: Dict[str, List[float]] = {"Train": [], "Test": [], "Validation": []}
-    with open(log, newline="") as file:
-        reader = csv.reader(file, delimiter=":")
-        for line in reader:
-            for substr in line:
-                for key in losses:
-                    if key in substr:
-                        losses[key].append(float(line[-1].split(" ")[-1]))
-
-    # remove last item in train
-    try:
-        loss_df = pd.DataFrame(losses)
-    except ValueError:
-        losses["Train"] = losses["Train"][:-1]
-
-    sns.lineplot(data=losses)
-    plt.margins(x=0)
-    plt.xlabel("Epoch", fontsize=7)
-    plt.ylabel("MSE Loss", fontsize=7)
-    plt.title(
-        f"Training loss for {savestr}",
-        wrap=True,
-        fontsize=7,
-    )
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-
-
-@time_decorator(print_args=True)
-def plot_predicted_versus_expected(
-    outfile: str,
-    savestr: str,
-    predicted: torch.Tensor,
-    expected: torch.Tensor,
-    rmse: torch.Tensor,
-) -> None:
-    """Plots predicted versus expected values for a given model"""
-    plt.figure(figsize=(3.15, 2.95))
-    _set_matplotlib_publication_parameters()
-
-    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
-    plt.margins(x=0)
-    plt.xlabel("Expected Log2 TPM", fontsize=7)
-    plt.ylabel("Predicted Log2 TPM", fontsize=7)
-    plt.title(
-        f"Expected versus predicted for {savestr}\
-            \nRMSE: {rmse}\
-            \nSpearman's R: {stats.spearmanr(expected, predicted)[0]}\
-            \nPearson: {stats.pearsonr(expected, predicted)[0]}",
-        wrap=True,
-        fontsize=7,
-    )
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-
-
-def _calculate_max_distance_base_graph(bed: List[List[str]]) -> Set[int]:
-    """Calculate the max distance between nodes in the base graph. Report the
-    max, mean, and median distances for all interaction type data.
-    """
-    return {
-        max(int(line[2]), int(line[6])) - min(int(line[3]), int(line[7]))
-        for line in bed
-    }
-
-
 def _map_genesymbol_to_tss(
     tss_path: str, annotation_path: str
 ) -> List[tuple[str, str, str, str]]:
@@ -513,62 +419,79 @@ def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
     return [gene.split("_")[0] for gene in os.listdir(directory)]
 
 
-def _string_list(arg):
-    """Helper function to pass comma separated list of strings from argparse as
-    list
-    """
-    return arg.split(",")
-
-
-def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
-    """Combines stored edge index and returns dedupe'd array of nodes"""
-    combined = np.concatenate((edge_index[0], edge_index[1]))
-    return np.unique(combined)
-
-
-def _open_graph(g_path: str, indexes: str, split: str, targets: str):
-    """Open pickled graph, indexes, split, and targets"""
-    with open(g_path, "rb") as f:
-        graph = pickle.load(f)
-    with open(indexes, "rb") as f:
-        indexes = pickle.load(f)
-    with open(split, "rb") as f:
-        split = pickle.load(f)
-    with open(targets, "rb") as f:
-        targets = pickle.load(f)
-    return graph, indexes, split, targets
-
-
-def _get_indexes(
-    split: List[str], indexes: Dict[str, int]
-) -> Tuple[List[int], List[str]]:
-    present = [indexes[i] for i in split if i in indexes]
-    not_present = [i for i in split if i not in indexes]
-    return present, not_present
-
-
-def _get_split_indexes(
-    split: Dict[str, List[str]], indexes: Dict[str, int]
-) -> Tuple[List[int], List[str], List[int], List[str], List[int], List[str]]:
-    present_train, not_present_train = _get_indexes(split["train"], indexes)
-    present_val, not_present_val = _get_indexes(split["validation"], indexes)
-    present_test, not_present_test = _get_indexes(split["test"], indexes)
-    return (
-        present_train,
-        not_present_train,
-        present_val,
-        not_present_val,
-        present_test,
-        not_present_test,
+# plotting utilities
+@time_decorator(print_args=True)
+def _set_matplotlib_publication_parameters() -> None:
+    plt.rcParams.update(
+        {"font.size": 7, "axes.titlesize": "small", "font.sans-serif": "Nimbus Sans"}
     )
 
 
-def _average_edges_per_expression_node(edge_count_dict):
-    """Sum edge counts (the values in the dictionary) and divide by the number
-    of keys (nodes)"""
-    return sum(edge_count_dict.values()) / len(edge_count_dict.keys())
+@time_decorator(print_args=True)
+def plot_training_losses(
+    outfile: str,
+    savestr: str,
+    log: str,
+) -> None:
+    """Plots training losses from training log"""
+    plt.figure(figsize=(3.125, 2.25))
+    _set_matplotlib_publication_parameters()
+
+    losses: Dict[str, List[float]] = {"Train": [], "Test": [], "Validation": []}
+    with open(log, newline="") as file:
+        reader = csv.reader(file, delimiter=":")
+        for line in reader:
+            for substr in line:
+                for key in losses:
+                    if key in substr:
+                        losses[key].append(float(line[-1].split(" ")[-1]))
+
+    # # remove last item in train
+    # try:
+    #     loss_df = pd.DataFrame(losses)
+    # except ValueError:
+    #     losses["Train"] = losses["Train"][:-1]
+    if len(losses["Train"]) > len(losses["Test"]):
+        losses["Train"] = losses["Train"][:-1]
+
+    sns.lineplot(data=losses)
+    plt.margins(x=0)
+    plt.xlabel("Epoch", fontsize=7)
+    plt.ylabel("MSE Loss", fontsize=7)
+    plt.title(
+        f"Training loss for {savestr}",
+        wrap=True,
+        fontsize=7,
+    )
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300)
+    plt.close()
 
 
-def _get_targets_for_train_list(genes, targets):
-    """Lorem Ipsum"""
-    return {gene: targets[gene][0] for gene in genes}
+@time_decorator(print_args=True)
+def plot_predicted_versus_expected(
+    outfile: str,
+    savestr: str,
+    predicted: torch.Tensor,
+    expected: torch.Tensor,
+    rmse: torch.Tensor,
+) -> None:
+    """Plots predicted versus expected values for a given model"""
+    plt.figure(figsize=(3.15, 2.95))
+    _set_matplotlib_publication_parameters()
+
+    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
+    plt.margins(x=0)
+    plt.xlabel("Expected Log2 TPM", fontsize=7)
+    plt.ylabel("Predicted Log2 TPM", fontsize=7)
+    plt.title(
+        f"Expected versus predicted for {savestr}\n"
+        f"RMSE: {rmse}\n"
+        f"Spearman's R: {stats.spearmanr(expected, predicted)[0]}\n"
+        f"Pearson: {stats.pearsonr(expected, predicted)[0]}",
+        wrap=True,
+        fontsize=7,
+    )
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300)
+    plt.close()

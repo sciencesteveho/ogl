@@ -31,7 +31,10 @@ from constants import REGULATORY_ELEMENTS
 from rbp_network_filter import RBPNetworkFilter
 from utils import _get_chromatin_loop_file
 from utils import genes_from_gencode
+from utils import setup_logging
 from utils import time_decorator
+
+logger = setup_logging()
 
 
 class EdgeParser:
@@ -226,18 +229,18 @@ class EdgeParser:
         Returns:
             None
         """
-        print("Parsing interaction edges...")
+        logger.info("Parsing interaction edges...")
         self._process_interaction_edges()
-        print("Interaction edges complete!")
+        logger.info("Interaction edges complete!")
 
-        print("Parsing chrom loop edges...")
+        logger.info("Parsing chrom loop edges...")
         basenodes = self._parse_chromloop_basegraph(gene_gene=self.gene_gene)
-        print("Chrom loop edges complete!")
+        logger.info("Chrom loop edges complete!")
 
-        print("Writing node references...")
+        logger.info("Writing node references...")
         for node in basenodes:
             self._write_noderef_combination(node)
-        print("Node references complete!")
+        logger.info("Node references complete!")
 
     def _rbp_network(
         self,
@@ -678,7 +681,7 @@ class EdgeParser:
             basenodes |= self._process_loop_edges(
                 first_feature, second_feature, edge_type
             ) | self._process_loop_edges(second_feature, first_feature, edge_type)
-            print(f"Processed chrom_loop {edge_type} edges")
+            logger.info(f"Processed chrom_loop {edge_type} edges")
         return basenodes
 
     @time_decorator(print_args=True)

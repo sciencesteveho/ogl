@@ -18,6 +18,9 @@ from local_context_parser import LocalContextParser
 from preprocessor import GenomeDataPreprocessor
 from target_consolidator import TrainingTargetConsolidator
 from utils import _get_files_in_directory
+from utils import setup_logging
+
+logger = setup_logging()
 
 
 def preprocess_bedfiles(
@@ -30,7 +33,7 @@ def preprocess_bedfiles(
     )
 
     preprocessObject.prepare_data_files()
-    print("Bedfile preprocessing complete!")
+    logger.info("Bedfile preprocessing complete!")
 
 
 def parse_edges(
@@ -45,7 +48,7 @@ def parse_edges(
     )
 
     edgeparserObject.parse_edges()
-    print("Edges parsed!")
+    logger.info("Edges parsed!")
 
 
 def parse_linear_context(
@@ -89,7 +92,7 @@ def parse_linear_context(
     )
 
     localparseObject.parse_context_data()
-    print("Local context parser complete!")
+    logger.info("Local context parser complete!")
 
 
 def training_target_consolidator(
@@ -133,7 +136,7 @@ def create_tissue_graph(
         tissue=tissue,
         target_genes=target_genes,
     )
-    print(f"Graph for {tissue} created!")
+    logger.info(f"Graph for {tissue} created!")
 
 
 def main() -> None:
@@ -179,7 +182,7 @@ def main() -> None:
         with contextlib.suppress(ValueError):
             experiment_config.nodes.remove("dyadic")
 
-    print(f"Starting pipeline for {experiment_config.experiment_name}!")
+    logger.info(f"Starting pipeline for {experiment_config.experiment_name}!")
 
     # pipeline!
     preprocess_bedfiles(

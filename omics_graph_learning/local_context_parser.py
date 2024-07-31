@@ -29,7 +29,10 @@ from positional_encoding import PositionalEncoding
 from utils import dir_check_make
 from utils import genes_from_gencode
 from utils import get_physical_cores
+from utils import setup_logging
 from utils import time_decorator
+
+logger = setup_logging()
 
 
 class LocalContextParser:
@@ -118,10 +121,6 @@ class LocalContextParser:
 
         # make directories
         self._make_directories()
-
-        # set up logger
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
 
     def _set_directories(self) -> None:
         """Set directories from yaml"""
@@ -296,7 +295,7 @@ class LocalContextParser:
         Each bed is slopped then intersected twice. First, it is intersected
         with every other node type. Then, the intersected bed is filtered to
         only keep edges within the gene region."""
-        print(f"starting combinations {node_type}")
+        logger.info(f"starting combinations {node_type}")
 
         def _unix_intersect(node_type: str, type: Optional[str] = None) -> None:
             """Perform a bed intersect using shell, which can be faster than
@@ -356,7 +355,7 @@ class LocalContextParser:
             save_file = (
                 self.attribute_dir / attribute / f"{node_type}_{attribute}_percentage"
             )
-            self.logger.info(f"Processing {attribute} for {node_type}")
+            logger.info(f"Processing {attribute} for {node_type}")
             self._overlap_with_attribute(ref_file, attribute, save_file)
 
     def _reference_nodes_for_feature_aggregation(

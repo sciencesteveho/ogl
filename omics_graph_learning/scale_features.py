@@ -8,7 +8,6 @@ genomic data can exist across. To avoid leakage, we fit the scalers only on the
 node idxs that occur in the training set."""
 
 
-import logging
 from multiprocessing import Pool
 from pathlib import Path
 import pickle
@@ -22,10 +21,10 @@ from sklearn.preprocessing import MinMaxScaler  # type: ignore
 from utils import dir_check_make
 from utils import get_physical_cores
 from utils import ScalerUtils
+from utils import setup_logging
 
+logger = setup_logging()
 CORES = get_physical_cores()
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def scale_graph(scaler_utility: ScalerUtils) -> Dict:
