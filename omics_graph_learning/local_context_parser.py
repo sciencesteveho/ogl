@@ -202,35 +202,52 @@ class LocalContextParser:
         return prefix, prepared_bed
 
     @time_decorator(print_args=True)
-    def _slop_sort(
+    def process_bedcollection(
         self,
-        bedinstance: Dict[str, pybedtools.BedTool],
+        bedcollection: Dict[str, pybedtools.BedTool],
         chromfile: str,
         feat_window: int,
     ) -> Tuple[Dict[str, pybedtools.BedTool], Dict[str, pybedtools.BedTool]]:
-        """Slop each line of a bedfile to get all features within a window
-
-        Args:
-            bedinstance // a region-filtered genomic bedfile
-            chromfile // textfile with sizes of each chromosome in hg38
-
-        Returns:
-            bedinstance_sorted -- sorted bed
-            bedinstance_slopped -- bed slopped by amount in feat_window
+        """Process bedfiles by sorting then adding a window (slop) around each
+        feature.
         """
-        bedinstance_slopped, bedinstance_sorted = {}, {}
-        for key, value in bedinstance.items():
-            bedinstance_sorted[key] = bedinstance[key].sort()
-            if key not in ATTRIBUTES + self.DIRECT:
-                nodes = bedinstance[key].slop(g=chromfile, b=feat_window).sort()
-                newstrings = [
-                    str(line_1).split("\n")[0] + "\t" + str(line_2)
-                    for line_1, line_2 in zip(nodes, value)
-                ]
-                bedinstance_slopped[key] = pybedtools.BedTool(
-                    "".join(newstrings), from_string=True
-                ).sort()
-        return bedinstance_sorted, bedinstance_slopped
+        bedcollection_sorted = self._sort_bedcollection(bedcollection)
+        bedcollection_slopped = self._slop_bedcollection(
+            bedcollection, chromfile, feat_window
+        )
+        return bedcollection_sorted, bedcollection_slopped
+
+    def _slop_bedcollection(
+        self,
+        bedcollection: Dict[str, pybedtools.BedTool],
+        chromfile: str,
+        feat_window: int,
+    ) -> Dict[str, pybedtools.BedTool]:
+        """Slop bedfiles that are not 3D chromatin files."""
+        return {
+            key: self._slop_and_rewrite_bed(value, chromfile, feat_window)
+            for key, value in bedcollection.items()
+            if key not in ATTRIBUTES + self.DIRECT
+        }
+
+    @staticmethod
+    def _sort_bedcollection(
+        bedcollection: Dict[str, pybedtools.BedTool]
+    ) -> Dict[str, pybedtools.BedTool]:
+        """Sort bedfiles in a collection"""
+        return {key: value.sort() for key, value in bedcollection.items()}
+
+    @staticmethod
+    def _slop_and_rewrite_bed(
+        bedfile: pybedtools.BedTool, chromfile: str, feat_window: int
+    ) -> pybedtools.BedTool:
+        """Slop a single bedfile and process the result."""
+        slopped = bedfile.slop(g=chromfile, b=feat_window).sort()
+        newstrings = [
+            str(line_1).split("\n")[0] + "\t" + str(line_2)
+            for line_1, line_2 in zip(slopped, bedfile)
+        ]
+        return pybedtools.BedTool("".join(newstrings), from_string=True).sort()
 
     @time_decorator(print_args=True)
     def _bed_intersect(
@@ -442,79 +459,46 @@ class LocalContextParser:
     @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
         """Parse local genomic data into graph edges."""
-
-        @time_decorator(print_args=True)
-        def _save_intermediate(
-            bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
-        ) -> None:
-            """Save region specific bedfiles"""
-            for key in bed_dictionary:
-                file = self.parse_dir / "intermediate" / f"{folder}/{key}.bed"
-                if not os.path.exists(file):
-                    bed_dictionary[key].saveas(file)
-
-        @time_decorator(print_args=True)
-        def _pre_concatenate_all_files(all_files: str) -> None:
-            """Pre-concatenate via unix commands to save time"""
-            if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
-                cat_cmd = ["cat"] + [
-                    self.intermediate_sorted / f"{x}.bed" for x in bedinstance_slopped
-                ]
-                sort_cmd = "sort -k1,1 -k2,2n"
-                concat = Popen(cat_cmd, stdout=PIPE)
-                with open(all_files, "w") as outfile:
-                    subprocess.run(
-                        sort_cmd, stdin=concat.stdout, stdout=outfile, shell=True
-                    )
-                outfile.close()
-
         # process windows and renaming
-        pool = Pool(processes=self.node_processes)
-        bedinstance_flat = dict(
-            pool.starmap(
-                self._prepare_local_features, [(bed,) for bed in self.bedfiles]
+        with Pool(processes=self.node_processes) as pool:
+            bedcollection_flat = dict(
+                pool.starmap(
+                    self._prepare_local_features, [(bed,) for bed in self.bedfiles]
+                )
             )
-        )
-        pool.close()  # re-open and close pool after every multi-process
 
         # sort and extend windows according to FEAT_WINDOWS
-        bedinstance_sorted, bedinstance_slopped = self._slop_sort(
-            bedinstance=bedinstance_flat,
+        bedcollection_sorted, bedcollection_slopped = self.process_bedcollection(
+            bedcollection=bedcollection_flat,
             chromfile=self.chromfile,
             feat_window=self.feat_window,
         )
 
         # save intermediate files
-        _save_intermediate(bedinstance_sorted, folder="sorted")
-        _save_intermediate(bedinstance_slopped, folder="slopped")
+        self._save_intermediate(bedcollection_sorted, folder="sorted")
+        self._save_intermediate(bedcollection_slopped, folder="slopped")
 
         # pre-concatenate to save time
         all_files = self.intermediate_sorted / "all_files_concatenated.bed"
-        _pre_concatenate_all_files(all_files)
+        self._pre_concatenate_all_files(all_files, bedcollection_slopped)
 
         # perform intersects across all feature types - one process per nodetype
-        pool = Pool(processes=self.node_processes)
-        pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
-        pool.close()
+        with Pool(processes=self.node_processes) as pool:
+            pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
 
         # get size and all attributes - one process per nodetype
-        pool = Pool(processes=self.ATTRIBUTE_PROCESSES)
-        pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
-        pool.close()
+        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+            pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
 
         # parse edges into individual files
         self._generate_edges()
 
         # save node attributes as reference for later - one process per nodetype
-        pool = Pool(processes=self.ATTRIBUTE_PROCESSES)
-        pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
-        pool.close()
+        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+            pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
 
-        # cleanup: remove intermediate files
-        retain = ["all_concat_sorted.bed"]
-        for item in os.listdir(self.edge_dir):
-            if item not in retain:
-                os.remove(self.edge_dir / item)
+        # cleanup
+        self._cleanup_edge_files(self.edge_dir)
 
     def _remove_blacklist_and_alt_configs(
         self,
@@ -523,6 +507,33 @@ class LocalContextParser:
     ) -> pybedtools.bedtool.BedTool:
         """Remove blacklist and alternate chromosomes from bedfile."""
         return self._remove_alt_configs(bed.intersect(blacklist, sorted=True, v=True))
+
+    @time_decorator(print_args=True)
+    def _save_intermediate(
+        self, bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
+    ) -> None:
+        """Save region specific bedfiles"""
+        for key in bed_dictionary:
+            file = self.parse_dir / "intermediate" / f"{folder}/{key}.bed"
+            if not os.path.exists(file):
+                bed_dictionary[key].saveas(file)
+
+    @time_decorator(print_args=True)
+    def _pre_concatenate_all_files(
+        self, all_files: str, bedcollection_slopped: Dict[str, pybedtools.BedTool]
+    ) -> None:
+        """Pre-concatenate via unix commands to save time"""
+        if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
+            cat_cmd = ["cat"] + [
+                self.intermediate_sorted / f"{x}.bed" for x in bedcollection_slopped
+            ]
+            sort_cmd = "sort -k1,1 -k2,2n"
+            concat = Popen(cat_cmd, stdout=PIPE)
+            with open(all_files, "w") as outfile:
+                subprocess.run(
+                    sort_cmd, stdin=concat.stdout, stdout=outfile, shell=True
+                )
+            outfile.close()
 
     @staticmethod
     def _remove_alt_configs(
@@ -539,3 +550,11 @@ class LocalContextParser:
         return bedfile.filter(
             lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]
         ).saveas()
+
+    @staticmethod
+    def _cleanup_edge_files(path: Path) -> None:
+        """Remove intermediate files"""
+        retain = ["all_concat_sorted.bed"]
+        for item in os.listdir(path):
+            if item not in retain:
+                os.remove(path / item)
