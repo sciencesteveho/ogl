@@ -1,11 +1,12 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
+
 
 """Class to handle the assembly of target values for the regression task. Values
 are taken from a variety of different matrices and are scaled using
 StandardScaler. The class can handle both GTEx TPM data (median regression) and
-rna-seq data from ENCODE (also TPM, but at the sample level and not median)"""
+rna-seq data from ENCODE (also TPM, but at the sample level and not median)."""
+
 
 from copy import deepcopy
 from pathlib import Path
@@ -63,6 +64,11 @@ class TargetAssembler:
         self.experiment_config = experiment_config
         self.split = split
         self.pseudocount = pseudocount
+        self.average_activity = _load_pickle(experiment_config.average_activity_df)
+        self.expression_median_across_all = _load_pickle(
+            experiment_config.expression_median_across_all
+        )
+        self.tissue_keywords = self._prepare_keywords()
 
         self.config_dir = experiment_config.config_dir
         self.expression_median_matrix = experiment_config.expression_median_matrix
@@ -70,10 +76,17 @@ class TargetAssembler:
         self.protein_abundance_matrix = experiment_config.protein_abundance_matrix
         self.protein_abundance_medians = experiment_config.protein_abundance_medians
         self.tissues = experiment_config.tissues
-        self.average_activity = _load_pickle(experiment_config.average_activity_df)
-        self.expression_median_across_all = _load_pickle(
-            experiment_config.expression_median_across_all
-        )
+
+    def _prepare_keywords(self) -> Dict[str, Tuple[str, str]]:
+        """Prepare keywords for data extraction from expression dataframes."""
+        return {
+            tissue: (
+                config.resources["key_tpm"],
+                config.resources["key_protein_abundance"],
+            )
+            for tissue in self.tissues
+            for config in [TissueConfig.from_yaml(self.config_dir / f"{tissue}.yaml")]
+        }
 
     def assemble_matrix_targets(self) -> Dict[str, Dict[str, np.ndarray]]:
         """Assemble GTEx matrix targets based on provided split information."""
@@ -126,20 +139,6 @@ class TargetAssembler:
     ) -> Dict[str, Dict[str, np.ndarray]]:
         """Call the static method to scale targets using StandardScaler."""
         return self._scale_targets(targets)
-
-    def _prepare_keywords(self) -> Dict[str, Tuple[str, str]]:
-        """Prepare keywords for data extraction from dataframes.
-
-        Returns:
-            Dict[str, Tuple[str, str]]: Dictionary of tissue keywords.
-        """
-        matrix_keywords = {}
-        for tissue in self.tissues:
-            tissue_config = TissueConfig.from_yaml(self.config_dir / f"{tissue}.yaml")
-            tpm_keyword = tissue_config.resources["key_tpm"]
-            protein_abundance_keyword = tissue_config.resources["key_protein_abundance"]
-            matrix_keywords[tissue] = (tpm_keyword, protein_abundance_keyword)
-        return matrix_keywords
 
     def _raw_protein_abundance_matrix(
         self,

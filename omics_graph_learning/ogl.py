@@ -7,7 +7,6 @@ on a HPC via the SLURM scheduler."""
 
 
 import argparse
-import logging
 import os
 import sys
 from typing import List, Optional, Tuple
@@ -69,12 +68,9 @@ class PipelineRunner:
         --optimize_params
     """
 
-    def __init__(
-        self, config: ExperimentConfig, args: argparse.Namespace, logger=logging.logger
-    ) -> None:
+    def __init__(self, config: ExperimentConfig, args: argparse.Namespace) -> None:
         self.config = config
         self.args = args
-        logger = logger
 
     def _get_file_paths(self, split_name: str) -> Tuple[str, str]:
         """Construct file paths for graphs to check if files exist"""
@@ -142,14 +138,18 @@ class PipelineRunner:
             slurmids.append(job_id)
         return slurmids
 
-    def run_graph_concatenation(self, slurmids: List[str], split_name: str) -> str:
+    def run_graph_concatenation(
+        self,
+        split_name: str,
+        slurmids: Optional[List[str]],
+    ) -> str:
         """Run graph concatenation job."""
         constructor = "concat.sh"
         return submit_slurm_job(
             job_script=constructor,
             args=f"{self.args.experiment_yaml} \
                 {split_name}",
-            dependency=":".join(slurmids),
+            dependency=":".join(slurmids) if slurmids else None,
         )
 
     def scale_node_features(self, slurmids: List[str], split_name: str) -> str:
@@ -241,13 +241,16 @@ class PipelineRunner:
                 logger.info("Not all intermediates found. Re-running entire pipeline.")
                 run_id = self.graph_construction_jobs(split_name)
 
-        construct_id = self.run_graph_concatenation(split_name=split_name)
+        run_id = run_id or ""
+        construct_id = self.run_graph_concatenation(
+            split_name=split_name, slurmids=[run_id]
+        )
         logger.info("Graph concatenation job submitted.")
 
-        scale_id = self.scale_node_features(slurmids, split_name)
+        scale_id = self.scale_node_features([construct_id], split_name)
         logger.info("Node feature scaling job submitted.")
 
-        self.submit_gnn_job(split_name, scale_id, args.optimize_params)
+        self.submit_gnn_job(split_name, scale_id)
 
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
@@ -454,7 +457,6 @@ def main() -> None:
     pipe_runner = PipelineRunner(
         config=experiment_config,
         args=args,
-        logger=logger,
     )
     pipe_runner.run_pipeline()
 
