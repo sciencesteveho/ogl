@@ -81,7 +81,7 @@ class GeneTrainTestSplitter:
         """
         test_chrs = experiment_config.test_chrs
         val_chrs = experiment_config.val_chrs
-        tissues = experiment_config.tissues
+        # tissues = experiment_config.tissues
         self._validate_chrs(test_chrs, val_chrs)
 
         target_genes_only = [gene.split("_")[0] for gene in self.target_genes]
@@ -183,14 +183,7 @@ class GeneTrainTestSplitter:
         gtf: str,
         target_genes: List[str],
     ) -> Dict[str, str]:
-        """Get gene: chromosome dict from a gencode gtf file
-
-        Args:
-            gtf (str): /path/to/genes.gtf
-
-        Returns:
-            List[str]: genes
-        """
+        """Get gene: chromosome dict from a gencode gtf file."""
         with open(gtf, newline="") as file:
             return {
                 line[3]: line[0]
