@@ -78,7 +78,11 @@ def setup_logging(log_file: Optional[str] = None) -> logging.Logger:
         log_file (Optional[str]): Path to the log file. If None, logging only
         occurs to stderr.
     """
-    logger = logging.getLogger(__name__)
+    # get name of module calling logger
+    caller_frame = inspect.stack()[1]
+    caller_module = inspect.getmodule(caller_frame[0])
+    logger_name = caller_module.__name__ if caller_module else "__main__"
+    logger = logging.getLogger(logger_name)
 
     # clear existing handlers to avoid duplication
     if logger.handlers:
