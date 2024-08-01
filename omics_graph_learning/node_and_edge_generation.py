@@ -33,8 +33,7 @@ def _check_for_existing_data(
     edge_dir = experiment_config.working_directory / tissue / "parsing" / "edges"
     file = edge_dir / LocalContextParser.SORTED_CONCATENATED_FILE
     exists = file.exists()
-    logger.info(f"Checking for existing data at: {file}")
-    logger.info(f"File exists: {exists}")
+    logger.info(f"Edges exists: {exists}")
     return exists
 
 
