@@ -30,7 +30,11 @@ def _check_for_existing_data(
     output of linear context parser for a given experiment."""
     tissue = tissue_config.resources["tissue"]
     edge_dir = experiment_config.working_directory / tissue / "parsing" / "edges"
-    return (edge_dir / LocalContextParser.ALL_CONCATENATED_FILE).exists()
+    file = edge_dir / LocalContextParser.ALL_CONCATENATED_FILE
+    exists = file.exists()
+    logger.debug(f"Checking for existing data at: {file}")
+    logger.debug(f"File exists: {exists}")
+    return exists
 
 
 def preprocess_bedfiles(
@@ -192,7 +196,8 @@ def main() -> None:
             experiment_config.nodes.remove("dyadic")
 
     logger.info(
-        f"Starting pipeline for {experiment_config.experiment_name}! Checking to see if pre-split data has been parsed..."
+        f"Starting pipeline for {experiment_config.experiment_name}!"
+        "Checking to see if pre-split data has been parsed..."
     )
     if _check_for_existing_data(
         experiment_config=experiment_config, tissue_config=tissue_config
