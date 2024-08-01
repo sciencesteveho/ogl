@@ -79,6 +79,11 @@ def setup_logging(log_file: Optional[str] = None) -> logging.Logger:
         occurs to stderr.
     """
     logger = logging.getLogger(__name__)
+
+    # clear existing handlers to avoid duplication
+    if logger.handlers:
+        logger.handlers.clear()
+
     logger.setLevel(logging.INFO)
 
     # set date, time, and module name format

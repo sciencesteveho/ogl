@@ -64,7 +64,7 @@ class TargetAssembler:
         self.split = split
         self.pseudocount = pseudocount
 
-        self.config_dir = experiment_config.config_dir
+        self.sample_config_dir = experiment_config.config_dir
         self.log_transform = experiment_config.log_transform
         self.tissues = experiment_config.tissues
 
@@ -140,7 +140,9 @@ class TargetAssembler:
                 config.resources["key_protein_abundance"],
             )
             for tissue in self.tissues
-            for config in [TissueConfig.from_yaml(self.config_dir / f"{tissue}.yaml")]
+            for config in [
+                TissueConfig.from_yaml(self.sample_config_dir / f"{tissue}.yaml")
+            ]
         }
 
     def _load_tpm_median_df(self) -> pd.DataFrame:
@@ -282,7 +284,9 @@ class TargetAssembler:
     ) -> Tuple[pd.Series, pd.Series]:
         """Get fold change and difference from average for a given tissue given
         an average activity dataframe."""
-        tissue_config = TissueConfig.from_yaml(self.config_dir / f"{tissue}.yaml")
+        tissue_config = TissueConfig.from_yaml(
+            self.sample_config_dir / f"{tissue}.yaml"
+        )
         df = pd.read_table(
             tissue_config.resources["tpm"], index_col=1, header=[2]
         ).drop("id", axis=1)
