@@ -34,7 +34,7 @@ def run_tests() -> bool:
 
 
 class PipelineRunner:
-    """Class for handling the entire pipeline, from data parsing to graph
+    """Class for handling the entire pipeline, from datZZZZa parsing to graph
     construction and GNN training.
 
     Attributes:
@@ -232,22 +232,11 @@ class PipelineRunner:
     def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
         """Submit all pipeline jobs if a final graph is not found."""
         if not os.path.isfile(intermediate_graph):
-            run_id = self.graph_construction_jobs(split_name)
+            logger.info("No intermediates found. Running entire pipeline!")
+            slurm_id = self.graph_construction_jobs(split_name)
         else:
-            logger.info(
-                "Intermediate graph found. Checking if all other tissues are done..."
-            )
-            if not self._check_all_intermediates(split_name):
-                logger.info("Not all intermediates found. Re-running entire pipeline.")
-                run_id = self.graph_construction_jobs(split_name)
-
-        run_id = run_id or ""
-        construct_id = self.run_graph_concatenation(
-            split_name=split_name, slurmids=[run_id]
-        )
-        logger.info("Graph concatenation job submitted.")
-
-        scale_id = self.scale_node_features([construct_id], split_name)
+            slurm_id = self.post_split_jobs(split_name)
+        scale_id = self.scale_node_features([slurm_id], split_name)
         logger.info("Node feature scaling job submitted.")
 
         self.submit_gnn_job(split_name, scale_id)
@@ -255,8 +244,6 @@ class PipelineRunner:
     def graph_construction_jobs(self, split_name: str) -> str:
         """Submit jobs for node and edge generation, local context parsing, and
         graph construction."""
-        logger.info("No intermediates found. Running entire pipeline!")
-
         # node and edge generation
         slurmids = self.run_node_and_edge_generation(split_name=split_name)
         logger.info("Node and edge generation job submitted.")
@@ -268,6 +255,21 @@ class PipelineRunner:
         logger.info("Graph concatenation job submitted.")
 
         return construct_id
+
+    def post_split_jobs(self, split_name: str) -> str:
+        """Submit jobs after splitting the data, from construction onwards."""
+        logger.info(
+            "Intermediate graph found. Checking if all other tissues are done..."
+        )
+        if not self._check_all_intermediates(split_name):
+            logger.info("Not all intermediates found. Re-running entire pipeline.")
+            return self.graph_construction_jobs(split_name)
+
+        logger.info("All intermediates found. Concatenating graphs.")
+        result = self.run_graph_concatenation(split_name=split_name, slurmids=None)
+        logger.info("Graph concatenation job submitted.")
+
+        return result
 
     def run_pipeline(self) -> None:
         """Run the pipeline! Check for existing files and submit jobs as needed."""
