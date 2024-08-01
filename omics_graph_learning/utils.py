@@ -139,6 +139,12 @@ def _run_command(command: str, get_output: bool = False) -> Optional[str]:
     return None
 
 
+def _chk_file_and_run(file: str, cmd: str) -> None:
+    """Check that a file does not exist before calling subprocess"""
+    if not os.path.isfile(file) or os.path.getsize(file) == 0:
+        subprocess.run(cmd, stdout=None, shell=True)
+
+
 # slurm operations
 def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
     """Submits a SLURM job and returns its job ID."""

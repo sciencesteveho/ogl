@@ -9,7 +9,6 @@ derive from the local context datatypes."""
 
 
 from itertools import repeat
-import logging
 from multiprocessing import Pool
 import os
 from pathlib import Path
@@ -26,6 +25,7 @@ from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
 from constants import ATTRIBUTES
 from positional_encoding import PositionalEncoding
+from utils import _chk_file_and_run
 from utils import dir_check_make
 from utils import genes_from_gencode
 from utils import get_physical_cores
@@ -90,7 +90,7 @@ class LocalContextParser:
     NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
 
     # helper for CPU cores
-    ATTRIBUTE_PROCESSES = get_physical_cores()
+    CORES = get_physical_cores()
 
     def __init__(
         self,
@@ -199,14 +199,14 @@ class LocalContextParser:
             pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
 
         # get size and all attributes - one process per nodetype
-        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+        with Pool(processes=self.CORES) as pool:
             pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
 
         # parse edges into individual files
         self._generate_edges()
 
         # save node attributes as reference for later - one process per nodetype
-        with Pool(processes=self.ATTRIBUTE_PROCESSES) as pool:
+        with Pool(processes=self.CORES) as pool:
             pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
 
         # cleanup
@@ -423,23 +423,16 @@ class LocalContextParser:
     @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
         """Unix concatenate and sort each edge file with parallelization options."""
-
-        def _chk_file_and_run(file: str, cmd: str) -> None:
-            """Check that a file does not exist before calling subprocess"""
-            if not os.path.isfile(file) or os.path.getsize(file) == 0:
-                subprocess.run(cmd, stdout=None, shell=True)
-
         cmds = {
             "cat_cmd": [
                 f"cat {self.edge_dir}/*_dupes_removed* >",
                 f"{self.edge_dir}/{self.ALL_CONCATENATED_FILE}",
             ],
             "sort_cmd": [
-                f"LC_ALL=C sort --parallel=32 -S 80% -k10,10 {self.edge_dir}/{self.ALL_CONCATENATED_FILE} |",
+                f"LC_ALL=C sort --parallel={self.CORES} -S 70% -k10,10 {self.edge_dir}/{self.ALL_CONCATENATED_FILE} |",
                 "uniq >" f"{self.edge_dir}/{self.SORTED_CONCATENATED_FILE}",
             ],
         }
-
         for cmd in cmds:
             _chk_file_and_run(
                 cmds[cmd][1],
