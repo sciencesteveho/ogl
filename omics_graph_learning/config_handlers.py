@@ -70,6 +70,10 @@ class ExperimentConfig:
     root_dir: Path
     tissues: List[str]
 
+    # Params from positional_encoding
+    build_positional_encoding: bool
+    train_positional_encoding: bool
+
     # Params from directories dict
     baseloop_dir: Path
     expression_dir: Path
@@ -107,7 +111,8 @@ class ExperimentConfig:
         params = load_yaml(yaml_file)
 
         # update the params with the params hidden in dictionaries
-        cls._add_training_target_params(params=params, key="training_targets")
+        cls._unpack_dictionary_params(params=params, key="training_targets")
+        cls._unpack_dictionary_params(params=params, key="positional_encoding")
         cls._add_attribute_references(params=params, key="attribute_references")
         cls._resolve_directories(params=params, root_dir=params["root_dir"])
         cls._ensure_lists(
@@ -144,7 +149,7 @@ class ExperimentConfig:
         return value
 
     @staticmethod
-    def _add_training_target_params(params: dict, key: str) -> None:
+    def _unpack_dictionary_params(params: dict, key: str) -> None:
         training_targets = params.pop(key, {})
         for key, value in training_targets.items():
             params[key] = value
@@ -223,10 +228,6 @@ class TissueConfig:
         params = load_yaml(yaml_file)
         return cls(**params)
 
-        # # update the params with the params hidden in dictionaries
-        # unpacked_params = TissueConfig.unpack_nested_dict(params)
-        # return TissueConfig(**unpacked_params)
-
     @staticmethod
     def unpack_nested_dict(nested: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """A helper function to unpack a nested dictionary into a flat dictionary."""
@@ -238,72 +239,3 @@ class TissueConfig:
             else:
                 unpacked[key] = value
         return unpacked
-
-    # # Params from feature dictionary
-    # ATAC: str
-    # CTCF: str
-    # DNase: str
-    # H3K27ac: str
-    # H3K27me3: str
-    # H3K36me3: str
-    # H3K4me1: str
-    # H3K4me2: str
-    # H3K4me3: str
-    # H3K79me2: str
-    # H3K9ac: str
-    # H3K9me3: str
-    # POLR2A: str
-    # RAD21: str
-    # SMC3: str
-
-    # # params from interaction dictionary
-    # gct: str
-    # id_lookup: str
-    # tf_binding: str
-    # tf_marker: str
-
-    # # params from local dictionary
-    # cnv: str
-    # cpgislands: str
-    # ctcfccre: str
-    # gencode: str
-    # indels: str
-    # line: str
-    # ltr: str
-    # microsatellites: str
-    # phastcons: str
-    # polyasites: str
-    # rbpbindingsites: str
-    # recombination: str
-    # repg1b: str
-    # repg2: str
-    # reps1: str
-    # reps2: str
-    # reps3: str
-    # reps4: str
-    # rnarepeat: str
-    # simplerepeats: str
-    # sine: str
-    # snp: str
-    # tss: str
-
-    # # params from methylation dictionary
-    # cpg: str
-    # cpg_filetype: str
-    # cpg_liftover: bool
-
-    # # params from resources dictionary
-    # key_protein_abundance: str
-    # key_tpm: str
-    # marker_name: str
-    # ppi_tissue: str
-    # rna: str
-    # tissue: str
-    # tissue_name: str
-    # tpm: str
-
-    # # params from tissue_specific_nodes
-    # crms: str
-    # super_enhancer: str
-    # tads: str
-    # tf_footprints: str

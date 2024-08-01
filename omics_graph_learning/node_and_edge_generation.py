@@ -66,9 +66,7 @@ def parse_edges(
 
 
 def parse_local_context(
-    experiment_config: ExperimentConfig,
-    tissue_config: TissueConfig,
-    positional_encoding: bool,
+    experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> None:
     """Add local context edges based on basenode input"""
 
@@ -102,7 +100,6 @@ def parse_local_context(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
         bedfiles=bedfiles_for_parsing,
-        positional_encoding=positional_encoding,
     )
 
     localparseObject.parse_context_data()
@@ -149,6 +146,7 @@ def create_tissue_graph(
         graph_type=experiment_config.graph_type,
         tissue=tissue,
         target_genes=target_genes,
+        build_positional_encoding=experiment_config.build_positional_encoding,
     )
     logger.info(f"Graph for {tissue} created!")
 
@@ -221,7 +219,6 @@ def main() -> None:
         parse_local_context(
             experiment_config=experiment_config,
             tissue_config=tissue_config,
-            positional_encoding=args.positional_encoding,
         )
 
     target_genes = training_target_consolidator(

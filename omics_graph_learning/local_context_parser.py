@@ -43,7 +43,6 @@ class LocalContextParser:
         experiment_config: Dataclass containing the experiment configuration.
         tissue_config: Dataclass containing the tissue configuration.
         bedfiles: dictionary containing each local genomic data file
-        positional_encoding: boolean to determine if positional encoding is used
 
     Methods
     ----------
@@ -97,7 +96,6 @@ class LocalContextParser:
         experiment_config: ExperimentConfig,
         tissue_config: TissueConfig,
         bedfiles: List[str],
-        positional_encoding: bool = True,
     ):
         """Initialize the class"""
         self.bedfiles = bedfiles
@@ -108,7 +106,7 @@ class LocalContextParser:
         self.feat_window = experiment_config.feat_window
         self.nodes = experiment_config.nodes
         self.working_directory = experiment_config.working_directory
-        self.positional_encoding = positional_encoding
+        self.build_positional_encoding = experiment_config.build_positional_encoding
 
         self.resources = tissue_config.resources
         self.gencode = tissue_config.local["gencode"]
@@ -240,7 +238,6 @@ class LocalContextParser:
             return feature
 
         # prepare data as pybedtools objects and intersect -v against blacklist
-        # beds = {}
         local_bed = pybedtools.BedTool(self.local_dir / bed).sort()
         ab = self._remove_blacklist_and_alt_configs(
             bed=local_bed, blacklist=self.blacklist
@@ -291,10 +288,12 @@ class LocalContextParser:
         node_type: str,
         all_files: str,
     ) -> None:
-        """Function to intersect a slopped bed entry with all other node types.
-        Each bed is slopped then intersected twice. First, it is intersected
-        with every other node type. Then, the intersected bed is filtered to
-        only keep edges within the gene region."""
+        """Slopped nodes are intersected with all other node types as a simple
+        and fast way to generate edges. Special instances are 3d chromatin based
+        nodes, which require a direct intersect instead of a slop.
+
+        Edge files are deduplicated and saved to the edge directory.
+        """
         logger.info(f"starting combinations {node_type}")
 
         def _unix_intersect(node_type: str, type: Optional[str] = None) -> None:
@@ -460,7 +459,9 @@ class LocalContextParser:
         """Add node attributes to reference dictionary for each feature type."""
         # initialize positional encoder
         positional_encoding = (
-            self._initialize_positional_encoder() if self.positional_encoding else None
+            self._initialize_positional_encoder()
+            if self.build_positional_encoding
+            else None
         )
 
         stored_attributes = {}

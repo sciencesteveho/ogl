@@ -47,7 +47,6 @@ class GraphToPytorch:
         experiment_config: ExperimentConfig,
         split_name: str,
         regression_target: str,
-        positional_encoding: bool = False,
         scaled_targets: bool = False,
         perturbation_config: Optional[PerturbationConfig] = None,
     ) -> None:
@@ -55,9 +54,10 @@ class GraphToPytorch:
         self.experiment_config = experiment_config
         self.split_name = split_name
         self.regression_target = regression_target
-        self.positional_encoding = positional_encoding
         self.scaled_targets = scaled_targets
         self.perturbation_config = perturbation_config
+
+        self.train_positional_encoding = experiment_config.train_positional_encoding
 
         self.graph_indexes, self.split, self.graph_data, self.targets = (
             self._load_data_object_prerequisites(
@@ -98,7 +98,7 @@ class GraphToPytorch:
         return create_node_tensors(
             graph_data=self.graph_data,
             perturbation=node_perturbation,
-            positional_encoding=self.positional_encoding,
+            positional_encoding=self.train_positional_encoding,
         )
 
     def instantiate_data_object(self) -> Data:

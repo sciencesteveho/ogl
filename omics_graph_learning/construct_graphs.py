@@ -110,8 +110,8 @@ class GraphConstructor:
         duplicate keys in preprocessing but they have the same attributes so they'll
         overwrite without issue. The hardcoded removed_keys are either chr, which we
         don't want the model or learn, or they contain sub dictionaries. Coordinates
-        are not a learning feature and positional encodings are added at a different
-        step of model training.
+        which are not a learning feature and positional encodings are added at a
+        different step of model training.
         """
         # load basenodes
         with open(f"{self.parse_dir}/attributes/basenodes_reference.pkl", "rb") as file:
@@ -208,6 +208,7 @@ class GraphSerializer:
         graph_type: str,
         prefix: str,
         tissue: str,
+        build_positional_encoding: bool = False,
     ) -> None:
         """Instantiate a GraphSerializer object."""
         self.graph = graph
@@ -215,6 +216,7 @@ class GraphSerializer:
         self.graph_type = graph_type
         self.prefix = prefix
         self.tissue = tissue
+        self.build_positional_encoding = build_positional_encoding
 
     def serialize(self) -> None:
         """Serialize the graph to numpy tensors and save to file."""
@@ -247,7 +249,7 @@ class GraphSerializer:
 
         # node specific data
         coordinates, positional_encodings, node_features = self._extract_node_data(
-            graph
+            graph, self.build_positional_encoding
         )
 
         # edge specific data
@@ -295,6 +297,7 @@ class GraphSerializer:
     @staticmethod
     def _extract_node_data(
         graph: nx.Graph,
+        build_positional_encoding: bool = False,
     ) -> Tuple[List[List[Union[str, float]]], List[np.ndarray], List[Any]]:
         """Extract node-specific data from the graph."""
         # prepare lists to store node data
@@ -306,12 +309,15 @@ class GraphSerializer:
         for i in range(len(graph.nodes)):
             node_data = graph.nodes[i]
             coordinates.append(list(node_data["coordinates"].values()))
-            positional_encodings.append(node_data["node_positional_encoding"].flatten())
+
+            if build_positional_encoding:
+                positional_encodings.append(node_data["positional_encoding"].flatten())
+
             node_features.append(
                 [
                     value
                     for key, value in node_data.items()
-                    if key not in ["coordinates", "node_positional_encoding"]
+                    if key not in ["coordinates", "positional_encoding"]
                 ]
             )
         return coordinates, positional_encodings, node_features
@@ -338,6 +344,7 @@ def construct_tissue_graph(
     graph_type: str,
     tissue: str,
     target_genes: List[str],
+    build_positional_encoding: bool = False,
 ) -> None:
     """Pipeline to generate per-sample graphs."""
 
@@ -364,5 +371,6 @@ def construct_tissue_graph(
         graph_type=graph_type,
         prefix=experiment_name,
         tissue=tissue,
+        build_positional_encoding=build_positional_encoding,
     )
     serializer.serialize()
