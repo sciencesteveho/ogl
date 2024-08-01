@@ -64,7 +64,7 @@ class TargetAssembler:
         self.split = split
         self.pseudocount = pseudocount
 
-        self.sample_config_dir = experiment_config.config_dir
+        self.sample_config_dir = experiment_config.sample_config_dir
         self.log_transform = experiment_config.log_transform
         self.tissues = experiment_config.tissues
 
