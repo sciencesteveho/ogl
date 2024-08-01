@@ -77,13 +77,46 @@ class TargetAssembler:
         self.expression_median_across_all = _load_pickle(
             experiment_config.expression_median_across_all
         )
-        self.tissue_keywords = self._prepare_keywords()
+
+    def assemble_rna_targets(
+        self, tissue_config: TissueConfig
+    ) -> Dict[str, Dict[str, np.ndarray]]:
+        """Assemble RNA targets based on provided split information."""
+        rna_quantifications = self._get_rna_quantifications(
+            rna_matrix=tissue_config.resources["rna"]
+        )
+        return {
+            partition: {
+                f'{gene}_{tissue_config.resources["tissue"]}': np.array(
+                    [rna_quantifications[gene.split("_")[0]]]
+                )
+                for gene in self.split[partition]
+            }
+            for partition in self.split
+        }
+
+    def _get_rna_quantifications(self, rna_matrix: str) -> Dict[str, float]:
+        """Returns a dictionary of gene: log transformed + pseudocount TPM
+        values for an RNA-seq quantification .tsv from ENCODE"""
+        df = read_encode_rna_seq_data(rna_matrix)
+        return (
+            (df["TPM"] + self.pseudocount)
+            .apply(
+                lambda x: self._apply_log_transform(
+                    pd.DataFrame([x]), transform_type=self.log_transform
+                )[0][0]
+            )
+            .to_dict()
+        )
 
     def assemble_matrix_targets(self) -> Dict[str, Dict[str, np.ndarray]]:
         """Assemble target values for training by collecting the required
         datatypes and creating a dictionary of arrays holding unique target
         values.
         """
+        # prepare keywords for data extraction if targets != rna_seq
+        self.tissue_keywords = self._prepare_keywords()
+
         tissue_names = [
             tissue_names[0] for tissue_names in self.tissue_keywords.values()
         ]
@@ -179,37 +212,6 @@ class TargetAssembler:
             .median(axis=1)
             .rename("all_tissues")
             .to_frame()
-        )
-
-    def assemble_rna_targets(
-        self, tissue_config: TissueConfig
-    ) -> Dict[str, Dict[str, np.ndarray]]:
-        """Assemble RNA targets based on provided split information."""
-        rna_quantifications = self._get_rna_quantifications(
-            rna_matrix=tissue_config.resources["rna"]
-        )
-        return {
-            partition: {
-                f'{gene}_{tissue_config.resources["tissue"]}': np.array(
-                    [rna_quantifications[gene.split("_")[0]]]
-                )
-                for gene in self.split[partition]
-            }
-            for partition in self.split
-        }
-
-    def _get_rna_quantifications(self, rna_matrix: str) -> Dict[str, float]:
-        """Returns a dictionary of gene: log transformed + pseudocount TPM
-        values for an RNA-seq quantification .tsv from ENCODE"""
-        df = read_encode_rna_seq_data(rna_matrix)
-        return (
-            (df["TPM"] + self.pseudocount)
-            .apply(
-                lambda x: self._apply_log_transform(
-                    pd.DataFrame([x]), transform_type=self.log_transform
-                )[0][0]
-            )
-            .to_dict()
         )
 
     def _raw_protein_abundance_matrix(
