@@ -288,11 +288,11 @@ class PipelineRunner:
         # decide which jobs to submit
         logger.info(f"Checking for final graph: {final_graph}")
         if not os.path.isfile(final_graph):
-            self.all_pipeline_jobs(intermediate_graph, split_name)
             logger.info(
                 f"Final graph not found. \
                 Checking for intermediate graph: {intermediate_graph}"
             )
+            self.all_pipeline_jobs(intermediate_graph, split_name)
         else:
             logger.info(
                 "Final graph found. \

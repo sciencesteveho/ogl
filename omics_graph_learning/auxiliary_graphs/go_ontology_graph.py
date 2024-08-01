@@ -1,20 +1,17 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
 
 
-"""_summary_ of project"""
+"""Code to parse a gene relationship graph from GO ontology annotations"""
+
 
 import argparse
 import csv
 import datetime
 import itertools
-import pathlib
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, List, Tuple
 
 import pybedtools  # type: ignore
 

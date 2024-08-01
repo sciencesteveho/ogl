@@ -1,16 +1,12 @@
 #! /usr/bin_element/env python
 # -*- coding: utf-8 -*-
 #
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
-# Plan
-# fxn to match sequences in each bin_element of elements
-# fxn to output edges of graph
+
 
 """Create a secondary graph structure based off of sequence similarity of
 regulatory elements. Graphs will be used to test training, but also as a
 potential auxilliary task."""
+
 
 import argparse
 import csv

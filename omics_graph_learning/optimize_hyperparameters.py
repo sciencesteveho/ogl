@@ -26,8 +26,9 @@ from train_gnn import prep_loader
 from train_gnn import test
 from train_gnn import train
 from utils import dir_check_make
+from utils import setup_logging
 
-# constant helpers
+# helpers
 EPOCHS = 200
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
@@ -267,6 +268,10 @@ def main() -> None:
     optuna_dir = model_dir / "optuna"
     dir_check_make(optuna_dir)
 
+    logger = setup_logging(
+        optuna_dir / f"{experiment_config.experiment_name}_optuna.log"
+    )
+
     # create a study object with Hyperband Pruner
     study = optuna.create_study(
         direction="minimize",
@@ -286,18 +291,18 @@ def main() -> None:
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
 
     # display results
-    print("Study statistics:\n")
-    print(f"Number of finished trials: {len(study.trials)}\n")
-    print(f"Number of pruned trials: {len(pruned_trials)}\n")
-    print(f"Number of complete trials: {len(complete_trials)}\n")
+    logger.info("Study statistics:\n")
+    logger.info(f"Number of finished trials: {len(study.trials)}\n")
+    logger.info(f"Number of pruned trials: {len(pruned_trials)}\n")
+    logger.info(f"Number of complete trials: {len(complete_trials)}\n")
 
     # explicitly print best trial
-    print("Best trial:")
+    logger.info("Best trial:")
     trial = study.best_trial
-    print(f"Value: {trial.value}")
-    print("Best params:")
+    logger.info(f"Value: {trial.value}")
+    logger.info("Best params:")
     for key, value in study.best_params.items():
-        print(f"\t{key}: {value}")
+        logger.info(f"\t{key}: {value}")
 
     # save results
     df = study.trials_dataframe().drop(
@@ -309,7 +314,7 @@ def main() -> None:
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
 
     # display results in a dataframe
-    print(f"\nOverall Results (ordered by accuracy):\n {df}")
+    logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
 
     # find the most important hyperparameters
     most_important_parameters = optuna.importance.get_param_importances(
@@ -317,9 +322,9 @@ def main() -> None:
     )
 
     # display the most important hyperparameters
-    print("\nMost important hyperparameters:")
+    logger.info("\nMost important hyperparameters:")
     for key, value in most_important_parameters.items():
-        print("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
+        logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
     # plot and save importances to file
     optuna.visualization.plot_optimization_history(study).write_image(

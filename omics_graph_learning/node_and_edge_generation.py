@@ -151,7 +151,6 @@ def create_tissue_graph(
 
 def main() -> None:
     """Pipeline to generate jobs for creating graphs"""
-
     # Parse arguments for type of graphs to produce
     parser = argparse.ArgumentParser()
     parser.add_argument(

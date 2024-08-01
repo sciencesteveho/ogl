@@ -36,6 +36,7 @@ from utils import _tensor_out_to_array
 from utils import dir_check_make
 from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
+from utils import setup_logging
 
 
 def setup_device(args: argparse.Namespace) -> torch.device:
@@ -494,7 +495,6 @@ def parse_arguments() -> argparse.Namespace:
 
 def construct_save_string(components: List[str], args: argparse.Namespace) -> str:
     """Adds args to specify save string for model and logs"""
-    print(components)
     if args.residual:
         components.append("residual")
     if args.heads:
@@ -512,7 +512,7 @@ def construct_save_string(components: List[str], args: argparse.Namespace) -> st
     return "_".join(components)
 
 
-def _plot_loss_and_performance(
+def plot_loss_and_performance(
     device: torch.cuda.device,
     data_loader: torch_geometric.data.DataLoader,
     model_dir: Path,
@@ -576,6 +576,7 @@ def training_loop(
     writer: SummaryWriter,
     model_dir: Path,
     args: argparse.Namespace,
+    logger: logging.Logger,
 ) -> Tuple[torch.nn.Module, float]:
     """Execute training loop for GNN models.
 
@@ -592,9 +593,8 @@ def training_loop(
             train_loader=train_loader,
             epoch=epoch,
         )
-        print(f"Epoch: {epoch:03d}, Train: {loss}")
         writer.add_scalar("Training loss", loss, epoch)
-        logging.info(f"Epoch: {epoch:03d}, Train: {loss}")
+        logger.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
         val_acc = test(
             model=model,
@@ -603,8 +603,7 @@ def training_loop(
             epoch=epoch,
             mask="val",
         )
-        print(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
+        logger.info(f"Epoch: {epoch:03d}, Validation: {val_acc:.4f}")
         writer.add_scalar("Validation RMSE", val_acc, epoch)
 
         test_acc = test_all_neighbors(
@@ -616,8 +615,7 @@ def training_loop(
             num_hops=args.gnn_layers,
             batch_size=args.batch_size,
         )
-        print(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
-        logging.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
+        logger.info(f"Epoch: {epoch:03d}, Test: {test_acc:.4f}")
         writer.add_scalar("Test RMSE", test_acc, epoch)
 
         scheduler.step(val_acc)
@@ -632,15 +630,15 @@ def training_loop(
             elif best_validation < val_acc:
                 stop_counter += 1
             if stop_counter == 20:
-                print("***********Early stopping!")
+                logger.info("***********Early stopping!")
                 break
 
     return model, val_acc
 
 
 def _experiment_setup(
-    args: argparse.Namespace, experiment_config: ExperimentConfig, log: bool = True
-) -> Tuple[str, Path]:
+    args: argparse.Namespace, experiment_config: ExperimentConfig
+) -> Tuple[str, Path, logging.Logger]:
     """Load experiment configuration from YAML file."""
     savestr = construct_save_string(
         [
@@ -657,22 +655,20 @@ def _experiment_setup(
         ],
         args,
     )
+    logger.info(f"Save string: {savestr}")
     model_dir = experiment_config.root_dir / "models" / f"{savestr}"
 
     # make directories and set up training log
     for folder in ["logs", "plots"]:
         dir_check_make(model_dir / folder)
 
-    if log:
-        logging.basicConfig(
-            filename=model_dir / "logs" / "training_log.txt",
-            level=logging.DEBUG,
-        )
-        logging.info("Experiment setup initialized.")
-        logging.info(f"Experiment configuration: {experiment_config}")
-        logging.info(f"Model directory: {model_dir}")
+    logger = setup_logging(log_file=str(model_dir / "logs" / "training_log.txt"))
 
-    return savestr, model_dir
+    # Log experiment information
+    logger.info("Experiment setup initialized.")
+    logger.info(f"Experiment configuration: {experiment_config}")
+    logger.info(f"Model directory: {model_dir}")
+    return savestr, model_dir, logger
 
 
 def prepare_pertubation_config(
@@ -695,7 +691,7 @@ def main() -> None:
     args = parse_arguments()
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
 
-    savestr, model_dir = _experiment_setup(
+    savestr, model_dir, logger = _experiment_setup(
         args=args, experiment_config=experiment_config
     )
 
@@ -785,7 +781,7 @@ def main() -> None:
     )
 
     prof.start()
-    print(f"Training for {epochs} epochs")
+    logger.info(f"Training for {epochs} epochs")
     model, final_val_acc = training_loop(
         model=model,
         device=device,
@@ -798,6 +794,7 @@ def main() -> None:
         writer=writer,
         model_dir=model_dir,
         args=args,
+        logger=logger,
     )
 
     # close out tensorboard utilities
@@ -809,7 +806,7 @@ def main() -> None:
     torch.save(model.state_dict(), model_path)
 
     # generate loss and prediction plots
-    _plot_loss_and_performance(
+    plot_loss_and_performance(
         model=model,
         device=device,
         data_loader=test_loader,

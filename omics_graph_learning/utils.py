@@ -69,10 +69,36 @@ def time_decorator(print_args: bool = False, display_arg: str = "") -> Callable:
 
 
 # logging setup
-def setup_logging() -> logging.Logger:
-    """Prepare a logger that prints to stderr."""
-    logging.basicConfig(level=logging.INFO)
-    return logging.getLogger(__name__)
+def setup_logging(log_file: Optional[str] = None) -> logging.Logger:
+    """
+    Prepare a logger that prints to stderr with date, time, and module name.
+    Optionally writes to a file if a filepath is specified.
+
+    Args:
+        log_file (Optional[str]): Path to the log file. If None, logging only
+        occurs to stderr.
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # set date, time, and module name format
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # create console handler and set level to INFO
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # create file handler if additional log file specified
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    return logger
 
 
 # file and directory operations
