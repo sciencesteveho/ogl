@@ -1,0 +1,10 @@
+---
+epochs: 200
+
+min_resource: 3
+
+n_trials: 200
+
+random_seed: 42
+
+reduction_factor: 3
