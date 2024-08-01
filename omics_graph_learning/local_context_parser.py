@@ -356,7 +356,7 @@ class LocalContextParser:
                 self.attribute_dir / attribute / f"{node_type}_{attribute}_percentage"
             )
             logger.info(f"Processing {attribute} for {node_type}")
-            self._overlap_with_attribute(ref_file, attribute, save_file)
+            self._group_attribute(ref_file, attribute, save_file)
 
     def _reference_nodes_for_feature_aggregation(
         self, node_type: str
@@ -377,7 +377,7 @@ class LocalContextParser:
             .saveas()
         )
 
-    def _overlap_with_attribute(
+    def _group_attribute(
         self, ref_file: pybedtools.bedtool.BedTool, attribute: str, save_file: Path
     ) -> None:
         """Get overlap with gene windows then aggregate total nucleotides, gc
