@@ -1,10 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
-#
+
+
 # Load model
 # Load data w/ modification
 # loader = NeighborLoader(new_data, input_nodes=new_node_ids, ...)

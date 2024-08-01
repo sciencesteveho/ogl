@@ -306,12 +306,12 @@ class GraphSerializer:
         for i in range(len(graph.nodes)):
             node_data = graph.nodes[i]
             coordinates.append(list(node_data["coordinates"].values()))
-            positional_encodings.append(node_data["positional_encoding"].flatten())
+            positional_encodings.append(node_data["node_positional_encoding"].flatten())
             node_features.append(
                 [
                     value
                     for key, value in node_data.items()
-                    if key not in ["coordinates", "positional_encoding"]
+                    if key not in ["coordinates", "node_positional_encoding"]
                 ]
             )
         return coordinates, positional_encodings, node_features

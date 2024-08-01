@@ -24,7 +24,7 @@ logger = setup_logging()
 
 
 def run_tests() -> bool:
-    """Run all unit tests to ensure pipeline code is functioning correctly.
+    """Run selected unit tests to ensure pipeline code is functioning correctly.
 
     Returns:
         bool: `True` if all tests pass, `False` otherwise
@@ -443,9 +443,6 @@ def main() -> None:
     """Run OGL pipeline, from data parsing to graph constructuion to GNN
     training with checks to avoid redundant computation."""
     args = parse_pipeline_arguments()
-
-    # set up logging
-    logger = setup_logging()
 
     # run unit tests first
     # if args.run_tests:
