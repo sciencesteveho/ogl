@@ -116,7 +116,7 @@ class GNNArchitectureBuilder:
             raise ValueError(
                 "PNA requires `train_dataset` to compute the in-degree histogram."
             )
-        gnn_kwargs["deg"] = self.compute_pna_histogram_tensor(train_dataset)
+        gnn_kwargs["deg"] = self._compute_pna_histogram_tensor(train_dataset)
 
     def _build_gcn(self, **kwargs) -> nn.Module:
         return self._build_modular_gnn("GCN", **kwargs)
