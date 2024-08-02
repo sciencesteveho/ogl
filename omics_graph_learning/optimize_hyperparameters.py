@@ -93,7 +93,10 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
         params["gnn_layers"] = trial.suggest_int("gnn_layers", low=1, high=8, step=1)
 
     # add task specific mlp if not DeeperGCN
-    if model != "DeeperGCN":
+    if model == "DeeperGCN":
+        params["task_specific_mlp"] = False
+        params["skip_connection"] = None
+    else:
         params["task_specific_mlp"] = trial.suggest_categorical(
             "task_specific_mlp", [True, False]
         )
@@ -134,9 +137,11 @@ def objective(
     positional_encoding = params["positional_encoding"]
 
     # params that are not part of every model
-    heads = params.get("heads")
+    heads = params.get(
+        "heads",
+    )
     skip_connection = params.get("skip_connection")
-    task_specific_mlp = params.get("task_specific_mlp")
+    task_specific_mlp = params.get("task_specific_mlp", False)
 
     # load graph data
     data = GraphToPytorch(
