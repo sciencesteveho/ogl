@@ -228,7 +228,7 @@ def _evaluate_model(
         data = data.to(device)
 
         # task specific or general mlp forward pass
-        if model.task_specific_mlp:
+        if hasattr(model, "task_specific_mlp") and model.task_specific_mlp:
             if mask == "val":
                 out = model(data.x, data.edge_index, data.val_mask_loss)
             elif mask == "test":
