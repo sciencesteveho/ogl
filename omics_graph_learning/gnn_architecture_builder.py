@@ -165,11 +165,6 @@ def build_gnn_architecture(**kwargs) -> nn.Module:
     """Pass kwargs to the builder, with a quick check to ensure PNA models pass
     the dataloader for extra calculations.
     """
-    if kwargs.get("model") == "PNA":
-        if "train_dataset" not in kwargs:
-            raise ValueError("PNA requires the `train_dataset` parameter to be set.")
-        if not isinstance(kwargs["train_dataset"], torch_geometric.data.DataLoader):
-            raise ValueError(
-                "The `train_dataset` parameter must be a torch_geometric DataLoader."
-            )
+    if kwargs.get("model") == "PNA" and "train_dataset" not in kwargs:
+        raise ValueError("PNA requires the `train_dataset` parameter to be set.")
     return GNNArchitectureBuilder().build(**kwargs)
