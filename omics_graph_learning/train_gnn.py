@@ -187,7 +187,7 @@ def train(
         optimizer.zero_grad()
         data = data.to(device)
 
-        if model.task_specific_mlp:
+        if hasattr(model, "task_specific_mlp") and model.task_specific_mlp:
             out = model(data.x, data.edge_index, data.train_mask_loss)
         else:
             out = model(data.x, data.edge_index)
