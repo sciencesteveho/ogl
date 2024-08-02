@@ -166,6 +166,7 @@ def objective(
     model = build_gnn_architecture(
         in_size=data.x.shape[1],
         out_channels=1,
+        train_dataset=data,
         **model_params,
     )
     model = model.to(device)
