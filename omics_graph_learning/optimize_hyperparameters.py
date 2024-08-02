@@ -8,7 +8,7 @@ resource conscious Hyperband pruner."""
 
 
 import argparse
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import optuna
 from optuna.trial import TrialState
@@ -44,7 +44,9 @@ def setup_device() -> torch.device:
     return torch.device("cpu")
 
 
-def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
+def suggest_hyperparameters(
+    trial: optuna.Trial,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Suggest hyperparameters for the Optuna trial.
 
     Hyperparameters are based off a mix of ancedotal results and from Tönshoff
@@ -55,7 +57,7 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
         "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
     )
 
-    params = {
+    model_params = {
         "model": model,
         "activation": trial.suggest_categorical(
             "activation", ["relu", "leakyrelu", "gelu"]
@@ -67,6 +69,9 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
+    }
+
+    train_params = {
         "learning_rate": trial.suggest_float(
             "learning_rate", low=1e-6, high=1e-2, log=True
         ),
@@ -84,32 +89,33 @@ def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
 
     # set heads for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
-        params["heads"] = trial.suggest_int("heads", low=1, high=4, step=1)
+        model_params["heads"] = trial.suggest_int("heads", low=1, high=4, step=1)
 
     # set convolutional layers
     if model == "DeeperGCN":
-        params["gnn_layers"] = trial.suggest_int("gnn_layers", low=6, high=32, step=2)
+        model_params["gnn_layers"] = trial.suggest_int(
+            "gnn_layers", low=6, high=32, step=2
+        )
     else:
-        params["gnn_layers"] = trial.suggest_int("gnn_layers", low=1, high=8, step=1)
+        model_params["gnn_layers"] = trial.suggest_int(
+            "gnn_layers", low=1, high=8, step=1
+        )
 
     # add task specific mlp if not DeeperGCN
-    if model == "DeeperGCN":
-        params["task_specific_mlp"] = False
-        params["skip_connection"] = None
-    else:
-        params["task_specific_mlp"] = trial.suggest_categorical(
+    if model != "DeeperGCN":
+        model_params["task_specific_mlp"] = trial.suggest_categorical(
             "task_specific_mlp", [True, False]
         )
-        params["skip_connection"] = trial.suggest_categorical(
+        model_params["skip_connection"] = trial.suggest_categorical(
             "skip_connection", ["shared_source", "distinct_source", None]
         )
 
     # set positional encodings
-    params["positional_encoding"] = trial.suggest_categorical(
+    model_params["positional_encoding"] = trial.suggest_categorical(
         "positional_encoding", [True, False]
     )
 
-    return params
+    return model_params, train_params
 
 
 def objective(
@@ -120,35 +126,20 @@ def objective(
     device = setup_device()
 
     # get trial hyperparameters
-    params = suggest_hyperparameters(trial)
-
-    # use params!
-    model = params["model"]
-    activation = params["activation"]
-    embedding_size = params["embedding_size"]
-    gnn_layers = params["gnn_layers"]
-    linear_layers = params["linear_layers"]
-    dropout_rate = params["dropout_rate"]
-    learning_rate = params["learning_rate"]
-    optimizer_type = params["optimizer_type"]
-    scheduler_type = params["scheduler_type"]
-    batch_size = params["batch_size"]
-    avg_connectivity = params["avg_connectivity"]
-    positional_encoding = params["positional_encoding"]
-
-    # params that are not part of every model
-    heads = params.get(
-        "heads",
-    )
-    skip_connection = params.get("skip_connection")
-    task_specific_mlp = params.get("task_specific_mlp", False)
+    model_params, train_params = suggest_hyperparameters(trial)
+    gnn_layers = model_params["gnn_layers"]
+    avg_connectivity = train_params["avg_connectivity"]
+    batch_size = train_params["batch_size"]
+    learning_rate = train_params["learning_rate"]
+    optimizer_type = train_params["optimizer_type"]
+    scheduler_type = train_params["scheduler_type"]
 
     # load graph data
     data = GraphToPytorch(
         experiment_config=experiment_config,
         split_name=args.split_name,
         regression_target=args.target,
-        positional_encoding=positional_encoding,
+        positional_encoding=model_params["positional_encoding"],
     ).make_data_object()
 
     # set up train, test, and validation loaders
@@ -169,20 +160,11 @@ def objective(
         avg_connectivity=avg_connectivity,
     )
 
-    # define model and get optimizer
+    # define and build model
     model = build_gnn_architecture(
-        model=model,
-        activation=activation,
         in_size=data.x.shape[1],
-        embedding_size=embedding_size,
         out_channels=1,
-        gnn_layers=gnn_layers,
-        shared_mlp_layers=linear_layers,
-        heads=heads,
-        dropout_rate=dropout_rate,
-        skip_connection=skip_connection,
-        task_specific_mlp=task_specific_mlp,
-        train_dataset=train_loader.dataset,
+        **model_params,
     )
     model = model.to(device)
 
