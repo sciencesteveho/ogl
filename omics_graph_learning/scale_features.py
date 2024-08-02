@@ -213,11 +213,21 @@ def test_feature_order(
 def test_feature_shape(
     original: np.ndarray, scaled: np.ndarray, feat_range: int
 ) -> None:
-    """Check that the original and scaled node features have the same shape."""
+    """Check that the original and scaled node features have the same shape.
+    Additionally, check that one-hot encoded features do not change.
+    """
+    # check feat shape
     assert original.shape == scaled.shape, "Shapes don't match after scaling!"
+
+    # check that one-hot encoded features did not change
     assert np.array_equal(
+        original[:, feat_range:], scaled[:, feat_range:]
+    ), "Continous features did not change!"
+
+    # check that continous features are different
+    assert not np.array_equal(
         original[:, :feat_range], scaled[:, :feat_range]
-    ), "Continuous features changed!"
+    ), "Continous features did not scale!"
 
 
 def main() -> None:
