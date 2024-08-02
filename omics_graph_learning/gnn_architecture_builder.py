@@ -143,7 +143,7 @@ class GNNArchitectureBuilder:
         Adapted from pytorch geometric's PNA example:
         https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
         """
-        # compute the maximum in-degree in the training data.
+        # compute the maximum in-degree in the training data
         max_degree = -1
         for data in train_dataset:
             computed_degree = degree(
@@ -162,5 +162,14 @@ class GNNArchitectureBuilder:
 
 
 def build_gnn_architecture(**kwargs) -> nn.Module:
-    """Function to build a GNN!"""
+    """Pass kwargs to the builder, with a quick check to ensure PNA models pass
+    the dataloader for extra calculations.
+    """
+    if kwargs.get("model") == "PNA":
+        if "train_dataset" not in kwargs:
+            raise ValueError("PNA requires the `train_dataset` parameter to be set.")
+        if not isinstance(kwargs["train_dataset"], torch_geometric.data.DataLoader):
+            raise ValueError(
+                "The `train_dataset` parameter must be a torch_geometric DataLoader."
+            )
     return GNNArchitectureBuilder().build(**kwargs)
