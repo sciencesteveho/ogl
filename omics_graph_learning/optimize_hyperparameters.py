@@ -31,7 +31,7 @@ from utils import setup_logging
 # helpers
 EPOCHS = 200
 MIN_RESOURCE = 10
-REDUCTION_FACTOR = 2
+REDUCTION_FACTOR = 3
 N_TRIALS = 200
 RANDOM_SEED = 42
 
@@ -262,15 +262,15 @@ def main() -> None:
         optuna_dir / f"{experiment_config.experiment_name}_optuna.log"
     )
 
-    # create a study object with Hyperband Pruner
-    study = optuna.create_study(
-        direction="minimize",
-        pruner=optuna.pruners.HyperbandPruner(
-            min_resource=MIN_RESOURCE,
-            max_resource=EPOCHS,
-            reduction_factor=REDUCTION_FACTOR,
-        ),
-    )
+    # # create a study object with Hyperband Pruner
+    # study = optuna.create_study( direction="minimize",
+    #     pruner=optuna.pruners.HyperbandPruner( min_resource=MIN_RESOURCE,
+    #     max_resource=EPOCHS, reduction_factor=REDUCTION_FACTOR, ), ) create a
+    #         sutdy with default median pruner
+
+    # create study with median pruner
+    study = optuna.create_study(direction="minimize")
+
     study.optimize(
         lambda trial: objective(trial, experiment_config, args),
         n_trials=N_TRIALS,
