@@ -11,7 +11,7 @@ import csv
 import datetime
 import itertools
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import pybedtools  # type: ignore
 
@@ -53,18 +53,18 @@ def _uniprot_to_gencode(mapfile: Path, gencode_ref: str) -> Dict[str, str]:
     }
 
 
-def _create_go_graph(go_gaf: Path) -> List[Tuple[str, str]]:
+def get_go_annotations(go_gaf: Path) -> List[Tuple[str, str]]:
     """Create GO ontology graph"""
     with open(go_gaf, newline="", mode="r") as file:
         reader = csv.reader(file, delimiter="\t")
         return [
             (row[1], row[4])
             for row in reader
-            if not row[0].startswith("!") and row[6] not in ["IEA", "IEP"]
+            if not row[0].startswith("!") and row[6] not in ["IEA", "IEP", "IC", "ND"]
         ]
 
 
-def gene_to_gene_edges(
+def make_go_graph(
     edges: List[Tuple[str, str]], mapper: Dict[str, str]
 ) -> set[Tuple[str, str]]:
     """Convert edges to gene-to-gene edges, linking genes sharing a GO term"""
@@ -104,9 +104,9 @@ def main() -> None:
     # get GO graph!
     mapper = _uniprot_to_gencode(mapfile, args.gencode_ref)
     log_progress(f"Mapper created w/ number of genes: {len(mapper)}")
-    go_edges = _create_go_graph(go_gaf)
+    go_edges = get_go_annotations(go_gaf)
     log_progress(f"GO edges created w/ number of edges: {len(go_edges)}")
-    go_graph = gene_to_gene_edges(go_edges, mapper)
+    go_graph = make_go_graph(go_edges, mapper)
 
     # write to a file and savels
     with open(final_graph, "w") as file:
