@@ -141,11 +141,11 @@ def test_targets(
     rna_seq_df: pd.DataFrame,
     log_transform_type: str,
     split: str,
-    random_n: int = 100,
+    n_tests: int = 1000,
 ):
     """Test that randomly selected targets match manually calculated values."""
     passed_tests = 0
-    total_tests = min(random_n, len(targets[split]))
+    total_tests = min(n_tests, len(targets[split]))
 
     for target in random.sample(list(targets[split].keys()), total_tests):
         gene = _get_gene_name_without_tissue(target)

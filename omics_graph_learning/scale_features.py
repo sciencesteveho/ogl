@@ -2,22 +2,22 @@
 # -*- coding: utf-8 -*-
 
 
-"""Code to scale node features in the graph. We use the simple MinMaxScaler
-because other scalers sometimes cause out of bounds errors due to the range that
-genomic data can exist across. To avoid leakage, we fit the scalers only on the
-node idxs that occur in the training set."""
+"""Code to scale node features in the graph. To avoid data leakage, we fit the
+scalers only on thenode idxs that occur in the training set."""
 
 
 from multiprocessing import Pool
 from pathlib import Path
 import pickle
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import joblib  # type: ignore
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler  # type: ignore
+from sklearn.preprocessing import RobustScaler  # type: ignore
 
+from scaled_feature_accuracy import ScaledFeatureAccuracy
 from utils import dir_check_make
 from utils import get_physical_cores
 from utils import ScalerUtils
@@ -25,6 +25,20 @@ from utils import setup_logging
 
 logger = setup_logging()
 CORES = get_physical_cores()
+
+
+def inverse_transform_features(
+    scaled_features: np.ndarray, scalers: Dict[int, RobustScaler], feat_range: int
+) -> np.ndarray:
+    """Reverse the scaling of node features"""
+    original_features = scaled_features.copy()
+    for i in range(feat_range):
+        original_features[:, i] = (
+            scalers[i]
+            .inverse_transform(scaled_features[:, i].reshape(-1, 1))
+            .reshape(-1)
+        )
+    return original_features
 
 
 def scale_graph(scaler_utility: ScalerUtils) -> Dict:
@@ -70,14 +84,20 @@ def scale_graph(scaler_utility: ScalerUtils) -> Dict:
         feat_range=feat_range,
     )
 
-    # verify feature order
-    order_preserved: bool = verify_feature_order(
-        original_node_feat, scaled_node_feat, feat_range
+    # run accuracy check
+    feature_test_suite = ScaledFeatureAccuracy(
+        original=original_node_feat,
+        scaled=scaled_node_feat,
+        split=split,
+        idxs=idxs,
+        continous_feat_range=feat_range,
+        logger=logger,
+        scalers=scalers,
     )
-    test_feature_order(order_preserved)
-
-    # additional sanity checks
-    test_feature_shape(original_node_feat, scaled_node_feat, feat_range)
+    test_result = feature_test_suite.run_all_tests()
+    if not test_result:
+        logger.error("Node feature scaling failed accuracy tests.")
+        sys.exit(1)
 
     # update graph with scaled features
     graph["node_feat"] = scaled_node_feat
@@ -99,7 +119,8 @@ def _get_continuous_feat_range(node_features: np.ndarray, onehot_feats: int) -> 
 def scaler_fit_task(scaler_fit_arguments: Tuple[int, np.ndarray, Path]) -> int:
     """Fits scalers according to node idx."""
     feat, node_feat, scaler_dir = scaler_fit_arguments
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
+    scaler = RobustScaler(quantile_range=(5, 95), unit_variance=False)
     scaler.fit(node_feat[:, feat].reshape(-1, 1))
     scaler_path = scaler_dir / f"feat_{feat}_scaler.joblib"
     joblib.dump(scaler, scaler_path)
@@ -141,7 +162,7 @@ def fit_scalers(
 def load_scalers(
     scaler_dir: Path,
     feat_range: int,
-) -> Dict[int, MinMaxScaler]:
+) -> Dict[int, Union[RobustScaler, MinMaxScaler]]:
     """Load pre-fit scalers into a dictionary by feature index"""
     return {
         i: joblib.load(scaler_dir / f"feat_{i}_scaler.joblib")
@@ -150,7 +171,7 @@ def load_scalers(
 
 
 def scale_feature_task(
-    scale_feats_arguments: Tuple[np.ndarray, MinMaxScaler, int]
+    scale_feats_arguments: Tuple[np.ndarray, Union[RobustScaler, MinMaxScaler], int]
 ) -> Tuple[int, np.ndarray]:
     """Scale a single feature using the provided scaler."""
     feature, scaler, index = scale_feats_arguments
@@ -160,7 +181,7 @@ def scale_feature_task(
 
 def scale_node_features(
     node_feat: np.ndarray,
-    scalers: Dict[int, MinMaxScaler],
+    scalers: Dict[int, Union[RobustScaler, MinMaxScaler]],
     feat_range: int,
     n_jobs: int = CORES,
 ) -> np.ndarray:
@@ -188,56 +209,6 @@ def scale_node_features(
         scaled_node_feat[:, index] = scaled_feature
 
     return scaled_node_feat
-
-
-def verify_feature_order(
-    original: np.ndarray, scaled: np.ndarray, feat_range: int
-) -> bool:
-    """Check that the original and scaled have their node features in the
-    same order."""
-    for i in range(feat_range):
-        original_col = original[:, i]
-        scaled_col = scaled[:, i]
-
-        # get the order of the original and scaled columns
-        original_order = np.argsort(original_col)
-        scaled_order = np.argsort(scaled_col)
-
-        if not np.array_equal(original_order, scaled_order):
-            logger.warning(f"Order mismatch detected in feature {i}")
-            return False
-    return True
-
-
-def test_feature_order(
-    order_preserved: bool,
-) -> None:
-    """Checks if feature order is preserved after scaling. If not, exits the
-    pipeline.
-    """
-    if not order_preserved:
-        logger.warning("Feature order not preserved after scaling!")
-        sys.exit(1)
-
-
-def test_feature_shape(
-    original: np.ndarray, scaled: np.ndarray, feat_range: int
-) -> None:
-    """Check that the original and scaled node features have the same shape.
-    Additionally, check that one-hot encoded features do not change.
-    """
-    # check feat shape
-    assert original.shape == scaled.shape, "Shapes don't match after scaling!"
-
-    # check that one-hot encoded features did not change
-    assert np.array_equal(
-        original[:, feat_range:], scaled[:, feat_range:]
-    ), "Continous features did not change!"
-
-    # check that continous features are different
-    assert not np.array_equal(
-        original[:, :feat_range], scaled[:, :feat_range]
-    ), "Continous features did not scale!"
 
 
 def main() -> None:

@@ -64,7 +64,7 @@ class PositionalEncoding(nn.Module):
     ) -> np.ndarray:
         """Return the positional encoding tensor, with pooling if the feature
         spans multiple bins."""
-        # Get indices for all bins the feature spans
+        # get indices for all bins the feature spans
         bin_idxs = self.get_bin_indices(
             chromosome=chromosome, start=node_start, end=node_end
         )

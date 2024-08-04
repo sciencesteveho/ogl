@@ -1,9 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# // TO-DO //
-# - [ ] first TODO
-#   - [ ] nested TODO
 
 
 """Baseline predictors to compare against the performance of the GNN model.
@@ -13,19 +9,19 @@ distribution of expression activity across all tissues in GTEx. The second is
 based on the average activity of that specific gene across all samples adapted
 from Schrieber et al., Genome Biology, 2020."""
 
+
 import os
 import pickle
 from typing import List, Tuple
 
-from cmapPy.pandasGEXpress.parse_gct import parse
+from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error  # type: ignore
 
 
 def _tpm_all_tissue_average(
     expression_gct: str,
-    tissue: bool = False,
 ) -> pd.DataFrame:
     """Get the average (not median!) expression for each gene in GTEx across all
     samples. Formally, the average activity is the summed expression at each
@@ -37,15 +33,14 @@ def _tpm_all_tissue_average(
     Returns:
         np.ndarray: array with average activity for each gene
     """
-    if not tissue:
-        df = parse(expression_gct).data_df
-        sample_count = df.astype(bool).sum(axis=1)
-        summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
-        summed_activity["average"] = (
-            summed_activity.div(sample_count, axis=0).fillna(0).values
-        )
-        summed_activity.to_pickle("average_activity_df.pkl")
-        return summed_activity["average"]
+    df = parse(expression_gct).data_df
+    sample_count = df.astype(bool).sum(axis=1)
+    summed_activity = pd.Series(df.sum(axis=1), name="all_tissues").to_frame()
+    summed_activity["average"] = (
+        summed_activity.div(sample_count, axis=0).fillna(0).values
+    )
+    summed_activity.to_pickle("average_activity_df.pkl")
+    return summed_activity["average"]
 
 
 def _tpm_dataset_specific_tissue_average(

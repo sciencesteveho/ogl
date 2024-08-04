@@ -119,18 +119,23 @@ class GNNArchitectureBuilder:
         gnn_kwargs["deg"] = self._compute_pna_histogram_tensor(train_dataset)
 
     def _build_gcn(self, **kwargs) -> nn.Module:
+        """Build GCN"""
         return self._build_modular_gnn("GCN", **kwargs)
 
     def _build_graphsage(self, **kwargs) -> nn.Module:
+        """Build GraphSAGE"""
         return self._build_modular_gnn("GraphSAGE", **kwargs)
 
     def _build_pna(self, **kwargs) -> nn.Module:
+        """Build PNA"""
         return self._build_modular_gnn("PNA", **kwargs)
 
     def _build_gat(self, **kwargs) -> nn.Module:
+        """Build GATv2"""
         return self._build_modular_gnn("GAT", **kwargs)
 
     def _build_unimptransformer(self, **kwargs) -> nn.Module:
+        """Build UniMPTransformer"""
         return self._build_modular_gnn("UniMPTransformer", **kwargs)
 
     @staticmethod
