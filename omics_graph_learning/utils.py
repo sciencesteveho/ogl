@@ -235,41 +235,42 @@ def check_pyg_data(data: Data) -> None:
     for key, item in data:
         print(f"{key}: {item.shape}")
 
-    print("\nNode feature statistics:")
-    print(f"Mean: {data.x.mean(dim=0)[:5]}...")
-    print(f"Std: {data.x.std(dim=0)[:5]}...")
-    print(f"Min: {data.x.min(dim=0)[0][:5]}...")
-    print(f"Max: {data.x.max(dim=0)[0][:5]}...")
+    def print_stats(tensor, name):
+        print(f"\n{name} statistics:")
+        print(f"Mean: {tensor.mean(dim=0)[:5]}...")
+        print(f"Std: {tensor.std(dim=0)[:5]}...")
+        print(f"Min: {tensor.min(dim=0)[0][:5]}...")
+        print(f"Max: {tensor.max(dim=0)[0][:5]}...")
+        print(f"Contains NaN: {torch.isnan(tensor).any().item()}")
+        print(f"Contains Inf: {torch.isinf(tensor).any().item()}")
+
+    print_stats(data.x, "Node features")
 
     print("\nEdge index statistics:")
     print(f"Min node idx: {data.edge_index.min()}")
     print(f"Max node idx: {data.edge_index.max()}")
 
-    # check target values
     if hasattr(data, "y"):
-        print("\nTarget variable statistics:")
-        print(f"Shape: {data.y.shape}")
-        print(f"Mean: {data.y.mean()}")
-        print(f"Std: {data.y.std()}")
-        print(f"Min: {data.y.min()}")
-        print(f"Max: {data.y.max()}")
-
-    print("\nChecking for NaN values:")
-    for key, item in data:
-        if torch.is_tensor(item):
-            print(f"{key}: {'Contains NaN' if torch.isnan(item).any() else 'No NaN'}")
+        print_stats(data.y, "Target variable")
 
     print("\nMask information:")
     for key in ["train_mask", "val_mask", "test_mask"]:
         if hasattr(data, key):
             mask = getattr(data, key)
             print(f"{key}: {mask.sum().item()} nodes")
+            if hasattr(data, "y"):
+                masked_y = data.y[mask]
+                print(f"{key} target statistics:")
+                print(f"  Mean: {masked_y.mean().item():.4f}")
+                print(f"  Std: {masked_y.std().item():.4f}")
+                print(f"  Min: {masked_y.min().item():.4f}")
+                print(f"  Max: {masked_y.max().item():.4f}")
+                print(f"  Contains NaN: {torch.isnan(masked_y).any().item()}")
+                print(f"  Contains Inf: {torch.isinf(masked_y).any().item()}")
 
-    # check if edge_index is within bounds
     if data.edge_index.max() >= data.num_nodes:
         print("\nWARNING: edge_index contains out-of-bounds indices!")
 
-    # check if node features are normalized
     if data.x.min() >= 0 and data.x.max() <= 1:
         print("\nNode features appear to be normalized (min >= 0, max <= 1)")
     else:
