@@ -194,6 +194,12 @@ def train(
 
         loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
         loss.backward()
+
+        # check for NaN gradients
+        for name, param in model.named_parameters():
+            if param.grad is not None and torch.isnan(param.grad).any():
+                print(f"NaN gradient detected in {name}")
+
         optimizer.step()
 
         total_loss += float(loss) * int(data.train_mask_loss.sum())

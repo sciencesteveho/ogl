@@ -13,6 +13,7 @@ Example usage
 
 from typing import Any, Dict, Type, Union
 
+from _pytest.fixtures import FixtureRequest
 from omics_graph_learning.models import DeeperGCN
 from omics_graph_learning.models import GATv2
 from omics_graph_learning.models import GCN
@@ -40,25 +41,25 @@ def graph_data() -> Data:
 
 
 @pytest.fixture(params=[True, False])
-def task_specific_mlp(request) -> bool:
+def task_specific_mlp(request: FixtureRequest) -> bool:
     """Fixture for testing task-specific MLP implementation."""
     return request.param
 
 
 @pytest.fixture(params=[None, "shared_source", "distinct_source"])
-def skip_connection(request) -> str:
+def skip_connection(request: FixtureRequest) -> str:
     """Fixture for testing residual connections"""
     return request.param
 
 
 @pytest.fixture(params=[1, 2, 3])
-def layers(request) -> int:
+def layers(request: FixtureRequest) -> int:
     """Fixture for testing differing # of layers."""
     return request.param
 
 
 @pytest.fixture(params=["relu", "leakyrelu", "gelu"])
-def activation(request) -> str:
+def activation(request: FixtureRequest) -> str:
     """Fixture for testing different activation functions."""
     return request.param
 
@@ -221,7 +222,7 @@ def test_basic_models(
 
 
 @pytest.fixture(params=[1, 2, 4])
-def heads(request) -> int:
+def heads(request: FixtureRequest) -> int:
     """Fixture for testing number of attention heads."""
     return request.param
 

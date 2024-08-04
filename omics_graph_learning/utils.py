@@ -30,6 +30,7 @@ import pybedtools  # type: ignore
 from scipy import stats  # type: ignore
 import seaborn as sns  # type: ignore
 import torch
+from torch_geometric.data import Data  # type: ignore
 import yaml  # type: ignore
 
 from config_handlers import ExperimentConfig
@@ -217,6 +218,62 @@ def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
     """Combines stored edge index and returns dedupe'd array of nodes"""
     combined = np.concatenate((edge_index[0], edge_index[1]))
     return np.unique(combined)
+
+
+def check_pyg_data(data: Data) -> None:
+    """A series of checks to ensure the integrity of a PyG Data object."""
+    print("PyG Data Object - Graph Summary:")
+    print(f"Number of nodes: {data.num_nodes}")
+    print(f"Number of edges: {data.num_edges}")
+    print(f"Number of node features: {data.num_node_features}")
+    print(f"Number of edge features: {data.num_edge_features}")
+    print(f"Has isolated nodes: {data.has_isolated_nodes()}")
+    print(f"Has self loops: {data.has_self_loops()}")
+    print(f"Is directed: {data.is_directed()}")
+
+    print("\nAttribute shapes:")
+    for key, item in data:
+        print(f"{key}: {item.shape}")
+
+    print("\nNode feature statistics:")
+    print(f"Mean: {data.x.mean(dim=0)[:5]}...")
+    print(f"Std: {data.x.std(dim=0)[:5]}...")
+    print(f"Min: {data.x.min(dim=0)[0][:5]}...")
+    print(f"Max: {data.x.max(dim=0)[0][:5]}...")
+
+    print("\nEdge index statistics:")
+    print(f"Min node idx: {data.edge_index.min()}")
+    print(f"Max node idx: {data.edge_index.max()}")
+
+    # check target values
+    if hasattr(data, "y"):
+        print("\nTarget variable statistics:")
+        print(f"Shape: {data.y.shape}")
+        print(f"Mean: {data.y.mean()}")
+        print(f"Std: {data.y.std()}")
+        print(f"Min: {data.y.min()}")
+        print(f"Max: {data.y.max()}")
+
+    print("\nChecking for NaN values:")
+    for key, item in data:
+        if torch.is_tensor(item):
+            print(f"{key}: {'Contains NaN' if torch.isnan(item).any() else 'No NaN'}")
+
+    print("\nMask information:")
+    for key in ["train_mask", "val_mask", "test_mask"]:
+        if hasattr(data, key):
+            mask = getattr(data, key)
+            print(f"{key}: {mask.sum().item()} nodes")
+
+    # check if edge_index is within bounds
+    if data.edge_index.max() >= data.num_nodes:
+        print("\nWARNING: edge_index contains out-of-bounds indices!")
+
+    # check if node features are normalized
+    if data.x.min() >= 0 and data.x.max() <= 1:
+        print("\nNode features appear to be normalized (min >= 0, max <= 1)")
+    else:
+        print("\nWARNING: Node features may not be normalized")
 
 
 # genome data utils

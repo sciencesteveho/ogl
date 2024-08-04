@@ -72,7 +72,7 @@ class GraphToPytorch:
             )
         )
 
-    def create_edge_index(self) -> torch.Tensor:
+    def generate_edge_index(self) -> torch.Tensor:
         """Create the edge index tensor for the graph."""
         edge_perturbation = None
         total_random_edges = None
@@ -107,7 +107,7 @@ class GraphToPytorch:
 
     def instantiate_data_object(self) -> Data:
         """Create the PyG Data object."""
-        edge_index = self.create_edge_index()
+        edge_index = self.generate_edge_index()
         node_tensors = self.create_node_tensors()
         return Data(x=node_tensors.contiguous(), edge_index=edge_index.contiguous())
 
@@ -168,8 +168,17 @@ class GraphToPytorch:
         """Create the PyG Data object."""
         # create the data object with node features and edge index
         data = self.instantiate_data_object()
+
+        # check for NaN or infinite values in node features
+        if torch.isnan(data.x).any() or torch.isinf(data.x).any():
+            print("Warning: NaN or infinite values found in node features")
+
         masks = self.create_masks(data=data)
         targets = self.create_target_tensor(data=data)
+
+        # Check for NaN or infinite values in targets
+        if torch.isnan(targets).any() or torch.isinf(targets).any():
+            print("Warning: NaN or infinite values found in target values")
 
         # add masks to the data object
         for mask_name, mask in masks.items():
@@ -340,9 +349,7 @@ def create_edge_index(
         node_idxs (Optional[List[str]]): The node indices to remove if
         perturbation type is `remove_specific_edges`.
     """
-    if not edge_perturbation:
-        return torch.tensor(graph_data["edge_index"], dtype=torch.long)
-    else:
+    if edge_perturbation:
         return torch.tensor(
             perturb_edge_index(
                 edge_index=graph_data["edge_index"],
@@ -352,6 +359,14 @@ def create_edge_index(
             ),
             dtype=torch.long,
         )
+
+    edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
+
+    # validate edge indices
+    num_nodes = graph_data["num_nodes"]
+    if edge_index.max() >= num_nodes or edge_index.min() < 0:
+        print("Warning: Invalid edge indices found")
+    return edge_index
 
 
 def create_node_tensors(

@@ -25,6 +25,7 @@ from train_gnn import calculate_training_steps
 from train_gnn import prep_loader
 from train_gnn import test
 from train_gnn import train
+from utils import check_pyg_data
 from utils import dir_check_make
 from utils import setup_logging
 
@@ -144,6 +145,9 @@ def objective(
         positional_encoding=model_params["positional_encoding"],
     ).make_data_object()
 
+    # check data integreity
+    check_pyg_data(data)
+
     # set up train, test, and validation loaders
     train_loader = prep_loader(
         data=data,
@@ -200,6 +204,7 @@ def objective(
             epoch=epoch,
             # subset_batches=750,
         )
+        print(f"Loss: {_.item()}")
 
         # validation
         mse = test(
@@ -210,13 +215,18 @@ def objective(
             mask="val",
             # subset_batches=225,
         )
-        scheduler.step(mse)
+        print(f"Validation MSE: {mse.item()}")
+        if torch.isnan(mse):
+            print(f"NaN detected in validation MSE at epoch {epoch}")
+            break
 
         # report for pruning
+        scheduler.step(mse)
         trial.report(mse, epoch)
 
         # handle pruning based on the intermediate value.
         if trial.should_prune():
+            print(f"Trial {trial.number} pruned at epoch {epoch}")
             raise optuna.exceptions.TrialPruned()
     return mse
 

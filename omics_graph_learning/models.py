@@ -223,6 +223,10 @@ class ModularGNN(nn.Module):
             else:
                 x = self.activation(batch_norm(conv(x, edge_index)))
 
+            # check for NaN values
+            if torch.isnan(x).any():
+                print(f"Warning: NaN detected in layer {i}")
+
         # shared linear layers
         for linear_layer in self.linears:
             x = self.activation(linear_layer(x))
