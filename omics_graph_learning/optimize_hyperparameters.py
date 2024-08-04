@@ -216,9 +216,9 @@ def objective(
             # subset_batches=225,
         )
         print(f"Validation MSE: {mse}")
-        if torch.isnan(mse):
-            print(f"NaN detected in validation MSE at epoch {epoch}")
-            break
+        # if torch.isnan(mse):
+        #     print(f"NaN detected in validation MSE at epoch {epoch}")
+        #     break
 
         # report for pruning
         scheduler.step(mse)
