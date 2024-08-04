@@ -246,11 +246,11 @@ def _assign_nodes_to_split(
     train, test, validation = [], [], []
     for node in range(graph_data["num_nodes"]):
         if coordinates[node][0] in test_chrs:
-            train.append(node)
-        elif coordinates[node][0] in val_chrs:
             test.append(node)
-        else:
+        elif coordinates[node][0] in val_chrs:
             validation.append(node)
+        else:
+            train.append(node)
     return (
         torch.tensor(train, dtype=torch.float),
         torch.tensor(test, dtype=torch.float),

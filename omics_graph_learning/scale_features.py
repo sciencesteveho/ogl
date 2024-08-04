@@ -167,11 +167,21 @@ def scale_node_features(
     """Scale node features using pre-fit scalers in parallel"""
     scaled_node_feat = node_feat.copy()  # copy to avoid modifying original
 
+    # check the min, max, and mean of the features before scaling
+    logger.info(
+        f"Before scaling - min: {node_feat[:, :feat_range].min(axis=0)[:5]}, max: {node_feat[:, :feat_range].max(axis=0)[:5]}, mean: {node_feat[:, :feat_range].mean(axis=0)[:5]}"
+    )
+
     with Pool(processes=n_jobs) as pool:
         scale_feats_arguments = [
             (node_feat[:, i], scalers[i], i) for i in range(feat_range)
         ]
         results = pool.map(scale_feature_task, scale_feats_arguments)
+
+    # check the min, max, and mean of the features after scaling
+    logger.info(
+        f"After scaling - min: {scaled_node_feat[:, :feat_range].min(axis=0)[:5]}, max: {scaled_node_feat[:, :feat_range].max(axis=0)[:5]}, mean: {scaled_node_feat[:, :feat_range].mean(axis=0)[:5]}"
+    )
 
     # sort results by feature index and update scaled_node_feat
     for index, scaled_feature in sorted(results):
