@@ -204,7 +204,7 @@ def objective(
             epoch=epoch,
             # subset_batches=750,
         )
-        print(f"Loss: {_.item()}")
+        print(f"Loss: {_}")
 
         # validation
         mse = test(
@@ -215,7 +215,7 @@ def objective(
             mask="val",
             # subset_batches=225,
         )
-        print(f"Validation MSE: {mse.item()}")
+        print(f"Validation MSE: {mse}")
         if torch.isnan(mse):
             print(f"NaN detected in validation MSE at epoch {epoch}")
             break
