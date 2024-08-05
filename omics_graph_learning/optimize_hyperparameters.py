@@ -30,10 +30,10 @@ from utils import dir_check_make
 from utils import setup_logging
 
 # helpers
-EPOCHS = 200
+EPOCHS = 50
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
-N_TRIALS = 200
+N_TRIALS = 100
 RANDOM_SEED = 42
 
 
