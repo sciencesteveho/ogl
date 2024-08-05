@@ -22,8 +22,7 @@ The models include four different classes of architectures:
 (3) Large scale models (GNN with large number of layers):
     DeeperGCN
 
-(4) Baseline: 3-layer MLP
-"""
+(4) Baseline: 3-layer MLP"""
 
 
 from __future__ import annotations

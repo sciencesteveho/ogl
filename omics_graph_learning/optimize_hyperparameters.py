@@ -31,7 +31,7 @@ from utils import setup_logging
 
 # helpers
 EPOCHS = 200
-MIN_RESOURCE = 10
+MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 200
 RANDOM_SEED = 42

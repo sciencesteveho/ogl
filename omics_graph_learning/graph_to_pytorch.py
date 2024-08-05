@@ -12,8 +12,7 @@ geometric Data object. Two masks are produced:
     loader are referenced
     "split_loss" masks are a subset of the "split" masks containing only genes
     that passed the preceding filter steps for loss calculation (i.e. loss is
-    only calculated over these gene nodes)
-"""
+    only calculated over these gene nodes)"""
 
 
 from pathlib import Path

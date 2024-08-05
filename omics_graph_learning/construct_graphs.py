@@ -5,8 +5,7 @@
 """This script will create one graph per tissue from the parsed edges. All edges
 are added before being filtered to only keep edges that can traverse back to a
 base node. Attributes are then added for each node as node features and parsed
-as a series of numpy arrays.
-"""
+as a series of numpy arrays."""
 
 
 from pathlib import Path

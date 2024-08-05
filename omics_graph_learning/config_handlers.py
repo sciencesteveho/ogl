@@ -1,9 +1,9 @@
 # sourcery skip: snake-case-variable-declarations
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 
 
 """Class to handle stored and shared data from omics graph learning configs."""
+
 
 from dataclasses import dataclass
 from dataclasses import field
