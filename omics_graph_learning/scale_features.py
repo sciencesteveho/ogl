@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
+# sourcery skip: no-relative-imports
 
 
 """Code to scale node features in the graph. To avoid data leakage, we fit the
@@ -10,18 +11,19 @@ from multiprocessing import Pool
 from pathlib import Path
 import pickle
 import sys
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import joblib  # type: ignore
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
-from scaled_feature_accuracy import ScaledFeatureAccuracy
 from utils import dir_check_make
 from utils import get_physical_cores
 from utils import ScalerUtils
 from utils import setup_logging
+
+from ..test.scaled_feature_accuracy import ScaledFeatureAccuracy  # type: ignore
 
 logger = setup_logging()
 CORES = get_physical_cores()
@@ -190,7 +192,10 @@ def scale_node_features(
 
     # check the min, max, and mean of the features before scaling
     logger.info(
-        f"Before scaling - min: {node_feat[:, :feat_range].min(axis=0)[:5]}, max: {node_feat[:, :feat_range].max(axis=0)[:5]}, mean: {node_feat[:, :feat_range].mean(axis=0)[:5]}"
+        f"Before scaling "
+        f"- min: {node_feat[:, :feat_range].min(axis=0)[:5]}, "
+        f"max: {node_feat[:, :feat_range].max(axis=0)[:5]}, "
+        f"mean: {node_feat[:, :feat_range].mean(axis=0)[:5]}"
     )
 
     with Pool(processes=n_jobs) as pool:
@@ -199,14 +204,17 @@ def scale_node_features(
         ]
         results = pool.map(scale_feature_task, scale_feats_arguments)
 
-    # check the min, max, and mean of the features after scaling
-    logger.info(
-        f"After scaling - min: {scaled_node_feat[:, :feat_range].min(axis=0)[:5]}, max: {scaled_node_feat[:, :feat_range].max(axis=0)[:5]}, mean: {scaled_node_feat[:, :feat_range].mean(axis=0)[:5]}"
-    )
-
     # sort results by feature index and update scaled_node_feat
     for index, scaled_feature in sorted(results):
         scaled_node_feat[:, index] = scaled_feature
+
+    # check the min, max, and mean of the features after scaling
+    logger.info(
+        f"After scaling "
+        f"- min: {scaled_node_feat[:, :feat_range].min(axis=0)[:5]}, "
+        f"max: {scaled_node_feat[:, :feat_range].max(axis=0)[:5]}, "
+        f"mean: {scaled_node_feat[:, :feat_range].mean(axis=0)[:5]}"
+    )
 
     return scaled_node_feat
 

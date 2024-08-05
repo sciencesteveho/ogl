@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
-"""Ensure parity of node features post-scaling."""
+"""Ensure parity of node features post-scaling. This class is used within the
+script that scales node features, so the tests are done during runtime."""
 
 
 import logging
