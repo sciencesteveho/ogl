@@ -11,9 +11,8 @@ import random
 from typing import Any, Dict
 
 import numpy as np
+from omics_graph_learning.constants import ATTRIBUTES
 import pybedtools  # type: ignore
-
-from constants import ATTRIBUTES
 
 
 class NodeFeatureAccuracy:
@@ -23,7 +22,7 @@ class NodeFeatureAccuracy:
 
     def __init__(self, basenodes_file: Path, fasta_file: str) -> None:
         """Instantiate the NodeFeatureAccuracy object."""
-        self.basenodes = self.load_basenodes(basenodes_file)
+        self.basenode_attributes = self.load_attributes(basenodes_file)
         self.fasta_file = fasta_file
 
     def aggregate_attribute(self, ref_file, attribute):
@@ -57,12 +56,11 @@ class NodeFeatureAccuracy:
 
     def spot_check_feature(self, attribute):
         # randomly select a node
-        node = random.choice(list(self.basenodes.keys()))
+        node = random.choice(list(self.basenode_attributes.keys()))
 
         # create a BedTool object for this node
-        node_data = self.basenodes[node]
-        bed_string = f"{node_data['chrom']}\t{node_data['start']}\t{node_data['end']}\t{node}\t{node_data['end'] - node_data['start']}"
-        ref_file = pybedtools.BedTool(bed_string, from_string=True)
+        node_data = self.basenode_attributes[node]
+        ref_file = self.attr_to_bedtool(node_data)
 
         # aggregate the attribute
         aggregated = self.aggregate_attribute(ref_file, attribute)
@@ -80,7 +78,7 @@ class NodeFeatureAccuracy:
     def run_spot_check(self, num_checks: int = 1000):
         results = []
         for _ in range(num_checks):
-            attribute = random.choice(self.attributes)
+            attribute = random.choice(ATTRIBUTES)
             node, aggregated, stored = self.spot_check_feature(attribute)
             results.append(
                 {
@@ -100,13 +98,22 @@ class NodeFeatureAccuracy:
         return results
 
     @staticmethod
-    def load_basenodes(file_path: Path) -> Dict[str, Dict[str, Any]]:
-        """Load the basenodes dictionary."""
-        with open(file_path, "r") as file:
+    def attr_to_bedtool(attribute: Dict[str, Any]) -> pybedtools.BedTool:
+        """Convert an attribute dictionary to a BedTool object."""
+        bed_string = f"{attribute['coordinates']['chr']}\t"
+        f"{attribute['coordinates']['start']}\t"
+        f"{attribute['coordinates']['end']}"
+        return pybedtools.BedTool(bed_string, from_string=True)
+
+    @staticmethod
+    def load_attributes(file_path: Path) -> Dict[str, Dict[str, Any]]:
+        """Load the an attribute dictionary."""
+        with open(file_path, "rb") as file:
             return pickle.load(file)
 
     @staticmethod
-    def analyze_results(results):
+    def analyze_results(results: Dict[Any, Any]) -> None:
+        """Print summary statistics of the spot check results."""
         differences = [r["difference"] for r in results]
         relative_differences = [r["relative_difference"] for r in results]
 

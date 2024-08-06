@@ -29,8 +29,8 @@ from utils import check_pyg_data
 from utils import dir_check_make
 from utils import setup_logging
 
-# helpers
-EPOCHS = 50
+# helpers for trial
+EPOCHS = 30
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 100
@@ -194,6 +194,11 @@ def objective(
         training_steps=total_steps,
     )
 
+    # early stop params
+    patience = 5
+    best_mse = float("inf")
+    early_stop_counter = 0
+
     for epoch in range(EPOCHS + 1):
         # train
         _ = train(
@@ -219,6 +224,16 @@ def objective(
         # if torch.isnan(mse):
         #     print(f"NaN detected in validation MSE at epoch {epoch}")
         #     break
+
+        # early stopping
+        if mse < best_mse:
+            best_mse = mse
+            early_stop_counter = 0
+        else:
+            early_stop_counter += 1
+            if early_stop_counter >= patience:
+                print(f"Early stopping at epoch {epoch}")
+                break
 
         # report for pruning
         scheduler.step(mse)
