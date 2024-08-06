@@ -10,6 +10,7 @@ resource conscious Hyperband pruner."""
 import argparse
 from typing import Any, Dict, Tuple
 
+import numpy as np
 import optuna
 from optuna.trial import TrialState
 import plotly  # type: ignore
@@ -26,6 +27,7 @@ from train_gnn import calculate_training_steps
 from train_gnn import prep_loader
 from train_gnn import test
 from train_gnn import train
+from utils import _tensor_out_to_array
 from utils import check_pyg_data
 from utils import dir_check_make
 from utils import setup_logging
@@ -46,10 +48,8 @@ def setup_device() -> torch.device:
     return torch.device("cpu")
 
 
-def calculate_spearman_r(predictions: torch.Tensor, targets: torch.Tensor) -> float:
+def calculate_spearman_r(predictions: np.ndarray, targets: np.ndarray) -> float:
     """Calculate the Spearman correlation coefficient from GNN output."""
-    predictions = predictions.numpy().flatten()
-    targets = targets.numpy().flatten()
     r, _ = spearmanr(predictions, targets)
     return float(r)
 
@@ -227,6 +227,9 @@ def objective(
             epoch=epoch,
             mask="val",
         )
+
+        predictions = _tensor_out_to_array(predictions)
+        targets = _tensor_out_to_array(targets)
 
         # calculate metrics
         r = calculate_spearman_r(predictions, targets)

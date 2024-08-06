@@ -255,8 +255,8 @@ def _evaluate_model(
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
 
         if collect_outputs:
-            outs.extend(out[idx_mask]).cpu()
-            labels.extend(data.y[idx_mask]).cpu()
+            outs.extend(out[idx_mask])
+            labels.extend(data.y[idx_mask])
 
         pbar.update(1)
 
