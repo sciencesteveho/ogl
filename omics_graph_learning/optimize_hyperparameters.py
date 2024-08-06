@@ -248,7 +248,7 @@ def objective(
 
         # report for pruning
         scheduler.step(rmse)
-        trial.report(-r, epoch)
+        trial.report(r, epoch)
 
         # handle pruning based on the intermediate value.
         if trial.should_prune():
@@ -256,7 +256,7 @@ def objective(
             raise optuna.exceptions.TrialPruned()
 
     trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
-    return -best_r
+    return best_r
 
 
 def main() -> None:
@@ -302,7 +302,7 @@ def main() -> None:
 
     # create a study object with Hyperband Pruner
     study = optuna.create_study(
-        direction="minimize",
+        direction="maximize",
         pruner=optuna.pruners.HyperbandPruner(
             min_resource=MIN_RESOURCE,
             max_resource=EPOCHS,
