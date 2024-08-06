@@ -219,6 +219,10 @@ def objective(
         )
         print(f"Loss: {_}")
 
+        if np.isnan(_):
+            print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN loss")
+            raise optuna.exceptions.TrialPruned()
+
         # validation
         rmse, predictions, targets = test(
             model=model,
@@ -234,6 +238,10 @@ def objective(
         # calculate metrics
         r = calculate_spearman_r(predictions, targets)
         print(f"Validation Spearman's R: {r}, RMSE: {rmse}")
+
+        if np.isnan(rmse):
+            print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")
+            raise optuna.exceptions.TrialPruned()
 
         # early stopping
         if r > best_r:
