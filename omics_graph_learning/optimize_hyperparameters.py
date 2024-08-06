@@ -13,6 +13,7 @@ from typing import Any, Dict, Tuple
 import optuna
 from optuna.trial import TrialState
 import plotly  # type: ignore
+from scipy.stats import spearmanr  # type: ignore
 import torch
 
 from config_handlers import ExperimentConfig
@@ -43,6 +44,14 @@ def setup_device() -> torch.device:
         torch.cuda.manual_seed(RANDOM_SEED)
         return torch.device("cuda:0")
     return torch.device("cpu")
+
+
+def calculate_spearman_r(predictions: torch.Tensor, targets: torch.Tensor) -> float:
+    """Calculate the Spearman correlation coefficient from GNN output."""
+    predictions = predictions.numpy().flatten()
+    targets = targets.numpy().flatten()
+    r, _ = spearmanr(predictions, targets)
+    return float(r)
 
 
 def suggest_hyperparameters(
@@ -196,7 +205,7 @@ def objective(
 
     # early stop params
     patience = 5
-    best_mse = float("inf")
+    best_r = -float("inf")
     early_stop_counter = 0
 
     for epoch in range(EPOCHS + 1):
@@ -207,27 +216,26 @@ def objective(
             optimizer=optimizer,
             train_loader=train_loader,
             epoch=epoch,
-            # subset_batches=750,
         )
         print(f"Loss: {_}")
 
         # validation
-        mse = test(
+        rmse, predictions, targets = test(
             model=model,
             device=device,
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
-            # subset_batches=225,
         )
-        print(f"Validation MSE: {mse}")
-        # if torch.isnan(mse):
-        #     print(f"NaN detected in validation MSE at epoch {epoch}")
-        #     break
+
+        # calculate metrics
+        r = calculate_spearman_r(predictions, targets)
+        print(f"Validation Spearman's R: {r}, RMSE: {rmse}")
 
         # early stopping
-        if mse < best_mse:
-            best_mse = mse
+        if r > best_r:
+            best_r = r
+            best_rmse = rmse
             early_stop_counter = 0
         else:
             early_stop_counter += 1
@@ -236,14 +244,16 @@ def objective(
                 break
 
         # report for pruning
-        scheduler.step(mse)
-        trial.report(mse, epoch)
+        scheduler.step(rmse)
+        trial.report(-r, epoch)
 
         # handle pruning based on the intermediate value.
         if trial.should_prune():
             print(f"Trial {trial.number} pruned at epoch {epoch}")
             raise optuna.exceptions.TrialPruned()
-    return mse
+
+    trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
+    return -best_r
 
 
 def main() -> None:

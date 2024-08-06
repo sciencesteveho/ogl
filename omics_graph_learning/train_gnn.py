@@ -218,7 +218,7 @@ def _evaluate_model(
     epoch: int,
     mask: str,
     subset_batches: int = None,
-    collect_outputs: bool = False,
+    collect_outputs: bool = True,
 ) -> Tuple[float, Optional[torch.Tensor], Optional[torch.Tensor]]:
     """Base function for model evaluation or inference."""
     model.eval()
@@ -255,8 +255,8 @@ def _evaluate_model(
         mse.append(F.mse_loss(out[idx_mask], data.y[idx_mask]).cpu())
 
         if collect_outputs:
-            outs.extend(out[idx_mask])
-            labels.extend(data.y[idx_mask])
+            outs.extend(out[idx_mask]).cpu()
+            labels.extend(data.y[idx_mask]).cpu()
 
         pbar.update(1)
 
@@ -279,18 +279,22 @@ def test(
     epoch: int,
     mask: str,
     subset_batches: int = None,
-) -> float:
+) -> Tuple[float, torch.Tensor, torch.Tensor]:
     """Evaluate GNN model on validation or test set."""
-    rmse, _, _ = _evaluate_model(
+    rmse, predictions, targets = _evaluate_model(
         model=model,
         device=device,
         data_loader=data_loader,
         epoch=epoch,
         mask=mask,
         subset_batches=subset_batches,
-        collect_outputs=False,
+        collect_outputs=True,
     )
-    return rmse
+
+    if predictions is None or targets is None:
+        raise ValueError("Failed to collect predictions or targets")
+
+    return rmse, predictions, targets
 
 
 @torch.no_grad()
