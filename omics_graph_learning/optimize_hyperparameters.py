@@ -228,8 +228,8 @@ def objective(
             mask="val",
         )
 
-        predictions = _tensor_out_to_array(predictions)
-        targets = _tensor_out_to_array(targets)
+        predictions = _tensor_out_to_array(predictions, 0)
+        targets = _tensor_out_to_array(targets, 0)
 
         # calculate metrics
         r = calculate_spearman_r(predictions, targets)
