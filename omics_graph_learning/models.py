@@ -27,7 +27,7 @@ The models include four different classes of architectures:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.nn import Linear
@@ -44,7 +44,7 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
 
-def define_activation(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
+def get_activation_function(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
     """Defines the activation function according to the given string"""
     activations: dict[str, Callable[[torch.Tensor], torch.Tensor]] = {
         "gelu": F.gelu,
@@ -89,7 +89,7 @@ class MLP(nn.Module):
                 nn.Linear(embedding_size, out_channels),
             ]
         )
-        self.activation = define_activation(activation)
+        self.activation = get_activation_function(activation)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the MLP model.
@@ -135,21 +135,23 @@ class ModularGNN(nn.Module):
         gnn_operator_config: Dict[str, Any],
         heads: Optional[int] = None,
         dropout_rate: Optional[float] = None,
-        skip_connection: Optional[str] = None,
+        residual: Optional[str] = None,
         task_specific_mlp: bool = False,
+        num_targets: int = 1,
     ):
         """Initialize the model"""
         super().__init__()
         self.dropout_rate = dropout_rate
-        self.skip_connection = skip_connection
+        self.residual = residual
         self.shared_mlp_layers = shared_mlp_layers
         self.task_specific_mlp = task_specific_mlp
-        self.activation = define_activation(activation)
+        self.num_targets = num_targets
+        self.activation = get_activation_function(activation)
 
         # add attention heads if specified in config
         self.heads = gnn_operator_config.get("heads")
 
-        # Initialize GNN layers and batch normalization
+        # initialize GNN layers and batch normalization
         self.convs = self._create_gnn_layers(
             in_size=in_size,
             embedding_size=embedding_size,
@@ -157,21 +159,21 @@ class ModularGNN(nn.Module):
             config=gnn_operator_config,
         )
 
-        # Initialize normalization layers
+        # initialize normalization layers
         self.norms = self._get_normalization_layers(
             layers=gnn_layers, embedding_size=embedding_size, heads=self.heads
         )
 
-        # Initialize linear layers (task-specific MLP)
+        # initialize linear layers (task-specific MLP)
         self.linears = self._get_linear_layers(
             in_size=embedding_size,
             layers=shared_mlp_layers,
             heads=self.heads,
         )
 
-        # Initialize task head(s)
+        # initialize task head(s)
         if self.task_specific_mlp:
-            self.task_head = self._task_specific_head(
+            self.task_head: Union[nn.ModuleList, nn.Linear] = self._task_specific_mlp(
                 in_size=embedding_size, out_size=out_channels
             )
         else:
@@ -179,9 +181,9 @@ class ModularGNN(nn.Module):
                 in_size=embedding_size, out_size=out_channels
             )
 
-        # Create linear projection for skip connections
+        # create linear projection for skip connections
         self.linear_projection = None
-        if self.skip_connection:
+        if self.residual:
             self.linear_projection = self._residuals(
                 in_size=in_size,
                 embedding_size=(
@@ -189,11 +191,19 @@ class ModularGNN(nn.Module):
                 ),
             )
 
+        # store gene indices for efficient task-specific forward
+        self.gene_indices: Dict[str, Optional[torch.Tensor]] = {
+            "train": None,
+            "val": None,
+            "test": None,
+        }
+
     def forward(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
         node_mask: Optional[torch.Tensor] = None,
+        split: str = "train",
     ) -> torch.Tensor:
         """Forward pass of the neural network.
 
@@ -233,15 +243,30 @@ class ModularGNN(nn.Module):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
 
-        # task specific head(s)
-        return (
-            self.task_specific_forward(node_mask, x)
-            if self.task_specific_mlp
-            else self.task_head(x)
-        )
+        # task-specific MLPs
+        if self.task_specific_mlp:
+            return self.task_specific_forward(node_mask=node_mask, x=x, split=split)
+
+        # general task-head
+        if self.gene_indices[split] is None and node_mask is not None:
+            self.gene_indices[split] = torch.where(node_mask)[0]
+
+        if self.gene_indices[split] is None:
+            raise ValueError("Node mask not provided.")
+
+        # one output per gene
+        gene_x = x[self.gene_indices[split]]
+        gene_out = self.task_head(gene_x)
+
+        full_out = torch.zeros(x.size(0), gene_out.size(1), device=x.device)
+        full_out[self.gene_indices[split]] = gene_out
+        return full_out
 
     def task_specific_forward(
-        self, node_mask: Optional[torch.Tensor], x: torch.Tensor
+        self,
+        node_mask: Optional[torch.Tensor],
+        x: torch.Tensor,
+        split: str,
     ) -> torch.Tensor:
         """Use task specific MLPs for each output head."""
         if node_mask is None:
@@ -250,16 +275,30 @@ class ModularGNN(nn.Module):
             raise ValueError(
                 "Task specific MLPs must be used for task specific forward."
             )
-        node_specific_x = x[node_mask]
 
-        # task-specific MLP
-        node_specific_x = F.relu(self.task_head[0](node_specific_x))
-        node_specific_out = self.task_head[1](node_specific_x)
+        # get indices foor the split
+        if self.gene_indices[split] is None:
+            self.gene_indices[split] = torch.where(node_mask)[0]
 
-        # create the output tensor and fill the masked values
-        out = torch.zeros(x.size(0), 1, device=x.device)
-        out[node_mask] = node_specific_out
-        return out
+        gene_indices = cast(torch.Tensor, self.gene_indices[split])
+
+        # initialize output tensor (only for gene nodes)
+        out = torch.zeros(len(gene_indices), self.num_targets, device=x.device)
+
+        # process only gene nodes
+        gene_x = x[self.gene_indices[split]]
+
+        for i, head in enumerate(self.task_head):
+            gene_out = head(gene_x).squeeze()
+            out[:, i] = gene_out
+
+        # create a tensor of the same shape as the input, fill with zeros
+        full_out = torch.zeros(x.size(0), self.num_targets, device=x.device)
+
+        # place the computed values for gene nodes in their correct positions
+        full_out[self.gene_indices[split]] = out
+
+        return full_out
 
     def _get_linear_layers(
         self,
@@ -278,36 +317,41 @@ class ModularGNN(nn.Module):
         Returns:
             nn.ModuleList: The module list containing the linear layers.
         """
-        if self.task_specific_mlp:
+        if self.task_specific_mlp > 1:
             layers -= 1
         return self._linear_module(
             self._linear_layer_dimensions(in_size, layers, heads)
         )
 
-    def _task_specific_head(
+    def _task_specific_mlp(
         self,
         in_size: int,
         out_size: int,
-    ) -> Union[nn.ModuleList, nn.Linear]:
-        """Create task specific MLP for each output head."""
-        if self.shared_mlp_layers == 1:
-            in_size = in_size * self.heads if self.heads else in_size
-            node_specific_linear = nn.Linear(in_size, in_size)
-        elif self.shared_mlp_layers == 2:
-            adjusted_in_size = in_size * self.heads if self.heads else in_size
-            node_specific_linear = nn.Linear(adjusted_in_size, in_size)
-        else:
-            node_specific_linear = nn.Linear(in_size, in_size)
-
-        node_specific_task_head = nn.Linear(in_size, out_size)
-        return nn.ModuleList([node_specific_linear, node_specific_task_head])
+    ) -> nn.ModuleList:
+        """Create task specific MLP for each output head. We consider the
+        shared-MLP layers as the input, thus the function returns 2 linear
+        layers with activation per output head.
+        """
+        adjusted_in_size = in_size * self.heads if self.heads else in_size
+        return nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(adjusted_in_size, in_size),
+                    nn.Module(lambda x: self.activation(x)),
+                    nn.Linear(in_size, out_size),
+                )
+                for _ in range(self.num_targets)
+            ]
+        )
 
     def _general_task_head(
         self,
         in_size: int,
         out_size: int,
     ) -> nn.Linear:
-        """Create a general task head for the model."""
+        """Create a general task head for the model, a single linear layer that
+        regresses to the output size.
+        """
         if self.shared_mlp_layers == 1:
             in_size = in_size * self.heads if self.heads else in_size
         return nn.Linear(in_size, out_size)
@@ -315,10 +359,13 @@ class ModularGNN(nn.Module):
     def _residuals(
         self, in_size: int, embedding_size: int
     ) -> Union[nn.ModuleList, nn.Linear]:
-        """Create skip connection linear projections"""
-        if self.skip_connection == "shared_source":
+        """Create residual connection linear projections. The skip connection
+        tpye can be specificed as shared_source (from the input) or
+        distinct_source (from the output of each layer).
+        """
+        if self.residual == "shared_source":
             return nn.Linear(in_size, embedding_size, bias=False)
-        elif self.skip_connection == "distinct_source":
+        elif self.residual == "distinct_source":
             return nn.ModuleList(
                 [
                     nn.Linear(

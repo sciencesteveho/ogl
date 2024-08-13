@@ -82,7 +82,7 @@ class GNNArchitectureBuilder:
             "gnn_layers": kwargs["gnn_layers"],
             "shared_mlp_layers": kwargs["shared_mlp_layers"],
             "dropout_rate": kwargs["dropout_rate"],
-            "skip_connection": kwargs["skip_connection"],
+            "residual": kwargs["residual"],
             "task_specific_mlp": kwargs["task_specific_mlp"],
             "gnn_operator_config": {},
         }

@@ -8,25 +8,24 @@ resource conscious Hyperband pruner."""
 
 
 import argparse
+import logging
 from typing import Any, Dict, Tuple
 
 import numpy as np
 import optuna
 from optuna.trial import TrialState
 import plotly  # type: ignore
+from scipy.stats import pearsonr  # type: ignore
 from scipy.stats import spearmanr  # type: ignore
 import torch
 
 from config_handlers import ExperimentConfig
 from gnn_architecture_builder import build_gnn_architecture
 from graph_to_pytorch import GraphToPytorch
-from train_gnn import _set_optimizer
-from train_gnn import _set_scheduler
+from schedulers import OptimizerSchedulerHandler
 from train_gnn import build_gnn_architecture
-from train_gnn import calculate_training_steps
+from train_gnn import GNNTrainer
 from train_gnn import prep_loader
-from train_gnn import test
-from train_gnn import train
 from utils import _tensor_out_to_array
 from utils import check_pyg_data
 from utils import dir_check_make
@@ -131,7 +130,10 @@ def suggest_hyperparameters(
 
 
 def objective(
-    trial: optuna.Trial, experiment_config: ExperimentConfig, args: argparse.Namespace
+    trial: optuna.Trial,
+    experiment_config: ExperimentConfig,
+    args: argparse.Namespace,
+    logger: logging.Logger,
 ) -> torch.Tensor:
     """Objective function to be optimized by Optuna."""
     # set gpu
@@ -185,18 +187,18 @@ def objective(
     model = model.to(device)
 
     # set up optimizer
-    total_steps, warmup_steps = calculate_training_steps(
+    total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
         train_loader=train_loader,
         batch_size=batch_size,
         epochs=100,
     )
 
-    optimizer = _set_optimizer(
+    optimizer = OptimizerSchedulerHandler.set_optimizer(
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
         model_params=model.parameters(),
     )
-    scheduler = _set_scheduler(
+    scheduler = OptimizerSchedulerHandler.set_scheduler(
         scheduler_type=scheduler_type,
         optimizer=optimizer,
         warmup_steps=warmup_steps,
@@ -208,14 +210,22 @@ def objective(
     best_r = -float("inf")
     early_stop_counter = 0
 
+    # initialize trainer
+    trainer = GNNTrainer(
+        model=model,
+        device=device,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        scheduler_type=scheduler_type,
+        logger=logger,
+    )
+
     for epoch in range(EPOCHS + 1):
         # train
-        _ = train(
-            model=model,
-            device=device,
-            optimizer=optimizer,
-            train_loader=train_loader,
+        _ = trainer.train(
+            data_loader=train_loader,
             epoch=epoch,
+            scheduler_type=scheduler_type,
         )
         print(f"Loss: {_}")
 
@@ -224,9 +234,7 @@ def objective(
             raise optuna.exceptions.TrialPruned()
 
         # validation
-        rmse, predictions, targets = test(
-            model=model,
-            device=device,
+        rmse, predictions, targets = trainer.evaluate(
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
@@ -235,9 +243,9 @@ def objective(
         predictions = _tensor_out_to_array(predictions, 0)
         targets = _tensor_out_to_array(targets, 0)
 
-        # calculate metrics
-        r = calculate_spearman_r(predictions, targets)
-        print(f"Validation Spearman's R: {r}, RMSE: {rmse}")
+        # calculate metrics on validation set
+        r, p_val = pearsonr(predictions, targets)
+        print(f"Validation Pearson's R: {r}, p-value: {p_val}, RMSE: {rmse}")
 
         if np.isnan(rmse):
             print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")

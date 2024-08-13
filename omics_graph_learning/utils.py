@@ -22,6 +22,7 @@ import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
+import matplotlib.figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 import pandas as pd
@@ -522,16 +523,18 @@ def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
 @time_decorator(print_args=True)
 def _set_matplotlib_publication_parameters() -> None:
     plt.rcParams.update(
-        {"font.size": 7, "axes.titlesize": "small", "font.sans-serif": "Nimbus Sans"}
+        {
+            "font.size": 7,
+            "axes.titlesize": "small",
+            "font.sans-serif": "Nimbus Sans",
+        }
     )
 
 
 @time_decorator(print_args=True)
 def plot_training_losses(
-    outfile: str,
-    savestr: str,
     log: str,
-) -> None:
+) -> matplotlib.figure.Figure:
     """Plots training losses from training log"""
     plt.figure(figsize=(3.125, 2.25))
     _set_matplotlib_publication_parameters()
@@ -558,23 +561,20 @@ def plot_training_losses(
     plt.xlabel("Epoch", fontsize=7)
     plt.ylabel("MSE Loss", fontsize=7)
     plt.title(
-        f"Training loss for {savestr}",
+        "Training loss",
         wrap=True,
         fontsize=7,
     )
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
+    return plt
 
 
 @time_decorator(print_args=True)
 def plot_predicted_versus_expected(
-    outfile: str,
-    savestr: str,
     predicted: torch.Tensor,
     expected: torch.Tensor,
     rmse: torch.Tensor,
-) -> None:
+) -> matplotlib.figure.Figure:
     """Plots predicted versus expected values for a given model"""
     plt.figure(figsize=(3.15, 2.95))
     _set_matplotlib_publication_parameters()
@@ -584,7 +584,7 @@ def plot_predicted_versus_expected(
     plt.xlabel("Expected Log2 TPM", fontsize=7)
     plt.ylabel("Predicted Log2 TPM", fontsize=7)
     plt.title(
-        f"Expected versus predicted for {savestr}\n"
+        f"Expected versus predicted TPM\n"
         f"RMSE: {rmse}\n"
         f"Spearman's R: {stats.spearmanr(expected, predicted)[0]}\n"
         f"Pearson: {stats.pearsonr(expected, predicted)[0]}",
@@ -592,5 +592,4 @@ def plot_predicted_versus_expected(
         fontsize=7,
     )
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
+    return plt
