@@ -23,6 +23,7 @@ from typing import (
 )
 
 import pandas as pd
+from pybedtools import BedTool  # type: ignore
 import pybedtools  # type: ignore
 
 from config_handlers import ExperimentConfig
@@ -132,10 +133,8 @@ class EdgeParser:
 
     def _initialize_references(self) -> None:
         """Initialize reference dictionaries"""
-        self.blacklist = pybedtools.BedTool(f"{self.blacklist_file}").sort().saveas()
-        self.gencode_ref = pybedtools.BedTool(
-            self.local_dir / self.tissue_config.local["gencode"]
-        )
+        self.blacklist = BedTool(f"{self.blacklist_file}").sort().saveas()
+        self.gencode_ref = BedTool(self.local_dir / self.tissue_config.local["gencode"])
         self.genesymbol_to_gencode = genes_from_gencode(gencode_ref=self.gencode_ref)
         self.gencode_ref = self.gencode_ref.cut([0, 1, 2, 3]).saveas()
         self.gencode_attr_ref = self._create_reference_dict(
@@ -173,21 +172,17 @@ class EdgeParser:
             reader = csv.reader(file, delimiter="\t")
             return reader
 
-    def _remove_blacklist(self, bed: pybedtools.BedTool) -> pybedtools.BedTool:
+    def _remove_blacklist(self, bed: BedTool) -> BedTool:
         """Remove blacklist regions from a BedTool object."""
         return bed.intersect(self.blacklist, v=True, sorted=True)
 
-    def _create_bedtool(self, path: Path) -> Union[pybedtools.BedTool, None]:
+    def _create_bedtool(self, path: Path) -> Union[BedTool, None]:
         """Create a BedTool object if the file exists with blacklist filter."""
-        return (
-            self._remove_blacklist(pybedtools.BedTool(path))
-            if os.path.exists(path)
-            else None
-        )
+        return self._remove_blacklist(BedTool(path)) if os.path.exists(path) else None
 
     def _prepare_regulatory_elements(
         self,
-    ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool, Optional[pybedtools.BedTool]]:
+    ) -> Tuple[BedTool, BedTool, Optional[BedTool]]:
         """Simple wrapper to load regulatory elements and return BedTools"""
         reg_elements = REGULATORY_ELEMENTS[self.regulatory_schema]
         bedtools_objects = {
@@ -422,7 +417,7 @@ class EdgeParser:
         Returns:
             List[Tuple[str, str, float, str]]
         """
-        tf_binding = self._remove_blacklist(pybedtools.BedTool(tfbinding_file))
+        tf_binding = self._remove_blacklist(BedTool(tfbinding_file))
         tf_edges = tf_binding.intersect(footprint_file, wb=True)
         for line in tf_edges:
             yield (
@@ -573,10 +568,10 @@ class EdgeParser:
 
     def _overlap_groupby(
         self,
-        anchor: pybedtools.BedTool,
-        features: pybedtools.BedTool,
+        anchor: BedTool,
+        features: BedTool,
         overlap_func: Callable,
-    ) -> pybedtools.BedTool:
+    ) -> BedTool:
         """Gets specific overlap, renames regulatory features, and uses groupby to
         collapse overlaps into the same anchor"""
         return (
@@ -606,8 +601,8 @@ class EdgeParser:
     @time_decorator(print_args=True)
     def _process_loop_edges(
         self,
-        first_feature: pybedtools.BedTool,
-        second_feature: pybedtools.BedTool,
+        first_feature: BedTool,
+        second_feature: BedTool,
         edge_type: str,
     ) -> Set[str]:
         """Connects nodes if they are linked by chromatin loops. Can specify if
@@ -647,20 +642,18 @@ class EdgeParser:
             tss=tss,
         )
 
-    def _add_slop_window(
-        self, bed: pybedtools.BedTool, window: int
-    ) -> pybedtools.BedTool:
+    def _add_slop_window(self, bed: BedTool, window: int) -> BedTool:
         """Return a slopped BedTool object"""
         return bed.slop(g=self.chromfile, b=window)
 
-    def _load_tss(self) -> pybedtools.BedTool:
+    def _load_tss(self) -> BedTool:
         """Load TSS file and ignore any TSS that do not have a gene target.
         Additionally, adds a slop of 2kb to the TSS for downstream overlap.
         Ignores non-gene TSS by checking the length of the tss name:
         gene-associated tss are annotated with one extra field.
 
         Returns:
-            pybedtools.BedTool - TSS w/ target genes
+            BedTool - TSS w/ target genes
         """
 
         def _gene_only_tss(feature):
@@ -669,11 +662,11 @@ class EdgeParser:
                 return feature
             return None
 
-        tss = pybedtools.BedTool(f"{self.tss}")
+        tss = BedTool(f"{self.tss}")
         return self._add_slop_window(tss.filter(_gene_only_tss), 2000)
 
     def _process_overlaps(
-        self, overlaps: List[Tuple[pybedtools.BedTool, pybedtools.BedTool, str]]
+        self, overlaps: List[Tuple[BedTool, BedTool, str]]
     ) -> Set[str]:
         """Process overlaps per type of regulatory connection and generate loop edges."""
         basenodes = set()
@@ -719,7 +712,7 @@ class EdgeParser:
 
         with contextlib.suppress(TypeError):
             if "superenhancers" in self.interaction_types:
-                super_enhancers = pybedtools.BedTool(
+                super_enhancers = BedTool(
                     self.local_dir / "superenhancers_{self.tissue}.bed"
                 )
                 overlaps += [
@@ -769,22 +762,22 @@ class EdgeParser:
     @staticmethod
     def _split_chromatin_loops(
         chromatin_loops: str,
-    ) -> Tuple[pybedtools.BedTool, pybedtools.BedTool]:
+    ) -> Tuple[BedTool, BedTool]:
         """Split chromatin loops into two separate BedTools.
 
         Args:
             chromatin_loops (str): The path to the chromatin loops file.
 
         Returns:
-            Tuple[pybedtools.BedTool, pybedtools.BedTool]: The first and
+            Tuple[BedTool, BedTool]: The first and
             second anchor BedTools.
         """
-        first_anchor = pybedtools.BedTool(chromatin_loops).sort()
+        first_anchor = BedTool(chromatin_loops).sort()
         second_anchor = first_anchor.cut([3, 4, 5, 0, 1, 2]).sort()
         return first_anchor.cut([0, 1, 2, 3, 4, 5]), second_anchor
 
     @staticmethod
-    def _reverse_anchors(bed: pybedtools.BedTool) -> pybedtools.BedTool:
+    def _reverse_anchors(bed: BedTool) -> BedTool:
         """Reverse the anchors of a BedTool, only meant to be used after overlaps
         are added as it returns seven columns"""
         return bed.cut([3, 4, 5, 0, 1, 2, 6])
@@ -797,8 +790,6 @@ class EdgeParser:
         return feature
 
     @staticmethod
-    def _loop_direct_overlap(
-        loops: pybedtools.BedTool, features: pybedtools.BedTool
-    ) -> pybedtools.BedTool:
+    def _loop_direct_overlap(loops: BedTool, features: BedTool) -> BedTool:
         """Get features that directly overlap with loop anchor"""
         return loops.intersect(features, wo=True, stream=True)

@@ -18,12 +18,13 @@ import numpy as np
 from scipy import stats  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
+from omics_graph_learning.test.scaled_feature_accuracy import (
+    ScaledFeatureAccuracy,
+)  # type: ignore
 from utils import dir_check_make
 from utils import get_physical_cores
 from utils import ScalerUtils
 from utils import setup_logging
-
-from ..test.scaled_feature_accuracy import ScaledFeatureAccuracy  # type: ignore
 
 logger = setup_logging()
 CORES = get_physical_cores()

@@ -18,6 +18,7 @@ from subprocess import PIPE
 from subprocess import Popen
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from pybedtools import BedTool  # type: ignore
 import pybedtools  # type: ignore
 from pybedtools.featurefuncs import extend_fields  # type: ignore
 
@@ -138,9 +139,9 @@ class LocalContextParser:
         objects.
         """
         self.genesymbol_to_gencode = genes_from_gencode(
-            pybedtools.BedTool(self.local_dir / self.gencode)  # type: ignore
+            BedTool(self.local_dir / self.gencode)  # type: ignore
         )
-        self.blacklist = pybedtools.BedTool(self.blacklist).sort().saveas()  # type: ignore
+        self.blacklist = BedTool(self.blacklist).sort().saveas()  # type: ignore
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
@@ -214,7 +215,7 @@ class LocalContextParser:
     def _prepare_local_features(
         self,
         bed: str,
-    ) -> Tuple[str, pybedtools.BedTool]:
+    ) -> Tuple[str, BedTool]:
         """
         Creates a dict of local context datatypes and their bedtools objects.
         Renames features if necessary. Intersects each bed to get only features
@@ -238,7 +239,7 @@ class LocalContextParser:
             return feature
 
         # prepare data as pybedtools objects and intersect -v against blacklist
-        local_bed = pybedtools.BedTool(self.local_dir / bed).sort()
+        local_bed = BedTool(self.local_dir / bed).sort()
         ab = self._remove_blacklist_and_alt_configs(
             bed=local_bed, blacklist=self.blacklist
         )
@@ -247,7 +248,7 @@ class LocalContextParser:
         prefix = bed.split("_")[0].lower()
         if prefix in self.nodes and prefix != "gencode":
             result = ab.each(rename_feat_chr_start).cut([0, 1, 2, 3]).saveas()
-            prepared_bed = pybedtools.BedTool(str(result), from_string=True)
+            prepared_bed = BedTool(str(result), from_string=True)
         else:
             prepared_bed = ab.cut([0, 1, 2, 3])
 
@@ -256,10 +257,10 @@ class LocalContextParser:
     @time_decorator(print_args=True)
     def process_bedcollection(
         self,
-        bedcollection: Dict[str, pybedtools.BedTool],
+        bedcollection: Dict[str, BedTool],
         chromfile: str,
         feat_window: int,
-    ) -> Tuple[Dict[str, pybedtools.BedTool], Dict[str, pybedtools.BedTool]]:
+    ) -> Tuple[Dict[str, BedTool], Dict[str, BedTool]]:
         """Process bedfiles by sorting then adding a window (slop) around each
         feature.
         """
@@ -271,10 +272,10 @@ class LocalContextParser:
 
     def _slop_bedcollection(
         self,
-        bedcollection: Dict[str, pybedtools.BedTool],
+        bedcollection: Dict[str, BedTool],
         chromfile: str,
         feat_window: int,
-    ) -> Dict[str, pybedtools.BedTool]:
+    ) -> Dict[str, BedTool]:
         """Slop bedfiles that are not 3D chromatin files."""
         return {
             key: self._slop_and_keep_original(value, chromfile, feat_window)
@@ -332,12 +333,12 @@ class LocalContextParser:
         if node_type in self.DIRECT:
             _unix_intersect(node_type, type="direct")
             self._filter_duplicate_bed_entries(
-                pybedtools.BedTool(self.edge_dir / f"{node_type}.bed")
+                BedTool(self.edge_dir / f"{node_type}.bed")
             ).sort().saveas(self.edge_dir / f"{node_type}_dupes_removed")
         else:
             _unix_intersect(node_type)
             self._filter_duplicate_bed_entries(
-                pybedtools.BedTool(self.edge_dir / f"{node_type}.bed")
+                BedTool(self.edge_dir / f"{node_type}.bed")
             ).each(_add_distance).saveas().sort().saveas(
                 self.edge_dir / f"{node_type}_dupes_removed"
             )
@@ -359,7 +360,7 @@ class LocalContextParser:
 
     def _reference_nodes_for_feature_aggregation(
         self, node_type: str
-    ) -> pybedtools.bedtool.BedTool:
+    ) -> BedTool.BedTool:
         """Prepare node_type reference for aggregating attributes"""
 
         def add_size(feature: Any) -> str:
@@ -369,7 +370,7 @@ class LocalContextParser:
             return feature
 
         return (
-            pybedtools.BedTool(self.intermediate_sorted / f"{node_type}.bed")
+            BedTool(self.intermediate_sorted / f"{node_type}.bed")
             .filter(lambda x: "alt" not in x[0])
             .each(add_size)
             .sort()
@@ -377,7 +378,7 @@ class LocalContextParser:
         )
 
     def _group_attribute(
-        self, ref_file: pybedtools.bedtool.BedTool, attribute: str, save_file: Path
+        self, ref_file: BedTool.BedTool, attribute: str, save_file: Path
     ) -> None:
         """Get overlap with gene windows then aggregate total nucleotides, gc
         content, and all other attributes.
@@ -399,7 +400,7 @@ class LocalContextParser:
         elif attribute == "recombination":
             return (
                 ref_file.intersect(
-                    pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
+                    BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
                 )
@@ -410,7 +411,7 @@ class LocalContextParser:
         else:
             return (
                 ref_file.intersect(
-                    pybedtools.BedTool(self.intermediate_sorted / f"{attribute}.bed"),
+                    BedTool(self.intermediate_sorted / f"{attribute}.bed"),
                     wao=True,
                     sorted=True,
                 )
@@ -489,7 +490,7 @@ class LocalContextParser:
 
     def _add_first_attribute(
         self,
-        line: tuple,
+        line: Tuple[str, ...],
         positional_encoding: Optional[PositionalEncoding],
     ) -> Dict[str, Union[str, float, int, Dict[str, Union[str, int]]]]:
         """Because gc is the first attribute processed, we take this time to
@@ -509,16 +510,11 @@ class LocalContextParser:
             }
 
             if positional_encoding:
-                chr_val = str(line[0])
-                start_val = int(line[1])
-                end_val = int(line[2])
-                print(f"Debug - chr: {chr_val}, type: {type(chr_val)}")
-                print(f"Debug - start: {start_val}, type: {type(start_val)}")
-                print(f"Debug - end: {end_val}, type: {type(end_val)}")
-                attributes["positional_encoding"] = positional_encoding(
-                    chromosome=chr_val, node_start=start_val, node_end=end_val
+                self._add_positional_encoding_attribute(
+                    line=line,
+                    positional_encoding=positional_encoding,
+                    attributes=attributes,
                 )
-
             return attributes
         except Exception as e:
             logger.error(f"Error processing gc {line}: {e}")
@@ -544,15 +540,15 @@ class LocalContextParser:
 
     def _remove_blacklist_and_alt_configs(
         self,
-        bed: pybedtools.bedtool.BedTool,
-        blacklist: pybedtools.bedtool.BedTool,
-    ) -> pybedtools.bedtool.BedTool:
+        bed: BedTool.BedTool,
+        blacklist: BedTool.BedTool,
+    ) -> BedTool.BedTool:
         """Remove blacklist and alternate chromosomes from bedfile."""
         return self._remove_alt_configs(bed.intersect(blacklist, sorted=True, v=True))
 
     @time_decorator(print_args=True)
     def _save_intermediate(
-        self, bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
+        self, bed_dictionary: Dict[str, BedTool.BedTool], folder: str
     ) -> None:
         """Save region specific bedfiles"""
         for key in bed_dictionary:
@@ -562,7 +558,7 @@ class LocalContextParser:
 
     @time_decorator(print_args=True)
     def _pre_concatenate_all_files(
-        self, all_files: str, bedcollection_slopped: Dict[str, pybedtools.BedTool]
+        self, all_files: str, bedcollection_slopped: Dict[str, BedTool]
     ) -> None:
         """Pre-concatenate via unix commands to save time"""
         if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
@@ -585,16 +581,28 @@ class LocalContextParser:
                 os.remove(self.edge_dir / item)
 
     @staticmethod
-    def _sort_bedcollection(
-        bedcollection: Dict[str, pybedtools.BedTool]
-    ) -> Dict[str, pybedtools.BedTool]:
+    def _add_positional_encoding_attribute(
+        line: Tuple[str, ...],
+        positional_encoding: PositionalEncoding,
+        attributes: Dict[str, Union[str, float, int, Dict[str, Union[str, int]]]],
+    ) -> None:
+        """Add positional encoding to the attributes dictionary."""
+        chr_val = str(line[0])
+        start_val = int(line[1])
+        end_val = int(line[2])
+        attributes["positional_encoding"] = positional_encoding(
+            chromosome=chr_val, node_start=start_val, node_end=end_val
+        )
+
+    @staticmethod
+    def _sort_bedcollection(bedcollection: Dict[str, BedTool]) -> Dict[str, BedTool]:
         """Sort bedfiles in a collection"""
         return {key: value.sort() for key, value in bedcollection.items()}
 
     @staticmethod
     def _slop_and_keep_original(
-        bedfile: pybedtools.BedTool, chromfile: str, feat_window: int
-    ) -> pybedtools.BedTool:
+        bedfile: BedTool, chromfile: str, feat_window: int
+    ) -> BedTool:
         """Slop a single bedfile and re-write each line to keep the original
         entry."""
         slopped = bedfile.slop(g=chromfile, b=feat_window).sort()
@@ -602,19 +610,19 @@ class LocalContextParser:
             str(line_1).split("\n")[0] + "\t" + str(line_2)
             for line_1, line_2 in zip(slopped, bedfile)
         ]
-        return pybedtools.BedTool("".join(newstrings), from_string=True).sort()
+        return BedTool("".join(newstrings), from_string=True).sort()
 
     @staticmethod
     def _remove_alt_configs(
-        bed: pybedtools.bedtool.BedTool,
-    ) -> pybedtools.bedtool.BedTool:
+        bed: BedTool.BedTool,
+    ) -> BedTool.BedTool:
         """Remove alternate chromosomes from bedfile."""
         return bed.filter(lambda x: "_" not in x[0]).saveas()
 
     @staticmethod
     def _filter_duplicate_bed_entries(
-        bedfile: pybedtools.bedtool.BedTool,
-    ) -> pybedtools.bedtool.BedTool:
+        bedfile: BedTool.BedTool,
+    ) -> BedTool.BedTool:
         """Filters a bedfile by removing entries that are identical"""
         return bedfile.filter(
             lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]

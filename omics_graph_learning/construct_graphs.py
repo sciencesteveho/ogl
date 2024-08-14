@@ -347,6 +347,33 @@ class GraphSerializer:
         return edges, edge_features
 
 
+def check_missing_target_genes(
+    graph: nx.Graph, target_genes: List[str], tissue: str
+) -> None:
+    """Check for missing target genes in the graph and log the results.
+
+    Targets are chosen via TPM filter, but they might not necessarily remain in
+    the graph as we prune nodes that are self isolated. Nodes may or may not be
+    isolated depending on the resolution of the 3d chromatin data used for graph
+    construction.
+    """
+    graph_nodes = set(graph.nodes())
+    tissue_suffixed_targets = {f"{gene}_{tissue}" for gene in target_genes}
+
+    if missing_genes := tissue_suffixed_targets - graph_nodes:
+        # remove tissue suffix for reporting
+        missing_genes_without_suffix = [
+            gene.rsplit("_", 1)[0] for gene in missing_genes
+        ]
+        logger.warning(
+            "The following target genes are missing from the final graph: "
+            f"{missing_genes_without_suffix}"
+        )
+        logger.warning(f"Number of missing genes: {len(missing_genes)}")
+    else:
+        logger.info("All target genes are present in the final graph.")
+
+
 def construct_tissue_graph(
     nodes: List[str],
     experiment_name: str,
@@ -375,15 +402,7 @@ def construct_tissue_graph(
     ).construct_graph()
 
     # check for missing target genes
-    graph_nodes = set(graph.nodes())
-    if missing_genes := set(target_genes) - graph_nodes:
-        logger.warning(
-            "The following target genes are missing from the final graph: "
-            f"{missing_genes}"
-        )
-        logger.warning(f"Number of missing genes: {len(missing_genes)}")
-    else:
-        logger.info("All target genes are present in the final graph.")
+    check_missing_target_genes(graph=graph, target_genes=target_genes, tissue=tissue)
 
     # serialize to arrays
     serializer = GraphSerializer(

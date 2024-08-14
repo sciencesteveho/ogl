@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 import pandas as pd
 import psutil  # type: ignore
-import pybedtools  # type: ignore
+from pybedtools import BedTool  # type: ignore
 from scipy import stats  # type: ignore
 import seaborn as sns  # type: ignore
 import torch
@@ -444,7 +444,7 @@ def filtered_genes_from_bed(tpm_filtered_genes: str) -> List[str]:
         return [line[3] for line in csv.reader(file, delimiter="\t")]
 
 
-def genes_from_gencode(gencode_ref: pybedtools.BedTool) -> Dict[str, str]:
+def genes_from_gencode(gencode_ref: BedTool) -> Dict[str, str]:
     """Returns a dict of gencode v26 genes, their ids and associated gene
     symbols
     """
@@ -508,8 +508,8 @@ def prepare_tss_file(
         )
     """
     _reftss_cut_cols(annotation_file)
-    genesymbol_to_gencode = genes_from_gencode(pybedtools.BedTool(gencode_ref))
-    tss = pybedtools.BedTool(tss_file)
+    genesymbol_to_gencode = genes_from_gencode(BedTool(gencode_ref))
+    tss = BedTool(tss_file)
     maps = _tss_tuples_to_dict(
         _tss_to_gene_tuples(f"{annotation_file}.cut"),
         genesymbol_to_gencode=genesymbol_to_gencode,
@@ -525,7 +525,7 @@ def prepare_tss_file(
         else:
             bed.append([line[0], line[1], line[2], f"tss_{line[3]}"])
 
-    bed = pybedtools.BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
+    bed = BedTool(bed).saveas(f"{savedir}/tss_parsed_hg38.bed")
 
 
 def _map_genesymbol_to_tss(
