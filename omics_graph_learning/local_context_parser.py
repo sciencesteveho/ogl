@@ -358,9 +358,7 @@ class LocalContextParser:
             logger.info(f"Processing {attribute} for {node_type}")
             self._group_attribute(ref_file, attribute, save_file)
 
-    def _reference_nodes_for_feature_aggregation(
-        self, node_type: str
-    ) -> BedTool.BedTool:
+    def _reference_nodes_for_feature_aggregation(self, node_type: str) -> BedTool:
         """Prepare node_type reference for aggregating attributes"""
 
         def add_size(feature: Any) -> str:
@@ -378,7 +376,7 @@ class LocalContextParser:
         )
 
     def _group_attribute(
-        self, ref_file: BedTool.BedTool, attribute: str, save_file: Path
+        self, ref_file: BedTool, attribute: str, save_file: Path
     ) -> None:
         """Get overlap with gene windows then aggregate total nucleotides, gc
         content, and all other attributes.
@@ -540,15 +538,15 @@ class LocalContextParser:
 
     def _remove_blacklist_and_alt_configs(
         self,
-        bed: BedTool.BedTool,
-        blacklist: BedTool.BedTool,
-    ) -> BedTool.BedTool:
+        bed: BedTool,
+        blacklist: BedTool,
+    ) -> BedTool:
         """Remove blacklist and alternate chromosomes from bedfile."""
         return self._remove_alt_configs(bed.intersect(blacklist, sorted=True, v=True))
 
     @time_decorator(print_args=True)
     def _save_intermediate(
-        self, bed_dictionary: Dict[str, BedTool.BedTool], folder: str
+        self, bed_dictionary: Dict[str, BedTool], folder: str
     ) -> None:
         """Save region specific bedfiles"""
         for key in bed_dictionary:
@@ -614,15 +612,15 @@ class LocalContextParser:
 
     @staticmethod
     def _remove_alt_configs(
-        bed: BedTool.BedTool,
-    ) -> BedTool.BedTool:
+        bed: BedTool,
+    ) -> BedTool:
         """Remove alternate chromosomes from bedfile."""
         return bed.filter(lambda x: "_" not in x[0]).saveas()
 
     @staticmethod
     def _filter_duplicate_bed_entries(
-        bedfile: BedTool.BedTool,
-    ) -> BedTool.BedTool:
+        bedfile: BedTool,
+    ) -> BedTool:
         """Filters a bedfile by removing entries that are identical"""
         return bedfile.filter(
             lambda x: [x[0], x[1], x[2], x[3]] != [x[4], x[5], x[6], x[7]]

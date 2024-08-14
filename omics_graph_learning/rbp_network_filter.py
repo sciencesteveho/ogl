@@ -10,7 +10,7 @@ import csv
 from typing import Dict, List, Tuple
 
 import pandas as pd
-import pybedtools  # type: ignore
+from pybedtools import BedTool  # type: ignore
 
 
 class RBPNetworkFilter:
@@ -34,7 +34,7 @@ class RBPNetworkFilter:
     def filter_rbp_network(self) -> None:
         """_summary_"""
         # set up gene lists
-        genes = self.genes_from_gencode(pybedtools.BedTool(self.gencode))
+        genes = self.genes_from_gencode(BedTool(self.gencode))
         rbp_genes = [
             line[0] for line in csv.reader(open(self.rbp_proteins), delimiter="\t")
         ]
@@ -74,7 +74,7 @@ class RBPNetworkFilter:
         ]
 
     @staticmethod
-    def genes_from_gencode(gencode_ref: pybedtools.BedTool) -> Dict[str, str]:
+    def genes_from_gencode(gencode_ref: BedTool) -> Dict[str, str]:
         """Returns a dict of gencode v26 genes, their ids and associated gene
         symbols
         """
