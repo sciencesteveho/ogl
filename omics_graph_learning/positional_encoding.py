@@ -57,15 +57,19 @@ class PositionalEncoding(nn.Module):
             print(f"Warning: No bins found for chromosome {chromosome}")
             return np.array([])
 
+        # get the start and end values for the bins
         start_values = chrom_bins["start"]
         end_values = chrom_bins["end"]
 
-        if start < start_values[0] or end > end_values[-1]:
+        # check that the start and end values are within the chromosome
+        chrom_start = start_values.min()
+        chrom_end = end_values.max()
+        if start < chrom_start or end > chrom_end:
             print(
                 f"Warning: Coordinates ({start}, {end}) "
                 f"out of bounds for chromosome {chromosome}"
             )
-            print(f"Chromosome range: {start_values[0]} - {end_values[-1]}")
+            print(f"Chromosome range: {chrom_start} - {chrom_end}")
 
         start_bin_idx = np.searchsorted(start_values, start, side="right") - 1
         end_bin_idx = np.searchsorted(end_values, end, side="left")
