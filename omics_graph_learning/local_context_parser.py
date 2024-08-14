@@ -455,7 +455,7 @@ class LocalContextParser:
 
     def _process_node_attributes(
         self, node: str
-    ) -> Dict[str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]]:
+    ) -> Dict[str, Dict[str, Union[str, float, int, Dict[str, Union[str, int]]]]]:
         """Add node attributes to reference dictionary for each feature type."""
         # initialize positional encoder
         positional_encoding = (
@@ -469,49 +469,65 @@ class LocalContextParser:
             filename = self.attribute_dir / attribute / f"{node}_{attribute}_percentage"
             lines = self._read_attribute_file(filename)
             for line in lines:
-                node_key = f"{line[3]}_{self.tissue}"
-                if attribute == "gc":
-                    stored_attributes[node_key] = self._add_first_attribute(
-                        line=line, positional_encoding=positional_encoding
-                    )
-                else:
-                    self._add_remaining_attributes(
-                        stored_attributes=stored_attributes,
-                        node_key=node_key,
-                        attribute=attribute,
-                        line=line,
-                    )
+                try:
+                    node_key = f"{line[3]}_{self.tissue}"
+                    if attribute == "gc":
+                        stored_attributes[node_key] = self._add_first_attribute(
+                            line=line, positional_encoding=positional_encoding
+                        )
+                    else:
+                        self._add_remaining_attributes(
+                            stored_attributes=stored_attributes,
+                            node_key=node_key,
+                            attribute=attribute,
+                            line=line,
+                        )
+                except Exception as e:
+                    logger.error(f"Error processing {node} {attribute} {line}: {e}")
+                    raise
         return stored_attributes
 
     def _add_first_attribute(
         self,
         line: tuple,
         positional_encoding: Optional[PositionalEncoding],
-    ) -> Dict[str, Union[str, float, Dict[str, Union[str, float]]]]:
+    ) -> Dict[str, Union[str, float, int, Dict[str, Union[str, int]]]]:
         """Because gc is the first attribute processed, we take this time to
         initialize some of the dictionary values and produce the positional
         encodings."""
-        attributes: Dict[str, Union[str, float, Dict[str, Union[str, float]]]] = {
-            "coordinates": {
-                "chr": line[0],
-                "start": float(line[1]),
-                "end": float(line[2]),
-            },
-            "size": float(line[4]),
-            "gc": float(line[5]),
-        }
+        try:
+            attributes: Dict[
+                str, Union[str, float, int, Dict[str, Union[str, int]]]
+            ] = {
+                "coordinates": {
+                    "chr": line[0],
+                    "start": int(line[1]),
+                    "end": int(line[2]),
+                },
+                "size": int(line[4]),
+                "gc": int(line[5]),
+            }
 
-        if positional_encoding:
-            attributes["positional_encoding"] = positional_encoding(
-                chromosome=line[0], node_start=int(line[1]), node_end=int(line[2])
-            )
+            if positional_encoding:
+                chr_val = str(line[0])
+                start_val = int(line[1])
+                end_val = int(line[2])
+                print(f"Debug - chr: {chr_val}, type: {type(chr_val)}")
+                print(f"Debug - start: {start_val}, type: {type(start_val)}")
+                print(f"Debug - end: {end_val}, type: {type(end_val)}")
+                attributes["positional_encoding"] = positional_encoding(
+                    chromosome=chr_val, node_start=start_val, node_end=end_val
+                )
 
-        return attributes
+            return attributes
+        except Exception as e:
+            logger.error(f"Error processing gc {line}: {e}")
+            raise
 
     def _add_remaining_attributes(
         self,
         stored_attributes: Dict[
-            str, Dict[str, Union[str, float, Dict[str, Union[str, float]]]]
+            str, Dict[str, Union[str, float, int, Dict[str, Union[str, int]]]]
         ],
         node_key: str,
         attribute: str,
