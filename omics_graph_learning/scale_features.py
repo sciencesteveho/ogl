@@ -124,7 +124,7 @@ def scaler_fit_task(scaler_fit_arguments: Tuple[int, np.ndarray, Path]) -> int:
     feat, node_feat, scaler_dir = scaler_fit_arguments
     scaler = RobustScaler(quantile_range=(5, 95), unit_variance=False)
     scaler.fit(node_feat[:, feat].reshape(-1, 1))
-    scaler_path = scaler_dir / f"feat{feat}_scaler.joblib"
+    scaler_path = scaler_dir / f"feat_{feat}_scaler.joblib"
     joblib.dump(scaler, scaler_path)
     return feat
 

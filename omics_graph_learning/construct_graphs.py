@@ -153,7 +153,7 @@ class GraphConstructor:
         nodes_to_remove = set(graph) - connected_to_gene
         graph.remove_nodes_from(nodes_to_remove)
         logger.info(
-            f"Removed {len(nodes_to_remove)} nodes from graph that are not connected to genes."
+            f"Removed {len(nodes_to_remove)} nodes from graph that do not hop to genes."
         )
         return graph
 
@@ -358,9 +358,10 @@ def check_missing_target_genes(
     construction.
     """
     graph_nodes = set(graph.nodes())
-    tissue_suffixed_targets = {f"{gene}_{tissue}" for gene in target_genes}
+    print(f"First 10 nodes: {list(graph_nodes)[:10]}")
+    print(f"First 10 target genes: {target_genes[:10]}")
 
-    if missing_genes := tissue_suffixed_targets - graph_nodes:
+    if missing_genes := set(target_genes) - graph_nodes:
         # remove tissue suffix for reporting
         missing_genes_without_suffix = [
             gene.rsplit("_", 1)[0] for gene in missing_genes
