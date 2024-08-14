@@ -57,9 +57,8 @@ class PositionalEncoding(nn.Module):
             print(f"Warning: No bins found for chromosome {chromosome}")
             return np.array([])
 
-        # cast to numpy arrays to deal with typing
-        start_values = cast(np.ndarray, chrom_bins["start"].values)
-        end_values = cast(np.ndarray, chrom_bins["end"].values)
+        start_values = chrom_bins["start"]
+        end_values = chrom_bins["end"]
 
         if start < start_values[0] or end > end_values[-1]:
             print(
@@ -129,4 +128,7 @@ class PositionalEncoding(nn.Module):
         """
         chromsizes_df = pd.read_csv(chromsize_file, sep="\t", names=["name", "length"])
         chromsizes = chromsizes_df.set_index("name")["length"]
-        return cooler.binnify(chromsizes, binsize)
+        bins = cooler.binnify(chromsizes, binsize)
+        bins["start"] = bins["start"].astype(np.int64)
+        bins["end"] = bins["end"].astype(np.int64)
+        return bins
