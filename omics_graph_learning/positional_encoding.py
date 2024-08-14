@@ -46,17 +46,45 @@ class PositionalEncoding(nn.Module):
         self.bins_df = self.get_bins(chromsize_file=chromfile, binsize=binsize)
         self.embedding = nn.Embedding(len(self.bins_df), embedding_dim)
 
+        # initialize embeddings weights
+        nn.init.xavier_uniform_(self.embedding.weight)
+
     def get_bin_indices(self, chromosome: str, start: int, end: int) -> np.ndarray:
         """Get all bin indices that overlap with a given chromosome, start, and end position."""
         chrom_bins = self.bins_df[self.bins_df["chrom"] == chromosome]
+
+        if chrom_bins.empty:
+            print(f"Warning: No bins found for chromosome {chromosome}")
+            return np.array([])
 
         # cast to numpy arrays to deal with typing
         start_values = cast(np.ndarray, chrom_bins["start"].values)
         end_values = cast(np.ndarray, chrom_bins["end"].values)
 
+        if start < start_values[0] or end > end_values[-1]:
+            print(
+                f"Warning: Coordinates ({start}, {end}) "
+                f"out of bounds for chromosome {chromosome}"
+            )
+            print(f"Chromosome range: {start_values[0]} - {end_values[-1]}")
+
         start_bin_idx = np.searchsorted(start_values, start, side="right") - 1
         end_bin_idx = np.searchsorted(end_values, end, side="left")
+
+        if start_bin_idx > end_bin_idx:
+            print(
+                "Warning: No overlapping bins found for range "
+                f"{start}-{end} on chromosome {chromosome}"
+            )
+            return np.array([])
+
         overlapping_bins = chrom_bins.iloc[start_bin_idx : end_bin_idx + 1]
+        if overlapping_bins.empty:
+            print(
+                "Warning: No overlapping bins found for range "
+                f"{start}-{end} on chromosome {chromosome}"
+            )
+
         return np.array(overlapping_bins.index)
 
     def forward(
@@ -69,15 +97,15 @@ class PositionalEncoding(nn.Module):
             chromosome=chromosome, start=node_start, end=node_end
         )
 
-        # single bin => no pooling
-        if len(bin_idxs) == 1:
-            return (
-                self.embedding(torch.tensor(bin_idxs, dtype=torch.long))
-                .detach()
-                .numpy()
-            )
+        # no bins => no embedding
+        if len(bin_idxs) == 0:
+            return np.zeros(self.embedding_dim)
 
         bin_embeddings = self.embedding(torch.tensor(bin_idxs, dtype=torch.long))
+
+        # single bin => no pooling
+        if len(bin_idxs) == 1:
+            return bin_embeddings.squeeze().detach().numpy()
 
         if pooling == "max":
             pooled_embedding, _ = torch.max(bin_embeddings, dim=0)

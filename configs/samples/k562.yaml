@@ -1,8 +1,6 @@
 ---
 dirs:
-  data_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/k562
   root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess
-  circuit_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/shared_data/interaction/FANTOM5_individual_networks/394_individual_networks
 
 features:
   ATAC: ATAC-seq_merged.narrow.peaks.hg38.bed

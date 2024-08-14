@@ -18,6 +18,7 @@ import numpy as np
 from config_handlers import ExperimentConfig
 from constants import TARGET_FILE
 from constants import TRAINING_SPLIT_FILE
+from utils import NumpyGraphChecker
 from utils import setup_logging
 
 logger = setup_logging()
@@ -220,6 +221,11 @@ def main() -> None:
     combined_graphs(
         experiment_graph_directory=experiment_graph_directory, tissues=params.tissues
     )
+
+    # sanity check graph data
+    NumpyGraphChecker(
+        pickle.load(open(f"{experiment_graph_directory}.pkl", "rb"))
+    ).check_numpy_graph()
 
 
 if __name__ == "__main__":

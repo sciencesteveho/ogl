@@ -201,7 +201,128 @@ def get_physical_cores() -> int:
 
 
 # graph data and gnn operations
-def _tensor_out_to_array(tensor, idx):
+class NumpyGraphChecker:
+    """Class to check and print statistics for concatenated graph data in numpy
+    format.
+    """
+
+    def __init__(self, graph_data: Dict[str, Any]):
+        self.graph_data = graph_data
+
+    def print_array_stats(self, array: np.ndarray, name: str) -> None:
+        """Prints statistics for a numpy array."""
+        print(f"\n{name} statistics:")
+        print(f"Mean: {array.mean(axis=0)[:5]}...")
+        print(f"Std: {array.std(axis=0)[:5]}...")
+        print(f"Min: {array.min(axis=0)[:5]}...")
+        print(f"Max: {array.max(axis=0)[:5]}...")
+        print(f"Contains NaN: {np.isnan(array).any()}")
+        print(f"Contains Inf: {np.isinf(array).any()}")
+
+    def print_graph_summary(self) -> None:
+        """Prints a summary of the graph structure."""
+        print("Numpy Graph Summary:")
+        print(f"Number of nodes: {self.graph_data['num_nodes']}")
+        print(f"Number of edges: {self.graph_data['num_edges']}")
+        print(f"Average degree: {self.graph_data['avg_edges']:.2f}")
+
+    def print_attribute_shapes(self) -> None:
+        """Prints the shapes of all attributes in the graph data."""
+        print("\nAttribute shapes:")
+        for key, item in self.graph_data.items():
+            if isinstance(item, np.ndarray):
+                print(f"{key}: {item.shape}")
+
+    def print_edge_index_stats(self) -> None:
+        """Prints statistics about the edge index."""
+        edge_index = self.graph_data["edge_index"]
+        print("\nEdge index statistics:")
+        print(f"Min node idx: {edge_index.min()}")
+        print(f"Max node idx: {edge_index.max()}")
+
+    def check_edge_index_bounds(self) -> None:
+        """Checks if edge_index contains out-of-bounds indices."""
+        if self.graph_data["edge_index"].max() >= self.graph_data["num_nodes"]:
+            print("\nWARNING: edge_index contains out-of-bounds indices!")
+
+    def check_node_feature_normalization(self) -> None:
+        """Checks if node features appear to be normalized."""
+        node_feat = self.graph_data["node_feat"]
+        if node_feat.min() >= 0 and node_feat.max() <= 1:
+            print("\nNode features appear to be normalized (min >= 0, max <= 1)")
+        else:
+            print("\nWARNING: Node features may not be normalized")
+
+    def check_numpy_graph(self) -> None:
+        """Runs all checks and prints all statistics for the numpy graph data."""
+        self.print_graph_summary()
+        self.print_attribute_shapes()
+        self.print_array_stats(self.graph_data["node_feat"], "Node features")
+        self.print_edge_index_stats()
+        self.check_edge_index_bounds()
+        self.check_node_feature_normalization()
+
+        if "edge_feat" in self.graph_data:
+            self.print_array_stats(self.graph_data["edge_feat"], "Edge features")
+
+
+class PyGDataChecker:
+    """Class to check and print statistics for custom PyG Data objects."""
+
+    def __init__(self, data: Data):
+        self.data = data
+
+    def print_tensor_stats(self, tensor: torch.Tensor, name: str) -> None:
+        """Prints statistics for a tensor."""
+        print(f"\n{name} statistics:")
+        print(f"Mean: {tensor.mean(dim=0)[:5]}...")
+        print(f"Std: {tensor.std(dim=0)[:5]}...")
+        print(f"Min: {tensor.min(dim=0)[0][:5]}...")
+        print(f"Max: {tensor.max(dim=0)[0][:5]}...")
+        print(f"Contains NaN: {torch.isnan(tensor).any().item()}")
+        print(f"Contains Inf: {torch.isinf(tensor).any().item()}")
+
+    def print_graph_summary(self) -> None:
+        """Prints a summary of the graph structure."""
+        print("PyG Data Object - Graph Summary:")
+        print(f"Number of nodes: {self.data.num_nodes}")
+        print(f"Number of edges: {self.data.num_edges}")
+        print(f"Number of node features: {self.data.num_node_features}")
+        print(f"Number of edge features: {self.data.num_edge_features}")
+        print(f"Has isolated nodes: {self.data.has_isolated_nodes()}")
+        print(f"Has self loops: {self.data.has_self_loops()}")
+        print(f"Is directed: {self.data.is_directed()}")
+
+    def print_mask_info(self) -> None:
+        """Prints information about the masks and corresponding target variables."""
+        print("\nMask information:")
+        for key in ["train_mask", "val_mask", "test_mask"]:
+            if hasattr(self.data, key):
+                mask = getattr(self.data, key)
+                print(f"{key}: {mask.sum().item()} nodes")
+                if hasattr(self.data, "y"):
+                    masked_y = self.data.y[mask]
+                    print(f" Mean: {masked_y.mean().item():.4f}")
+                    print(f" Std: {masked_y.std().item():.4f}")
+                    print(f" Min: {masked_y.min().item():.4f}")
+                    print(f" Max: {masked_y.max().item():.4f}")
+                    print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
+                    print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
+
+    def check_pyg_data(self) -> None:
+        """Runs all checks and prints all statistics for the PyG Data object."""
+        self.print_graph_summary()
+        self.print_tensor_stats(self.data.x, "Node features")
+        self.print_tensor_stats(self.data.edge_index, "Edge index")
+        if hasattr(self.data, "edge_attr"):
+            self.print_tensor_stats(self.data.edge_attr, "Edge features")
+        if hasattr(self.data, "y"):
+            self.print_tensor_stats(self.data.y, "Target variable")
+        self.print_mask_info()
+
+
+def _tensor_out_to_array(tensor: torch.Tensor, idx: int):
+    """Convert a torch tensor to a numpy array"""
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
@@ -219,63 +340,6 @@ def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
     """Combines stored edge index and returns dedupe'd array of nodes"""
     combined = np.concatenate((edge_index[0], edge_index[1]))
     return np.unique(combined)
-
-
-def check_pyg_data(data: Data) -> None:
-    """A series of checks to ensure the integrity of a PyG Data object."""
-    print("PyG Data Object - Graph Summary:")
-    print(f"Number of nodes: {data.num_nodes}")
-    print(f"Number of edges: {data.num_edges}")
-    print(f"Number of node features: {data.num_node_features}")
-    print(f"Number of edge features: {data.num_edge_features}")
-    print(f"Has isolated nodes: {data.has_isolated_nodes()}")
-    print(f"Has self loops: {data.has_self_loops()}")
-    print(f"Is directed: {data.is_directed()}")
-
-    print("\nAttribute shapes:")
-    for key, item in data:
-        print(f"{key}: {item.shape}")
-
-    def print_stats(tensor, name):
-        print(f"\n{name} statistics:")
-        print(f"Mean: {tensor.mean(dim=0)[:5]}...")
-        print(f"Std: {tensor.std(dim=0)[:5]}...")
-        print(f"Min: {tensor.min(dim=0)[0][:5]}...")
-        print(f"Max: {tensor.max(dim=0)[0][:5]}...")
-        print(f"Contains NaN: {torch.isnan(tensor).any().item()}")
-        print(f"Contains Inf: {torch.isinf(tensor).any().item()}")
-
-    print_stats(data.x, "Node features")
-
-    print("\nEdge index statistics:")
-    print(f"Min node idx: {data.edge_index.min()}")
-    print(f"Max node idx: {data.edge_index.max()}")
-
-    if hasattr(data, "y"):
-        print_stats(data.y, "Target variable")
-
-    print("\nMask information:")
-    for key in ["train_mask", "val_mask", "test_mask"]:
-        if hasattr(data, key):
-            mask = getattr(data, key)
-            print(f"{key}: {mask.sum().item()} nodes")
-            if hasattr(data, "y"):
-                masked_y = data.y[mask]
-                print(f"{key} target statistics:")
-                print(f"  Mean: {masked_y.mean().item():.4f}")
-                print(f"  Std: {masked_y.std().item():.4f}")
-                print(f"  Min: {masked_y.min().item():.4f}")
-                print(f"  Max: {masked_y.max().item():.4f}")
-                print(f"  Contains NaN: {torch.isnan(masked_y).any().item()}")
-                print(f"  Contains Inf: {torch.isinf(masked_y).any().item()}")
-
-    if data.edge_index.max() >= data.num_nodes:
-        print("\nWARNING: edge_index contains out-of-bounds indices!")
-
-    if data.x.min() >= 0 and data.x.max() <= 1:
-        print("\nNode features appear to be normalized (min >= 0, max <= 1)")
-    else:
-        print("\nWARNING: Node features may not be normalized")
 
 
 # genome data utils

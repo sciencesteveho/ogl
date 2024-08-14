@@ -7,7 +7,7 @@ attribute_references:
   super_enhancers: se_node_attr.bed
   tf_motifs: collapsed_motifs_overlapping_consensus_footprints_hg38.bed
 
-baseloops: deeploop_100000
+baseloops: deeploop_300000
 
 blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38-blacklist.v2.bed
 
@@ -30,7 +30,7 @@ derived_directories:
 
 differentiate_tf: false
 
-experiment_name: regulatory_only_k562_deeploop_100k
+experiment_name: regulatory_only_gm12878_deeploop_300k
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 
@@ -67,7 +67,7 @@ regulatory_schema: intersect
 root_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
 
 tissues:
-  - k562
+  - gm12878
 
 training_targets:
   average_activity_df: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/matrices/average_activity_df.pkl

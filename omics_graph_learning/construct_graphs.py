@@ -60,6 +60,9 @@ class GraphConstructor:
         # keep only nodes that eventually hop to a gene, given max hops
         graph = self._prune_nodes_without_gene_connections(graph)
 
+        # remove isolated nodes
+        graph = self._remove_isolated_nodes(graph)
+
         # populate graph with features
         graph = self._add_node_attributes(graph)
 
@@ -140,7 +143,8 @@ class GraphConstructor:
 
     def _prune_nodes_without_gene_connections(self, graph: nx.Graph) -> nx.Graph:
         """Remove nodes from an undirected graph if they are not in the same
-        connected component as any node in gene_nodes."""
+        connected component as any node in gene_nodes.
+        """
         connected_to_gene = set()
         for component in nx.connected_components(graph):
             if any(gene_node in component for gene_node in self.genes):
@@ -151,6 +155,13 @@ class GraphConstructor:
         logger.info(
             f"Removed {len(nodes_to_remove)} nodes from graph that are not connected to genes."
         )
+        return graph
+
+    def _remove_isolated_nodes(self, graph: nx.Graph) -> nx.Graph:
+        """Remove nodes from the graph w/o edges."""
+        isolated_nodes = list(nx.isolates(graph))
+        graph.remove_nodes_from(isolated_nodes)
+        logger.info(f"Removed {len(isolated_nodes)} isolated nodes from the graph.")
         return graph
 
     @time_decorator(print_args=False)
@@ -362,6 +373,17 @@ def construct_tissue_graph(
         nodes=nodes,
         genes=target_genes,
     ).construct_graph()
+
+    # check for missing target genes
+    graph_nodes = set(graph.nodes())
+    if missing_genes := set(target_genes) - graph_nodes:
+        logger.warning(
+            "The following target genes are missing from the final graph: "
+            f"{missing_genes}"
+        )
+        logger.warning(f"Number of missing genes: {len(missing_genes)}")
+    else:
+        logger.info("All target genes are present in the final graph.")
 
     # serialize to arrays
     serializer = GraphSerializer(

@@ -336,8 +336,10 @@ def create_edge_index(
     total_random_edges: Optional[int],
     node_idxs: Optional[List[str]],
 ) -> torch.Tensor:
-    """Create the edge index tensor for the graph, perturbing if necessary
-    according to args.
+    """Create the edge index tensor for the graph, reversing the edge index to
+    ensure an undirected graph.
+
+    Additionally, function will perturbing if a perturbation type is provided.
 
     Args:
         graph_data (dict): The graph data dictionary.
@@ -349,7 +351,7 @@ def create_edge_index(
         perturbation type is `remove_specific_edges`.
     """
     if edge_perturbation:
-        return torch.tensor(
+        edge_index = torch.tensor(
             perturb_edge_index(
                 edge_index=graph_data["edge_index"],
                 edge_perturbation=edge_perturbation,
@@ -358,8 +360,13 @@ def create_edge_index(
             ),
             dtype=torch.long,
         )
+    else:
+        edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
 
-    edge_index = torch.tensor(graph_data["edge_index"], dtype=torch.long)
+    # add reverse edges
+    edge_index_reverse = edge_index.flip(0)
+    edge_index = torch.cat([edge_index, edge_index_reverse], dim=1)
+    edge_index = edge_index.unique(dim=1)  # remove duplicate edges
 
     # validate edge indices
     num_nodes = graph_data["num_nodes"]

@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple, Union
 
 import joblib  # type: ignore
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler  # type: ignore
+from scipy import stats  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
 from utils import dir_check_make
@@ -121,10 +121,9 @@ def _get_continuous_feat_range(node_features: np.ndarray, onehot_feats: int) -> 
 def scaler_fit_task(scaler_fit_arguments: Tuple[int, np.ndarray, Path]) -> int:
     """Fits scalers according to node idx."""
     feat, node_feat, scaler_dir = scaler_fit_arguments
-    # scaler = MinMaxScaler()
     scaler = RobustScaler(quantile_range=(5, 95), unit_variance=False)
     scaler.fit(node_feat[:, feat].reshape(-1, 1))
-    scaler_path = scaler_dir / f"feat_{feat}_scaler.joblib"
+    scaler_path = scaler_dir / f"feat{feat}_scaler.joblib"
     joblib.dump(scaler, scaler_path)
     return feat
 
@@ -164,7 +163,7 @@ def fit_scalers(
 def load_scalers(
     scaler_dir: Path,
     feat_range: int,
-) -> Dict[int, Union[RobustScaler, MinMaxScaler]]:
+) -> Dict[int, RobustScaler]:
     """Load pre-fit scalers into a dictionary by feature index"""
     return {
         i: joblib.load(scaler_dir / f"feat_{i}_scaler.joblib")
@@ -173,7 +172,7 @@ def load_scalers(
 
 
 def scale_feature_task(
-    scale_feats_arguments: Tuple[np.ndarray, Union[RobustScaler, MinMaxScaler], int]
+    scale_feats_arguments: Tuple[np.ndarray, RobustScaler, int]
 ) -> Tuple[int, np.ndarray]:
     """Scale a single feature using the provided scaler."""
     feature, scaler, index = scale_feats_arguments
@@ -181,40 +180,43 @@ def scale_feature_task(
     return index, scaled_feature
 
 
+def check_feature_statistics(index: int, time: str, feature: np.ndarray) -> None:
+    """Check feature statistics"""
+    logger.info(f"Feature {index} {time}:")
+    logger.info(
+        f"  Min: {feature.min()}, Max: {feature.max()}, Mean: {feature.mean()}, Std: {feature.std()}"
+    )
+    logger.info(
+        f"  Contains NaN: {np.isnan(feature).any()}, Contains Inf: {np.isinf(feature).any()}"
+    )
+
+
 def scale_node_features(
     node_feat: np.ndarray,
-    scalers: Dict[int, Union[RobustScaler, MinMaxScaler]],
+    scalers: Dict[int, RobustScaler],
     feat_range: int,
     n_jobs: int = CORES,
 ) -> np.ndarray:
     """Scale node features using pre-fit scalers in parallel"""
     scaled_node_feat = node_feat.copy()  # copy to avoid modifying original
 
-    # check the min, max, and mean of the features before scaling
-    logger.info(
-        f"Before scaling "
-        f"- min: {node_feat[:, :feat_range].min(axis=0)[:5]}, "
-        f"max: {node_feat[:, :feat_range].max(axis=0)[:5]}, "
-        f"mean: {node_feat[:, :feat_range].mean(axis=0)[:5]}"
-    )
+    # check data details before scaling
+    for index in range(feat_range):
+        feature = node_feat[:, index]
+        check_feature_statistics(index=index, time="before scaling", feature=feature)
 
     with Pool(processes=n_jobs) as pool:
         scale_feats_arguments = [
-            (node_feat[:, i], scalers[i], i) for i in range(feat_range)
+            (node_feat[:, index], scalers[index], index) for index in range(feat_range)
         ]
         results = pool.map(scale_feature_task, scale_feats_arguments)
 
     # sort results by feature index and update scaled_node_feat
     for index, scaled_feature in sorted(results):
         scaled_node_feat[:, index] = scaled_feature
-
-    # check the min, max, and mean of the features after scaling
-    logger.info(
-        f"After scaling "
-        f"- min: {scaled_node_feat[:, :feat_range].min(axis=0)[:5]}, "
-        f"max: {scaled_node_feat[:, :feat_range].max(axis=0)[:5]}, "
-        f"mean: {scaled_node_feat[:, :feat_range].mean(axis=0)[:5]}"
-    )
+        check_feature_statistics(
+            index=index, time="after scaling", feature=scaled_feature
+        )
 
     return scaled_node_feat
 

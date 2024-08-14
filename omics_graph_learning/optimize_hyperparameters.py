@@ -27,8 +27,8 @@ from train_gnn import build_gnn_architecture
 from train_gnn import GNNTrainer
 from train_gnn import prep_loader
 from utils import _tensor_out_to_array
-from utils import check_pyg_data
 from utils import dir_check_make
+from utils import PyGDataChecker
 from utils import setup_logging
 
 # helpers for trial
@@ -157,7 +157,7 @@ def objective(
     ).make_data_object()
 
     # check data integreity
-    check_pyg_data(data)
+    PyGDataChecker.check_pyg_data(data)
 
     # set up train, test, and validation loaders
     train_loader = prep_loader(

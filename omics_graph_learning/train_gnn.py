@@ -36,6 +36,7 @@ from utils import _tensor_out_to_array
 from utils import dir_check_make
 from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
+from utils import PyGDataChecker
 from utils import setup_logging
 
 
@@ -564,6 +565,9 @@ def main() -> None:
         positional_encoding=args.positional_encoding,
         perturbation_config=prepare_pertubation_config(args),
     ).make_data_object()
+
+    # check data integreity
+    PyGDataChecker.check_pyg_data(data)
 
     # set up tensorboard logger & log graph
     tb_logger = TensorBoardLogger(log_dir=model_dir / "tensorboard")
