@@ -503,7 +503,7 @@ class LocalContextParser:
 
         if positional_encoding:
             attributes["positional_encoding"] = positional_encoding(
-                chromosome=line[0], node_start=line[1], node_end=line[2]
+                chromosome=line[0], node_start=int(line[1]), node_end=int(line[2])
             )
 
         return attributes
