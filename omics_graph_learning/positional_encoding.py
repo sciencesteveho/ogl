@@ -6,8 +6,6 @@
 start and end features."""
 
 
-from typing import cast
-
 import cooler  # type: ignore
 import numpy as np
 import pandas as pd
@@ -54,8 +52,7 @@ class PositionalEncoding(nn.Module):
         chrom_bins = self.bins_df[self.bins_df["chrom"] == chromosome]
 
         if chrom_bins.empty:
-            print(f"Warning: No bins found for chromosome {chromosome}")
-            return np.array([])
+            raise ValueError(f"Warning: No bins found for chromosome {chromosome}")
 
         # get the start and end values for the bins
         start_values = chrom_bins["start"]
@@ -75,20 +72,28 @@ class PositionalEncoding(nn.Module):
         end_bin_idx = np.searchsorted(end_values, end, side="left")
 
         if start_bin_idx > end_bin_idx:
-            print(
-                "Warning: No overlapping bins found for range "
-                f"{start}-{end} on chromosome {chromosome}"
-            )
-            return np.array([])
+            raise ValueError("Start bin index is greater than end bin index.")
 
         overlapping_bins = chrom_bins.iloc[start_bin_idx : end_bin_idx + 1]
         if overlapping_bins.empty:
-            print(
-                "Warning: No overlapping bins found for range "
+            raise ValueError(
+                "Warning: No bins found for range "
                 f"{start}-{end} on chromosome {chromosome}"
             )
 
         return np.array(overlapping_bins.index)
+
+    def pool_embedding(
+        self, bin_embeddings: torch.Tensor, pooling: str = "average"
+    ) -> torch.Tensor:
+        """Pool the bin embeddings across the feature range."""
+        if pooling == "max":
+            pooled_embedding, _ = torch.max(bin_embeddings, dim=0)
+        elif pooling == "average":
+            pooled_embedding = torch.mean(bin_embeddings, dim=0)
+        else:
+            raise ValueError("Pooling type not supported. Choose 'max' or 'average'.")
+        return pooled_embedding
 
     def forward(
         self, chromosome: str, node_start: int, node_end: int, pooling: str = "average"
@@ -99,25 +104,17 @@ class PositionalEncoding(nn.Module):
         bin_idxs = self.get_bin_indices(
             chromosome=chromosome, start=node_start, end=node_end
         )
+        bin_embeddings = self.embedding(torch.tensor(bin_idxs, dtype=torch.long))
 
         # no bins => no embedding
         if len(bin_idxs) == 0:
             return np.zeros(self.embedding_dim)
 
-        bin_embeddings = self.embedding(torch.tensor(bin_idxs, dtype=torch.long))
-
         # single bin => no pooling
         if len(bin_idxs) == 1:
             return bin_embeddings.squeeze().detach().numpy()
 
-        if pooling == "max":
-            pooled_embedding, _ = torch.max(bin_embeddings, dim=0)
-        elif pooling == "average":
-            pooled_embedding = torch.mean(bin_embeddings, dim=0)
-        else:
-            raise ValueError("Pooling type not supported. Choose 'max' or 'average'.")
-
-        return pooled_embedding.detach().numpy()
+        return self.pool_embedding(bin_embeddings).detach().numpy()
 
     @staticmethod
     def get_bins(chromsize_file: str, binsize: int) -> pd.DataFrame:
