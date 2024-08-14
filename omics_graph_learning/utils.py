@@ -262,9 +262,6 @@ class NumpyGraphChecker:
         self.check_edge_index_bounds()
         self.check_node_feature_normalization()
 
-        if "edge_feat" in self.graph_data:
-            self.print_array_stats(self.graph_data["edge_feat"], "Edge features")
-
 
 class PyGDataChecker:
     """Class to check and print statistics for custom PyG Data objects."""
