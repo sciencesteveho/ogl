@@ -374,8 +374,8 @@ def parse_pipeline_arguments() -> argparse.Namespace:
             "rna_seq",
         ],
     )
-    parser.add_argument("--tpm_filter", type=float, default=1.0)
-    parser.add_argument("--percent_of_samples_filter", type=float, default=0.2)
+    parser.add_argument("--tpm_filter", type=float, default=0.5)
+    parser.add_argument("--percent_of_samples_filter", type=float, default=0.1)
     parser.add_argument(
         "--filter_mode",
         type=str,

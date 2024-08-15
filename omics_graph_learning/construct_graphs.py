@@ -57,36 +57,35 @@ class GraphConstructor:
         # make base graph
         graph = self._create_base_graph()
         logger.info("Base graph created.")
-        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
-        logger.info(f"Gene nodes: {len(gene_nodes)}")
+        self._log_gene_nodes(graph)
 
-        # keep only nodes that eventually hop to a gene, given max hops
+        # keep only nodes that eventually hop to a regression target, given max
+        # hops
         graph = self._prune_nodes_without_gene_connections(graph)
         logger.info("Pruned nodes without gene connections.")
-        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
-        logger.info(f"Gene nodes: {gene_nodes}")
-        logger.info(f"Gene nodes: {len(gene_nodes)}")
+        self._log_gene_nodes(graph)
 
         # remove isolated nodes
         graph = self._remove_isolated_nodes(graph)
         logger.info("Removed isolated nodes.")
-        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
-        logger.info(f"Gene nodes: {gene_nodes}")
-        logger.info(f"Gene nodes: {len(gene_nodes)}")
+        self._log_gene_nodes(graph)
 
         # populate graph with features
         graph = self._add_node_attributes(graph)
         logger.info("Added node attributes.")
-        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
-        logger.info(f"Gene nodes: {len(gene_nodes)}")
+        self._log_gene_nodes(graph)
 
         # remove nodes in blacklist regions
         graph = self._remove_blacklist_nodes(graph)
         logger.info("Removed nodes in blacklist regions.")
-        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
-        logger.info(f"Gene nodes: {len(gene_nodes)}")
+        self._log_gene_nodes(graph)
 
         return graph
+
+    def _log_gene_nodes(self, graph: nx.Graph) -> None:
+        """Log the number of gene nodes in the graph."""
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
     def _create_base_graph(self) -> nx.Graph:
         """Create the initial graph from edge data."""
@@ -418,7 +417,7 @@ def construct_tissue_graph(
     ).construct_graph()
 
     # save nx graph
-    nx.write_gpickle(graph, graph_dir / f"{experiment_name}_{tissue}.gpickle")
+    nx.write_gml(graph, graph_dir / f"{experiment_name}_{tissue}.gml")
     # save target genes
     with open(
         graph_dir / f"{experiment_name}_{tissue}_target_genes.pkl", "wb"
