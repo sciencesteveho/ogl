@@ -253,11 +253,33 @@ class NumpyGraphChecker:
         else:
             print("\nWARNING: Node features may not be normalized")
 
+    def check_positional_encoding(self) -> None:
+        """Checks in NaN or INF in positional encoding"""
+        encodings = self.graph_data["node_positional_encoding"]
+        inf_mask = np.isinf(encodings)
+        inf_count = np.sum(inf_mask)
+
+        # Check for NaN
+        nan_mask = np.isnan(encodings)
+        nan_count = np.sum(nan_mask)
+
+        print(f"INF values found: {inf_count}")
+        print(f"NaN values found: {nan_count}")
+
+        if inf_count > 0:
+            print("Positions of INF values:")
+            print(np.where(inf_mask))
+
+        if nan_count > 0:
+            print("Positions of NaN values:")
+            print(np.where(nan_mask))
+
     def check_numpy_graph(self) -> None:
         """Runs all checks and prints all statistics for the numpy graph data."""
         self.print_graph_summary()
         self.print_attribute_shapes()
         self.print_array_stats(self.graph_data["node_feat"], "Node features")
+        self.check_positional_encoding()
         self.print_edge_index_stats()
         self.check_edge_index_bounds()
         self.check_node_feature_normalization()

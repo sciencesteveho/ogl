@@ -6,7 +6,7 @@
 
 
 import math
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, Union
 
 import torch
 from torch.nn import Parameter
@@ -30,7 +30,7 @@ class OptimizerSchedulerHandler:
         optimizer: Optimizer,
         warmup_steps: int,
         training_steps: int,
-    ) -> LRScheduler:
+    ) -> Union[LRScheduler, ReduceLROnPlateau]:
         """Set learning rate scheduler"""
         if scheduler_type == "plateau":
             return ReduceLROnPlateau(

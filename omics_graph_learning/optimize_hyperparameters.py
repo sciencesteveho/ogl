@@ -134,7 +134,7 @@ def objective(
     experiment_config: ExperimentConfig,
     args: argparse.Namespace,
     logger: logging.Logger,
-) -> torch.Tensor:
+) -> float:
     """Objective function to be optimized by Optuna."""
     # set gpu
     device = setup_device()
@@ -214,18 +214,17 @@ def objective(
     trainer = GNNTrainer(
         model=model,
         device=device,
+        data=data,
         optimizer=optimizer,
         scheduler=scheduler,
-        scheduler_type=scheduler_type,
         logger=logger,
     )
 
     for epoch in range(EPOCHS + 1):
         # train
         _ = trainer.train(
-            data_loader=train_loader,
+            train_loader=train_loader,
             epoch=epoch,
-            scheduler_type=scheduler_type,
         )
         print(f"Loss: {_}")
 
@@ -263,7 +262,9 @@ def objective(
                 break
 
         # report for pruning
-        scheduler.step(rmse)
+        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(rmse)
+
         trial.report(r, epoch)
 
         # handle pruning based on the intermediate value.
@@ -313,7 +314,7 @@ def main() -> None:
     dir_check_make(optuna_dir)
 
     logger = setup_logging(
-        optuna_dir / f"{experiment_config.experiment_name}_optuna.log"
+        str(optuna_dir / f"{experiment_config.experiment_name}_optuna.log")
     )
 
     # create a study object with Hyperband Pruner
@@ -330,7 +331,7 @@ def main() -> None:
     # study = optuna.create_study(direction="minimize")
 
     study.optimize(
-        lambda trial: objective(trial, experiment_config, args),
+        lambda trial: objective(trial, experiment_config, args, logger),
         n_trials=N_TRIALS,
         gc_after_trial=True,
     )

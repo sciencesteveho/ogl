@@ -12,12 +12,13 @@ import logging
 import math
 from pathlib import Path
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
@@ -57,7 +58,10 @@ class TensorBoardLogger:
             self.writer.add_scalar(name, value, step)
 
     def log_model_graph(
-        self, model: torch.nn.Module, input_shape: int, edge_index_shape: int
+        self,
+        model: torch.nn.Module,
+        input_shape: Tuple[int, int],
+        edge_index_shape: int,
     ) -> None:
         """Log model graph to TensorBoard."""
 
@@ -114,12 +118,12 @@ class GNNTrainer:
     def __init__(
         self,
         model: torch.nn.Module,
-        device: torch.cuda.device,
+        device: torch.device,
         data: torch_geometric.data.Data,
         optimizer: Optimizer,
-        scheduler: LRScheduler,
+        scheduler: Union[LRScheduler, ReduceLROnPlateau],
         logger: logging.Logger,
-        tb_logger: TensorBoardLogger,
+        tb_logger: Optional[TensorBoardLogger] = None,
     ) -> None:
         """Instantiate model trainer."""
         self.model = model
@@ -128,21 +132,23 @@ class GNNTrainer:
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.logger = logger
-        self.tb = tb_logger
+
+        if tb_logger:
+            self.tb = tb_logger
 
     def train(
         self,
         train_loader: torch_geometric.data.DataLoader,
         epoch: int,
-        scheduler_type: str,
-        subset_batches: int = None,
+        subset_batches: Optional[int] = None,
     ) -> float:
         """Train GNN model on graph data"""
         self.model.train()
         pbar = tqdm(total=len(train_loader))
         pbar.set_description(f"Training epoch: {epoch:04d}")
 
-        total_loss = total_examples = 0
+        total_loss = float(0)
+        total_examples = 0
         for batch_idx, data in enumerate(train_loader):
             # break out of the loop if subset_batches is set and reached.
             if subset_batches and batch_idx >= subset_batches:
@@ -170,7 +176,9 @@ class GNNTrainer:
             self.optimizer.step()
 
             # step warmup schedulers
-            if scheduler_type in {"cosine", "linear_warmup"}:
+            if isinstance(self.scheduler, LRScheduler) and not isinstance(
+                self.scheduler, ReduceLROnPlateau
+            ):
                 self.scheduler.step()
 
             total_loss += float(loss) * int(data.train_mask_loss.sum())
@@ -186,8 +194,8 @@ class GNNTrainer:
         data_loader: torch_geometric.data.DataLoader,
         epoch: int,
         mask: str,
-        subset_batches: int = None,
         collect_outputs: bool = True,
+        subset_batches: Optional[int] = None,
     ) -> Tuple[float, Optional[torch.Tensor], Optional[torch.Tensor]]:
         """Base function for model evaluation or inference."""
         self.model.eval()
@@ -251,12 +259,10 @@ class GNNTrainer:
         data_loader: torch_geometric.data.DataLoader,
         epoch: int,
         mask: str,
-        subset_batches: int = None,
+        subset_batches: Optional[int] = None,
     ) -> Tuple[float, torch.Tensor, torch.Tensor]:
         """Evaluate GNN model on validation or test set."""
         rmse, predictions, targets = self._assess_model(
-            model=self.model,
-            device=self.device,
             data_loader=data_loader,
             epoch=epoch,
             mask=mask,
@@ -324,7 +330,6 @@ class GNNTrainer:
         val_loader: torch_geometric.data.DataLoader,
         test_loader: torch_geometric.data.DataLoader,
         epochs: int,
-        writer: SummaryWriter,
         model_dir: Path,
         args: argparse.Namespace,
     ) -> Tuple[torch.nn.Module, float]:
@@ -334,17 +339,17 @@ class GNNTrainer:
         minibatching. Afterward, the model is evaluated on the test set
         utilizing all neighbors.
         """
-        self.tb.log_hyperparameters(vars(args))
+        if self.tb:
+            self.tb.log_hyperparameters(vars(args))
 
-        best_validation = stop_counter = 0  # set up early stopping counter
+        best_validation = float(0)
+        stop_counter = 0  # set up early stopping counter
         for epoch in range(epochs + 1):
-            loss = self.train(
-                train_loader=train_loader, epoch=epoch, scheduler_type=args.scheduler
-            )
+            loss = self.train(train_loader=train_loader, epoch=epoch)
             self.logger.info(f"Epoch: {epoch:03d}, Train: {loss}")
 
             val_rmse, _, _ = self.evaluate(
-                data_loader=val_loader, epoch=epoch, mask="val", collect_outputs=False
+                data_loader=val_loader, epoch=epoch, mask="val"
             )
             self.logger.info(f"Epoch: {epoch:03d}, Validation: {val_rmse:.4f}")
 
@@ -364,10 +369,11 @@ class GNNTrainer:
                 "Validation RMSE": val_rmse,
                 "Test RMSE": test_rmse,
             }
-            self.tb.log_metrics(metrics, epoch)
+            if self.tb:
+                self.tb.log_metrics(metrics, epoch)
 
             # step scheduler if normal plateau scheduler
-            if args.scheduler == "plateau":
+            if isinstance(self.scheduler, ReduceLROnPlateau):
                 self.scheduler.step(val_rmse)
 
             if args.early_stop:
@@ -398,7 +404,7 @@ def setup_device(args: argparse.Namespace) -> torch.device:
 
 def prep_loader(
     data: torch_geometric.data.Data,
-    mask: torch.Tensor,
+    mask: str,
     batch_size: int,
     shuffle: bool = False,
     layers: int = 2,
@@ -434,7 +440,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def plot_loss_and_performance(
-    device: torch.cuda.device,
+    device: torch.device,
     data: torch_geometric.data.Data,
     data_loader: torch_geometric.data.DataLoader,
     model_dir: Path,
@@ -447,22 +453,27 @@ def plot_loss_and_performance(
     _set_matplotlib_publication_parameters()
 
     # plot either final model or best validation model
-    if best_validation:
-        models_dir = model_dir / "models"
-        best_checkpoint = models_dir.glob(f"*{best_validation}")
-        checkpoint = torch.load(best_checkpoint, map_location=device)
-        model.load_state_dict(checkpoint, strict=False)
-        model.to(device)
-    elif model:
-        model.to(device)
+    # if best_validation:
+    #     models_dir = model_dir / "models"
+    #     best_checkpoint = models_dir.glob(f"*{best_validation}")
+    #     checkpoint = torch.load(best_checkpoint, map_location=device)
+    #     model.load_state_dict(checkpoint, strict=False)
+    #     if model is not None:
+    #         model.to(device)
+    # elif model:
+    # model.to(device)
 
     # get predictions
+    if model is None:
+        raise ValueError("Model is None. Cannot plot performance")
+
     rmse, outs, labels, original_indices = GNNTrainer.inference_all_neighbors(
         model=model,
         device=device,
         data=data,
         data_loader=data_loader,
         split="test",
+        mask=data.test_mask_loss,
     )
 
     # convert output tensors to numpy arrays
@@ -569,13 +580,8 @@ def main() -> None:
     # check data integreity
     PyGDataChecker.check_pyg_data(data)
 
-    # set up tensorboard logger & log graph
+    # set up tensorboard logger
     tb_logger = TensorBoardLogger(log_dir=model_dir / "tensorboard")
-    tb_logger.log_model_graph(
-        model=model,
-        input_shape=data.x.shape,
-        edge_index_shape=data.edge_index.shape,
-    )
 
     # set up data loaders
     mask_suffix = "_loss" if args.gene_only_loader else ""
@@ -617,6 +623,13 @@ def main() -> None:
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 
+    # log model graph to tensorboard
+    tb_logger.log_model_graph(
+        model=model,
+        input_shape=data.x.shape,
+        edge_index_shape=data.edge_index.shape,
+    )
+
     # set up optimizer & scheduler
     total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
         train_loader=train_loader,
@@ -640,7 +653,7 @@ def main() -> None:
     prof = torch.profiler.profile(
         schedule=torch.profiler.schedule(wait=1, warmup=4, active=3, repeat=1),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
-            model_dir / "tensorboard"
+            str(model_dir / "tensorboard")
         ),
         record_shapes=True,
         profile_memory=True,
@@ -656,6 +669,7 @@ def main() -> None:
         optimizer=optimizer,
         scheduler=scheduler,
         logger=logger,
+        tb_logger=tb_logger,
     )
 
     logger.info(f"Training for {epochs} epochs")
@@ -664,13 +678,11 @@ def main() -> None:
         val_loader=val_loader,
         test_loader=test_loader,
         epochs=epochs,
-        writer=tb_logger,
         model_dir=model_dir,
         args=args,
     )
 
     # close out tensorboard utilities and save final model
-    tb_logger.flush()
     prof.stop()
     torch.save(
         model.state_dict(),
@@ -684,7 +696,10 @@ def main() -> None:
         data=data,
         data_loader=test_loader,
         model_dir=model_dir,
+        tb_logger=tb_logger,
     )
+
+    tb_logger.writer.close()
 
 
 if __name__ == "__main__":

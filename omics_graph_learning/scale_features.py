@@ -4,7 +4,9 @@
 
 
 """Code to scale node features in the graph. To avoid data leakage, we fit the
-scalers only on thenode idxs that occur in the training set."""
+scalers only on the node idxs that occur in the training set. Due to the large
+range of values in genomics, we first scale with RobustScaler to reduce
+outliers, then MinMaxScaler to set our values in the range of 0-1."""
 
 
 from multiprocessing import Pool
@@ -16,6 +18,8 @@ from typing import Dict, List, Tuple, Union
 import joblib  # type: ignore
 import numpy as np
 from scipy import stats  # type: ignore
+from sklearn.pipeline import Pipeline  # type: ignore
+from sklearn.preprocessing import MinMaxScaler  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
 
 from omics_graph_learning.test.scaled_feature_accuracy import (
@@ -31,7 +35,7 @@ CORES = get_physical_cores()
 
 
 def inverse_transform_features(
-    scaled_features: np.ndarray, scalers: Dict[int, RobustScaler], feat_range: int
+    scaled_features: np.ndarray, scalers: Dict[int, Pipeline], feat_range: int
 ) -> np.ndarray:
     """Reverse the scaling of node features"""
     original_features = scaled_features.copy()
@@ -122,7 +126,12 @@ def _get_continuous_feat_range(node_features: np.ndarray, onehot_feats: int) -> 
 def scaler_fit_task(scaler_fit_arguments: Tuple[int, np.ndarray, Path]) -> int:
     """Fits scalers according to node idx."""
     feat, node_feat, scaler_dir = scaler_fit_arguments
-    scaler = RobustScaler(quantile_range=(5, 95), unit_variance=False)
+    scaler = Pipeline(
+        [
+            ("robust", RobustScaler(quantile_range=(5, 95), unit_variance=False)),
+            ("minmax", MinMaxScaler()),
+        ]
+    )
     scaler.fit(node_feat[:, feat].reshape(-1, 1))
     scaler_path = scaler_dir / f"feat_{feat}_scaler.joblib"
     joblib.dump(scaler, scaler_path)
@@ -164,7 +173,7 @@ def fit_scalers(
 def load_scalers(
     scaler_dir: Path,
     feat_range: int,
-) -> Dict[int, RobustScaler]:
+) -> Dict[int, Pipeline]:
     """Load pre-fit scalers into a dictionary by feature index"""
     return {
         i: joblib.load(scaler_dir / f"feat_{i}_scaler.joblib")
@@ -173,7 +182,7 @@ def load_scalers(
 
 
 def scale_feature_task(
-    scale_feats_arguments: Tuple[np.ndarray, RobustScaler, int]
+    scale_feats_arguments: Tuple[np.ndarray, Pipeline, int]
 ) -> Tuple[int, np.ndarray]:
     """Scale a single feature using the provided scaler."""
     feature, scaler, index = scale_feats_arguments
