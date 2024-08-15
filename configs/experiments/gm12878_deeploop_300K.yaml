@@ -34,11 +34,11 @@ experiment_name: regulatory_only_gm12878_deeploop_300k
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 
-feat_window: 2000
+feat_window: 5000
 
 gene_gene: false
 
-graph_type: base
+graph_type: full
 
 interaction_types: null
 

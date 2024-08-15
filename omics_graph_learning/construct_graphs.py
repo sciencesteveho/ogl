@@ -416,13 +416,13 @@ def construct_tissue_graph(
         genes=target_genes,
     ).construct_graph()
 
-    # save nx graph
-    nx.write_gml(graph, graph_dir / f"{experiment_name}_{tissue}.gml")
-    # save target genes
-    with open(
-        graph_dir / f"{experiment_name}_{tissue}_target_genes.pkl", "wb"
-    ) as output:
-        pickle.dump(target_genes, output)
+    # # save nx graph
+    # nx.write_gml(graph, graph_dir / f"{experiment_name}_{tissue}.gml")
+    # # save target genes
+    # with open(
+    #     graph_dir / f"{experiment_name}_{tissue}_target_genes.pkl", "wb"
+    # ) as output:
+    #     pickle.dump(target_genes, output)
 
     # check for missing target genes
     check_missing_target_genes(graph=graph, target_genes=target_genes, tissue=tissue)
