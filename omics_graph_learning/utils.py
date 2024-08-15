@@ -274,7 +274,7 @@ class NumpyGraphChecker:
             print("Positions of NaN values:")
             print(np.where(nan_mask))
 
-    def check_numpy_graph(self) -> None:
+    def run_numpy_graph_checks(self) -> None:
         """Runs all checks and prints all statistics for the numpy graph data."""
         self.print_graph_summary()
         self.print_attribute_shapes()
@@ -283,6 +283,12 @@ class NumpyGraphChecker:
         self.print_edge_index_stats()
         self.check_edge_index_bounds()
         self.check_node_feature_normalization()
+
+    @staticmethod
+    def check_numpy_graph_data(graph_data: Dict[str, Any]) -> None:
+        """Check the numpy graph data."""
+        checker = NumpyGraphChecker(graph_data)
+        checker.run_numpy_graph_checks()
 
 
 class PyGDataChecker:
@@ -328,7 +334,7 @@ class PyGDataChecker:
                     print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
                     print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
 
-    def check_pyg_data(self) -> None:
+    def run_pyg_data_check(self) -> None:
         """Runs all checks and prints all statistics for the PyG Data object."""
         self.print_graph_summary()
         self.print_tensor_stats(self.data.x, "Node features")
@@ -338,6 +344,12 @@ class PyGDataChecker:
         if hasattr(self.data, "y"):
             self.print_tensor_stats(self.data.y, "Target variable")
         self.print_mask_info()
+
+    @staticmethod
+    def check_pyg_data(data: Data) -> None:
+        """Check the PyG Data object."""
+        checker = PyGDataChecker(data)
+        checker.run_pyg_data_check()
 
 
 def _tensor_out_to_array(tensor: torch.Tensor, idx: int):

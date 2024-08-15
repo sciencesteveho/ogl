@@ -223,9 +223,9 @@ def main() -> None:
     )
 
     # sanity check graph data
-    NumpyGraphChecker(
+    NumpyGraphChecker.check_numpy_graph_data(
         pickle.load(open(f"{experiment_graph_directory}.pkl", "rb"))
-    ).check_numpy_graph()
+    )
 
 
 if __name__ == "__main__":

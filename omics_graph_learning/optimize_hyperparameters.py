@@ -160,7 +160,7 @@ def objective(
     logger.info(f"Data object attributes: {dir(data)}")
 
     # check data integreity
-    PyGDataChecker(data).check_pyg_data()
+    PyGDataChecker.check_pyg_data(data)
 
     # set up train, test, and validation loaders
     train_loader = prep_loader(
