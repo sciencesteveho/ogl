@@ -27,7 +27,7 @@ class GraphConstructor:
     """Class to handle constructing graphs from parsed edges and local
     context."""
 
-    # hardcoded helpers
+    # hardcoded helpers, column idxs
     SOURCE_IDX = 0
     TARGET_IDX = 1
     EDGE_ATTR_IDX = 2
@@ -56,24 +56,19 @@ class GraphConstructor:
         """Create and process the graph based on the given parameters."""
         # make base graph
         graph = self._create_base_graph()
-        logger.info("Base graph created.")
-        self._log_gene_nodes(graph)
 
         # keep only nodes that eventually hop to a regression target, given max
         # hops
         graph = self._prune_nodes_without_gene_connections(graph)
-        logger.info("Pruned nodes without gene connections.")
-        self._log_gene_nodes(graph)
+
+        # remove self loops
+        graph = self._remove_self_loops(graph)
 
         # remove isolated nodes
         graph = self._remove_isolated_nodes(graph)
-        logger.info("Removed isolated nodes.")
-        self._log_gene_nodes(graph)
 
         # populate graph with features
         graph = self._add_node_attributes(graph)
-        logger.info("Added node attributes.")
-        self._log_gene_nodes(graph)
 
         # remove nodes in blacklist regions
         graph = self._remove_blacklist_nodes(graph)
@@ -204,6 +199,12 @@ class GraphConstructor:
         df[1] += suffix
 
         return df
+
+    @staticmethod
+    def _remove_self_loops(graph: nx.Graph) -> nx.Graph:
+        """Remove self loops from the graph."""
+        graph.remove_edges_from(nx.selfloop_edges(graph))
+        return graph
 
     @staticmethod
     def _add_tf_or_gene_onehot(node: str) -> Dict[str, int]:
@@ -371,15 +372,14 @@ def check_missing_target_genes(
     Targets are chosen via TPM filter, but they might not necessarily remain in
     the graph as we prune nodes that are self isolated. Nodes may or may not be
     isolated depending on the resolution of the 3d chromatin data used for graph
-    construction.
+    construction. Thus, not all target genes may be present in the final graph
+    due to the design - this function serves more as an information check than
+    an error check.
     """
     graph_nodes = set(graph.nodes())
     gene_nodes = {node for node in graph_nodes if "ENSG" in node}
-    print(f"First 10 nodes w/ ENSG in name: {list(gene_nodes)[:10]}")
-    print(f"First 10 target genes: {target_genes[:10]}")
 
-    missing_genes = set(target_genes) - gene_nodes
-    if missing_genes:
+    if missing_genes := set(target_genes) - gene_nodes:
         logger.warning(
             "The following target genes are missing from the final graph: "
             f"{missing_genes}"
@@ -415,14 +415,6 @@ def construct_tissue_graph(
         nodes=nodes,
         genes=target_genes,
     ).construct_graph()
-
-    # # save nx graph
-    # nx.write_gml(graph, graph_dir / f"{experiment_name}_{tissue}.gml")
-    # # save target genes
-    # with open(
-    #     graph_dir / f"{experiment_name}_{tissue}_target_genes.pkl", "wb"
-    # ) as output:
-    #     pickle.dump(target_genes, output)
 
     # check for missing target genes
     check_missing_target_genes(graph=graph, target_genes=target_genes, tissue=tissue)

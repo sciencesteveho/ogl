@@ -338,9 +338,6 @@ class PyGDataChecker:
         """Runs all checks and prints all statistics for the PyG Data object."""
         self.print_graph_summary()
         self.print_tensor_stats(self.data.x, "Node features")
-        self.print_tensor_stats(self.data.edge_index, "Edge index")
-        if hasattr(self.data, "edge_attr"):
-            self.print_tensor_stats(self.data.edge_attr, "Edge features")
         if hasattr(self.data, "y"):
             self.print_tensor_stats(self.data.y, "Target variable")
         self.print_mask_info()
