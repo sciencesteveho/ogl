@@ -358,7 +358,8 @@ def check_missing_target_genes(
     construction.
     """
     graph_nodes = set(graph.nodes())
-    print(f"First 10 nodes: {list(graph_nodes)[:10]}")
+    gene_nodes = {node for node in graph_nodes if "ENSG" in node}
+    print(f"First 10 nodes w/ ENSG in name: {list(gene_nodes)[:10]}")
     print(f"First 10 target genes: {target_genes[:10]}")
 
     if missing_genes := set(target_genes) - graph_nodes:

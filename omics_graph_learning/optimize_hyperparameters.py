@@ -156,6 +156,9 @@ def objective(
         positional_encoding=model_params["positional_encoding"],
     ).make_data_object()
 
+    logger.info(f"Data object created: {type(data)}")
+    logger.info(f"Data object attributes: {dir(data)}")
+
     # check data integreity
     PyGDataChecker.check_pyg_data(data)
 
