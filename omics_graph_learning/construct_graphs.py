@@ -56,18 +56,35 @@ class GraphConstructor:
         """Create and process the graph based on the given parameters."""
         # make base graph
         graph = self._create_base_graph()
+        logger.info("Base graph created.")
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
         # keep only nodes that eventually hop to a gene, given max hops
         graph = self._prune_nodes_without_gene_connections(graph)
+        logger.info("Pruned nodes without gene connections.")
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {gene_nodes}")
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
         # remove isolated nodes
         graph = self._remove_isolated_nodes(graph)
+        logger.info("Removed isolated nodes.")
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {gene_nodes}")
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
         # populate graph with features
         graph = self._add_node_attributes(graph)
+        logger.info("Added node attributes.")
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
         # remove nodes in blacklist regions
         graph = self._remove_blacklist_nodes(graph)
+        logger.info("Removed nodes in blacklist regions.")
+        gene_nodes = set({node for node in graph.nodes if "ENSG" in node})
+        logger.info(f"Gene nodes: {len(gene_nodes)}")
 
         return graph
 
@@ -362,14 +379,11 @@ def check_missing_target_genes(
     print(f"First 10 nodes w/ ENSG in name: {list(gene_nodes)[:10]}")
     print(f"First 10 target genes: {target_genes[:10]}")
 
-    if missing_genes := set(target_genes) - graph_nodes:
-        # remove tissue suffix for reporting
-        missing_genes_without_suffix = [
-            gene.rsplit("_", 1)[0] for gene in missing_genes
-        ]
+    missing_genes = set(target_genes) - gene_nodes
+    if missing_genes:
         logger.warning(
             "The following target genes are missing from the final graph: "
-            f"{missing_genes_without_suffix}"
+            f"{missing_genes}"
         )
         logger.warning(f"Number of missing genes: {len(missing_genes)}")
     else:
@@ -402,6 +416,14 @@ def construct_tissue_graph(
         nodes=nodes,
         genes=target_genes,
     ).construct_graph()
+
+    # save nx graph
+    nx.write_gpickle(graph, graph_dir / f"{experiment_name}_{tissue}.gpickle")
+    # save target genes
+    with open(
+        graph_dir / f"{experiment_name}_{tissue}_target_genes.pkl", "wb"
+    ) as output:
+        pickle.dump(target_genes, output)
 
     # check for missing target genes
     check_missing_target_genes(graph=graph, target_genes=target_genes, tissue=tissue)
