@@ -246,6 +246,11 @@ class ModularGNN(nn.Module):
         # add attention heads if specified in config
         self.heads = gnn_operator_config.get("heads")
 
+        # for debugging
+        print(
+            f"ModularGNN initialized with in_size: {in_size}, embedding_size: {embedding_size}, out_channels: {out_channels}, heads: {self.heads}"
+        )
+
         # initialize GNN layers and batch normalization
         self.convs = self._create_gnn_layers(
             in_size=in_size,
@@ -307,6 +312,9 @@ class ModularGNN(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
+        # for debugging
+        print(f"Input tensor shape in ModularGNN forward: {x.shape}")
+
         h1 = x  # save input for residual connections
 
         # graph convolutions with normalization and optional residual connections.
@@ -329,12 +337,20 @@ class ModularGNN(nn.Module):
             if torch.isnan(x).any():
                 print(f"Warning: NaN detected in layer {i}")
 
+        # for debugging
+        # after the convolutional layers
+        print(f"Shape after convolutions: {x.shape}")
+
         # shared linear layers
         for linear_layer in self.linears:
             x = self.activation(linear_layer(x))
             if isinstance(self.dropout_rate, float):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
+
+        # for debugging
+        # After the shared linear layers
+        print(f"Shape after shared linear layers: {x.shape}")
 
         # task-specific MLPs or general task head
         if self.task_specific_mlp:
@@ -369,6 +385,9 @@ class ModularGNN(nn.Module):
 
         # apply task specific MLPs to regression targets
         out, l1_reg = self.task_specific_mlps(x[regression_indices], keys)
+
+        # for debugging
+        print(f"Output shape from task_specific_forward: {out.shape}")
 
         return (
             output_tensor(x=x, out=out, regression_indices=regression_indices),
