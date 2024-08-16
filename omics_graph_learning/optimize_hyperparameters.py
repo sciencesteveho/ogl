@@ -130,147 +130,153 @@ def objective(
     logger: logging.Logger,
 ) -> float:
     """Objective function to be optimized by Optuna."""
-    # set gpu
-    device = setup_device()
+    try:
+        # set gpu
+        device = setup_device()
 
-    # get trial hyperparameters
-    model_params, train_params = suggest_hyperparameters(trial)
-    gnn_layers = model_params["gnn_layers"]
-    avg_connectivity = train_params["avg_connectivity"]
-    batch_size = train_params["batch_size"]
-    learning_rate = train_params["learning_rate"]
-    optimizer_type = train_params["optimizer_type"]
-    scheduler_type = train_params["scheduler_type"]
+        # get trial hyperparameters
+        model_params, train_params = suggest_hyperparameters(trial)
+        gnn_layers = model_params["gnn_layers"]
+        avg_connectivity = train_params["avg_connectivity"]
+        batch_size = train_params["batch_size"]
+        learning_rate = train_params["learning_rate"]
+        optimizer_type = train_params["optimizer_type"]
+        scheduler_type = train_params["scheduler_type"]
 
-    # load graph data
-    data = GraphToPytorch(
-        experiment_config=experiment_config,
-        split_name=args.split_name,
-        regression_target=args.target,
-        positional_encoding=model_params["positional_encoding"],
-    ).make_data_object()
+        # load graph data
+        data = GraphToPytorch(
+            experiment_config=experiment_config,
+            split_name=args.split_name,
+            regression_target=args.target,
+            positional_encoding=model_params["positional_encoding"],
+        ).make_data_object()
 
-    logger.info(f"Data object created: {type(data)}")
-    logger.info(f"Data object attributes: {dir(data)}")
+        logger.info(f"Data object created: {type(data)}")
+        logger.info(f"Data object attributes: {dir(data)}")
 
-    # check data integreity
-    PyGDataChecker.check_pyg_data(data)
+        # check data integreity
+        PyGDataChecker.check_pyg_data(data)
 
-    # set up train, test, and validation loaders
-    train_loader = prep_loader(
-        data=data,
-        mask="train_mask",
-        batch_size=batch_size,
-        shuffle=True,
-        layers=gnn_layers,
-        avg_connectivity=avg_connectivity,
-    )
+        # set up train, test, and validation loaders
+        train_loader = prep_loader(
+            data=data,
+            mask="train_mask",
+            batch_size=batch_size,
+            shuffle=True,
+            layers=gnn_layers,
+            avg_connectivity=avg_connectivity,
+        )
 
-    val_loader = prep_loader(
-        data=data,
-        mask="val_mask",
-        batch_size=batch_size,
-        layers=gnn_layers,
-        avg_connectivity=avg_connectivity,
-    )
+        val_loader = prep_loader(
+            data=data,
+            mask="val_mask",
+            batch_size=batch_size,
+            layers=gnn_layers,
+            avg_connectivity=avg_connectivity,
+        )
 
-    # define and build model
-    model = build_gnn_architecture(
-        in_size=data.x.shape[1],
-        out_channels=1,
-        train_dataset=train_loader,
-        **model_params,
-    )
-    model = model.to(device)
+        # define and build model
+        model = build_gnn_architecture(
+            in_size=data.x.shape[1],
+            out_channels=1,
+            train_dataset=train_loader,
+            **model_params,
+        )
+        model = model.to(device)
 
-    # set up optimizer
-    total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
-        train_loader=train_loader,
-        batch_size=batch_size,
-        epochs=100,
-    )
-
-    optimizer = OptimizerSchedulerHandler.set_optimizer(
-        optimizer_type=optimizer_type,
-        learning_rate=learning_rate,
-        model_params=model.parameters(),
-    )
-    scheduler = OptimizerSchedulerHandler.set_scheduler(
-        scheduler_type=scheduler_type,
-        optimizer=optimizer,
-        warmup_steps=warmup_steps,
-        training_steps=total_steps,
-    )
-
-    # early stop params
-    patience = 5
-    best_r = -float("inf")
-    early_stop_counter = 0
-
-    # initialize trainer
-    trainer = GNNTrainer(
-        model=model,
-        device=device,
-        data=data,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        logger=logger,
-    )
-
-    for epoch in range(EPOCHS + 1):
-        # train
-        _ = trainer.train(
+        # set up optimizer
+        total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
             train_loader=train_loader,
-            epoch=epoch,
-        )
-        print(f"Loss: {_}")
-
-        if np.isnan(_):
-            print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN loss")
-            raise optuna.exceptions.TrialPruned()
-
-        # validation
-        rmse, predictions, targets = trainer.evaluate(
-            data_loader=val_loader,
-            epoch=epoch,
-            mask="val",
+            batch_size=batch_size,
+            epochs=100,
         )
 
-        predictions = _tensor_out_to_array(predictions, 0)
-        targets = _tensor_out_to_array(targets, 0)
+        optimizer = OptimizerSchedulerHandler.set_optimizer(
+            optimizer_type=optimizer_type,
+            learning_rate=learning_rate,
+            model_params=model.parameters(),
+        )
+        scheduler = OptimizerSchedulerHandler.set_scheduler(
+            scheduler_type=scheduler_type,
+            optimizer=optimizer,
+            warmup_steps=warmup_steps,
+            training_steps=total_steps,
+        )
 
-        # calculate metrics on validation set
-        r, p_val = pearsonr(predictions, targets)
-        print(f"Validation Pearson's R: {r}, p-value: {p_val}, RMSE: {rmse}")
+        # early stop params
+        patience = 5
+        best_r = -float("inf")
+        early_stop_counter = 0
 
-        if np.isnan(rmse):
-            print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")
-            raise optuna.exceptions.TrialPruned()
+        # initialize trainer
+        trainer = GNNTrainer(
+            model=model,
+            device=device,
+            data=data,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            logger=logger,
+        )
 
-        # early stopping
-        if r > best_r:
-            best_r = r
-            best_rmse = rmse
-            early_stop_counter = 0
-        else:
-            early_stop_counter += 1
-            if early_stop_counter >= patience:
-                print(f"Early stopping at epoch {epoch}")
-                break
+        for epoch in range(EPOCHS + 1):
+            # train
+            _ = trainer.train(
+                train_loader=train_loader,
+                epoch=epoch,
+            )
+            print(f"Loss: {_}")
 
-        # report for pruning
-        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-            scheduler.step(rmse)
+            if np.isnan(_):
+                print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN loss")
+                raise optuna.exceptions.TrialPruned()
 
-        trial.report(r, epoch)
+            # validation
+            rmse, predictions, targets = trainer.evaluate(
+                data_loader=val_loader,
+                epoch=epoch,
+                mask="val",
+            )
 
-        # handle pruning based on the intermediate value.
-        if trial.should_prune():
-            print(f"Trial {trial.number} pruned at epoch {epoch}")
-            raise optuna.exceptions.TrialPruned()
+            predictions = _tensor_out_to_array(predictions, 0)
+            targets = _tensor_out_to_array(targets, 0)
 
-    trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
-    return best_r
+            # calculate metrics on validation set
+            r, p_val = pearsonr(predictions, targets)
+            print(f"Validation Pearson's R: {r}, p-value: {p_val}, RMSE: {rmse}")
+
+            if np.isnan(rmse):
+                print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")
+                raise optuna.exceptions.TrialPruned()
+
+            # early stopping
+            if r > best_r:
+                best_r = r
+                best_rmse = rmse
+                early_stop_counter = 0
+            else:
+                early_stop_counter += 1
+                if early_stop_counter >= patience:
+                    print(f"Early stopping at epoch {epoch}")
+                    break
+
+            # report for pruning
+            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(rmse)
+
+            trial.report(r, epoch)
+
+            # handle pruning based on the intermediate value.
+            if trial.should_prune():
+                print(f"Trial {trial.number} pruned at epoch {epoch}")
+                raise optuna.exceptions.TrialPruned()
+
+        trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
+        return best_rmse
+    except RuntimeError as e:
+        if "CUDA out of memory" in str(e):
+            trial.report(float("inf"), EPOCHS)
+            return float("inf")
+        raise e
 
 
 def main() -> None:
