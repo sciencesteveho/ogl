@@ -825,8 +825,28 @@ def output_tensor(
     """Produce the output tensor for the model by create a tensor of the
     same shape, but only filling in values for the regression indices.
     """
+    print(f"Debug - x device: {x.device}")
+    print(f"Debug - out device: {out.device}")
+    print(f"Debug - regression_indices device: {regression_indices.device}")
+
     full_out = torch.zeros(x.size(0), device=x.device)
-    full_out[regression_indices] = out.squeeze()
+    print(f"Debug - full_out device: {full_out.device}")
+
+    print(f"Debug - out shape: {out.shape}")
+    print(f"Debug - out squeezed shape: {out.squeeze().shape}")
+    print(f"Debug - regression_indices shape: {regression_indices.shape}")
+    print(f"Debug - full_out shape: {full_out.shape}")
+
+    try:
+        full_out[regression_indices] = out.squeeze()
+    except RuntimeError as e:
+        print("Error occurred during tensor assignment")
+        print(
+            f"full_out[regression_indices] shape: {full_out[regression_indices].shape}"
+        )
+        print(f"out.squeeze() shape: {out.squeeze().shape}")
+        raise e
+
     return full_out
 
 
