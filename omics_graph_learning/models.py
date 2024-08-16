@@ -69,7 +69,7 @@ class TaskSpecificMLPs(nn.Module):
         self,
         in_size: int,
         out_size: int,
-        activation: Callable[[torch.Tensor], torch.Tensor],
+        activation: str,
         heads: Optional[int] = None,
     ) -> None:
         """Initialize the task specific MLP storage class"""
@@ -103,7 +103,7 @@ class TaskSpecificMLPs(nn.Module):
         """
         return nn.Sequential(
             nn.Linear(self.adjusted_in_size, self.in_size),
-            nn.Module(lambda x: self.activation(x)),
+            nn.Module(get_activation_function(self.activation)),
             nn.Linear(self.in_size, self.out_size),
         )
 
@@ -195,6 +195,7 @@ class ModularGNN(nn.Module):
         self.residual = residual
         self.shared_mlp_layers = shared_mlp_layers
         self.task_specific_mlp = task_specific_mlp
+        self.activation_name = activation
         self.activation = get_activation_function(activation)
 
         # add attention heads if specified in config
@@ -225,7 +226,7 @@ class ModularGNN(nn.Module):
             self.task_specific_mlps = TaskSpecificMLPs(
                 in_size=in_size,
                 out_size=out_channels,
-                activation=self.activation,
+                activation=self.activation_name,
                 heads=self.heads,
             )
         else:
@@ -513,6 +514,7 @@ class DeeperGCN(nn.Module):
         super().__init__()
         self.dropout_rate = dropout_rate
         self.task_specific_mlp = task_specific_mlp
+        self.activation_name = activation
 
         self.convs = nn.ModuleList()
         self.linears = nn.ModuleList()
@@ -544,7 +546,7 @@ class DeeperGCN(nn.Module):
             self.task_specific_mlps = TaskSpecificMLPs(
                 in_size=embedding_size,
                 out_size=out_channels,
-                activation=self.activation,
+                activation=self.activation_name,
             )
         else:
             self.task_head = Linear(embedding_size, out_channels)

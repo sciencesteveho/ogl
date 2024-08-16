@@ -146,8 +146,8 @@ def objective(
         # log trial hyperparameters
         logger.info("=" * 50)
         logger.info(f"Starting Trial {trial.number} with parameters:")
-        for key, value in {**model_params, **train_params}.items():
-            logger.info(f"  {key}: {value}")
+        logger.info(f"Model Params: {model_params}")
+        logger.info(f"Train Params: {train_params}")
         logger.info("=" * 50)
         logger.handlers[0].flush()
 
