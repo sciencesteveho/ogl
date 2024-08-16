@@ -307,10 +307,8 @@ class ModularGNN(nn.Module):
         regression target.
         """
         # check that task head is None, as it should be dynamically created
-        if self.task_head is not None:
-            raise ValueError(
-                "Task specific MLPs must be used for task specific forward."
-            )
+        if not isinstance(self.task_specific_mlps, nn.Module):
+            raise ValueError("Task specific MLPs must be a ModuleDict.")
 
         # check regression mask fidelity
         ensure_mask_fidelity(x, regression_mask)
