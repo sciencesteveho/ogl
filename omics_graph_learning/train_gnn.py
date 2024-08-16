@@ -608,6 +608,8 @@ def main() -> None:
     )
 
     # CHOOSE YOUR WEAPON
+    num_targets = len(data.y[0]) if len(data.y.shape) > 1 else 1
+
     model = build_gnn_architecture(
         model=args.model,
         activation=args.activation,
@@ -620,6 +622,7 @@ def main() -> None:
         dropout_rate=args.dropout or None,
         skip_connection=args.residual,
         task_specific_mlp=args.task_specific_mlp,
+        num_targets=num_targets,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 

@@ -22,7 +22,8 @@ The models include four different classes of architectures:
 (3) Large scale models (GNN with large number of layers):
     DeeperGCN
 
-(4) Baseline: 3-layer MLP"""
+(4) Baseline: 3-layer MLP
+"""
 
 
 from __future__ import annotations
@@ -44,25 +45,73 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
 
-def get_activation_function(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
-    """Defines the activation function according to the given string"""
-    activations: dict[str, Callable[[torch.Tensor], torch.Tensor]] = {
-        "gelu": F.gelu,
-        "leakyrelu": F.leaky_relu,
-        "relu": F.relu,
-    }
-    try:
-        return activations[activation]
-    except KeyError as error:
-        raise ValueError(
-            "Invalid activation function. Supported: relu, leakyrelu, gelu"
-        ) from error
+class TaskSpecificMLPs(nn.Module):
+    """Class to store task specific MLPs for dynamically changing output
+    heads.
+
+    Attributes:
+        in_size: The input size of the task specific MLP. This will likely
+        be the embedding size of the model.
+        out_size: The output size of the task specific MLP. This will likely be
+        1 for single node regression.
+        activation: The activation function to use.
+        task_specific_mlps: The task specific MLPs.
+        adjusted_in_size: The adjusted input size for the task specific
+
+    Methods
+    --------
+    get_mlp(key: str) -> nn.Sequential:
+        Get the task specific MLP for the given index. If the MLP does not
+        exist, it will be created as needed to manage memory.
+    """
+
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        activation: Callable[[torch.Tensor], torch.Tensor],
+        heads: Optional[int] = None,
+    ) -> None:
+        """Initialize the task specific MLP storage class"""
+        super().__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.activation = activation
+        self.task_specific_mlps = nn.ModuleDict()
+        self.adjusted_in_size = in_size * heads if heads else in_size
+
+    def get_mlp(self, key: str) -> nn.Sequential:
+        """Get the task specific MLP for the given index. If the MLP does not
+        exist, create it.
+        """
+        if key not in self.task_specific_mlps:
+            self.task_specific_mlps[key] = self.construct_task_specific_mlp()
+        return self.task_specific_mlps[key]
+
+    def forward(self, x: torch.Tensor, keys: List[str]) -> torch.Tensor:
+        """Apply the task specific MLPs to the input tensor."""
+        return torch.cat(
+            [self.get_mlp(key)(x_i.unsqueeze(0)) for key, x_i in zip(keys, x)]
+        )
+
+    def construct_task_specific_mlp(
+        self,
+    ) -> nn.Module:
+        """Create task specific MLP for each output head. We consider the
+        shared-MLP layers as the input, thus the function returns 2 linear
+        layers with activation per output head.
+        """
+        return nn.Sequential(
+            nn.Linear(self.adjusted_in_size, self.in_size),
+            nn.Module(lambda x: self.activation(x)),
+            nn.Linear(self.in_size, self.out_size),
+        )
 
 
 class MLP(nn.Module):
     """Simple three layer MLP model architecture.
 
-    Args:
+    Attributes:
         in_size: The input size of the MLP model.
         embedding_size: The size of the embedding dimension.
         out_channels: The number of output channels.
@@ -121,7 +170,7 @@ class ModularGNN(nn.Module):
         norms: The normalization layers.
         linears: The linear layers.
         task_head: The task specific heads.
-        linear_projection: The linear projection for skip connections.
+        linear_projection: The linear projection for residual connections.
     """
 
     def __init__(
@@ -133,19 +182,19 @@ class ModularGNN(nn.Module):
         gnn_layers: int,
         shared_mlp_layers: int,
         gnn_operator_config: Dict[str, Any],
-        heads: Optional[int] = None,
+        # heads: Optional[int] = None,
         dropout_rate: Optional[float] = None,
         residual: Optional[str] = None,
         task_specific_mlp: bool = False,
-        num_targets: int = 1,
     ):
         """Initialize the model"""
         super().__init__()
+        self.embedding_size = embedding_size
+        self.out_channels = out_channels
         self.dropout_rate = dropout_rate
         self.residual = residual
         self.shared_mlp_layers = shared_mlp_layers
         self.task_specific_mlp = task_specific_mlp
-        self.num_targets = num_targets
         self.activation = get_activation_function(activation)
 
         # add attention heads if specified in config
@@ -173,15 +222,18 @@ class ModularGNN(nn.Module):
 
         # initialize task head(s)
         if self.task_specific_mlp:
-            self.task_head: Union[nn.ModuleList, nn.Linear] = self._task_specific_mlp(
-                in_size=embedding_size, out_size=out_channels
+            self.task_specific_mlps = TaskSpecificMLPs(
+                in_size=in_size,
+                out_size=out_channels,
+                activation=self.activation,
+                heads=self.heads,
             )
         else:
             self.task_head = self._general_task_head(
                 in_size=embedding_size, out_size=out_channels
             )
 
-        # create linear projection for skip connections
+        # create linear projection for residual connections
         self.linear_projection = None
         if self.residual:
             self.linear_projection = self._residuals(
@@ -191,32 +243,27 @@ class ModularGNN(nn.Module):
                 ),
             )
 
-        # store gene indices for efficient task-specific forward
-        self.gene_indices: Dict[str, Optional[torch.Tensor]] = {
-            "train": None,
-            "val": None,
-            "test": None,
-        }
-
     def forward(
         self,
         x: torch.Tensor,
         edge_index: torch.Tensor,
-        node_mask: Optional[torch.Tensor] = None,
-        split: str = "train",
+        regression_mask: torch.Tensor,
     ) -> torch.Tensor:
         """Forward pass of the neural network.
 
         Args:
             x: The input tensor.
             edge_index: The edge index tensor.
+            regression_mask: Boolean mask of shape (num_nodes,) indicating which
+            nodes should be regressed. True for nodes to be regressed, False
+            otherwise.
 
         Returns:
             torch.Tensor: The output tensor.
         """
-        h1 = x  # save input for skip connections
+        h1 = x  # save input for residual connections
 
-        # graph convolutions with normalization and optional skip connections.
+        # graph convolutions with normalization and optional residual connections.
         for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
             if self.linear_projection:
                 if isinstance(self.linear_projection, nn.Linear):
@@ -243,105 +290,63 @@ class ModularGNN(nn.Module):
                 assert self.dropout_rate is not None
                 x = F.dropout(x, p=self.dropout_rate)
 
-        # task-specific MLPs
+        # task-specific MLPs or general task head
         if self.task_specific_mlp:
-            return self.task_specific_forward(node_mask=node_mask, x=x, split=split)
-
-        # general task-head
-        if self.gene_indices[split] is None and node_mask is not None:
-            self.gene_indices[split] = torch.where(node_mask)[0]
-
-        if self.gene_indices[split] is None:
-            raise ValueError("Node mask not provided.")
-
-        # one output per gene
-        gene_x = x[self.gene_indices[split]]
-        gene_out = self.task_head(gene_x)
-
-        full_out = torch.zeros(x.size(0), gene_out.size(1), device=x.device)
-        full_out[self.gene_indices[split]] = gene_out
-        return full_out
+            return self.task_specific_forward(x=x, regression_mask=regression_mask)
+        else:
+            return self.general_task_forward(x=x, regression_mask=regression_mask)
 
     def task_specific_forward(
         self,
-        node_mask: Optional[torch.Tensor],
         x: torch.Tensor,
-        split: str,
+        regression_mask: torch.Tensor,
     ) -> torch.Tensor:
-        """Use task specific MLPs for each output head."""
-        if node_mask is None:
-            raise ValueError("Node mask must be provided for task specific MLPs.")
-        if not isinstance(self.task_head, nn.ModuleList):
+        """Use task specific MLPs for each output head. Because the number of
+        targets changes for the train/test/val splits, MLPs are dynamically
+        created for each split during the forward pass. One MLP is built per
+        regression target.
+        """
+        # check that task head is None, as it should be dynamically created
+        if self.task_head is not None:
             raise ValueError(
                 "Task specific MLPs must be used for task specific forward."
             )
 
-        # get indices foor the split
-        if self.gene_indices[split] is None:
-            self.gene_indices[split] = torch.where(node_mask)[0]
+        # check regression mask fidelity
+        ensure_mask_fidelity(x, regression_mask)
 
-        gene_indices = cast(torch.Tensor, self.gene_indices[split])
+        # get indices for node regressions
+        regression_indices = torch.where(regression_mask)[0]
 
-        # initialize output tensor (only for gene nodes)
-        out = torch.zeros(len(gene_indices), self.num_targets, device=x.device)
+        # keys for task specific MLPs
+        keys = [str(idx.item()) for idx in regression_indices]
 
-        # process only gene nodes
-        gene_x = x[self.gene_indices[split]]
+        # apply task specific MLPs to regression targets
+        out = self.task_specific_mlps(x[regression_indices], keys)
 
-        for i, head in enumerate(self.task_head):
-            gene_out = head(gene_x).squeeze()
-            out[:, i] = gene_out
-
-        # create a tensor of the same shape as the input, fill with zeros
-        full_out = torch.zeros(x.size(0), self.num_targets, device=x.device)
-
-        # place the computed values for gene nodes in their correct positions
-        full_out[self.gene_indices[split]] = out
-
-        return full_out
-
-    def _get_linear_layers(
-        self,
-        in_size: int,
-        layers: int,
-        heads: Optional[int] = None,
-    ) -> nn.ModuleList:
-        """Create linear layers for the model along with optional linear
-        projection for residual connections.
-
-        Args:
-            in_size: The input size of the linear layers.
-            out_size: The output size of the final layer.
-            gnn_layers: The number of linear layers.
-
-        Returns:
-            nn.ModuleList: The module list containing the linear layers.
-        """
-        if self.task_specific_mlp > 1:
-            layers -= 1
-        return self._linear_module(
-            self._linear_layer_dimensions(in_size, layers, heads)
+        return produce_output_tensor(
+            x=x, out=out, regression_indices=regression_indices
         )
 
-    def _task_specific_mlp(
-        self,
-        in_size: int,
-        out_size: int,
-    ) -> nn.ModuleList:
-        """Create task specific MLP for each output head. We consider the
-        shared-MLP layers as the input, thus the function returns 2 linear
-        layers with activation per output head.
+    def general_task_forward(
+        self, x: torch.Tensor, regression_mask: torch.Tensor
+    ) -> torch.Tensor:
+        """Forward pass using a general task head, which is a single linear
+        layer to finish the MLP.
         """
-        adjusted_in_size = in_size * self.heads if self.heads else in_size
-        return nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.Linear(adjusted_in_size, in_size),
-                    nn.Module(lambda x: self.activation(x)),
-                    nn.Linear(in_size, out_size),
-                )
-                for _ in range(self.num_targets)
-            ]
+        # check that task head is a linear layer
+        if not isinstance(self.task_head, nn.Linear):
+            raise ValueError("General task head must be a linear layer.")
+
+        # check regression mask fidelity
+        ensure_mask_fidelity(x, regression_mask)
+
+        # process only regression nodes
+        regression_indices = torch.where(regression_mask)[0]
+        out = self.task_head(x[regression_indices])
+
+        return produce_output_tensor(
+            x=x, out=out, regression_indices=regression_indices
         )
 
     def _general_task_head(
@@ -380,6 +385,29 @@ class ModularGNN(nn.Module):
             raise ValueError(
                 "Invalid skip connection type: must be `shared_source` or `distinct_source`."
             )
+
+    def _get_linear_layers(
+        self,
+        in_size: int,
+        layers: int,
+        heads: Optional[int] = None,
+    ) -> nn.ModuleList:
+        """Create linear layers for the model along with optional linear
+        projection for residual connections.
+
+        Args:
+            in_size: The input size of the linear layers.
+            out_size: The output size of the final layer.
+            gnn_layers: The number of linear layers.
+
+        Returns:
+            nn.ModuleList: The module list containing the linear layers.
+        """
+        if self.task_specific_mlp > 1:
+            layers -= 1
+        return self._linear_module(
+            self._linear_layer_dimensions(in_size, layers, heads)
+        )
 
     @staticmethod
     def _create_gnn_layers(
@@ -451,6 +479,197 @@ class ModularGNN(nn.Module):
         return nn.ModuleList(
             [Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)]
         )
+
+
+class DeeperGCN(nn.Module):
+    """DeeperGCN model architecture.Does not inherit from the ModularGNN class
+    as it uses the DeepGCNLayer as well as a different initial layer and
+    unshared params and activations. residual connections are not coded into the
+    forward pass because they're inherent to the architecture and handled by the
+    DeepGCNLayer class.
+
+    Args:
+        in_size: The input size of the DeeperGCN model.
+        embedding_size: The size of the embedding dimension.
+        out_channels: The number of output channels.
+        gnn_layers: The number of convolutional layers.
+        linear_layers: The number of linear layers.
+        activation: The activation function.
+        dropout_rate: The dropout rate.
+        task_specific_mlp: Boolean indicating if task specific MLPs are used.
+        num_targets: The number of output targets.
+    """
+
+    def __init__(
+        self,
+        in_size: int,
+        embedding_size: int,
+        out_channels: int,
+        gnn_layers: int,
+        linear_layers: int,
+        activation: str,
+        dropout_rate: Optional[float] = 0.5,
+        task_specific_mlp: bool = False,
+    ):
+        """Initialize the model"""
+        super().__init__()
+        self.dropout_rate = dropout_rate
+        self.task_specific_mlp = task_specific_mlp
+
+        self.convs = nn.ModuleList()
+        self.linears = nn.ModuleList()
+        self.activation = get_activation_function(activation)
+        self.layer_act = self.nonfunctional_activation(activation)
+
+        # create deeper layers
+        self.convs.append(
+            self.get_deepergcn_layers(
+                in_channels=in_size, out_channels=embedding_size, layer_number=1
+            )
+        )
+        for layer_number in range(2, gnn_layers + 1):
+            self.convs.append(
+                self.get_deepergcn_layers(
+                    in_channels=embedding_size,
+                    out_channels=embedding_size,
+                    layer_number=layer_number,
+                )
+            )
+
+        # create linear layers
+        self.linears.append(Linear(embedding_size, embedding_size))
+        for _ in range(linear_layers - 2):
+            self.linears.append(Linear(embedding_size, embedding_size))
+
+        # task-specific MLP or general task head
+        if task_specific_mlp:
+            self.task_specific_mlps = TaskSpecificMLPs(
+                in_size=embedding_size,
+                out_size=out_channels,
+                activation=self.activation,
+            )
+        else:
+            self.task_head = Linear(embedding_size, out_channels)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        regression_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Forward pass of the neural network.
+
+        Args:
+            x: The input tensor.
+            edge_index: The edge index tensor.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        # graph convolutions
+        for conv in self.convs:
+            x = conv(x, edge_index)
+
+        # shared linear layers
+        for linear_layer in self.linears:
+            x = self.activation(linear_layer(x))
+            if isinstance(self.dropout_rate, float):
+                assert self.dropout_rate is not None
+                x = F.dropout(x, p=self.dropout_rate)
+
+        # apply task head(s)
+        if self.task_specific_mlp:
+            return self.task_specific_forward(x=x, regression_mask=regression_mask)
+        else:
+            return self.general_task_forward(x=x, regression_mask=regression_mask)
+
+    def task_specific_forward(
+        self,
+        x: torch.Tensor,
+        regression_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Forward pass using task specific MLPs for each output head."""
+        # check regression mask fidelity
+        ensure_mask_fidelity(x, regression_mask)
+
+        # get indices for node regressions
+        regression_indices = torch.where(regression_mask)[0]
+
+        # keys for task specific MLPs
+        keys = [str(idx.item()) for idx in regression_indices]
+
+        # apply task specific MLPs to regression targets
+        out = self.task_specific_mlps(x[regression_indices], keys)
+
+        return produce_output_tensor(
+            x=x, out=out, regression_indices=regression_indices
+        )
+
+    def general_task_forward(
+        self, x: torch.Tensor, regression_mask: torch.Tensor
+    ) -> torch.Tensor:
+        """Forward pass using a general task head"""
+        # check regression mask fidelity
+        ensure_mask_fidelity(x, regression_mask)
+
+        # process only regression nodes
+        regression_indices = torch.where(regression_mask)[0]
+        out = self.task_head(x[regression_indices])
+
+        return produce_output_tensor(
+            x=x, out=out, regression_indices=regression_indices
+        )
+
+    def get_deepergcn_layers(
+        self,
+        in_channels: int,
+        out_channels: int,
+        layer_number: int,
+    ) -> DeepGCNLayer:
+        """Create DeeperGCN layers"""
+        conv = GENConv(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            aggr="softmax",
+            t=1.0,
+            learn_t=True,
+            num_layers=2,
+            norm="layer",
+        )
+        norm = LayerNorm(out_channels, affine=True)
+        act = self.layer_act()
+        return DeepGCNLayer(
+            conv=conv,
+            norm=norm,
+            act=act,
+            block="res+" if layer_number > 1 else "plain",
+            dropout=0.1,
+            ckpt_grad=1 if layer_number == 1 else (layer_number % 3),
+        )
+
+    @staticmethod
+    def nonfunctional_activation(activation: str) -> Callable:
+        """Defines the activation function according to the given string"""
+        activations = {
+            "gelu": torch.nn.GELU,
+            "leakyrelu": torch.nn.LeakyReLU,
+            "relu": torch.nn.ReLU,
+        }
+        try:
+            return activations[activation]
+        except ValueError as error:
+            raise ValueError(
+                "Invalid activation function. Supported: relu, leakyrelu, gelu"
+            ) from error
+
+    @staticmethod
+    def produce_output_tensor(
+        x: torch.Tensor, out: torch.Tensor, regression_indices: torch.Tensor
+    ) -> torch.Tensor:
+        """Produce the output tensor for the model by create a tensor of"""
+        full_out = torch.zeros(x.size(0), device=x.device)
+        full_out[regression_indices] = out.squeeze()
+        return full_out
 
 
 class GCN(ModularGNN):
@@ -547,121 +766,43 @@ class UniMPTransformer(ModularGNN):
         super().__init__(*args, **kwargs)
 
 
-class DeeperGCN(nn.Module):
-    """DeeperGCN model architecture.Does not inherit from the ModularGNN class
-    as it uses the DeepGCNLayer as well as a different initial layer and
-    unshared params and activations. Additionally, skip connections are not
-    coded into the forward pass because they're inherent to the architecture and
-    handled by the DeepGCNLayer class.
+def get_activation_function(activation: str) -> Callable[[torch.Tensor], torch.Tensor]:
+    """Defines the activation function according to the given string"""
+    activations: dict[str, Callable[[torch.Tensor], torch.Tensor]] = {
+        "gelu": F.gelu,
+        "leakyrelu": F.leaky_relu,
+        "relu": F.relu,
+    }
+    try:
+        return activations[activation]
+    except KeyError as error:
+        raise ValueError(
+            "Invalid activation function. Supported: relu, leakyrelu, gelu"
+        ) from error
 
-    Args:
-        in_size: The input size of the DeeperGCN model.
-        embedding_size: The size of the embedding dimension.
-        out_channels: The number of output channels.
-        gnn_layers: The number of convolutional layers.
-        linear_layers: The number of linear layers.
-        activation: The activation function.
-        dropout_rate: The dropout rate.
+
+def produce_output_tensor(
+    x: torch.Tensor, out: torch.Tensor, regression_indices: torch.Tensor
+) -> torch.Tensor:
+    """Produce the output tensor for the model by create a tensor of the
+    same shape, but only filling in values for the regression indices.
     """
+    full_out = torch.zeros(x.size(0), device=x.device)
+    full_out[regression_indices] = out.squeeze()
+    return full_out
 
-    def __init__(
-        self,
-        in_size: int,
-        embedding_size: int,
-        out_channels: int,
-        gnn_layers: int,
-        linear_layers: int,
-        activation: str,
-        dropout_rate: Optional[float] = 0.5,
-    ):
-        """Initialize the model"""
-        super().__init__()
-        self.dropout_rate = dropout_rate
-        self.activation = activation
-        self.convs = nn.ModuleList()
-        self.linears = nn.ModuleList()
 
-        # Create deeper layers
-        self.convs.append(
-            self.get_deepergcn_layers(
-                in_channels=in_size, out_channels=embedding_size, layer_number=1
-            )
-        )
-        for layer_number in range(2, gnn_layers + 1):
-            self.convs.append(
-                self.get_deepergcn_layers(
-                    in_channels=embedding_size,
-                    out_channels=embedding_size,
-                    layer_number=layer_number,
-                )
-            )
-
-        # Create linear layers
-        self.linears.append(Linear(embedding_size, embedding_size))
-        for _ in range(linear_layers - 2):
-            self.linears.append(Linear(embedding_size, embedding_size))
-        self.linears.append(Linear(embedding_size, out_channels))
-
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the neural network.
-
-        Args:
-            x: The input tensor.
-            edge_index: The edge index tensor.
-
-        Returns:
-            torch.Tensor: The output tensor.
-        """
-        for conv in self.convs:
-            x = conv(x, edge_index)
-
-        for linear_layer in self.linears[:-1]:
-            x = self.nonfunctional_activation(self.activation)()(linear_layer(x))
-            if isinstance(self.dropout_rate, float):
-                assert self.dropout_rate is not None
-                x = F.dropout(x, p=self.dropout_rate)
-
-        x = self.linears[-1](x)
-        return x
-
-    def get_deepergcn_layers(
-        self,
-        in_channels: int,
-        out_channels: int,
-        layer_number: int,
-    ) -> DeepGCNLayer:
-        """Create DeeperGCN layers"""
-        conv = GENConv(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            aggr="softmax",
-            t=1.0,
-            learn_t=True,
-            num_layers=2,
-            norm="layer",
-        )
-        norm = LayerNorm(out_channels, affine=True)
-        act = self.nonfunctional_activation(self.activation)()
-        return DeepGCNLayer(
-            conv=conv,
-            norm=norm,
-            act=act,
-            block="res+" if layer_number > 1 else "plain",
-            dropout=0.1,
-            ckpt_grad=1 if layer_number == 1 else (layer_number % 3),
+def ensure_mask_fidelity(x: torch.Tensor, regression_mask: torch.Tensor) -> None:
+    """Run a series of checks to ensure that the regression mask is valid."""
+    if regression_mask.sum() == 0:
+        raise ValueError(
+            "Regression mask is empty. No targets specified for regression."
         )
 
-    @staticmethod
-    def nonfunctional_activation(activation: str) -> Callable:
-        """Defines the activation function according to the given string"""
-        activations = {
-            "gelu": torch.nn.GELU,
-            "leakyrelu": torch.nn.LeakyReLU,
-            "relu": torch.nn.ReLU,
-        }
-        try:
-            return activations[activation]
-        except ValueError as error:
-            raise ValueError(
-                "Invalid activation function. Supported: relu, leakyrelu, gelu"
-            ) from error
+    if regression_mask.dtype != torch.bool:
+        raise TypeError("Regression mask must be a boolean tensor.")
+
+    if regression_mask.shape != (x.shape[0],):
+        raise ValueError(
+            f"Regression mask shape {regression_mask.shape} does not match input shape {x.shape[0]}"
+        )
