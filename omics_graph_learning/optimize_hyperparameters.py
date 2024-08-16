@@ -77,6 +77,9 @@ def suggest_hyperparameters(
         "task_specific_mlp": trial.suggest_categorical(
             "task_specific_mlp", [True, False]
         ),
+        "positional_encoding": trial.suggest_categorical(
+            "positional_encoding", [True, False]
+        ),
     }
 
     train_params = {
@@ -106,7 +109,7 @@ def suggest_hyperparameters(
         )
     else:
         model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=2, high=10, step=2
+            "gnn_layers", low=2, high=10, step=1
         )
 
     # add task specific mlp if not DeeperGCN
@@ -116,9 +119,6 @@ def suggest_hyperparameters(
         )
 
     # set positional encodings
-    model_params["positional_encoding"] = trial.suggest_categorical(
-        "positional_encoding", [True, False]
-    )
 
     return model_params, train_params
 
@@ -142,6 +142,14 @@ def objective(
         learning_rate = train_params["learning_rate"]
         optimizer_type = train_params["optimizer_type"]
         scheduler_type = train_params["scheduler_type"]
+
+        # log trial hyperparameters
+        logger.info("=" * 50)
+        logger.info(f"Starting Trial {trial.number} with parameters:")
+        for key, value in {**model_params, **train_params}.items():
+            logger.info(f"  {key}: {value}")
+        logger.info("=" * 50)
+        logger.handlers[0].flush()
 
         # load graph data
         data = GraphToPytorch(

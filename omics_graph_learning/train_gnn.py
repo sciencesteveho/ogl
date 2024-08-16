@@ -162,7 +162,10 @@ class GNNTrainer:
                 regression_mask=data.train_mask_loss,
             )
 
-            loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
+            loss = F.mse_loss(
+                out[data.train_mask_loss].squeeze(),
+                data.y[data.train_mask_loss].squeeze(),
+            )
             loss.backward()
 
             # check for NaN gradients
@@ -215,8 +218,8 @@ class GNNTrainer:
                 regression_mask=regression_mask,
             )
 
-            outs.append(out[regression_mask].cpu())
-            labels.append(data.y[regression_mask].cpu())
+            outs.append(out[regression_mask].squeeze().cpu())
+            labels.append(data.y[regression_mask].squeeze().cpu())
 
             pbar.update(1)
         pbar.close()
@@ -262,7 +265,7 @@ class GNNTrainer:
 
             # filter for input nodes
             input_nodes_mask = batch.input_id < batch.num_input_nodes
-            predictions.append(out[input_nodes_mask].cpu())
+            predictions.append(out[input_nodes_mask].squeeze().cpu())
             node_indices.extend(batch.input_id[input_nodes_mask].cpu().tolist())
 
         # concatenate predictions and sort by node index
@@ -273,7 +276,7 @@ class GNNTrainer:
         original_indices = original_indices[sorted_indices]
 
         # get predictions
-        labels = data.y[mask]
+        labels = data.y[mask].squeeze()
         mse = F.mse_loss(all_preds, labels)
         rmse = torch.sqrt(mse)
 
