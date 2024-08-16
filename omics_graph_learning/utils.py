@@ -82,10 +82,11 @@ def setup_logging(log_file: Optional[str] = None) -> logging.Logger:
         occurs to stderr.
     """
     # get name of module calling logger
-    caller_frame = inspect.stack()[1]
-    caller_module = inspect.getmodule(caller_frame[0])
-    logger_name = caller_module.__name__ if caller_module else "__main__"
-    logger = logging.getLogger(logger_name)
+    script_name = os.path.basename(sys.argv[0])
+    module_name = os.path.splitext(script_name)[0]
+
+    # create logger
+    logger = logging.getLogger(module_name)
 
     # clear existing handlers to avoid duplication
     if logger.handlers:
