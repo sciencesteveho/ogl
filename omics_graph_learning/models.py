@@ -274,7 +274,7 @@ class ModularGNN(nn.Module):
         # initialize task head(s)
         if self.task_specific_mlp:
             self.task_specific_mlps = TaskSpecificMLPs(
-                in_size=in_size,
+                in_size=embedding_size,
                 out_size=out_channels,
                 activation=self.activation_name,
                 heads=self.heads,
