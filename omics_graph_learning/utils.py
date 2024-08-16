@@ -29,6 +29,7 @@ import pandas as pd
 import psutil  # type: ignore
 from pybedtools import BedTool  # type: ignore
 from scipy import stats  # type: ignore
+from scipy.stats import spearmanr  # type: ignore
 import seaborn as sns  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
@@ -198,6 +199,13 @@ def get_physical_cores() -> int:
     process / overhead.
     """
     return psutil.cpu_count(logical=False) - 1
+
+
+# statistics tests
+def calculate_spearman_r(predictions: np.ndarray, targets: np.ndarray) -> float:
+    """Calculate the Spearman correlation coefficient from GNN output."""
+    r, _ = spearmanr(predictions, targets)
+    return float(r)
 
 
 # graph data and gnn operations

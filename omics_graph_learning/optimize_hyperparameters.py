@@ -47,12 +47,6 @@ def setup_device() -> torch.device:
     return torch.device("cpu")
 
 
-def calculate_spearman_r(predictions: np.ndarray, targets: np.ndarray) -> float:
-    """Calculate the Spearman correlation coefficient from GNN output."""
-    r, _ = spearmanr(predictions, targets)
-    return float(r)
-
-
 def suggest_hyperparameters(
     trial: optuna.Trial,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -79,6 +73,9 @@ def suggest_hyperparameters(
         ),
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
+        ),
+        "task_specific_mlp": trial.suggest_categorical(
+            "task_specific_mlp", [True, False]
         ),
     }
 
@@ -109,16 +106,13 @@ def suggest_hyperparameters(
         )
     else:
         model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=1, high=8, step=1
+            "gnn_layers", low=2, high=10, step=2
         )
 
     # add task specific mlp if not DeeperGCN
     if model != "DeeperGCN":
-        model_params["task_specific_mlp"] = trial.suggest_categorical(
-            "task_specific_mlp", [True, False]
-        )
-        model_params["skip_connection"] = trial.suggest_categorical(
-            "skip_connection", ["shared_source", "distinct_source", None]
+        model_params["residual"] = trial.suggest_categorical(
+            "residual", ["shared_source", "distinct_source", None]
         )
 
     # set positional encodings
