@@ -50,9 +50,9 @@ class TaskSpecificMLPs(nn.Module):
 
     We use a ModuleDict to store the task specific MLPs, so that we only make
     MLPs as needed to save on memory. The MLPs themselves are 2 layer MLPs with
-    bottleneck architecture and L1 regularization. The bottleneck architecture
-    helps to compress the task-specific representation and L1 regularization
-    helps to reduce overfitting while promoting sparsity and feature importance.
+    bottleneck layers and L1 regularization. The bottleneck layers help to
+    compress the task-specific representation and L1 regularization helps to
+    reduce overfitting while promoting sparsity and feature importance.
 
     Attributes:
         in_size: The input size of the task specific MLP. This will likely
@@ -62,6 +62,9 @@ class TaskSpecificMLPs(nn.Module):
         activation: The activation function to use.
         task_specific_mlps: The task specific MLPs.
         adjusted_in_size: The adjusted input size for the task specific
+        bottleneck_factor: The factor to reduce the input size for the
+        bottleneck
+        l1_lambda: The lambda value for L1 regularization.
 
     Methods
     --------
@@ -77,7 +80,7 @@ class TaskSpecificMLPs(nn.Module):
         activation: str,
         heads: Optional[int] = None,
         bottleneck_factor: float = 0.5,
-        l1_lambda: float = 0.01,
+        l1_lambda: float = 0.0001,
     ) -> None:
         """Initialize the task specific MLP storage class"""
         super().__init__()
@@ -121,8 +124,7 @@ class TaskSpecificMLPs(nn.Module):
     ) -> nn.Module:
         """Create task specific MLP for each output head. We consider the
         shared-MLP layers as the input, thus the function returns 2 linear
-        layers with activation per output head and uses a bottleneck
-        architecture.
+        layers with activation per output head and uses a bottleneck layer.
         """
         bottleneck_size = max(
             int(self.adjusted_in_size * self.bottleneck_factor), self.out_size
