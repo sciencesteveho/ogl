@@ -28,7 +28,7 @@ The models include four different classes of architectures:
 
 from __future__ import annotations
 
-from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.nn import Linear
@@ -359,10 +359,10 @@ class ModularGNN(nn.Module):
             raise ValueError("Task specific MLPs must be a ModuleDict.")
 
         # check regression mask fidelity
-        ensure_mask_fidelity(x, regression_mask)
+        # ensure_mask_fidelity(x, regression_mask)
 
         # get indices for node regressions
-        regression_indices = torch.where(regression_mask)[0]
+        regression_indices = regression_indices_tensor(regression_mask).to(x.device)
 
         # keys for task specific MLPs
         keys = [str(idx.item()) for idx in regression_indices]
@@ -386,10 +386,10 @@ class ModularGNN(nn.Module):
             raise ValueError("General task head must be a linear layer.")
 
         # check regression mask fidelity
-        ensure_mask_fidelity(x, regression_mask)
+        # ensure_mask_fidelity(x, regression_mask)
 
         # process only regression nodes
-        regression_indices = torch.where(regression_mask)[0]
+        regression_indices = regression_indices_tensor(regression_mask).to(x.device)
         out = self.task_head(x[regression_indices])
 
         return output_tensor(x=x, out=out, regression_indices=regression_indices)
@@ -638,10 +638,10 @@ class DeeperGCN(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass using task specific MLPs for each output head."""
         # check regression mask fidelity
-        ensure_mask_fidelity(x, regression_mask)
+        # ensure_mask_fidelity(x, regression_mask)
 
         # get indices for node regressions
-        regression_indices = torch.where(regression_mask)[0]
+        regression_indices = regression_indices_tensor(regression_mask).to(x.device)
 
         # keys for task specific MLPs
         keys = [str(idx.item()) for idx in regression_indices]
@@ -659,7 +659,7 @@ class DeeperGCN(nn.Module):
     ) -> torch.Tensor:
         """Forward pass using a general task head"""
         # check regression mask fidelity
-        ensure_mask_fidelity(x, regression_mask)
+        # ensure_mask_fidelity(x, regression_mask)
 
         # process only regression nodes
         regression_indices = torch.where(regression_mask)[0]
@@ -708,15 +708,6 @@ class DeeperGCN(nn.Module):
             raise ValueError(
                 "Invalid activation function. Supported: relu, leakyrelu, gelu"
             ) from error
-
-    @staticmethod
-    def produce_output_tensor(
-        x: torch.Tensor, out: torch.Tensor, regression_indices: torch.Tensor
-    ) -> torch.Tensor:
-        """Produce the output tensor for the model by create a tensor of"""
-        full_out = torch.zeros(x.size(0), device=x.device)
-        full_out[regression_indices] = out.squeeze()
-        return full_out
 
 
 class GCN(ModularGNN):
@@ -837,6 +828,11 @@ def output_tensor(
     full_out = torch.zeros(x.size(0), device=x.device)
     full_out[regression_indices] = out.squeeze()
     return full_out
+
+
+def regression_indices_tensor(regression_mask: torch.Tensor) -> torch.Tensor:
+    """Get the indices of the regression nodes from the regression mask."""
+    return torch.where(regression_mask)[0]
 
 
 def ensure_mask_fidelity(x: torch.Tensor, regression_mask: torch.Tensor) -> None:
