@@ -150,7 +150,6 @@ class GNNTrainer:
         total_loss = float(0)
         total_examples = 0
         for batch_idx, data in enumerate(train_loader):
-            # break out of the loop if subset_batches is set and reached.
             if subset_batches and batch_idx >= subset_batches:
                 break
 
@@ -160,8 +159,7 @@ class GNNTrainer:
             out = self.model(
                 x=data.x,
                 edge_index=data.edge_index,
-                node_mask=data.train_mask_loss,
-                split="train",
+                regression_mask=data.train_mask_loss,
             )
 
             # loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
@@ -189,70 +187,6 @@ class GNNTrainer:
         pbar.close()
         return total_loss / total_examples
 
-    def _assess_model(
-        self,
-        data_loader: torch_geometric.data.DataLoader,
-        epoch: int,
-        mask: str,
-        collect_outputs: bool = True,
-        subset_batches: Optional[int] = None,
-    ) -> Tuple[float, Optional[torch.Tensor], Optional[torch.Tensor]]:
-        """Base function for model evaluation or inference."""
-        self.model.eval()
-        pbar = tqdm(total=len(data_loader))
-        pbar.set_description(f"Evaluating epoch: {epoch:04d}")
-        mse, outs, labels = [], [], []
-
-        for batch_idx, data in enumerate(data_loader):
-            # break out of the loop if subset_batches is set and reached.
-            if subset_batches and batch_idx >= subset_batches:
-                break
-
-            data = data.to(self.device)
-
-            # task specific or general mlp forward pass
-            if (
-                hasattr(self.model, "task_specific_mlp")
-                and self.model.task_specific_mlp
-            ):
-                if mask == "val":
-                    out = self.model(
-                        data.x, data.edge_index, data.val_mask_loss, split="val"
-                    )
-                elif mask == "test":
-                    out = self.model(
-                        data.x, data.edge_index, data.test_mask_loss, split="test"
-                    )
-                else:
-                    raise ValueError("Invalid mask type. Use 'val' or 'test'.")
-            else:
-                out = self.model(data.x, data.edge_index)
-
-            # use proper mask for loss calculation
-            if mask == "val":
-                idx_mask = data.val_mask_loss
-            elif mask == "test":
-                idx_mask = data.test_mask_loss
-            else:
-                raise ValueError("Invalid mask type. Use 'val' or 'test'.")
-
-            mse.append(F.mse_loss(out, data.y[idx_mask]).cpu())
-            if collect_outputs:
-                outs.extend(out)
-                labels.extend(data.y[idx_mask])
-
-            pbar.update(1)
-
-        pbar.close()
-        loss = torch.stack(mse)
-        rmse = math.sqrt(float(loss.mean()))
-
-        return (
-            rmse,
-            (torch.stack(outs) if collect_outputs else None),
-            (torch.stack(labels) if collect_outputs else None),
-        )
-
     @torch.no_grad()
     def evaluate(
         self,
@@ -261,19 +195,40 @@ class GNNTrainer:
         mask: str,
         subset_batches: Optional[int] = None,
     ) -> Tuple[float, torch.Tensor, torch.Tensor]:
-        """Evaluate GNN model on validation or test set."""
-        rmse, predictions, targets = self._assess_model(
-            data_loader=data_loader,
-            epoch=epoch,
-            mask=mask,
-            subset_batches=subset_batches,
-            collect_outputs=True,
-        )
+        """Base function for model evaluation or inference."""
+        self.model.eval()
+        pbar = tqdm(total=len(data_loader))
+        pbar.set_description(f"Evaluating epoch: {epoch:04d}")
 
-        if predictions is None or targets is None:
-            raise ValueError("Failed to collect predictions or targets")
+        outs, labels = [], []
 
-        return rmse, predictions, targets
+        for batch_idx, data in enumerate(data_loader):
+            if subset_batches and batch_idx >= subset_batches:
+                break
+
+            data = data.to(self.device)
+            regression_mask = getattr(data, f"{mask}_mask_loss")
+
+            # forward pass
+            out = self.model(
+                x=data.x,
+                edge_index=data.edge_index,
+                regression_mask=regression_mask,
+            )
+
+            outs.append(out[regression_mask].cpu())
+            labels.append(data.y[regression_mask].cpu())
+
+            pbar.update(1)
+        pbar.close()
+
+        # calculate RMSE
+        predictions = torch.cat(outs)
+        targets = torch.cat(labels)
+        mse = F.mse_loss(predictions, targets)
+        rmse = torch.sqrt(mse)
+
+        return rmse.item(), predictions, targets
 
     @staticmethod
     @torch.no_grad()
@@ -297,13 +252,13 @@ class GNNTrainer:
 
         for batch in tqdm(data_loader, desc=description):
             batch = batch.to(device)
+            regression_mask = getattr(batch, f"{split}_mask_loss")
 
             # forward pass
             out = model(
                 x=batch.x,
                 edge_index=batch.edge_index,
-                node_mask=batch[f"{split}_mask_loss"],
-                split=split,
+                regression_mask=regression_mask,
             )
 
             # filter for input nodes
@@ -321,8 +276,9 @@ class GNNTrainer:
         # get predictions
         labels = data.y[mask]
         mse = F.mse_loss(all_preds, labels)
+        rmse = torch.sqrt(mse)
 
-        return math.sqrt(float(mse.cpu())), all_preds, labels, original_indices
+        return rmse.item(), all_preds, labels, original_indices
 
     def train_model(
         self,
