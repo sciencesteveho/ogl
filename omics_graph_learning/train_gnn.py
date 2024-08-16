@@ -162,8 +162,7 @@ class GNNTrainer:
                 regression_mask=data.train_mask_loss,
             )
 
-            # loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
-            loss = F.mse_loss(out, data.y[data.train_mask_loss])
+            loss = F.mse_loss(out[data.train_mask_loss], data.y[data.train_mask_loss])
             loss.backward()
 
             # check for NaN gradients
