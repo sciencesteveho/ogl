@@ -110,6 +110,7 @@ class TaskSpecificMLPs(nn.Module):
 
         for key, x_i in zip(keys, x):
             mlp = self.get_mlp(key)
+            x_i = x_i.to(mlp[0].weight.device)  # ensure device compatibility
             output = mlp(x_i.unsqueeze(0))
             outputs.append(output)
 
