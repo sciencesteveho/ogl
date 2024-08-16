@@ -65,9 +65,6 @@ def suggest_hyperparameters(
         "activation": trial.suggest_categorical(
             "activation", ["relu", "leakyrelu", "gelu"]
         ),
-        "embedding_size": trial.suggest_int(
-            "embedding_size", low=32, high=640, step=32
-        ),
         "shared_mlp_layers": trial.suggest_int(
             "shared_mlp_layers", low=1, high=3, step=1
         ),
@@ -98,9 +95,16 @@ def suggest_hyperparameters(
         ),
     }
 
-    # set heads for attention-based models
+    # set heads and embedding size for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
         model_params["heads"] = trial.suggest_int("heads", low=1, high=4, step=1)
+        model_params["embedding_size"] = trial.suggest_int(
+            "embedding_size", low=32, high=320, step=32
+        )
+    else:
+        model_params["embedding_size"] = trial.suggest_int(
+            "embedding_size", low=32, high=640, step=32
+        )
 
     # set convolutional layers
     if model == "DeeperGCN":

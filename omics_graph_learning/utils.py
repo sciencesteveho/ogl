@@ -313,8 +313,10 @@ class PyGDataChecker:
         print(f"Std: {tensor.std(dim=0)[:5]}...")
         print(f"Min: {tensor.min(dim=0)[0][:5]}...")
         print(f"Max: {tensor.max(dim=0)[0][:5]}...")
-        print(f"Contains NaN: {torch.isnan(tensor).any().item()}")
-        print(f"Contains Inf: {torch.isinf(tensor).any().item()}")
+        if torch.isnan(tensor).any().item():
+            print(f"Contains NaN: {torch.isnan(tensor).any().item()}")
+        if torch.isinf(tensor).any().item():
+            print(f"Contains Inf: {torch.isinf(tensor).any().item()}")
 
     def print_graph_summary(self) -> None:
         """Prints a summary of the graph structure."""
@@ -340,8 +342,10 @@ class PyGDataChecker:
                     print(f" Std: {masked_y.std().item():.4f}")
                     print(f" Min: {masked_y.min().item():.4f}")
                     print(f" Max: {masked_y.max().item():.4f}")
-                    print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
-                    print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
+                    if torch.isnan(masked_y).any().item():
+                        print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
+                    if torch.isinf(masked_y).any().item():
+                        print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
 
     def run_pyg_data_check(self) -> None:
         """Runs all checks and prints all statistics for the PyG Data object."""
