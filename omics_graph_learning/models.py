@@ -132,9 +132,24 @@ class TaskSpecificMLPs(nn.Module):
 
         return nn.Sequential(
             nn.Linear(self.adjusted_in_size, bottleneck_size),
-            nn.Module(get_activation_function(self.activation)),
+            self.get_activation_module(self.activation),
             nn.Linear(bottleneck_size, self.out_size),
         )
+
+    @staticmethod
+    def get_activation_module(activation: str) -> nn.Module:
+        """Returns the PyTorch module for the given activation function."""
+        activations = {
+            "gelu": nn.GELU(),
+            "leakyrelu": nn.LeakyReLU(),
+            "relu": nn.ReLU(),
+        }
+        try:
+            return activations[activation]
+        except KeyError as error:
+            raise ValueError(
+                "Invalid activation function. Supported: relu, leakyrelu, gelu"
+            ) from error
 
 
 class MLP(nn.Module):
