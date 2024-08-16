@@ -46,8 +46,13 @@ from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
 
 class TaskSpecificMLPs(nn.Module):
-    """Class to store task specific MLPs for dynamically changing output
-    heads.
+    """Class construct to manage task specific MLPs for each output head.
+
+    We use a ModuleDict to store the task specific MLPs, so that we only make
+    MLPs as needed to save on memory. The MLPs themselves are 2 layer MLPs with
+    bottleneck architecture and L1 regularization. The bottleneck architecture
+    helps to compress the task-specific representation and L1 regularization
+    helps to reduce overfitting while promoting sparsity and feature importance.
 
     Attributes:
         in_size: The input size of the task specific MLP. This will likely
@@ -71,12 +76,17 @@ class TaskSpecificMLPs(nn.Module):
         out_size: int,
         activation: str,
         heads: Optional[int] = None,
+        bottleneck_factor: float = 0.5,
+        l1_lambda: float = 0.01,
     ) -> None:
         """Initialize the task specific MLP storage class"""
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.activation = activation
+        self.bottleneck_factor = bottleneck_factor
+        self.l1_lambda = l1_lambda
+
         self.task_specific_mlps = nn.ModuleDict()
         self.adjusted_in_size = in_size * heads if heads else in_size
 
@@ -88,23 +98,40 @@ class TaskSpecificMLPs(nn.Module):
             self.task_specific_mlps[key] = self.construct_task_specific_mlp()
         return self.task_specific_mlps[key]
 
-    def forward(self, x: torch.Tensor, keys: List[str]) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, keys: List[str]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Apply the task specific MLPs to the input tensor."""
-        return torch.cat(
-            [self.get_mlp(key)(x_i.unsqueeze(0)) for key, x_i in zip(keys, x)]
-        )
+        outputs = []
+        l1_reg = torch.tensor(0.0, device=x.device, requires_grad=False)
+
+        for key, x_i in zip(keys, x):
+            mlp = self.get_mlp(key)
+            output = mlp(x_i.unsqueeze(0))
+            outputs.append(output)
+
+            # L1 regularization
+            l1_reg += sum(p.abs().sum() for p in mlp.parameters())
+
+        combined_output = torch.cat(outputs)
+        return combined_output, self.l1_lambda * l1_reg
 
     def construct_task_specific_mlp(
         self,
     ) -> nn.Module:
         """Create task specific MLP for each output head. We consider the
         shared-MLP layers as the input, thus the function returns 2 linear
-        layers with activation per output head.
+        layers with activation per output head and uses a bottleneck
+        architecture.
         """
+        bottleneck_size = max(
+            int(self.adjusted_in_size * self.bottleneck_factor), self.out_size
+        )
+
         return nn.Sequential(
-            nn.Linear(self.adjusted_in_size, self.in_size),
+            nn.Linear(self.adjusted_in_size, bottleneck_size),
             nn.Module(get_activation_function(self.activation)),
-            nn.Linear(self.in_size, self.out_size),
+            nn.Linear(bottleneck_size, self.out_size),
         )
 
 
@@ -249,7 +276,7 @@ class ModularGNN(nn.Module):
         x: torch.Tensor,
         edge_index: torch.Tensor,
         regression_mask: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the neural network.
 
         Args:
@@ -295,13 +322,15 @@ class ModularGNN(nn.Module):
         if self.task_specific_mlp:
             return self.task_specific_forward(x=x, regression_mask=regression_mask)
         else:
-            return self.general_task_forward(x=x, regression_mask=regression_mask)
+            return self.general_task_forward(
+                x=x, regression_mask=regression_mask
+            ), torch.tensor(0.0, device=x.device)
 
     def task_specific_forward(
         self,
         x: torch.Tensor,
         regression_mask: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Use task specific MLPs for each output head. Because the number of
         targets changes for the train/test/val splits, MLPs are dynamically
         created for each split during the forward pass. One MLP is built per
@@ -321,10 +350,11 @@ class ModularGNN(nn.Module):
         keys = [str(idx.item()) for idx in regression_indices]
 
         # apply task specific MLPs to regression targets
-        out = self.task_specific_mlps(x[regression_indices], keys)
+        out, l1_reg = self.task_specific_mlps(x[regression_indices], keys)
 
-        return produce_output_tensor(
-            x=x, out=out, regression_indices=regression_indices
+        return (
+            output_tensor(x=x, out=out, regression_indices=regression_indices),
+            l1_reg,
         )
 
     def general_task_forward(
@@ -344,9 +374,7 @@ class ModularGNN(nn.Module):
         regression_indices = torch.where(regression_mask)[0]
         out = self.task_head(x[regression_indices])
 
-        return produce_output_tensor(
-            x=x, out=out, regression_indices=regression_indices
-        )
+        return output_tensor(x=x, out=out, regression_indices=regression_indices)
 
     def _general_task_head(
         self,
@@ -556,7 +584,7 @@ class DeeperGCN(nn.Module):
         x: torch.Tensor,
         edge_index: torch.Tensor,
         regression_mask: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the neural network.
 
         Args:
@@ -581,13 +609,15 @@ class DeeperGCN(nn.Module):
         if self.task_specific_mlp:
             return self.task_specific_forward(x=x, regression_mask=regression_mask)
         else:
-            return self.general_task_forward(x=x, regression_mask=regression_mask)
+            return self.general_task_forward(
+                x=x, regression_mask=regression_mask
+            ), torch.tensor(0.0, device=x.device)
 
     def task_specific_forward(
         self,
         x: torch.Tensor,
         regression_mask: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass using task specific MLPs for each output head."""
         # check regression mask fidelity
         ensure_mask_fidelity(x, regression_mask)
@@ -599,10 +629,11 @@ class DeeperGCN(nn.Module):
         keys = [str(idx.item()) for idx in regression_indices]
 
         # apply task specific MLPs to regression targets
-        out = self.task_specific_mlps(x[regression_indices], keys)
+        out, l1_reg = self.task_specific_mlps(x[regression_indices], keys)
 
-        return produce_output_tensor(
-            x=x, out=out, regression_indices=regression_indices
+        return (
+            output_tensor(x=x, out=out, regression_indices=regression_indices),
+            l1_reg,
         )
 
     def general_task_forward(
@@ -616,9 +647,7 @@ class DeeperGCN(nn.Module):
         regression_indices = torch.where(regression_mask)[0]
         out = self.task_head(x[regression_indices])
 
-        return produce_output_tensor(
-            x=x, out=out, regression_indices=regression_indices
-        )
+        return output_tensor(x=x, out=out, regression_indices=regression_indices)
 
     def get_deepergcn_layers(
         self,
@@ -781,7 +810,7 @@ def get_activation_function(activation: str) -> Callable[[torch.Tensor], torch.T
         ) from error
 
 
-def produce_output_tensor(
+def output_tensor(
     x: torch.Tensor, out: torch.Tensor, regression_indices: torch.Tensor
 ) -> torch.Tensor:
     """Produce the output tensor for the model by create a tensor of the

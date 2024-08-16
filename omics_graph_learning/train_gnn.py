@@ -156,16 +156,17 @@ class GNNTrainer:
             self.optimizer.zero_grad()
             data = data.to(self.device)
 
-            out = self.model(
+            out, l1_reg = self.model(
                 x=data.x,
                 edge_index=data.edge_index,
                 regression_mask=data.train_mask_loss,
             )
 
-            loss = F.mse_loss(
+            mse_loss = F.mse_loss(
                 out[data.train_mask_loss].squeeze(),
                 data.y[data.train_mask_loss].squeeze(),
             )
+            loss = mse_loss + l1_reg
             loss.backward()
 
             # check for NaN gradients
@@ -212,7 +213,7 @@ class GNNTrainer:
             regression_mask = getattr(data, f"{mask}_mask_loss")
 
             # forward pass
-            out = self.model(
+            out, _ = self.model(
                 x=data.x,
                 edge_index=data.edge_index,
                 regression_mask=regression_mask,
@@ -257,7 +258,7 @@ class GNNTrainer:
             regression_mask = getattr(batch, f"{split}_mask_loss")
 
             # forward pass
-            out = model(
+            out, _ = model(
                 x=batch.x,
                 edge_index=batch.edge_index,
                 regression_mask=regression_mask,

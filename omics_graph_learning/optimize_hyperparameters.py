@@ -66,10 +66,10 @@ def suggest_hyperparameters(
             "activation", ["relu", "leakyrelu", "gelu"]
         ),
         "embedding_size": trial.suggest_int(
-            "embedding_size", low=32, high=1024, step=32
+            "embedding_size", low=32, high=640, step=32
         ),
         "shared_mlp_layers": trial.suggest_int(
-            "shared_mlp_layers", low=1, high=4, step=1
+            "shared_mlp_layers", low=1, high=3, step=1
         ),
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
