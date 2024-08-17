@@ -146,7 +146,7 @@ class GNNTrainer:
         self.model.train()
         pbar = tqdm(total=len(train_loader))
         pbar.set_description(
-            f"Training Model: {self.model.__class__.__name__} epoch: {epoch:04d} - "
+            f"\nTraining Model: {self.model.__class__.__name__} epoch: {epoch:04d} - "
         )
 
         total_loss = float(0)
@@ -204,7 +204,7 @@ class GNNTrainer:
         self.model.eval()
         pbar = tqdm(total=len(data_loader))
         pbar.set_description(
-            f"Evaluating Model: {self.model.__class__.__name__} epoch: {epoch:04d}"
+            f"\nEvaluating Model: {self.model.__class__.__name__} epoch: {epoch:04d}"
         )
 
         outs, labels = [], []
@@ -253,7 +253,7 @@ class GNNTrainer:
         predictions = []
         node_indices = []
 
-        description = "Evaluating"
+        description = "\nEvaluating"
         if epoch is not None:
             description += f" epoch: {epoch:04d}"
 
@@ -309,12 +309,12 @@ class GNNTrainer:
         stop_counter = 0  # set up early stopping counter
         for epoch in range(epochs + 1):
             loss = self.train(train_loader=train_loader, epoch=epoch)
-            self.logger.info(f"Epoch: {epoch:03d}, Train: {loss}")
+            self.logger.info(f"\nEpoch: {epoch:03d}, Train: {loss}")
 
             val_rmse, _, _ = self.evaluate(
                 data_loader=val_loader, epoch=epoch, mask="val"
             )
-            self.logger.info(f"Epoch: {epoch:03d}, Validation: {val_rmse:.4f}")
+            self.logger.info(f"\nEpoch: {epoch:03d}, Validation: {val_rmse:.4f}")
 
             test_rmse, _, _, _ = self.inference_all_neighbors(
                 model=self.model,
@@ -324,7 +324,7 @@ class GNNTrainer:
                 mask=self.data.test_mask_loss,
                 epoch=epoch,
             )
-            self.logger.info(f"Epoch: {epoch:03d}, Test: {test_rmse:.4f}")
+            self.logger.info(f"\nEpoch: {epoch:03d}, Test: {test_rmse:.4f}")
 
             # log metrics to tensorboard
             metrics = {

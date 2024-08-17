@@ -12,8 +12,9 @@ import logging
 import os
 from pathlib import Path
 import socket
+import subprocess
 import time
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import filelock
 import numpy as np
@@ -48,6 +49,27 @@ N_TRIALS = 100
 RANDOM_SEED = 42
 MAX_RETRIES = 5
 RETRY_DELAY = 1
+
+
+def get_remaining_walltime(logger: logging.Logger) -> Union[int, None]:
+    """Get remaining walltime in seconds."""
+    try:
+        result = subprocess.run(
+            ["scontrol", "show", "job", "$SLURM_JOB_ID"], capture_output=True, text=True
+        )
+        for line in result.stdout.split("\n"):
+            if "TimeLeft=" in line:
+                time_left = line.split("TimeLeft=")[1].split()[0]
+                days, time = (
+                    time_left.split("-") if "-" in time_left else ("0", time_left)
+                )
+                hours, mins, secs = time.split(":")
+                return (
+                    int(days) * 86400 + int(hours) * 3600 + int(mins) * 60 + int(secs)
+                )
+    except Exception as e:
+        logger.warning(f"Failed to get remaining walltime: {e}")
+    return None
 
 
 def setup_device(local_rank: int = 0) -> torch.device:
@@ -86,7 +108,7 @@ def suggest_hyperparameters(
         ),
         "task_specific_mlp": trial.suggest_categorical(
             "task_specific_mlp",
-            [True, True],
+            [False, False],
             # "task_specific_mlp", [True, False]
         ),
         "positional_encoding": trial.suggest_categorical(
@@ -104,7 +126,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=16, high=512, step=16),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=544, step=64),
         "avg_connectivity": trial.suggest_categorical(
             "avg_connectivity", [True, False]
         ),
@@ -395,11 +417,26 @@ def run_optimization(
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
-    study.optimize(
-        lambda trial: objective(trial, experiment_config, args, logger, rank, device),
-        n_trials=n_trials,
-        gc_after_trial=True,
-    )
+    start_time = time.time()
+    for trial_num in range(n_trials):
+        remaining_time = get_remaining_walltime(logger)
+        if remaining_time is not None and remaining_time <= 10800:  # 3 hours
+            logger.info("Less than 3 hours remaining, stopping optimization")
+            break
+
+        study.optimize(
+            lambda trial: objective(
+                trial, experiment_config, args, logger, rank, device
+            ),
+            n_trials=n_trials,
+            gc_after_trial=True,
+        )
+
+        # check time after trials
+        elapsed_time = time.time() - start_time
+        logger.info(
+            f"Completed trial {trial_num + 1}/{n_trials}. Elapsed time: {elapsed_time:.2f} seconds"
+        )
 
     # synchronize all processes
     if world_size > 1:
