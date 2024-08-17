@@ -12,8 +12,10 @@ import logging
 import os
 from pathlib import Path
 import socket
+import time
 from typing import Any, Dict, Tuple
 
+import filelock
 import numpy as np
 import optuna
 from optuna.trial import TrialState
@@ -356,29 +358,38 @@ def run_optimization(
     storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
     db_file = f"{optuna_dir}/optuna_study.db"
     study_name = "distributed_optimization"
+    lock_file = f"{optuna_dir}/optuna_study.lock"
 
-    # remove existing database file
-    if os.path.exists(db_file):
-        os.remove(db_file)
-        logger.info(f"Removed existing database file: {db_file}")
+    max_retries = 5
+    retry_delay = 1
 
-    try:
-        study = optuna.create_study(
-            study_name=study_name,
-            storage=storage_url,
-            load_if_exists=True,
-            direction="maximize",
-            pruner=optuna.pruners.HyperbandPruner(
-                min_resource=MIN_RESOURCE,
-                max_resource=EPOCHS,
-                reduction_factor=REDUCTION_FACTOR,
-            ),
-        )
-        logger.info(f"Created or loaded existing study: {study_name}")
-    except OperationalError as e:
-        logger.warning(f"Error creating study: {e}")
-        study = optuna.load_study(study_name=study_name, storage=storage_url)
-        logger.info(f"Loaded existing study: {study_name}")
+    with filelock.FileLock(lock_file, timeout=60):  # 60-second timeout
+        for attempt in range(max_retries):
+            try:
+                study = optuna.create_study(
+                    study_name=study_name,
+                    storage=storage_url,
+                    load_if_exists=True,
+                    direction="maximize",
+                    pruner=optuna.pruners.HyperbandPruner(
+                        min_resource=MIN_RESOURCE,
+                        max_resource=EPOCHS,
+                        reduction_factor=REDUCTION_FACTOR,
+                    ),
+                )
+                logger.info(f"Created or loaded existing study: {study_name}")
+                break
+            except (OperationalError, KeyError) as e:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"Error accessing study (attempt {attempt + 1}): {e}"
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        f"Failed to create or load study after {max_retries} attempts"
+                    )
+                    raise
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
