@@ -46,6 +46,8 @@ MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 100
 RANDOM_SEED = 42
+MAX_RETRIES = 5
+RETRY_DELAY = 1
 
 
 def setup_device(local_rank: int = 0) -> torch.device:
@@ -83,7 +85,9 @@ def suggest_hyperparameters(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
         "task_specific_mlp": trial.suggest_categorical(
-            "task_specific_mlp", [True, False]
+            "task_specific_mlp",
+            [True],
+            # "task_specific_mlp", [True, False]
         ),
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
@@ -308,6 +312,7 @@ def objective(
     except RuntimeError as e:
         if "CUDA out of memory" in str(e):
             trial.report(float("inf"), EPOCHS)
+            logger.info(f"Trial {trial.number} pruned due to CUDA out of memory")
             return float("inf")
         raise e
 
@@ -356,15 +361,12 @@ def run_optimization(
 
     # create a study with Hyperband Pruner
     storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
-    db_file = f"{optuna_dir}/optuna_study.db"
     study_name = "distributed_optimization"
     lock_file = f"{optuna_dir}/optuna_study.lock"
 
-    max_retries = 5
-    retry_delay = 1
-
-    with filelock.FileLock(lock_file, timeout=60):  # 60-second timeout
-        for attempt in range(max_retries):
+    # use filelock to prevent simultaneous access to the database
+    with filelock.FileLock(lock_file, timeout=60):
+        for attempt in range(MAX_RETRIES):
             try:
                 study = optuna.create_study(
                     study_name=study_name,
@@ -380,14 +382,14 @@ def run_optimization(
                 logger.info(f"Created or loaded existing study: {study_name}")
                 break
             except (OperationalError, KeyError) as e:
-                if attempt < max_retries - 1:
+                if attempt < MAX_RETRIES - 1:
                     logger.warning(
                         f"Error accessing study (attempt {attempt + 1}): {e}"
                     )
-                    time.sleep(retry_delay)
+                    time.sleep(RETRY_DELAY)
                 else:
                     logger.error(
-                        f"Failed to create or load study after {max_retries} attempts"
+                        f"Failed to create or load study after {MAX_RETRIES} attempts"
                     )
                     raise
 

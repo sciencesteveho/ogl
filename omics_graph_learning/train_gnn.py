@@ -145,7 +145,9 @@ class GNNTrainer:
         """Train GNN model on graph data"""
         self.model.train()
         pbar = tqdm(total=len(train_loader))
-        pbar.set_description(f"Training epoch: {epoch:04d}")
+        pbar.set_description(
+            f"Training Model: {self.model.__class__.__name__} epoch: {epoch:04d} - "
+        )
 
         total_loss = float(0)
         total_examples = 0
@@ -201,7 +203,9 @@ class GNNTrainer:
         """Base function for model evaluation or inference."""
         self.model.eval()
         pbar = tqdm(total=len(data_loader))
-        pbar.set_description(f"Evaluating epoch: {epoch:04d}")
+        pbar.set_description(
+            f"Evaluating Model: {self.model.__class__.__name__} epoch: {epoch:04d}"
+        )
 
         outs, labels = [], []
 
