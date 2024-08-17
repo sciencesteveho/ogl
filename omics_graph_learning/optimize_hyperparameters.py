@@ -354,7 +354,13 @@ def run_optimization(
 
     # create a study with Hyperband Pruner
     storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
+    db_file = f"{optuna_dir}/optuna_study.db"
     study_name = "distributed_optimization"
+
+    # remove existing database file
+    if os.path.exists(db_file):
+        os.remove(db_file)
+        logger.info(f"Removed existing database file: {db_file}")
 
     try:
         study = optuna.create_study(
