@@ -9,6 +9,8 @@ resource conscious Hyperband pruner."""
 
 import argparse
 import logging
+import os
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -16,8 +18,10 @@ import optuna
 from optuna.trial import TrialState
 import plotly  # type: ignore
 from scipy.stats import pearsonr  # type: ignore
-from scipy.stats import spearmanr  # type: ignore
 import torch
+import torch.distributed as dist
+from torch.optim.lr_scheduler import LRScheduler
+import torch_geometric  # type: ignore
 
 from config_handlers import ExperimentConfig
 from gnn_architecture_builder import build_gnn_architecture
@@ -39,11 +43,10 @@ N_TRIALS = 100
 RANDOM_SEED = 42
 
 
-def setup_device() -> torch.device:
-    """Check for GPU and set device accordingly."""
+def setup_device_mgpu(local_rank: int) -> torch.device:
+    """Set up device for the current process."""
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(RANDOM_SEED)
-        return torch.device("cuda:0")
+        return torch.device(f"cuda:{local_rank}")
     return torch.device("cpu")
 
 
@@ -72,9 +75,7 @@ def suggest_hyperparameters(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
         "task_specific_mlp": trial.suggest_categorical(
-            # "task_specific_mlp", [True, False]
-            "task_specific_mlp",
-            [True],
+            "task_specific_mlp", [True, False]
         ),
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
@@ -129,16 +130,83 @@ def suggest_hyperparameters(
     return model_params, train_params
 
 
+def train_and_evaluate(
+    trial: optuna.Trial,
+    trainer: GNNTrainer,
+    train_loader: torch_geometric.data.DataLoader,
+    val_loader: torch_geometric.data.DataLoader,
+    scheduler: LRScheduler,
+    logger: logging.Logger,
+) -> Tuple[float, float]:
+    """Run training and evaluation."""
+    patience = 5
+    best_r = -float("inf")
+    best_rmse = float("inf")
+    early_stop_counter = 0
+
+    for epoch in range(EPOCHS + 1):
+        # train
+        loss = trainer.train(train_loader=train_loader, epoch=epoch)
+        logger.info(f"Epoch {epoch}, Loss: {loss}")
+
+        if np.isnan(loss):
+            logger.info(f"Trial {trial.number} pruned at epoch {epoch} due to NaN loss")
+            raise optuna.exceptions.TrialPruned()
+
+        # validation
+        rmse, predictions, targets = trainer.evaluate(
+            data_loader=val_loader,
+            epoch=epoch,
+            mask="val",
+        )
+
+        predictions = _tensor_out_to_array(predictions, 0)
+        targets = _tensor_out_to_array(targets, 0)
+
+        # calculate metrics on validation set
+        r, p_val = pearsonr(predictions, targets)
+        logger.info(f"Validation Pearson's R: {r}, p-value: {p_val}, RMSE: {rmse}")
+
+        if np.isnan(rmse):
+            logger.info(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")
+            raise optuna.exceptions.TrialPruned()
+
+        # early stopping
+        if r > best_r:
+            best_r = r
+            best_rmse = rmse
+            early_stop_counter = 0
+        else:
+            early_stop_counter += 1
+            if early_stop_counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch}")
+                break
+
+        # report for pruning
+        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(rmse)
+
+        trial.report(r, epoch)
+
+        # handle pruning based on the intermediate value.
+        if trial.should_prune():
+            logger.info(f"Trial {trial.number} pruned at epoch {epoch}")
+            raise optuna.exceptions.TrialPruned()
+
+    return best_r, best_rmse
+
+
 def objective(
     trial: optuna.Trial,
     experiment_config: ExperimentConfig,
     args: argparse.Namespace,
     logger: logging.Logger,
+    local_rank: int,
 ) -> float:
     """Objective function to be optimized by Optuna."""
     try:
         # set gpu
-        device = setup_device()
+        device = setup_device_mgpu(local_rank)
 
         # get trial hyperparameters
         model_params, train_params = suggest_hyperparameters(trial)
@@ -214,11 +282,6 @@ def objective(
             training_steps=total_steps,
         )
 
-        # early stop params
-        patience = 5
-        best_r = -float("inf")
-        early_stop_counter = 0
-
         # initialize trainer
         trainer = GNNTrainer(
             model=model,
@@ -229,57 +292,10 @@ def objective(
             logger=logger,
         )
 
-        for epoch in range(EPOCHS + 1):
-            # train
-            _ = trainer.train(
-                train_loader=train_loader,
-                epoch=epoch,
-            )
-            print(f"Loss: {_}")
-
-            if np.isnan(_):
-                print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN loss")
-                raise optuna.exceptions.TrialPruned()
-
-            # validation
-            rmse, predictions, targets = trainer.evaluate(
-                data_loader=val_loader,
-                epoch=epoch,
-                mask="val",
-            )
-
-            predictions = _tensor_out_to_array(predictions, 0)
-            targets = _tensor_out_to_array(targets, 0)
-
-            # calculate metrics on validation set
-            r, p_val = pearsonr(predictions, targets)
-            print(f"Validation Pearson's R: {r}, p-value: {p_val}, RMSE: {rmse}")
-
-            if np.isnan(rmse):
-                print(f"Trial {trial.number} pruned at epoch {epoch} due to NaN RMSE")
-                raise optuna.exceptions.TrialPruned()
-
-            # early stopping
-            if r > best_r:
-                best_r = r
-                best_rmse = rmse
-                early_stop_counter = 0
-            else:
-                early_stop_counter += 1
-                if early_stop_counter >= patience:
-                    print(f"Early stopping at epoch {epoch}")
-                    break
-
-            # report for pruning
-            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                scheduler.step(rmse)
-
-            trial.report(r, epoch)
-
-            # handle pruning based on the intermediate value.
-            if trial.should_prune():
-                print(f"Trial {trial.number} pruned at epoch {epoch}")
-                raise optuna.exceptions.TrialPruned()
+        # training loop
+        best_r, best_rmse = train_and_evaluate(
+            trial, trainer, train_loader, val_loader, scheduler, logger
+        )
 
         trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
         return best_rmse
@@ -290,49 +306,24 @@ def objective(
         raise e
 
 
-def main() -> None:
-    """Main function to optimize hyperparameters w/ optuna!"""
-    parser = argparse.ArgumentParser(
-        description="Optimize hyperparameters with Optuna."
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to experiment YAML file",
-    )
-    parser.add_argument(
-        "--target",
-        type=str,
-        default="expression_median_only",
-        choices=[
-            "expression_median_only",
-            "expression_media_and_foldchange",
-            "difference_from_average",
-            "foldchange_from_average",
-            "protein_targets",
-            "rna_seq",
-        ],
-    )
-    parser.add_argument(
-        "--split_name",
-        type=str,
-    )
-    args = parser.parse_args()
+def run_optimization(
+    local_rank: int,
+    world_size: int,
+    args: argparse.Namespace,
+    logger: logging.Logger,
+) -> None:
+    """Run the optimization process per GPU."""
+    # initialize the process group
+    dist.init_process_group("nccl", rank=local_rank, world_size=world_size)
     experiment_config = ExperimentConfig.from_yaml(args.config)
+    logger.info(f"Process {local_rank}/{world_size} starting optimization")
 
-    model_dir = (
-        experiment_config.root_dir / "models" / experiment_config.experiment_name
-    )
-    optuna_dir = model_dir / "optuna"
-    dir_check_make(optuna_dir)
-
-    logger = setup_logging(
-        str(optuna_dir / f"{experiment_config.experiment_name}_optuna.log")
-    )
-
-    # create a study object with Hyperband Pruner
+    # create a study with Hyperband Pruner
+    storage_url = "sqlite:///optuna_study.db"
     study = optuna.create_study(
+        study_name="distributed_optimization",
+        storage=storage_url,
+        load_if_exists=True,
         direction="maximize",
         pruner=optuna.pruners.HyperbandPruner(
             min_resource=MIN_RESOURCE,
@@ -341,15 +332,20 @@ def main() -> None:
         ),
     )
 
-    # create study with median pruner
-    # study = optuna.create_study(direction="minimize")
-
     study.optimize(
-        lambda trial: objective(trial, experiment_config, args, logger),
-        n_trials=N_TRIALS,
+        lambda trial: objective(trial, experiment_config, args, logger, local_rank),
+        n_trials=N_TRIALS // world_size,
         gc_after_trial=True,
     )
 
+    # synchronize all processes
+    dist.barrier()
+
+
+def display_results(
+    study: optuna.Study, optuna_dir: Path, logger: logging.Logger
+) -> None:
+    """Display the results of the Optuna study."""
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
 
@@ -397,6 +393,73 @@ def main() -> None:
         f"{optuna_dir}/importances.png"
     )
     optuna.visualization.plot_slice(study=study).write_image(f"{optuna_dir}/slice.png")
+
+
+def main() -> None:
+    """Main function to optimize hyperparameters w/ optuna!"""
+    parser = argparse.ArgumentParser(
+        description="Optimize hyperparameters with Optuna."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to experiment YAML file",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="expression_median_only",
+        choices=[
+            "expression_median_only",
+            "expression_media_and_foldchange",
+            "difference_from_average",
+            "foldchange_from_average",
+            "protein_targets",
+            "rna_seq",
+        ],
+    )
+    parser.add_argument(
+        "--split_name",
+        type=str,
+    )
+    args = parser.parse_args()
+
+    # set up distributed training vars
+    world_size = int(os.environ["SLURM_NTASKS"])
+    local_rank = int(os.environ["SLURM_LOCALID"])
+
+    # set up directories
+    experiment_config = ExperimentConfig.from_yaml(args.config)
+    model_dir = (
+        experiment_config.root_dir / "models" / experiment_config.experiment_name
+    )
+    optuna_dir = model_dir / "optuna"
+    dir_check_make(optuna_dir)
+
+    # set up logging
+    logger = setup_logging(
+        str(optuna_dir / f"{experiment_config.experiment_name}_optuna.log")
+    )
+
+    # run optimization!
+    logger.info(f"Starting optimization process on rank {local_rank}/{world_size}")
+    logger.info(f"Configuration: {args}")
+    run_optimization(local_rank, world_size, args, logger)
+
+    if local_rank == 0:
+        logger.info("Main process starting result analysis")
+
+        # load the study
+        study = optuna.load_study(
+            study_name="distributed_optimization", storage="sqlite:///optuna_study.db"
+        )
+        display_results(study, optuna_dir, logger)
+        logger.info("Result analysis complete")
+
+    # cleanup
+    dist.destroy_process_group()
+    logger.info(f"Process {local_rank}/{world_size} finished")
 
 
 if __name__ == "__main__":
