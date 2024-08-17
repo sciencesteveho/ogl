@@ -72,7 +72,9 @@ def suggest_hyperparameters(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
         "task_specific_mlp": trial.suggest_categorical(
-            "task_specific_mlp", [True, False]
+            # "task_specific_mlp", [True, False]
+            "task_specific_mlp",
+            [True],
         ),
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
