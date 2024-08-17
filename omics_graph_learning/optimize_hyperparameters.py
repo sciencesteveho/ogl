@@ -19,6 +19,7 @@ import optuna
 from optuna.trial import TrialState
 import plotly  # type: ignore
 from scipy.stats import pearsonr  # type: ignore
+from sqlalchemy.exc import OperationalError
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -314,19 +315,22 @@ def run_optimization(
     world_size: int,
     args: argparse.Namespace,
     logger: logging.Logger,
+    optuna_dir: Path,
 ) -> None:
     """Run the optimization process per GPU."""
 
     # initialize distributed training, if detected
     device = setup_device(rank)
+    logger.info(f"Process {rank}/{world_size} starting optimization on device {device}")
+
     if world_size > 1:
         try:
             # set environment variables for distributed training
             os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
-            os.environ["MASTER_PORT"] = "29500"  # Choose an available port
+            os.environ["MASTER_PORT"] = "29500"  # default port for PyTorch
 
             logger.info(
-                f"Initializing process group with rank {rank}, world_size {world_size} on {device}"
+                f"Initializing process group with rank {rank}, world_size {world_size}"
             )
             logger.info(
                 f"MASTER_ADDR: {os.environ['MASTER_ADDR']}, MASTER_PORT: {os.environ['MASTER_PORT']}"
@@ -349,18 +353,26 @@ def run_optimization(
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
     # create a study with Hyperband Pruner
-    storage_url = "sqlite:///optuna_study.db"
-    study = optuna.create_study(
-        study_name="distributed_optimization",
-        storage=storage_url,
-        load_if_exists=True,
-        direction="maximize",
-        pruner=optuna.pruners.HyperbandPruner(
-            min_resource=MIN_RESOURCE,
-            max_resource=EPOCHS,
-            reduction_factor=REDUCTION_FACTOR,
-        ),
-    )
+    storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
+    study_name = "distributed_optimization"
+
+    try:
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=storage_url,
+            load_if_exists=True,
+            direction="maximize",
+            pruner=optuna.pruners.HyperbandPruner(
+                min_resource=MIN_RESOURCE,
+                max_resource=EPOCHS,
+                reduction_factor=REDUCTION_FACTOR,
+            ),
+        )
+        logger.info(f"Created or loaded existing study: {study_name}")
+    except OperationalError as e:
+        logger.warning(f"Error creating study: {e}")
+        study = optuna.load_study(study_name=study_name, storage=storage_url)
+        logger.info(f"Loaded existing study: {study_name}")
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
@@ -482,7 +494,7 @@ def main() -> None:
         try:
             mp.spawn(
                 run_optimization,
-                args=(world_size, args, logger),
+                args=(world_size, args, logger, optuna_dir),
                 nprocs=world_size,
                 join=True,
             )
@@ -490,7 +502,7 @@ def main() -> None:
             logger.error(f"Error in multiprocessing spawn: {str(e)}")
             raise
     else:
-        run_optimization(0, world_size, args, logger)
+        run_optimization(0, world_size, args, logger, optuna_dir)
 
     # display results after optimization is over
     if world_size == 1 or (world_size > 1 and dist.get_rank() == 0):
