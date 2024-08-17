@@ -20,6 +20,7 @@ import plotly  # type: ignore
 from scipy.stats import pearsonr  # type: ignore
 import torch
 import torch.distributed as dist
+import torch.multiprocessing as mp
 from torch.optim.lr_scheduler import LRScheduler
 import torch_geometric  # type: ignore
 
@@ -43,10 +44,13 @@ N_TRIALS = 100
 RANDOM_SEED = 42
 
 
-def setup_device_mgpu(local_rank: int) -> torch.device:
-    """Set up device for the current process."""
+def setup_device(local_rank: int = 0) -> torch.device:
+    """Set up device based on available resources."""
     if torch.cuda.is_available():
-        return torch.device(f"cuda:{local_rank}")
+        if torch.cuda.device_count() > 1:
+            return torch.device(f"cuda:{local_rank}")
+        else:
+            return torch.device("cuda:0")
     return torch.device("cpu")
 
 
@@ -201,13 +205,11 @@ def objective(
     experiment_config: ExperimentConfig,
     args: argparse.Namespace,
     logger: logging.Logger,
-    local_rank: int,
+    rank: int,
+    device: torch.device,
 ) -> float:
     """Objective function to be optimized by Optuna."""
     try:
-        # set gpu
-        device = setup_device_mgpu(local_rank)
-
         # get trial hyperparameters
         model_params, train_params = suggest_hyperparameters(trial)
         gnn_layers = model_params["gnn_layers"]
@@ -293,7 +295,7 @@ def objective(
         )
 
         # training loop
-        best_r, best_rmse = train_and_evaluate(
+        _, best_rmse = train_and_evaluate(
             trial, trainer, train_loader, val_loader, scheduler, logger
         )
 
@@ -307,16 +309,20 @@ def objective(
 
 
 def run_optimization(
-    local_rank: int,
+    rank: int,
     world_size: int,
     args: argparse.Namespace,
     logger: logging.Logger,
 ) -> None:
     """Run the optimization process per GPU."""
-    # initialize the process group
-    dist.init_process_group("nccl", rank=local_rank, world_size=world_size)
+
+    # initialize distributed training, if detected
+    device = setup_device(rank)
+    if world_size > 1:
+        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
     experiment_config = ExperimentConfig.from_yaml(args.config)
-    logger.info(f"Process {local_rank}/{world_size} starting optimization")
+    logger.info(f"Process {rank}/{world_size} starting optimization on device {device}")
 
     # create a study with Hyperband Pruner
     storage_url = "sqlite:///optuna_study.db"
@@ -332,14 +338,17 @@ def run_optimization(
         ),
     )
 
+    n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
+
     study.optimize(
-        lambda trial: objective(trial, experiment_config, args, logger, local_rank),
-        n_trials=N_TRIALS // world_size,
+        lambda trial: objective(trial, experiment_config, args, logger, rank, device),
+        n_trials=n_trials,
         gc_after_trial=True,
     )
 
     # synchronize all processes
-    dist.barrier()
+    if world_size > 1:
+        dist.barrier()
 
 
 def display_results(
@@ -425,9 +434,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # set up distributed training vars
-    world_size = int(os.environ["SLURM_NTASKS"])
-    local_rank = int(os.environ["SLURM_LOCALID"])
+    # determine the number of available GPUs
+    num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    world_size = num_gpus if num_gpus > 0 else 1
 
     # set up directories
     experiment_config = ExperimentConfig.from_yaml(args.config)
@@ -442,24 +451,28 @@ def main() -> None:
         str(optuna_dir / f"{experiment_config.experiment_name}_optuna.log")
     )
 
-    # run optimization!
-    logger.info(f"Starting optimization process on rank {local_rank}/{world_size}")
+    # run optimization
+    logger.info(f"Starting optimization process with {world_size} processes")
     logger.info(f"Configuration: {args}")
-    run_optimization(local_rank, world_size, args, logger)
+    if world_size > 1:
+        mp.spawn(
+            run_optimization,
+            args=(world_size, args, logger),
+            nprocs=world_size,
+            join=True,
+        )
+    else:
+        run_optimization(0, world_size, args, logger)
 
-    if local_rank == 0:
-        logger.info("Main process starting result analysis")
-
-        # load the study
+    # display results after optimization is over
+    if world_size == 1 or (world_size > 1 and dist.get_rank() == 0):
         study = optuna.load_study(
-            study_name="distributed_optimization", storage="sqlite:///optuna_study.db"
+            study_name="flexible_optimization", storage="sqlite:///optuna_study.db"
         )
         display_results(study, optuna_dir, logger)
-        logger.info("Result analysis complete")
 
-    # cleanup
-    dist.destroy_process_group()
-    logger.info(f"Process {local_rank}/{world_size} finished")
+    if world_size > 1:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
