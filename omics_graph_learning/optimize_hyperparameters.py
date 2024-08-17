@@ -86,7 +86,7 @@ def suggest_hyperparameters(
         ),
         "task_specific_mlp": trial.suggest_categorical(
             "task_specific_mlp",
-            [True],
+            [True, True],
             # "task_specific_mlp", [True, False]
         ),
         "positional_encoding": trial.suggest_categorical(
