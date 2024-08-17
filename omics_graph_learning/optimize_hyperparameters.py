@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
+import socket
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -319,10 +320,33 @@ def run_optimization(
     # initialize distributed training, if detected
     device = setup_device(rank)
     if world_size > 1:
-        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+        try:
+            # set environment variables for distributed training
+            os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
+            os.environ["MASTER_PORT"] = "29500"  # Choose an available port
+
+            logger.info(
+                f"Initializing process group with rank {rank}, world_size {world_size} on {device}"
+            )
+            logger.info(
+                f"MASTER_ADDR: {os.environ['MASTER_ADDR']}, MASTER_PORT: {os.environ['MASTER_PORT']}"
+            )
+
+            # try NCCL first & fall back to GLOO if NCCL is not available
+            try:
+                dist.init_process_group("nccl", rank=rank, world_size=world_size)
+                logger.info("Initialized process group with NCCL backend")
+            except RuntimeError:
+                logger.warning(
+                    "NCCL initialization failed, falling back to GLOO backend"
+                )
+                dist.init_process_group("gloo", rank=rank, world_size=world_size)
+                logger.info("Initialized process group with GLOO backend")
+        except Exception as e:
+            logger.error(f"Failed to initialize distributed process group: {str(e)}")
+            raise
 
     experiment_config = ExperimentConfig.from_yaml(args.config)
-    logger.info(f"Process {rank}/{world_size} starting optimization on device {device}")
 
     # create a study with Hyperband Pruner
     storage_url = "sqlite:///optuna_study.db"
@@ -455,12 +479,16 @@ def main() -> None:
     logger.info(f"Starting optimization process with {world_size} processes")
     logger.info(f"Configuration: {args}")
     if world_size > 1:
-        mp.spawn(
-            run_optimization,
-            args=(world_size, args, logger),
-            nprocs=world_size,
-            join=True,
-        )
+        try:
+            mp.spawn(
+                run_optimization,
+                args=(world_size, args, logger),
+                nprocs=world_size,
+                join=True,
+            )
+        except Exception as e:
+            logger.error(f"Error in multiprocessing spawn: {str(e)}")
+            raise
     else:
         run_optimization(0, world_size, args, logger)
 
