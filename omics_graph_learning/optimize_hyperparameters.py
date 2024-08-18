@@ -108,8 +108,8 @@ def suggest_hyperparameters(
         ),
         "attention_task_head": trial.suggest_categorical(
             "attention_task_head",
-            # [True, False],
             [True, True],
+            # [True, False],
         ),
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
