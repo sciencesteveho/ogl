@@ -146,7 +146,7 @@ def suggest_hyperparameters(
     # set convolutional layers
     if model == "DeeperGCN":
         model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=6, high=32, step=2
+            "gnn_layers", low=6, high=24, step=2
         )
     else:
         model_params["gnn_layers"] = trial.suggest_int(

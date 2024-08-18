@@ -367,6 +367,23 @@ def _tensor_out_to_array(tensor: torch.Tensor, idx: int):
     return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
 
 
+def ensure_mask_fidelity(x: torch.Tensor, regression_mask: torch.Tensor) -> None:
+    """Run a series of checks to ensure that the regression mask is valid."""
+    if regression_mask.sum() == 0:
+        raise ValueError(
+            "Regression mask is empty. No targets specified for regression."
+        )
+
+    if regression_mask.dtype != torch.bool:
+        raise TypeError("Regression mask must be a boolean tensor.")
+
+    if regression_mask.shape != (x.shape[0],):
+        raise ValueError(
+            f"Regression mask shape {regression_mask.shape} "
+            f"does not match input shape {x.shape[0]}"
+        )
+
+
 def _calculate_max_distance_base_graph(bed: List[List[str]]) -> Set[int]:
     """Calculate the max distance between nodes in the base graph. Report the
     max, mean, and median distances for all interaction type data.
