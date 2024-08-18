@@ -158,7 +158,7 @@ class GNNTrainer:
             self.optimizer.zero_grad()
             data = data.to(self.device)
 
-            out, l1_reg = self.model(
+            out = self.model(
                 x=data.x,
                 edge_index=data.edge_index,
                 regression_mask=data.train_mask_loss,
@@ -168,8 +168,7 @@ class GNNTrainer:
                 out[data.train_mask_loss].squeeze(),
                 data.y[data.train_mask_loss].squeeze(),
             )
-            loss = mse_loss + l1_reg
-            loss.backward()
+            mse_loss.backward()
 
             # check for NaN gradients
             for name, param in self.model.named_parameters():
@@ -184,7 +183,7 @@ class GNNTrainer:
             ):
                 self.scheduler.step()
 
-            total_loss += float(loss) * int(data.train_mask_loss.sum())
+            total_loss += float(mse_loss) * int(data.train_mask_loss.sum())
             total_examples += int(data.train_mask_loss.sum())
 
             pbar.update(1)
@@ -217,7 +216,7 @@ class GNNTrainer:
             regression_mask = getattr(data, f"{mask}_mask_loss")
 
             # forward pass
-            out, _ = self.model(
+            out = self.model(
                 x=data.x,
                 edge_index=data.edge_index,
                 regression_mask=regression_mask,
@@ -262,7 +261,7 @@ class GNNTrainer:
             regression_mask = getattr(batch, f"{split}_mask_loss")
 
             # forward pass
-            out, _ = model(
+            out = model(
                 x=batch.x,
                 edge_index=batch.edge_index,
                 regression_mask=regression_mask,
@@ -584,7 +583,7 @@ def main() -> None:
         heads=args.heads,
         dropout_rate=args.dropout or None,
         skip_connection=args.residual,
-        task_specific_mlp=args.task_specific_mlp,
+        attention_task_head=args.attention_task_head,
         num_targets=num_targets,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)

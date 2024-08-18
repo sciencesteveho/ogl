@@ -106,10 +106,9 @@ def suggest_hyperparameters(
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        "task_specific_mlp": trial.suggest_categorical(
-            "task_specific_mlp",
-            [False, False],
-            # "task_specific_mlp", [True, False]
+        "attention_task_head": trial.suggest_categorical(
+            "attention_task_head",
+            [True, False],
         ),
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
@@ -153,13 +152,11 @@ def suggest_hyperparameters(
             "gnn_layers", low=2, high=10, step=1
         )
 
-    # add task specific mlp if not DeeperGCN
+    # no skip connections for DeeperGCN, as they are inherent to the layers
     if model != "DeeperGCN":
         model_params["residual"] = trial.suggest_categorical(
             "residual", ["shared_source", "distinct_source", None]
         )
-
-    # set positional encodings
 
     return model_params, train_params
 

@@ -170,7 +170,7 @@ class PipelineRunner:
                 f"--{flag}"
                 for flag in [
                     "early_stop",
-                    "task_specific_mlp",
+                    "attention_task_head",
                     "positional_encoding",
                     "gene_only_loader",
                     "optimize_params",
@@ -387,7 +387,7 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--activation", type=str, default="relu", choices=["relu", "leakyrelu", "gelu"]
     )
-    parser.add_argument("--task_specific_mlp", action="store_true", default=False)
+    parser.add_argument("--attention_task_head", action="store_true", default=False)
     parser.add_argument("--dimensions", type=int, default=256)
     parser.add_argument(
         "--residual",
