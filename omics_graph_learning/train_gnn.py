@@ -227,6 +227,10 @@ class GNNTrainer:
                 regression_mask=regression_mask,
             )
 
+            print(f"out: {out.shape}")
+            print(f"regression_mask: {regression_mask.shape}")
+            print(f"data.y: {data.y.shape}")
+
             outs.append(out.squeeze().cpu())
             labels.append(data.y[regression_mask].squeeze().cpu())
 
