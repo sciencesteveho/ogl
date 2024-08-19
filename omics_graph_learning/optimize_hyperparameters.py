@@ -91,10 +91,10 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    # model = trial.suggest_categorical(
-    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    # )
-    model = trial.suggest_categorical("model", ["GCN", "GraphSAGE"])
+    model = trial.suggest_categorical(
+        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    )
+    # model = trial.suggest_categorical("model", ["GCN", "GraphSAGE"])
 
     model_params = {
         "model": model,
@@ -107,10 +107,10 @@ def suggest_hyperparameters(
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        # "attention_task_head": trial.suggest_categorical(
-        #     "attention_task_head", [True, False]
-        # ),
-        "attention_task_head": True,
+        "attention_task_head": trial.suggest_categorical(
+            "attention_task_head", [True, False]
+        ),
+        # "attention_task_head": True,
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
