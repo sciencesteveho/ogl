@@ -36,10 +36,10 @@ from schedulers import OptimizerSchedulerHandler
 from train_gnn import build_gnn_architecture
 from train_gnn import GNNTrainer
 from train_gnn import prep_loader
-from utils import _tensor_out_to_array
 from utils import dir_check_make
 from utils import PyGDataChecker
 from utils import setup_logging
+from utils import tensor_out_to_array
 
 # helpers for trial
 EPOCHS = 30
@@ -185,14 +185,20 @@ def train_and_evaluate(
             raise optuna.exceptions.TrialPruned()
 
         # validation
-        rmse, predictions, targets = trainer.evaluate(
+        rmse, pred_tensor, target_tensor = trainer.evaluate(
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
         )
 
-        predictions = _tensor_out_to_array(predictions, 0)
-        targets = _tensor_out_to_array(targets, 0)
+        print(f"pred_tensor: {pred_tensor}")
+        print(f"target_tensor: {target_tensor}")
+
+        predictions = tensor_out_to_array(pred_tensor)
+        targets = tensor_out_to_array(target_tensor)
+
+        print(f"predictions: {predictions}")
+        print(f"targets: {targets}")
 
         # calculate metrics on validation set
         r, p_val = pearsonr(predictions, targets)

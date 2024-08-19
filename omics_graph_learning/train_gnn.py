@@ -33,12 +33,12 @@ from ogl import parse_pipeline_arguments
 from perturbation import PerturbationConfig
 from schedulers import OptimizerSchedulerHandler
 from utils import _set_matplotlib_publication_parameters
-from utils import _tensor_out_to_array
 from utils import dir_check_make
 from utils import plot_predicted_versus_expected
 from utils import plot_training_losses
 from utils import PyGDataChecker
 from utils import setup_logging
+from utils import tensor_out_to_array
 
 
 class TensorBoardLogger:
@@ -439,8 +439,8 @@ def plot_loss_and_performance(
     )
 
     # convert output tensors to numpy arrays
-    predictions_median = _tensor_out_to_array(outs, 0)
-    labels_median = _tensor_out_to_array(labels, 0)
+    predictions_median = tensor_out_to_array(outs, 0)
+    labels_median = tensor_out_to_array(labels, 0)
 
     # plot training losses
     loss = plot_training_losses(

@@ -362,9 +362,14 @@ class PyGDataChecker:
         checker.run_pyg_data_check()
 
 
-def _tensor_out_to_array(tensor: torch.Tensor, idx: int):
-    """Convert a torch tensor to a numpy array"""
-    return np.stack([x[idx].cpu().numpy() for x in tensor], axis=0)
+def tensor_out_to_array(tensor: torch.Tensor) -> np.ndarray:
+    """Convert masked out tensor to numpy array"""
+    array = tensor.cpu().numpy()
+    
+    # remove any potential NaN or zero placeholder values
+    valid_mask = ~np.isnan(array) & (array != 0)
+    
+    return array[valid_mask]
 
 
 def ensure_mask_fidelity(x: torch.Tensor, regression_mask: torch.Tensor) -> None:
