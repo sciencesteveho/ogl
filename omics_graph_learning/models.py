@@ -690,6 +690,10 @@ def compute_masked_regression(
     # process only regression nodes
     regression_indices = regression_indices_tensor(regression_mask).to(x.device)
 
+    # return a tensor of zeros if no regression nodes
+    if regression_indices.numel() == 0:
+        return torch.zeros(x.size(0), device=x.device)
+
     # attention-augmented task head or general task head
     out = task_head(x[regression_indices])
 

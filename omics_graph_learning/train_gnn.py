@@ -165,7 +165,7 @@ class GNNTrainer:
             )
 
             mse_loss = F.mse_loss(
-                out[data.train_mask_loss].squeeze(),
+                out.squeeze(),
                 data.y[data.train_mask_loss].squeeze(),
             )
             mse_loss.backward()
@@ -215,6 +215,11 @@ class GNNTrainer:
             data = data.to(self.device)
             regression_mask = getattr(data, f"{mask}_mask_loss")
 
+            # skip batch if no nodes to evaluate
+            if regression_mask.sum() == 0:
+                pbar.update(1)
+                continue
+
             # forward pass
             out = self.model(
                 x=data.x,
@@ -222,7 +227,7 @@ class GNNTrainer:
                 regression_mask=regression_mask,
             )
 
-            outs.append(out[regression_mask].squeeze().cpu())
+            outs.append(out.squeeze().cpu())
             labels.append(data.y[regression_mask].squeeze().cpu())
 
             pbar.update(1)
