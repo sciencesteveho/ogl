@@ -228,6 +228,7 @@ class GNNTrainer:
             )
 
             print(f"out: {out.shape}")
+            print(f"out masked shaped: {out[regression_mask].shape}")
             print(f"regression_mask: {regression_mask.shape}")
             print(f"data.y: {data.y.shape}")
 
