@@ -91,9 +91,10 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    model = trial.suggest_categorical(
-        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    )
+    # model = trial.suggest_categorical(
+    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    # )
+    model = trial.suggest_categorical("model", ["GCN", "GraphSAGE"])
 
     model_params = {
         "model": model,
@@ -106,10 +107,10 @@ def suggest_hyperparameters(
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        "attention_task_head": trial.suggest_categorical(
-            "attention_task_head", [True, False]
-        ),
-        # "attention_task_head": True,
+        # "attention_task_head": trial.suggest_categorical(
+        #     "attention_task_head", [True, False]
+        # ),
+        "attention_task_head": True,
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
@@ -192,13 +193,17 @@ def train_and_evaluate(
         )
 
         print(f"pred_tensor: {pred_tensor}")
+        print(f"pred_tensor shape: {pred_tensor.shape}")
         print(f"target_tensor: {target_tensor}")
+        print(f"target_tensor shape: {target_tensor.shape}")
 
         predictions = tensor_out_to_array(pred_tensor)
         targets = tensor_out_to_array(target_tensor)
 
         print(f"predictions: {predictions}")
+        print(f"predictions shape: {predictions.shape}")
         print(f"targets: {targets}")
+        print(f"targets shape: {targets.shape}")
 
         # calculate metrics on validation set
         r, p_val = pearsonr(predictions, targets)

@@ -146,7 +146,7 @@ class GNNTrainer:
         self.model.train()
         pbar = tqdm(total=len(train_loader))
         pbar.set_description(
-            f"\nTraining Model: {self.model.__class__.__name__} epoch: {epoch:04d} - "
+            f"\nTraining {self.model.__class__.__name__} model @ epoch: {epoch:04d} - "
         )
 
         total_loss = float(0)
@@ -203,7 +203,7 @@ class GNNTrainer:
         self.model.eval()
         pbar = tqdm(total=len(data_loader))
         pbar.set_description(
-            f"\nEvaluating Model: {self.model.__class__.__name__} epoch: {epoch:04d}"
+            f"\nEvaluating {self.model.__class__.__name__} model @ epoch: {epoch:04d}"
         )
 
         outs, labels = [], []
@@ -439,8 +439,8 @@ def plot_loss_and_performance(
     )
 
     # convert output tensors to numpy arrays
-    predictions_median = tensor_out_to_array(outs, 0)
-    labels_median = tensor_out_to_array(labels, 0)
+    predictions_median = tensor_out_to_array(outs)
+    labels_median = tensor_out_to_array(labels)
 
     # plot training losses
     loss = plot_training_losses(
