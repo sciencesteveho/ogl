@@ -165,7 +165,7 @@ class GNNTrainer:
             )
 
             mse_loss = F.mse_loss(
-                out.squeeze(),
+                out[data.train_mask_loss].squeeze(),
                 data.y[data.train_mask_loss].squeeze(),
             )
             mse_loss.backward()
@@ -231,7 +231,7 @@ class GNNTrainer:
             print(f"regression_mask: {regression_mask.shape}")
             print(f"data.y: {data.y.shape}")
 
-            outs.append(out.squeeze().cpu())
+            outs.append(out[regression_mask].squeeze().cpu())
             labels.append(data.y[regression_mask].squeeze().cpu())
 
             pbar.update(1)
