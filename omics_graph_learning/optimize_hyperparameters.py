@@ -336,12 +336,12 @@ def objective(
         )
 
         # training loop
-        _, best_rmse = train_and_evaluate(
+        best_r, best_rmse = train_and_evaluate(
             trial, trainer, train_loader, val_loader, scheduler, logger
         )
 
-        trial.set_user_attr("best_rmse", best_rmse)  # save best rmse
-        return best_rmse
+        trial.set_user_attr("best_r", best_r)  # save best rmse
+        return best_r
     except RuntimeError as e:
         if "CUDA out of memory" in str(e):
             trial.report(float("inf"), EPOCHS)
@@ -470,7 +470,7 @@ def display_results(
     # explicitly print best trial
     logger.info("Best trial:")
     trial = study.best_trial
-    logger.info(f"Value: {trial.value}")
+    logger.info(f"Best Pearson's r: {trial.value}")
     logger.info("Best params:")
     for key, value in study.best_params.items():
         logger.info(f"\t{key}: {value}")
@@ -481,7 +481,8 @@ def display_results(
     )  # exclude datetime columns
     df = df.loc[df["state"] == "COMPLETE"]  # keep only results that did not prune
     df = df.drop("state", axis=1)  # exclude state column
-    df = df.sort_values("value")  # sort based on accuracy
+    df = df.rename(columns={"value": "pearson_r"})
+    df = df.sort_values("pearson_r", ascending=False)  # higher r is better
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
 
     # display results in a dataframe
