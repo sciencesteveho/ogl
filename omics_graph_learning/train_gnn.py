@@ -226,14 +226,25 @@ class GNNTrainer:
                 edge_index=data.edge_index,
                 regression_mask=regression_mask,
             )
+            # print(f"out: {out.shape}")
+            # print(f"out masked shaped: {out[regression_mask].shape}")
+            # print(f"regression_mask: {regression_mask.shape}")
+            # print(f"data.y: {data.y.shape}")
 
-            print(f"out: {out.shape}")
-            print(f"out masked shaped: {out[regression_mask].shape}")
-            print(f"regression_mask: {regression_mask.shape}")
-            print(f"data.y: {data.y.shape}")
+            # ensure output is 1D
+            out_masked = out[regression_mask].squeeze()
+            if out_masked.dim() == 0:
+                out_masked = out_masked.unsqueeze(0)
+            outs.append(out_masked.cpu())
 
-            outs.append(out[regression_mask].squeeze().cpu())
-            labels.append(data.y[regression_mask].squeeze().cpu())
+            # ensure labels are 1D
+            labels_masked = data.y[regression_mask].squeeze()
+            if labels_masked.dim() == 0:
+                labels_masked = labels_masked.unsqueeze(0)
+            labels.append(labels_masked.cpu())
+
+            # outs.append(out[regression_mask].squeeze().cpu())
+            # labels.append(data.y[regression_mask].squeeze().cpu())
 
             pbar.update(1)
         pbar.close()
