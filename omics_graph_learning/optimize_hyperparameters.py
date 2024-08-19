@@ -149,8 +149,11 @@ def suggest_hyperparameters(
             "gnn_layers", low=6, high=24, step=2
         )
     else:
+        # model_params["gnn_layers"] = trial.suggest_int(
+        #     "gnn_layers", low=2, high=10, step=1
+        # )
         model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=2, high=10, step=1
+            "gnn_layers", low=2, high=3, step=1
         )
 
     # no skip connections for DeeperGCN, as they are inherent to the layers
