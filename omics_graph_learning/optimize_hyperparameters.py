@@ -9,6 +9,7 @@ resource conscious Hyperband pruner."""
 
 import argparse
 import logging
+import math
 import os
 from pathlib import Path
 import socket
@@ -134,39 +135,26 @@ def suggest_hyperparameters(
 
     # set heads and embedding size for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
-        heads = trial.suggest_int("heads", low=1, high=4, step=1)
+        heads = trial.suggest_int("heads", 1, 4)
         model_params["heads"] = heads
 
-        # adjust embedding size, because hidden size = heads * embedding_size
-        # slighty higher than hidden size // heads
-        if heads == 4:
-            embedding_high = 192
-        elif heads == 3:
-            embedding_high = 288
-        elif heads == 2:
-            embedding_high = 384
-        else:
-            embedding_high = 640
-
+        embedding_high = {4: 192, 3: 288, 2: 384}.get(heads, 640)
         model_params["embedding_size"] = trial.suggest_int(
             "embedding_size", low=32, high=embedding_high, step=32
         )
+
+    elif model == "DeeperGCN":
+        gnn_layers_log = trial.suggest_float(
+            "gnn_layers_float", low=1.79, high=3.18, log=True
+        )
+        model_params["gnn_layers"] = 2 * round(math.exp(gnn_layers_log) / 2)
+
     else:
         model_params["embedding_size"] = trial.suggest_int(
             "embedding_size", low=32, high=640, step=32
         )
+        model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
 
-    # set convolutional layers
-    if model == "DeeperGCN":
-        model_params["gnn_layers"] = trial.suggest_categorical(
-            "gnn_layers", [6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
-        )
-    else:
-        model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=2, high=12, step=1
-        )
-
-    # no skip connections for DeeperGCN, as they are inherent to the layers
     if model != "DeeperGCN":
         model_params["residual"] = trial.suggest_categorical(
             "residual", ["shared_source", "distinct_source", None]
