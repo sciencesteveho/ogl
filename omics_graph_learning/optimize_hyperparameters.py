@@ -91,10 +91,10 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    # model = trial.suggest_categorical(
-    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    # )
-    model = trial.suggest_categorical("model", ["GAT"])
+    model = trial.suggest_categorical(
+        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    )
+    # model = trial.suggest_categorical("model", ["GAT"])
 
     model_params = {
         "model": model,
@@ -107,10 +107,10 @@ def suggest_hyperparameters(
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        # "attention_task_head": trial.suggest_categorical(
-        #     "attention_task_head", [True, False]
-        # ),
-        "attention_task_head": True,
+        "attention_task_head": trial.suggest_categorical(
+            "attention_task_head", [True, False]
+        ),
+        # "attention_task_head": True,
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
@@ -134,12 +134,22 @@ def suggest_hyperparameters(
 
     # set heads and embedding size for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
-        model_params["heads"] = trial.suggest_int("heads", low=1, high=4, step=1)
-        # model_params["embedding_size"] = trial.suggest_int(
-        #     "embedding_size", low=32, high=320, step=32
-        # )
+        heads = trial.suggest_int("heads", low=1, high=4, step=1)
+        model_params["heads"] = heads
+
+        # adjust embedding size, because hidden size = heads * embedding_size
+        # slighty higher than hidden size // heads
+        if heads == 4:
+            embedding_high = 192
+        elif heads == 3:
+            embedding_high = 288
+        elif heads == 2:
+            embedding_high = 384
+        else:
+            embedding_high = 640
+
         model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=64, step=32
+            "embedding_size", low=32, high=embedding_high, step=32
         )
     else:
         model_params["embedding_size"] = trial.suggest_int(
@@ -152,11 +162,8 @@ def suggest_hyperparameters(
             "gnn_layers", low=6, high=24, step=2
         )
     else:
-        # model_params["gnn_layers"] = trial.suggest_int(
-        #     "gnn_layers", low=2, high=10, step=1
-        # )
         model_params["gnn_layers"] = trial.suggest_int(
-            "gnn_layers", low=2, high=3, step=1
+            "gnn_layers", low=2, high=12, step=1
         )
 
     # no skip connections for DeeperGCN, as they are inherent to the layers
