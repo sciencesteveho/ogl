@@ -339,15 +339,10 @@ class ModularGNN(nn.Module):
         Returns:
             nn.ModuleList: The module list containing the linear layers.
         """
-        linear_modules = self._linear_module(
-            self._linear_layer_dimensions(in_size, layers, heads)
-        )
-        layer_norms = nn.ModuleList(
-            [
-                LayerNorm(size)
-                for size in self._linear_layer_dimensions(in_size, layers, heads)
-            ]
-        )
+        sizes = self._linear_layer_dimensions(in_size, layers, heads)
+        linear_modules = self._linear_module(sizes)
+        size = sizes[-1]
+        layer_norms = nn.ModuleList([LayerNorm(size) for _ in sizes])
         return linear_modules, layer_norms
 
     @staticmethod

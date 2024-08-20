@@ -279,7 +279,7 @@ class GenomeDataPreprocessor:
         # CPM normalization
         mirna = self._count_per_million(mirna)
 
-        # Filter out miRNAs that are not in the reference and flatten list
+        # filter out miRNAs that are not in the reference and flatten list
         active_mirna_gencode = (
             mirna["gene"]
             .apply(lambda x: mirnaref[x] if x in mirnaref and mirnaref[x] else [])
@@ -287,7 +287,7 @@ class GenomeDataPreprocessor:
         )
         flattned_mirna = [item for sublist in active_mirna_gencode for item in sublist]
 
-        # Write out to file
+        # write out to file
         with open(
             f"{self.tissue_dir}/interaction/active_mirna_{self.tissue}.txt", "w"
         ) as f:

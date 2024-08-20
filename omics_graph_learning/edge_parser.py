@@ -194,10 +194,16 @@ class EdgeParser:
         if self.regulatory_schema == "encode":
             bedtools_objects["dyadic"] = None
 
+        # return (
+        #     bedtools_objects["enhancer"],
+        #     bedtools_objects["promoter"],
+        #     bedtools_objects["dyadic"],
+        # )
+
         return (
-            bedtools_objects["enhancer"],
-            bedtools_objects["promoter"],
-            bedtools_objects["dyadic"],
+            self._add_slop_window(bedtools_objects["enhancer"], 500),
+            self._add_slop_window(bedtools_objects["promoter"], 500),
+            self._add_slop_window(bedtools_objects["dyadic"], 500),
         )
 
         # Code for filtering distal enhancers. Ignoring for now.
