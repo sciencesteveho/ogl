@@ -200,7 +200,7 @@ class ModularGNN(nn.Module):
             layers=gnn_layers, embedding_size=embedding_size, heads=self.heads
         )
 
-        # initialize linear layers (task-specific MLP)
+        # initialize fully connected layers
         self.linears, self.layer_norms = self._get_linear_layers(
             in_size=embedding_size,
             layers=shared_mlp_layers,

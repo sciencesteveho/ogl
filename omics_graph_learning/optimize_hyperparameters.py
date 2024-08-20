@@ -29,6 +29,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.optim.lr_scheduler import LRScheduler
 import torch_geometric  # type: ignore
+from torchinfo import summary  # type: ignore
 
 from config_handlers import ExperimentConfig
 from gnn_architecture_builder import build_gnn_architecture
@@ -92,26 +93,27 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    model = trial.suggest_categorical(
-        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    )
-    # model = trial.suggest_categorical("model", ["GAT"])
+    # model = trial.suggest_categorical(
+    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    # )
+    model = trial.suggest_categorical("model", ["GAT"])
 
     model_params = {
         "model": model,
         "activation": trial.suggest_categorical(
             "activation", ["relu", "leakyrelu", "gelu"]
         ),
-        "shared_mlp_layers": trial.suggest_int(
-            "shared_mlp_layers", low=1, high=3, step=1
-        ),
+        # "shared_mlp_layers": trial.suggest_int(
+        #     "shared_mlp_layers", low=1, high=3, step=1
+        # ),
+        "shared_mlp_layers": 3,
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
-        "attention_task_head": trial.suggest_categorical(
-            "attention_task_head", [True, False]
-        ),
-        # "attention_task_head": True,
+        # "attention_task_head": trial.suggest_categorical(
+        #     "attention_task_head", [True, False]
+        # ),
+        "attention_task_head": True,
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
@@ -135,13 +137,15 @@ def suggest_hyperparameters(
 
     # set heads and embedding size for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
-        heads = trial.suggest_int("heads", 1, 4)
+        # heads = trial.suggest_int("heads", 1, 4)
+        heads = 2
         model_params["heads"] = heads
 
         embedding_high = {4: 192, 3: 288, 2: 384}.get(heads, 640)
-        model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=embedding_high, step=32
-        )
+        # model_params["embedding_size"] = trial.suggest_int(
+        #     "embedding_size", low=32, high=embedding_high, step=32
+        # )
+        model_params["embedding_size"] = 32
 
     elif model == "DeeperGCN":
         gnn_layers_log = trial.suggest_float(
@@ -159,9 +163,10 @@ def suggest_hyperparameters(
 
     if model != "DeeperGCN":
         model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
-        model_params["residual"] = trial.suggest_categorical(
-            "residual", ["shared_source", "distinct_source", None]
-        )
+        # model_params["residual"] = trial.suggest_categorical(
+        #     "residual", ["shared_source", "distinct_source", None]
+        # )
+        model_params["residual"] = None
 
     return model_params, train_params
 
@@ -306,6 +311,9 @@ def objective(
             **model_params,
         )
         model = model.to(device)
+
+        # print model architecture and dimensions
+        logger.info(summary(model, input_size=(batch_size, data.x.shape[1])))
 
         # set up optimizer
         total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
