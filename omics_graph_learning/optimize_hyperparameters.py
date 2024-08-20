@@ -156,9 +156,9 @@ def suggest_hyperparameters(
         model_params["embedding_size"] = trial.suggest_int(
             "embedding_size", low=32, high=640, step=32
         )
-        model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
 
     if model != "DeeperGCN":
+        model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
         model_params["residual"] = trial.suggest_categorical(
             "residual", ["shared_source", "distinct_source", None]
         )
