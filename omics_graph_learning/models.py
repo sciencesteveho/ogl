@@ -212,7 +212,7 @@ class ModularGNN(nn.Module):
         if self.attention_task_head:
             self.task_head = AttentionTaskHead(
                 embedding_size=(
-                    self.heads // embedding_size if self.heads else embedding_size
+                    self.heads * embedding_size if self.heads else embedding_size
                 ),
                 out_channels=out_channels,
             )
