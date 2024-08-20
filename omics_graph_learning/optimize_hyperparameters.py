@@ -148,6 +148,9 @@ def suggest_hyperparameters(
             "gnn_layers_float", low=1.79, high=3.18, log=True
         )
         model_params["gnn_layers"] = 2 * round(math.exp(gnn_layers_log) / 2)
+        model_params["embedding_size"] = trial.suggest_int(
+            "embedding_size", low=32, high=512, step=32
+        )
 
     else:
         model_params["embedding_size"] = trial.suggest_int(
