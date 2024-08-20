@@ -211,9 +211,7 @@ class ModularGNN(nn.Module):
         self.task_head: Union[AttentionTaskHead, nn.Linear]
         if self.attention_task_head:
             self.task_head = AttentionTaskHead(
-                embedding_size=(
-                    self.heads * embedding_size if self.heads else embedding_size
-                ),
+                embedding_size=embedding_size,
                 out_channels=out_channels,
             )
         else:
@@ -340,10 +338,9 @@ class ModularGNN(nn.Module):
             nn.ModuleList: The module list containing the linear layers.
         """
         sizes = self._linear_layer_dimensions(in_size, layers, heads)
-        linear_modules = self._linear_module(sizes)
-        size = sizes[-1]
-        layer_norms = nn.ModuleList([LayerNorm(size) for _ in sizes])
-        return linear_modules, layer_norms
+        return self._linear_module(sizes), nn.ModuleList(
+            [LayerNorm(size) for size in sizes]
+        )
 
     @staticmethod
     def _create_gnn_layers(
