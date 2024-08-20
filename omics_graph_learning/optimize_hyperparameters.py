@@ -313,7 +313,7 @@ def objective(
         model = model.to(device)
 
         # print model architecture and dimensions
-        logger.info(summary(model, input_size=(batch_size, data.x.shape[1])))
+        logger.info(model)
 
         # set up optimizer
         total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
