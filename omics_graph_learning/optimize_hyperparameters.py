@@ -345,7 +345,7 @@ def objective(
         )
 
         # training loop
-        best_r, best_rmse = train_and_evaluate(
+        best_r, _ = train_and_evaluate(
             trial, trainer, train_loader, val_loader, scheduler, logger
         )
 

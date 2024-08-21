@@ -327,7 +327,8 @@ class ModularGNN(nn.Module):
         heads: Optional[int] = None,
     ) -> Tuple[nn.ModuleList, nn.ModuleList]:
         """Create linear layers for the model along with optional linear
-        projection for residual connections.
+        projection for residual connections. Uses the last size of the linear
+        dimensions as the first size will be * heads for attention models.
 
         Args:
             in_size: The input size of the linear layers.
@@ -338,8 +339,9 @@ class ModularGNN(nn.Module):
             nn.ModuleList: The module list containing the linear layers.
         """
         sizes = self._linear_layer_dimensions(in_size, layers, heads)
+        last_size = sizes[-1]
         return self._linear_module(sizes), nn.ModuleList(
-            [LayerNorm(size) for size in sizes]
+            [LayerNorm(last_size) for _ in sizes]
         )
 
     @staticmethod
