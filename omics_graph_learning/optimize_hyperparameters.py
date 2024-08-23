@@ -399,12 +399,8 @@ def run_optimization(
 
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
-    # create a study with Hyperband Pruner
-    storage_url = f"postgresql:///{optuna_dir}/optuna_study.db"
-    study_name = "distributed_optimization"
-    lock_file = f"{optuna_dir}/optuna_study.lock"
-
     # use filelock to prevent simultaneous access to the database
+    # lock_file = f"{optuna_dir}/optuna_study.lock"
     # with filelock.FileLock(lock_file, timeout=60):
     #     for attempt in range(MAX_RETRIES):
     #         try:
@@ -432,6 +428,16 @@ def run_optimization(
     #                     f"Failed to create or load study after {MAX_RETRIES} attempts"
     #                 )
     #                 raise
+
+    # create a study with Hyperband Pruner
+    username = "stevesho"
+    password = "skynet"
+    host = "localhost"
+    port = "5432"
+    database = "optuna_db"
+
+    storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    study_name = "distributed_optimization"
 
     study = optuna.create_study(
         study_name=study_name,
