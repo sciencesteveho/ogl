@@ -44,7 +44,7 @@ from utils import setup_logging
 from utils import tensor_out_to_array
 
 # helpers for trial
-EPOCHS = 30
+EPOCHS = 20
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 100
@@ -138,14 +138,12 @@ def suggest_hyperparameters(
     # set heads and embedding size for attention-based models
     if model in ["GAT", "UniMPTransformer"]:
         heads = trial.suggest_int("heads", 1, 4)
-        # heads = 2
         model_params["heads"] = heads
 
         embedding_high = {4: 192, 3: 288, 2: 384}.get(heads, 640)
         model_params["embedding_size"] = trial.suggest_int(
             "embedding_size", low=32, high=embedding_high, step=32
         )
-        # model_params["embedding_size"] = 32
 
     elif model == "DeeperGCN":
         gnn_layers_log = trial.suggest_float(
@@ -402,38 +400,51 @@ def run_optimization(
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
     # create a study with Hyperband Pruner
-    storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
+    storage_url = f"postgresql:///{optuna_dir}/optuna_study.db"
     study_name = "distributed_optimization"
     lock_file = f"{optuna_dir}/optuna_study.lock"
 
     # use filelock to prevent simultaneous access to the database
-    with filelock.FileLock(lock_file, timeout=60):
-        for attempt in range(MAX_RETRIES):
-            try:
-                study = optuna.create_study(
-                    study_name=study_name,
-                    storage=storage_url,
-                    load_if_exists=True,
-                    direction="maximize",
-                    pruner=optuna.pruners.HyperbandPruner(
-                        min_resource=MIN_RESOURCE,
-                        max_resource=EPOCHS,
-                        reduction_factor=REDUCTION_FACTOR,
-                    ),
-                )
-                logger.info(f"Created or loaded existing study: {study_name}")
-                break
-            except (OperationalError, KeyError) as e:
-                if attempt < MAX_RETRIES - 1:
-                    logger.warning(
-                        f"Error accessing study (attempt {attempt + 1}): {e}"
-                    )
-                    time.sleep(RETRY_DELAY)
-                else:
-                    logger.error(
-                        f"Failed to create or load study after {MAX_RETRIES} attempts"
-                    )
-                    raise
+    # with filelock.FileLock(lock_file, timeout=60):
+    #     for attempt in range(MAX_RETRIES):
+    #         try:
+    #             study = optuna.create_study(
+    #                 study_name=study_name,
+    #                 storage=storage_url,
+    #                 load_if_exists=True,
+    #                 direction="maximize",
+    #                 pruner=optuna.pruners.HyperbandPruner(
+    #                     min_resource=MIN_RESOURCE,
+    #                     max_resource=EPOCHS,
+    #                     reduction_factor=REDUCTION_FACTOR,
+    #                 ),
+    #             )
+    #             logger.info(f"Created or loaded existing study: {study_name}")
+    #             break
+    #         except (OperationalError, KeyError) as e:
+    #             if attempt < MAX_RETRIES - 1:
+    #                 logger.warning(
+    #                     f"Error accessing study (attempt {attempt + 1}): {e}"
+    #                 )
+    #                 time.sleep(RETRY_DELAY)
+    #             else:
+    #                 logger.error(
+    #                     f"Failed to create or load study after {MAX_RETRIES} attempts"
+    #                 )
+    #                 raise
+
+    study = optuna.create_study(
+        study_name=study_name,
+        storage=storage_url,
+        load_if_exists=True,
+        direction="maximize",
+        pruner=optuna.pruners.HyperbandPruner(
+            min_resource=MIN_RESOURCE,
+            max_resource=EPOCHS,
+            reduction_factor=REDUCTION_FACTOR,
+        ),
+    )
+    logger.info(f"Created or loaded existing study: {study_name}")
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
