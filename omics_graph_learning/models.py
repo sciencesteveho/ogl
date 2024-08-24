@@ -702,6 +702,10 @@ def compute_masked_regression(
         return torch.zeros(1, device=x.device)
 
     # attention-augmented task head or general task head
+    print(f"Task head type: {type(task_head)}")
+    print(f"Task head shape: {x.shape}")
+    print(f"Regression indices shape: {regression_indices.shape}")
+    print(f"x shape: {x.shape}")
     out = task_head(x[regression_indices])
 
     return output_tensor(x=x, out=out, regression_indices=regression_indices)
