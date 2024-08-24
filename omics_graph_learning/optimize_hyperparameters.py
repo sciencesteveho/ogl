@@ -53,6 +53,9 @@ RANDOM_SEED = 42
 MAX_RETRIES = 5
 RETRY_DELAY = 1
 
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
+
 
 def get_remaining_walltime(logger: logging.Logger) -> Union[int, None]:
     """Get remaining walltime in seconds."""
