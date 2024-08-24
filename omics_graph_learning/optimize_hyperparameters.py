@@ -8,7 +8,6 @@ resource conscious Hyperband pruner."""
 
 
 import argparse
-import json
 import logging
 import math
 import os
@@ -50,7 +49,7 @@ MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 100
 RANDOM_SEED = 42
-MAX_RETRIES = 5
+MAX_RETRIES = 10
 RETRY_DELAY = 1
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
@@ -404,62 +403,64 @@ def run_optimization(
     experiment_config = ExperimentConfig.from_yaml(args.config)
 
     # use filelock to prevent simultaneous access to the database
-    # lock_file = f"{optuna_dir}/optuna_study.lock"
-    # with filelock.FileLock(lock_file, timeout=60):
-    #     for attempt in range(MAX_RETRIES):
-    #         try:
-    #             study = optuna.create_study(
-    #                 study_name=study_name,
-    #                 storage=storage_url,
-    #                 load_if_exists=True,
-    #                 direction="maximize",
-    #                 pruner=optuna.pruners.HyperbandPruner(
-    #                     min_resource=MIN_RESOURCE,
-    #                     max_resource=EPOCHS,
-    #                     reduction_factor=REDUCTION_FACTOR,
-    #                 ),
-    #             )
-    #             logger.info(f"Created or loaded existing study: {study_name}")
-    #             break
-    #         except (OperationalError, KeyError) as e:
-    #             if attempt < MAX_RETRIES - 1:
-    #                 logger.warning(
-    #                     f"Error accessing study (attempt {attempt + 1}): {e}"
-    #                 )
-    #                 time.sleep(RETRY_DELAY)
-    #             else:
-    #                 logger.error(
-    #                     f"Failed to create or load study after {MAX_RETRIES} attempts"
-    #                 )
-    #                 raise
-
-    # create a study with Hyperband Pruner
-    username = "stevesho"
-    password = "skynet"
-    host = "localhost"
-    port = "5432"
-    database = "optuna_db"
-
-    # storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    storage_url = "postgresql://stevesho:skynet@localhost:5432/optuna_db"
+    lock_file = f"{optuna_dir}/optuna_study.lock"
     study_name = "distributed_optimization"
+    storage_url = f"sqlite:///{optuna_dir}/optuna_study.db"
 
-    try:
-        study = optuna.create_study(
-            study_name=study_name,
-            storage=None,  # This uses in-memory storage
-            load_if_exists=False,  # This should be False for in-memory storage
-            direction="maximize",
-            pruner=optuna.pruners.HyperbandPruner(
-                min_resource=MIN_RESOURCE,
-                max_resource=EPOCHS,
-                reduction_factor=REDUCTION_FACTOR,
-            ),
-        )
-        logger.info(f"Created new in-memory study: {study_name}")
-    except Exception as e:
-        logger.error(f"Error creating/loading study: {str(e)}")
-        raise
+    with filelock.FileLock(lock_file, timeout=60):
+        for attempt in range(MAX_RETRIES):
+            try:
+                study = optuna.create_study(
+                    study_name=study_name,
+                    storage=storage_url,
+                    load_if_exists=True,
+                    direction="maximize",
+                    pruner=optuna.pruners.HyperbandPruner(
+                        min_resource=MIN_RESOURCE,
+                        max_resource=EPOCHS,
+                        reduction_factor=REDUCTION_FACTOR,
+                    ),
+                )
+                logger.info(f"Created or loaded existing study: {study_name}")
+                break
+            except (OperationalError, KeyError) as e:
+                if attempt < MAX_RETRIES - 1:
+                    logger.warning(
+                        f"Error accessing study (attempt {attempt + 1}): {e}"
+                    )
+                    time.sleep(RETRY_DELAY)
+                else:
+                    logger.error(
+                        f"Failed to create or load study after {MAX_RETRIES} attempts"
+                    )
+                    raise
+
+    # # create a study with Hyperband Pruner
+    # username = "stevesho"
+    # password = "skynet"
+    # host = "localhost"
+    # port = "5432"
+    # database = "optuna_db"
+
+    # # storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    # storage_url = "postgresql://stevesho:skynet@localhost:5432/optuna_db"
+
+    # try:
+    #     study = optuna.create_study(
+    #         study_name=study_name,
+    #         storage=None,  # This uses in-memory storage
+    #         load_if_exists=True
+    #         direction="maximize",
+    #         pruner=optuna.pruners.HyperbandPruner(
+    #             min_resource=MIN_RESOURCE,
+    #             max_resource=EPOCHS,
+    #             reduction_factor=REDUCTION_FACTOR,
+    #         ),
+    #     )
+    #     logger.info(f"Created new in-memory study: {study_name}")
+    # except Exception as e:
+    #     logger.error(f"Error creating/loading study: {str(e)}")
+    #     raise
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
@@ -482,7 +483,7 @@ def run_optimization(
             logger.error(f"Error during optimization: {str(e)}")
             raise
 
-        save_study_results(study, rank, optuna_dir, logger)
+        # save_study_results(study, rank, optuna_dir, logger)
 
         # check time after trials
         elapsed_time = time.time() - start_time
@@ -495,147 +496,58 @@ def run_optimization(
         dist.barrier()
 
 
-def save_study_results(study, rank, optuna_dir, logger):
-    trial_results = [
-        {
-            "number": trial.number,
-            "value": trial.value,
-            "params": trial.params,
-            "state": str(trial.state),
-        }
-        for trial in study.trials
-        if trial.state == TrialState.COMPLETE
-    ]
-    results_file = optuna_dir / f"optuna_results_{rank}.json"
-    with open(results_file, "w") as f:
-        json.dump(trial_results, f)
-    logger.info(f"Saved trial results to {results_file}")
+def display_results(
+    study: optuna.Study, optuna_dir: Path, logger: logging.Logger
+) -> None:
+    """Display the results of the Optuna study."""
+    pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
+    complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
 
-
-# def display_results(
-#     # study: optuna.Study, optuna_dir: Path, logger: logging.Logger
-#     optuna_dir: Path,
-#     logger: logging.Logger,
-# ) -> None:
-#     """Display the results of the Optuna study."""
-#     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
-#     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
-
-#     # display results
-#     logger.info("Study statistics:\n")
-#     logger.info(f"Number of finished trials: {len(study.trials)}\n")
-#     logger.info(f"Number of pruned trials: {len(pruned_trials)}\n")
-#     logger.info(f"Number of complete trials: {len(complete_trials)}\n")
-
-#     # explicitly print best trial
-#     logger.info("Best trial:")
-#     trial = study.best_trial
-#     logger.info(f"Best Pearson's r: {trial.value}")
-#     logger.info("Best params:")
-#     for key, value in study.best_params.items():
-#         logger.info(f"\t{key}: {value}")
-
-#     # save results
-#     df = study.trials_dataframe().drop(
-#         ["datetime_start", "datetime_complete", "duration"], axis=1
-#     )  # exclude datetime columns
-#     df = df.loc[df["state"] == "COMPLETE"]  # keep only results that did not prune
-#     df = df.drop("state", axis=1)  # exclude state column
-#     df = df.rename(columns={"value": "pearson_r"})
-#     df = df.sort_values("pearson_r", ascending=False)  # higher r is better
-#     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
-
-#     # display results in a dataframe
-#     logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
-
-#     # find the most important hyperparameters
-#     most_important_parameters = optuna.importance.get_param_importances(
-#         study, target=None
-#     )
-
-#     # display the most important hyperparameters
-#     logger.info("\nMost important hyperparameters:")
-#     for key, value in most_important_parameters.items():
-#         logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
-
-#     # plot and save importances to file
-#     optuna.visualization.plot_optimization_history(study).write_image(
-#         f"{optuna_dir}/history.png"
-#     )
-#     optuna.visualization.plot_param_importances(study=study).write_image(
-#         f"{optuna_dir}/importances.png"
-#     )
-#     optuna.visualization.plot_slice(study=study).write_image(f"{optuna_dir}/slice.png")
-
-
-def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
-    """Display the results of the Optuna studies."""
-    import json
-
-    import optuna
-    import pandas as pd
-
-    # Collect results from all JSON files
-    all_trials = []
-    for results_file in optuna_dir.glob("optuna_results_*.json"):
-        with open(results_file, "r") as f:
-            all_trials.extend(json.load(f))
-
-    # Convert to DataFrame
-    df = pd.DataFrame(all_trials)
-
-    # Display results
+    # display results
     logger.info("Study statistics:\n")
-    logger.info(f"Number of finished trials: {len(df)}\n")
-    logger.info(f"Number of pruned trials: {len(df[df['state'] == 'PRUNED'])}\n")
-    logger.info(f"Number of complete trials: {len(df[df['state'] == 'COMPLETE'])}\n")
+    logger.info(f"Number of finished trials: {len(study.trials)}\n")
+    logger.info(f"Number of pruned trials: {len(pruned_trials)}\n")
+    logger.info(f"Number of complete trials: {len(complete_trials)}\n")
 
-    # Find best trial
-    best_trial = df.loc[df["value"].idxmax()]
+    # explicitly print best trial
     logger.info("Best trial:")
-    logger.info(f"Best Pearson's r: {best_trial['value']}")
+    trial = study.best_trial
+    logger.info(f"Best Pearson's r: {trial.value}")
     logger.info("Best params:")
-    for key, value in best_trial["params"].items():
+    for key, value in study.best_params.items():
         logger.info(f"\t{key}: {value}")
 
-    # Save results
-    df = df[df["state"] == "COMPLETE"]  # keep only results that did not prune
+    # save results
+    df = study.trials_dataframe().drop(
+        ["datetime_start", "datetime_complete", "duration"], axis=1
+    )  # exclude datetime columns
+    df = df.loc[df["state"] == "COMPLETE"]  # keep only results that did not prune
+    df = df.drop("state", axis=1)  # exclude state column
     df = df.rename(columns={"value": "pearson_r"})
     df = df.sort_values("pearson_r", ascending=False)  # higher r is better
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
 
-    # Display results in a dataframe
+    # display results in a dataframe
     logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
 
-    # Find the most important hyperparameters
-    # Note: This requires recreating an Optuna study object
-    temp_study = optuna.create_study(direction="maximize")
-    for _, row in df.iterrows():
-        temp_study.add_trial(
-            optuna.trial.create_trial(
-                params=row["params"],
-                value=row["pearson_r"],
-                state=optuna.trial.TrialState.COMPLETE,
-            )
-        )
+    # find the most important hyperparameters
+    most_important_parameters = optuna.importance.get_param_importances(
+        study, target=None
+    )
 
-    most_important_parameters = optuna.importance.get_param_importances(temp_study)
-
-    # Display the most important hyperparameters
+    # display the most important hyperparameters
     logger.info("\nMost important hyperparameters:")
     for key, value in most_important_parameters.items():
         logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
-    # Plot and save importances to file
-    optuna.visualization.plot_optimization_history(temp_study).write_image(
+    # plot and save importances to file
+    optuna.visualization.plot_optimization_history(study).write_image(
         f"{optuna_dir}/history.png"
     )
-    optuna.visualization.plot_param_importances(study=temp_study).write_image(
+    optuna.visualization.plot_param_importances(study=study).write_image(
         f"{optuna_dir}/importances.png"
     )
-    optuna.visualization.plot_slice(study=temp_study).write_image(
-        f"{optuna_dir}/slice.png"
-    )
+    optuna.visualization.plot_slice(study=study).write_image(f"{optuna_dir}/slice.png")
 
 
 def main() -> None:
@@ -704,11 +616,10 @@ def main() -> None:
 
     # display results after optimization is over
     if world_size == 1 or (world_size > 1 and dist.get_rank() == 0):
-        # study = optuna.load_study(
-        #     study_name="flexible_optimization", storage="sqlite:///optuna_study.db"
-        # )
-        # display_results(study, optuna_dir, logger)
-        display_results(optuna_dir, logger)
+        study = optuna.load_study(
+            study_name="flexible_optimization", storage="sqlite:///optuna_study.db"
+        )
+        display_results(study, optuna_dir, logger)
 
     if world_size > 1:
         dist.destroy_process_group()

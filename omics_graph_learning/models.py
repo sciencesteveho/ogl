@@ -401,8 +401,8 @@ class ModularGNN(nn.Module):
     ) -> List[int]:
         """Get the sizes of the linear layers for models w/ attention heads."""
         if heads:
-            return [heads * embedding_size] + [embedding_size] * (linear_layers - 1)
-        return [embedding_size] * linear_layers
+            return [heads * embedding_size] + [embedding_size] * linear_layers
+        return [embedding_size] * (linear_layers + 1)
 
     @staticmethod
     def _linear_module(sizes: List[int]) -> nn.ModuleList:
