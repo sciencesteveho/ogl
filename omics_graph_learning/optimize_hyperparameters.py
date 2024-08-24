@@ -436,21 +436,26 @@ def run_optimization(
     port = "5432"
     database = "optuna_db"
 
-    storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    # storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    storage_url = "postgresql://stevesho:skynet@localhost:5432/optuna_db"
     study_name = "distributed_optimization"
 
-    study = optuna.create_study(
-        study_name=study_name,
-        storage=storage_url,
-        load_if_exists=True,
-        direction="maximize",
-        pruner=optuna.pruners.HyperbandPruner(
-            min_resource=MIN_RESOURCE,
-            max_resource=EPOCHS,
-            reduction_factor=REDUCTION_FACTOR,
-        ),
-    )
-    logger.info(f"Created or loaded existing study: {study_name}")
+    try:
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=storage_url,
+            load_if_exists=True,
+            direction="maximize",
+            pruner=optuna.pruners.HyperbandPruner(
+                min_resource=MIN_RESOURCE,
+                max_resource=EPOCHS,
+                reduction_factor=REDUCTION_FACTOR,
+            ),
+        )
+        logger.info(f"Created or loaded existing study: {study_name}")
+    except Exception as e:
+        logger.error(f"Error creating/loading study: {str(e)}")
+        raise
 
     n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
 
@@ -461,13 +466,17 @@ def run_optimization(
             logger.info("Less than 3 hours remaining, stopping optimization")
             break
 
-        study.optimize(
-            lambda trial: objective(
-                trial, experiment_config, args, logger, rank, device
-            ),
-            n_trials=n_trials,
-            gc_after_trial=True,
-        )
+        try:
+            study.optimize(
+                lambda trial: objective(
+                    trial, experiment_config, args, logger, rank, device
+                ),
+                n_trials=n_trials,
+                gc_after_trial=True,
+            )
+        except Exception as e:
+            logger.error(f"Error during optimization: {str(e)}")
+            raise
 
         # check time after trials
         elapsed_time = time.time() - start_time
