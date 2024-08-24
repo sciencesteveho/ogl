@@ -12,16 +12,20 @@ import json
 import logging
 import math
 import os
+
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
+
 from pathlib import Path
 import socket
 import subprocess
 import time
 from typing import Any, Dict, Tuple, Union
 
-import filelock
 import numpy as np
 import optuna
 from optuna.trial import TrialState
+import pandas as pd
 import plotly  # type: ignore
 from scipy.stats import pearsonr  # type: ignore
 from sqlalchemy.exc import OperationalError
@@ -53,8 +57,17 @@ RANDOM_SEED = 42
 MAX_RETRIES = 5
 RETRY_DELAY = 1
 
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-os.environ["TORCH_USE_CUDA_DSA"] = "1"
+
+def check_cuda_env():
+    cuda_launch_blocking = os.environ.get("CUDA_LAUNCH_BLOCKING")
+    torch_use_cuda_dsa = os.environ.get("TORCH_USE_CUDA_DSA")
+
+    print(f"CUDA_LAUNCH_BLOCKING is set to: {cuda_launch_blocking}")
+    print(f"TORCH_USE_CUDA_DSA is set to: {torch_use_cuda_dsa}")
+
+    if cuda_launch_blocking != "1" or torch_use_cuda_dsa != "1":
+        print("Warning: CUDA debugging environment variables are not set to '1'.")
+        print("This may affect error reporting and debugging capabilities.")
 
 
 def get_remaining_walltime(logger: logging.Logger) -> Union[int, None]:
@@ -133,7 +146,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=32, high=544, step=64),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=480, step=64),
         "avg_connectivity": trial.suggest_categorical(
             "avg_connectivity", [True, False]
         ),
@@ -570,11 +583,6 @@ def save_study_results(study, rank, optuna_dir, logger):
 
 def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
     """Display the results of the Optuna studies."""
-    import json
-
-    import optuna
-    import pandas as pd
-
     # Collect results from all JSON files
     all_trials = []
     for results_file in optuna_dir.glob("optuna_results_*.json"):
@@ -640,6 +648,7 @@ def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
 
 def main() -> None:
     """Main function to optimize hyperparameters w/ optuna!"""
+    check_cuda_env()
     parser = argparse.ArgumentParser(
         description="Optimize hyperparameters with Optuna."
     )

@@ -400,6 +400,16 @@ def _combine_and_sort_arrays(edge_index: np.ndarray) -> np.ndarray:
     return np.unique(combined)
 
 
+def save_error_state(
+    model: torch.nn.Module,
+    inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    error: RuntimeError,
+) -> None:
+    """Utility to save the model state to troubleshoot CUDA runtime errors."""
+    state = {"model_state": model.state_dict(), "inputs": inputs, "error": str(error)}
+    torch.save(state, f"error_state_{model.forward_count}.pt")
+
+
 # genome data utils
 class ScalerUtils:
     """Utility class for scaling node features, as the modules for scaling share

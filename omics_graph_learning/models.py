@@ -45,6 +45,8 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
+from utils import save_error_state
+
 
 class AttentionTaskHead(nn.Module):
     """A node regression task head augmented with multiheaded attention. A
@@ -247,41 +249,49 @@ class ModularGNN(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        h1 = x  # save input for residual connections
+        try:
+            h1 = x  # save input for residual connections
 
-        # graph convolutions with normalization and optional residual connections.
-        for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
-            if self.linear_projection:
-                if isinstance(self.linear_projection, nn.Linear):
-                    residual = (
-                        self.linear_projection(h1) if conv == self.convs[0] else x
-                    )
-                    x = self.activation(batch_norm(conv(x, edge_index))) + residual
-                elif isinstance(self.linear_projection, nn.ModuleList):
-                    residual = self.linear_projection[i](
-                        h1 if conv == self.convs[0] else x
-                    )
-                    x = self.activation(batch_norm(conv(x, edge_index))) + residual
-            else:
-                x = self.activation(batch_norm(conv(x, edge_index)))
+            # graph convolutions with normalization and optional residual connections.
+            for i, (conv, batch_norm) in enumerate(zip(self.convs, self.norms)):
+                if self.linear_projection:
+                    if isinstance(self.linear_projection, nn.Linear):
+                        residual = (
+                            self.linear_projection(h1) if conv == self.convs[0] else x
+                        )
+                        x = self.activation(batch_norm(conv(x, edge_index))) + residual
+                    elif isinstance(self.linear_projection, nn.ModuleList):
+                        residual = self.linear_projection[i](
+                            h1 if conv == self.convs[0] else x
+                        )
+                        x = self.activation(batch_norm(conv(x, edge_index))) + residual
+                else:
+                    x = self.activation(batch_norm(conv(x, edge_index)))
 
-            # check for NaN values
-            if torch.isnan(x).any():
-                print(f"Warning: NaN detected in layer {i}")
+                # check for NaN values
+                if torch.isnan(x).any():
+                    print(f"Warning: NaN detected in layer {i}")
 
-        # fully connected layers
-        x = apply_mlp_layers(
-            x=x,
-            linear_layers=self.linears,
-            layer_norms=self.layer_norms,
-            activation=self.activation,
-            dropout_rate=self.dropout_rate,
-        )
+            # fully connected layers
+            x = apply_mlp_layers(
+                x=x,
+                linear_layers=self.linears,
+                layer_norms=self.layer_norms,
+                activation=self.activation,
+                dropout_rate=self.dropout_rate,
+            )
 
-        # apply task head
-        return compute_masked_regression(
-            task_head=self.task_head, x=x, regression_mask=regression_mask
-        )
+            # apply task head
+            return compute_masked_regression(
+                task_head=self.task_head, x=x, regression_mask=regression_mask
+            )
+        except RuntimeError as e:
+            if "CUDA error" in str(e):
+                print(f"CUDA error detected in forward pass {self.forward_count}")
+                print(f"Input shapes: x={x.shape}, edge_index={edge_index.shape}")
+                print(f"Model state: {self.state_dict().keys()}")
+                save_error_state(self, (x, edge_index, regression_mask), e)
+            raise e
 
     def _general_task_head(
         self,
@@ -602,6 +612,7 @@ class PNA(ModularGNN):
     """
 
     def __init__(self, deg: torch.Tensor, *args: Any, **kwargs: Any):
+        print(f"PNA deg tensor device: {deg.device}")
         pna_config = {
             "operator": PNAConv,
             "aggregators": ["mean", "min", "max", "std"],
