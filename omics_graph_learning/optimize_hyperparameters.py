@@ -110,20 +110,20 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    # model = trial.suggest_categorical(
-    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    # )
-    model = trial.suggest_categorical("model", ["GAT", "UniMPTransformer"])
+    model = trial.suggest_categorical(
+        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    )
+    # model = trial.suggest_categorical("model", ["GAT", "UniMPTransformer"])
 
     model_params = {
         "model": model,
         "activation": trial.suggest_categorical(
             "activation", ["relu", "leakyrelu", "gelu"]
         ),
-        # "shared_mlp_layers": trial.suggest_int(
-        #     "shared_mlp_layers", low=1, high=3, step=1
-        # ),
-        "shared_mlp_layers": 1,
+        "shared_mlp_layers": trial.suggest_int(
+            "shared_mlp_layers", low=1, high=3, step=1
+        ),
+        # "shared_mlp_layers": 1,
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
@@ -583,22 +583,22 @@ def save_study_results(study, rank, optuna_dir, logger):
 
 def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
     """Display the results of the Optuna studies."""
-    # Collect results from all JSON files
+    # collect results from all JSON files
     all_trials = []
     for results_file in optuna_dir.glob("optuna_results_*.json"):
         with open(results_file, "r") as f:
             all_trials.extend(json.load(f))
 
-    # Convert to DataFrame
+    # convert to DataFrame
     df = pd.DataFrame(all_trials)
 
-    # Display results
+    # display results
     logger.info("Study statistics:\n")
     logger.info(f"Number of finished trials: {len(df)}\n")
     logger.info(f"Number of pruned trials: {len(df[df['state'] == 'PRUNED'])}\n")
     logger.info(f"Number of complete trials: {len(df[df['state'] == 'COMPLETE'])}\n")
 
-    # Find best trial
+    # find best trial
     best_trial = df.loc[df["value"].idxmax()]
     logger.info("Best trial:")
     logger.info(f"Best Pearson's r: {best_trial['value']}")
@@ -606,17 +606,17 @@ def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
     for key, value in best_trial["params"].items():
         logger.info(f"\t{key}: {value}")
 
-    # Save results
+    # save results
     df = df[df["state"] == "COMPLETE"]  # keep only results that did not prune
     df = df.rename(columns={"value": "pearson_r"})
     df = df.sort_values("pearson_r", ascending=False)  # higher r is better
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
 
-    # Display results in a dataframe
+    # display results in a dataframe
     logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
 
-    # Find the most important hyperparameters
-    # Note: This requires recreating an Optuna study object
+    # recreate the optuna study object and find the most important
+    # hyperparameters
     temp_study = optuna.create_study(direction="maximize")
     for _, row in df.iterrows():
         temp_study.add_trial(
@@ -629,12 +629,12 @@ def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
 
     most_important_parameters = optuna.importance.get_param_importances(temp_study)
 
-    # Display the most important hyperparameters
+    # display the most important hyperparameters
     logger.info("\nMost important hyperparameters:")
     for key, value in most_important_parameters.items():
         logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
-    # Plot and save importances to file
+    # plot and save importances to file
     optuna.visualization.plot_optimization_history(temp_study).write_image(
         f"{optuna_dir}/history.png"
     )
