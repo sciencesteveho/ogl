@@ -301,8 +301,8 @@ class ModularGNN(nn.Module):
         """Create a general task head for the model, a single linear layer that
         regresses to the output size.
         """
-        if self.shared_mlp_layers == 1:
-            in_size = in_size * self.heads if self.heads else in_size
+        # if self.shared_mlp_layers == 1:
+        #     in_size = in_size * self.heads if self.heads else in_size
         return nn.Linear(in_size, out_size)
 
     def _residuals(
