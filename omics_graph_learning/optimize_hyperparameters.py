@@ -172,8 +172,11 @@ def suggest_hyperparameters(
         )
 
     else:
+        # model_params["embedding_size"] = trial.suggest_int(
+        #     "embedding_size", low=32, high=640, step=32
+        # )
         model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=640, step=32
+            "embedding_size", low=32, high=128, step=32
         )
 
     if model != "DeeperGCN":
