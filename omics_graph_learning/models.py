@@ -614,12 +614,12 @@ class PNA(ModularGNN):
     """
 
     def __init__(self, deg: torch.Tensor, *args: Any, **kwargs: Any):
-        print(f"PNA deg tensor device: {deg.device}")
+        self.deg = deg
         pna_config = {
             "operator": PNAConv,
             "aggregators": ["mean", "min", "max", "std"],
             "scalers": ["identity", "amplification", "attenuation"],
-            "deg": deg,
+            "deg": self.deg,
             "towers": 2,
             "divide_input": False,
         }
@@ -628,6 +628,31 @@ class PNA(ModularGNN):
             **kwargs.get("gnn_operator_config", {}),
         }
         super().__init__(*args, **kwargs)
+
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, regression_mask: torch.Tensor
+    ) -> torch.Tensor:
+        """Adjusted forward pass to account for tensors on the same device."""
+        try:
+            device = x.device
+            edge_index = edge_index.to(device)
+            regression_mask = regression_mask.to(device)
+            self.deg = self.deg.to(device)
+
+            for conv in self.convs:
+                conv.deg = self.deg
+
+            # call ModularGNN forward pass
+            return super().forward(x, edge_index, regression_mask)
+        except RuntimeError as e:
+            print(f"Error in PNA forward pass: {str(e)}")
+            print(f"x shape: {x.shape}, device: {x.device}")
+            print(f"edge_index shape: {edge_index.shape}, device: {edge_index.device}")
+            print(
+                f"regression_mask shape: {regression_mask.shape}, device: {regression_mask.device}"
+            )
+            print(f"deg shape: {self.deg.shape}, device: {self.deg.device}")
+            raise
 
 
 class GATv2(ModularGNN):
