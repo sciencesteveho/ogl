@@ -407,7 +407,7 @@ def save_error_state(
 ) -> None:
     """Utility to save the model state to troubleshoot CUDA runtime errors."""
     state = {"model_state": model.state_dict(), "inputs": inputs, "error": str(error)}
-    torch.save(state, f"error_state_{model.forward_count}.pt")
+    torch.save(state, f"error_state_{model.name}.pt")
 
 
 # genome data utils

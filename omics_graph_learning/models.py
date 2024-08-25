@@ -292,7 +292,7 @@ class ModularGNN(nn.Module):
                 )
                 print(f"Input shapes: x={x.shape}, edge_index={edge_index.shape}")
                 print(f"Model state: {self.state_dict().keys()}")
-                save_error_state(self, (x, edge_index, regression_mask), e)
+                # save_error_state(self, (x, edge_index, regression_mask), e)
             raise e
 
     def _general_task_head(
