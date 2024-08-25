@@ -617,7 +617,8 @@ class PNA(ModularGNN):
         self.deg = deg
         pna_config = {
             "operator": PNAConv,
-            "aggregators": ["mean", "min", "max", "std"],
+            # "aggregators": ["mean", "min", "max", "std"],
+            "aggregators": ["mean", "min", "max"],
             "scalers": ["identity", "amplification", "attenuation"],
             "deg": self.deg,
             "towers": 2,

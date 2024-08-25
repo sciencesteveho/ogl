@@ -117,13 +117,14 @@ def suggest_hyperparameters(
 
     model_params = {
         "model": model,
-        "activation": trial.suggest_categorical(
-            "activation", ["relu", "leakyrelu", "gelu"]
-        ),
-        "shared_mlp_layers": trial.suggest_int(
-            "shared_mlp_layers", low=1, high=3, step=1
-        ),
-        # "shared_mlp_layers": 1,
+        # "activation": trial.suggest_categorical(
+        #     "activation", ["relu", "leakyrelu", "gelu"]
+        # ),
+        "activation": "leakyrelu",
+        # "shared_mlp_layers": trial.suggest_int(
+        #     "shared_mlp_layers", low=1, high=3, step=1
+        # ),
+        "shared_mlp_layers": 1,
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
