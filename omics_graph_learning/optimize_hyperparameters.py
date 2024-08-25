@@ -110,10 +110,10 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    model = trial.suggest_categorical(
-        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    )
-    # model = trial.suggest_categorical("model", ["PNA"])
+    # model = trial.suggest_categorical(
+    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    # )
+    model = trial.suggest_categorical("model", ["PNA"])
 
     model_params = {
         "model": model,
@@ -172,12 +172,12 @@ def suggest_hyperparameters(
         )
 
     else:
-        model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=640, step=32
-        )
         # model_params["embedding_size"] = trial.suggest_int(
-        #     "embedding_size", low=32, high=128, step=32
+        #     "embedding_size", low=32, high=640, step=32
         # )
+        model_params["embedding_size"] = trial.suggest_int(
+            "embedding_size", low=32, high=128, step=32
+        )
 
     if model != "DeeperGCN":
         model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
