@@ -6,16 +6,15 @@
 """Code to handle automated hyperparameter tuning via Optuna. We use the
 resource conscious Hyperband pruner."""
 
-
-import argparse
-import json
-import logging
-import math
 import os
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
 
+import argparse
+import json
+import logging
+import math
 from pathlib import Path
 import socket
 import subprocess
