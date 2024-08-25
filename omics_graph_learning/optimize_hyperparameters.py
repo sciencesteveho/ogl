@@ -110,10 +110,10 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    model = trial.suggest_categorical(
-        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    )
-    # model = trial.suggest_categorical("model", ["GAT", "UniMPTransformer"])
+    # model = trial.suggest_categorical(
+    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    # )
+    model = trial.suggest_categorical("model", ["PNA"])
 
     model_params = {
         "model": model,

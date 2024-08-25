@@ -287,7 +287,9 @@ class ModularGNN(nn.Module):
             )
         except RuntimeError as e:
             if "CUDA error" in str(e):
-                print(f"CUDA error detected in forward pass {self.forward_count}")
+                print(
+                    f"CUDA error detected in forward pass for model {self.__class__.__name__}"
+                )
                 print(f"Input shapes: x={x.shape}, edge_index={edge_index.shape}")
                 print(f"Model state: {self.state_dict().keys()}")
                 save_error_state(self, (x, edge_index, regression_mask), e)
