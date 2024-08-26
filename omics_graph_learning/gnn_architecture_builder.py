@@ -148,7 +148,7 @@ class GNNArchitectureBuilder:
         Adapted from pytorch geometric's PNA example:
         https://github.com/pyg-team/pytorch_geometric/blob/master/examples/pna.py
         """
-        # compute the maximum in-degree in the training data
+        # compute maximum in-degree in the training data
         max_degree = -1
         for data in train_dataset:
             computed_degree = degree(

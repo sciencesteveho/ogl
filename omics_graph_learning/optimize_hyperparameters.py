@@ -4,17 +4,18 @@
 
 
 """Code to handle automated hyperparameter tuning via Optuna. We use the
-resource conscious Hyperband pruner."""
-
-import os
+resource conscious Hyperband pruner.
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
+
+"""
 
 import argparse
 import json
 import logging
 import math
+import os
 from pathlib import Path
 import socket
 import subprocess
@@ -57,7 +58,8 @@ MAX_RETRIES = 5
 RETRY_DELAY = 1
 
 
-def check_cuda_env():
+def check_cuda_env() -> None:
+    """Set cuda blocking to debug potential errors across GPUs"""
     cuda_launch_blocking = os.environ.get("CUDA_LAUNCH_BLOCKING")
     torch_use_cuda_dsa = os.environ.get("TORCH_USE_CUDA_DSA")
 
@@ -109,21 +111,21 @@ def suggest_hyperparameters(
     et al. (2023) - "Where Did the Gap Go? Reassessing the Long-Range Graph
     Benchmark."
     """
-    # model = trial.suggest_categorical(
-    #     "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
-    # )
-    model = trial.suggest_categorical("model", ["PNA"])
+    model = trial.suggest_categorical(
+        "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
+    )
+    # model = trial.suggest_categorical("model", ["PNA"])
 
     model_params = {
         "model": model,
-        # "activation": trial.suggest_categorical(
-        #     "activation", ["relu", "leakyrelu", "gelu"]
-        # ),
-        "activation": "leakyrelu",
-        # "shared_mlp_layers": trial.suggest_int(
-        #     "shared_mlp_layers", low=1, high=3, step=1
-        # ),
-        "shared_mlp_layers": 1,
+        "activation": trial.suggest_categorical(
+            "activation", ["relu", "leakyrelu", "gelu"]
+        ),
+        # "activation": "leakyrelu",
+        "shared_mlp_layers": trial.suggest_int(
+            "shared_mlp_layers", low=1, high=3, step=1
+        ),
+        # "shared_mlp_layers": 1,
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
@@ -172,12 +174,12 @@ def suggest_hyperparameters(
         )
 
     else:
-        # model_params["embedding_size"] = trial.suggest_int(
-        #     "embedding_size", low=32, high=640, step=32
-        # )
         model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=128, step=32
+            "embedding_size", low=32, high=640, step=32
         )
+        # model_params["embedding_size"] = trial.suggest_int(
+        #     "embedding_size", low=32, high=128, step=32
+        # )
 
     if model != "DeeperGCN":
         model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
@@ -374,7 +376,9 @@ def objective(
             trial.report(float("inf"), EPOCHS)
             logger.info(f"Trial {trial.number} pruned due to CUDA out of memory")
             return float("inf")
-        raise e
+        else:
+            logger.error(f"RuntimeError in trial {trial.number}: {str(e)}")
+            raise e
 
 
 def run_optimization(
@@ -463,8 +467,8 @@ def run_optimization(
     try:
         study = optuna.create_study(
             study_name=study_name,
-            storage=None,  # This uses in-memory storage
-            load_if_exists=False,  # This should be False for in-memory storage
+            storage=None,
+            load_if_exists=False,
             direction="maximize",
             pruner=optuna.pruners.HyperbandPruner(
                 min_resource=MIN_RESOURCE,
@@ -511,7 +515,13 @@ def run_optimization(
         dist.barrier()
 
 
-def save_study_results(study, rank, optuna_dir, logger):
+def save_study_results(
+    study: optuna.Study,
+    rank: int,
+    optuna_dir: Path,
+    logger: logging.Logger,
+) -> None:
+    """Save trial results to JSON."""
     trial_results = [
         {
             "number": trial.number,
