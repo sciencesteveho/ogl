@@ -3,13 +3,16 @@
 # -*- coding: utf-8 -*-
 
 
-"""Code to handle automated hyperparameter tuning via Optuna. We use the
-resource conscious Hyperband pruner.
+"""Code to handle automated hyperparameter tuning via Optuna using the resource
+conscious Hyperband pruner. The code automatically detects the presence of
+multiple CUDA capable CPUs. Given SQL errors with filelocking, and given that
+the optimization does not require saving model states, we opt to save
+performance metrics in memory before writing to JSON files.
 
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-os.environ["TORCH_USE_CUDA_DSA"] = "1"
+The optimization of the graphs is done on a subset of whole chromosomes. We opt
+for 40% (8 chromosomes) but keep the entirety of the validation chromosomes for
+the optimization."""
 
-"""
 
 import argparse
 import json

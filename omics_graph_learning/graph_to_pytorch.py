@@ -260,7 +260,7 @@ def _assign_nodes_to_split(
     coordinates = graph_data["node_coordinates"]
     train, test, validation, train_subset = [], [], [], []
 
-    subset_train_chrs = {get_subset_chromosomes(num_chrs=num_optimization_chrs)}
+    subset_train_chrs = get_subset_chromosomes(num_chrs=num_optimization_chrs)
 
     for node in range(graph_data["num_nodes"]):
         chromosome = coordinates[node][0]
