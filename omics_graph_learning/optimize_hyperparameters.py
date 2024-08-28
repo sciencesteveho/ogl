@@ -20,10 +20,11 @@ from pathlib import Path
 import socket
 import subprocess
 import time
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import optuna
+from optuna.trial import FrozenTrial
 from optuna.trial import TrialState
 import pandas as pd
 import plotly  # type: ignore
@@ -52,10 +53,10 @@ from utils import tensor_out_to_array
 EPOCHS = 20
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
-N_TRIALS = 100
+N_TRIALS = 200
 RANDOM_SEED = 42
-MAX_RETRIES = 5
-RETRY_DELAY = 1
+# MAX_RETRIES = 5
+# RETRY_DELAY = 1
 
 
 def check_cuda_env() -> None:
@@ -305,10 +306,10 @@ def objective(
         # check data integreity
         PyGDataChecker.check_pyg_data(data)
 
-        # set up train, test, and validation loaders
+        # set data loaders
         train_loader = prep_loader(
             data=data,
-            mask="train_mask",
+            mask="optimization_mask",
             batch_size=batch_size,
             shuffle=True,
             layers=gnn_layers,
@@ -339,7 +340,7 @@ def objective(
         total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
             train_loader=train_loader,
             batch_size=batch_size,
-            epochs=100,
+            epochs=100,  # calculate warmup steps as a fraction of 100 epochs
         )
 
         optimizer = OptimizerSchedulerHandler.set_optimizer(
@@ -538,60 +539,50 @@ def save_study_results(
     logger.info(f"Saved trial results to {results_file}")
 
 
-# def display_results(
-#     # study: optuna.Study, optuna_dir: Path, logger: logging.Logger
-#     optuna_dir: Path,
-#     logger: logging.Logger,
-# ) -> None:
-#     """Display the results of the Optuna study."""
-#     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
-#     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+def recreate_study(
+    study_name: str, storage: str, storage_url: str, loaded_trials: List[Dict]
+) -> optuna.study.Study:
+    """Recreate a study from a list of loaded trials (via JSON)."""
+    study = optuna.create_study(
+        study_name=study_name,
+        storage=storage,
+        direction="Maximize",
+        load_if_exists=True,
+    )
 
-#     # display results
-#     logger.info("Study statistics:\n")
-#     logger.info(f"Number of finished trials: {len(study.trials)}\n")
-#     logger.info(f"Number of pruned trials: {len(pruned_trials)}\n")
-#     logger.info(f"Number of complete trials: {len(complete_trials)}\n")
+    existing_trial_numbers = {t.number for t in study.trials}
 
-#     # explicitly print best trial
-#     logger.info("Best trial:")
-#     trial = study.best_trial
-#     logger.info(f"Best Pearson's r: {trial.value}")
-#     logger.info("Best params:")
-#     for key, value in study.best_params.items():
-#         logger.info(f"\t{key}: {value}")
+    for trial_data in loaded_trials:
+        if trial_data["number"] not in existing_trial_numbers:
+            trial = FrozenTrial(
+                number=trial_data["number"],
+                state=TrialState[trial_data["state"]],
+                value=trial_data["value"],
+                datetime_start=None,
+                datetime_complete=None,
+                params=trial_data["params"],
+                distributions={
+                    param: optuna.distributions.UniformDistribution(0, 1)
+                    for param in trial_data["params"]
+                },
+                user_attrs={},
+                system_attrs={},
+                intermediate_values={},
+                trial_id=trial_data["number"],
+            )
+            study.add_trial(trial)
+    return study
 
-#     # save results
-#     df = study.trials_dataframe().drop(
-#         ["datetime_start", "datetime_complete", "duration"], axis=1
-#     )  # exclude datetime columns
-#     df = df.loc[df["state"] == "COMPLETE"]  # keep only results that did not prune
-#     df = df.drop("state", axis=1)  # exclude state column
-#     df = df.rename(columns={"value": "pearson_r"})
-#     df = df.sort_values("pearson_r", ascending=False)  # higher r is better
-#     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
 
-#     # display results in a dataframe
-#     logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
-
-#     # find the most important hyperparameters
-#     most_important_parameters = optuna.importance.get_param_importances(
-#         study, target=None
-#     )
-
-#     # display the most important hyperparameters
-#     logger.info("\nMost important hyperparameters:")
-#     for key, value in most_important_parameters.items():
-#         logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
-
-#     # plot and save importances to file
-#     optuna.visualization.plot_optimization_history(study).write_image(
-#         f"{optuna_dir}/history.png"
-#     )
-#     optuna.visualization.plot_param_importances(study=study).write_image(
-#         f"{optuna_dir}/importances.png"
-#     )
-#     optuna.visualization.plot_slice(study=study).write_image(f"{optuna_dir}/slice.png")
+def load_all_study_results(optuna_dir: Path, num_gpus: int) -> List[Dict[str, Any]]:
+    """Load all trial results from JSON files."""
+    all_trials = []
+    for rank in range(num_gpus):
+        results_file = optuna_dir / f"optuna_results_{rank}.json"
+        if results_file.exists():
+            with open(results_file, "r") as f:
+                all_trials.extend(json.load(f))
+    return all_trials
 
 
 def display_results(optuna_dir: Path, logger: logging.Logger) -> None:

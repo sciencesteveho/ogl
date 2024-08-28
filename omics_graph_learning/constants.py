@@ -4,6 +4,7 @@
 
 """Constants for omics graph learning modules."""
 
+
 from enum import Enum
 from typing import Dict, List
 
@@ -58,10 +59,12 @@ HG38_TOTAL_BASEPAIRS = 3088269227
 MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
 EARLY_STOP_PATIENCE = 15
 
+
 # filename constants
 TARGET_FILE = "targets_combined.pkl"
 TARGET_FILE_SCALED = "targets_combined_scaled.pkl"
 TRAINING_SPLIT_FILE = "training_split_combined.pkl"
+
 
 # graph construction related helpers
 ATTRIBUTES: List[str] = [
@@ -195,3 +198,20 @@ REGULATORY_ELEMENTS: Dict[str, Dict[str, str]] = {
         "promoter": "GRCh38-PLS.bed",
     },
 }
+
+
+# optimization helpers
+SUBSET_CHROMOSOMES = [
+    "chr1",  # large chromosome
+    "chr2",  # large chromosome
+    "chr5",  # medium to large chromosome
+    "chr7",  # medium chromosome
+    "chr9",  # medium chromosome
+    "chr20",  # small chromosome
+    "chr22",  # small chromosome
+    "chr17",  # gene-dense chromosome
+    "chr15",  # medium to small chromosome
+    "chr19",  # gene-dense chromosome
+    "chr3",  # large chromosome
+    "chr10",  # medium chromosome
+]

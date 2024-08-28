@@ -12,7 +12,10 @@ geometric Data object. Two masks are produced:
     loader are referenced
     "split_loss" masks are a subset of the "split" masks containing only genes
     that passed the preceding filter steps for loss calculation (i.e. loss is
-    only calculated over these gene nodes)"""
+    only calculated over these gene nodes)
+    
+Additionally code is provided to subset the chromosomes for hyperparameter
+tuning. List of chrs is explictly defined in constants.py."""
 
 
 from pathlib import Path
@@ -25,6 +28,7 @@ from torch_geometric.data import Data  # type: ignore
 
 from config_handlers import ExperimentConfig
 from constants import NodePerturbation
+from constants import SUBSET_CHROMOSOMES
 from constants import TARGET_FILE
 from constants import TARGET_FILE_SCALED
 from constants import TRAINING_SPLIT_FILE
@@ -118,7 +122,7 @@ class GraphToPytorch:
         )
 
         # get mask indexes for training (masks include all nodes that fall on the chr)
-        train_idxs, test_idxs, val_idxs = _assign_nodes_to_split(
+        train_idxs, test_idxs, val_idxs, optimization_idxs = _assign_nodes_to_split(
             graph_data=self.graph_data,
             test_chrs=self.experiment_config.test_chrs,
             val_chrs=self.experiment_config.val_chrs,
@@ -132,6 +136,7 @@ class GraphToPytorch:
             "train_mask": create_mask(data.num_nodes, train_idxs),
             "test_mask": create_mask(data.num_nodes, test_idxs),
             "val_mask": create_mask(data.num_nodes, val_idxs),
+            "optimization_mask": create_mask(data.num_nodes, optimization_idxs),
         }
 
     def create_target_tensor(self, data: Data) -> torch.Tensor:
@@ -225,35 +230,55 @@ class GraphToPytorch:
         )
 
 
+def get_subset_chromosomes(num_chrs: int = 8) -> List[str]:
+    """Return the subset of chromosomes to use for hyperparameter
+    optimization.
+    """
+    return SUBSET_CHROMOSOMES[:num_chrs]
+
+
 def _assign_nodes_to_split(
     graph_data: Dict[str, Any],
     test_chrs: List[str],
     val_chrs: List[str],
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    num_optimization_chrs: int = 8,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Assign nodes to train, test, and validation sets according to their chr.
 
     Args:
         graph (nx.Graph): The graph object.
         test_chrs (List[str]): The list of test chromosomes.
         val_chrs (List[str]): The list of validation chromosomes.
+        num_optimization_chrs (int): The number of chromosomes to use
+        hyperparameter tuning. Suggested are 8, 10, or 12, which are roughly
+        40/50/60% of the training data.
 
     Returns:
         Dict[str, List[str]]: The split dictionary containing train, test, and
         validation gene lists.
     """
     coordinates = graph_data["node_coordinates"]
-    train, test, validation = [], [], []
+    train, test, validation, train_subset = [], [], [], []
+
+    subset_train_chrs = {get_subset_chromosomes(num_chrs=num_optimization_chrs)}
+
     for node in range(graph_data["num_nodes"]):
-        if coordinates[node][0] in test_chrs:
+        chromosome = coordinates[node][0]
+        if chromosome in test_chrs:
             test.append(node)
-        elif coordinates[node][0] in val_chrs:
+        elif chromosome in val_chrs:
             validation.append(node)
+        elif chromosome in subset_train_chrs:
+            train_subset.append(node)
+            train.append(node)
         else:
             train.append(node)
+
     return (
         torch.tensor(train, dtype=torch.float),
         torch.tensor(test, dtype=torch.float),
         torch.tensor(validation, dtype=torch.float),
+        torch.tensor(train_subset, dtype=torch.float),
     )
 
 
