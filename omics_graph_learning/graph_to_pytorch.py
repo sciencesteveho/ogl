@@ -180,7 +180,7 @@ class GraphToPytorch:
         masks = self.create_masks(data=data)
         targets = self.create_target_tensor(data=data)
 
-        # Check for NaN or infinite values in targets
+        # check for NaN or infinite values in targets
         if torch.isnan(targets).any() or torch.isinf(targets).any():
             print("Warning: NaN or infinite values found in target values")
 
@@ -252,10 +252,6 @@ def _assign_nodes_to_split(
         num_optimization_chrs (int): The number of chromosomes to use
         hyperparameter tuning. Suggested are 8, 10, or 12, which are roughly
         40/50/60% of the training data.
-
-    Returns:
-        Dict[str, List[str]]: The split dictionary containing train, test, and
-        validation gene lists.
     """
     coordinates = graph_data["node_coordinates"]
     train, test, validation, train_subset = [], [], [], []
@@ -275,10 +271,10 @@ def _assign_nodes_to_split(
             train.append(node)
 
     return (
-        torch.tensor(train, dtype=torch.float),
-        torch.tensor(test, dtype=torch.float),
-        torch.tensor(validation, dtype=torch.float),
-        torch.tensor(train_subset, dtype=torch.float),
+        torch.tensor(train, dtype=torch.long),
+        torch.tensor(test, dtype=torch.long),
+        torch.tensor(validation, dtype=torch.long),
+        torch.tensor(train_subset, dtype=torch.long),
     )
 
 

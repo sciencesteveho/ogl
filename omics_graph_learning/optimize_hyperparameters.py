@@ -118,25 +118,21 @@ def suggest_hyperparameters(
     model = trial.suggest_categorical(
         "model", ["GCN", "GraphSAGE", "PNA", "GAT", "UniMPTransformer", "DeeperGCN"]
     )
-    # model = trial.suggest_categorical("model", ["PNA"])
 
     model_params = {
         "model": model,
         "activation": trial.suggest_categorical(
             "activation", ["relu", "leakyrelu", "gelu"]
         ),
-        # "activation": "leakyrelu",
         "shared_mlp_layers": trial.suggest_int(
             "shared_mlp_layers", low=1, high=3, step=1
         ),
-        # "shared_mlp_layers": 1,
         "dropout_rate": trial.suggest_float(
             "dropout_rate", low=0.0, high=0.5, step=0.1
         ),
         "attention_task_head": trial.suggest_categorical(
             "attention_task_head", [True, False]
         ),
-        # "attention_task_head": True,
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
@@ -152,7 +148,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=32, high=480, step=64),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=1056, step=64),
         "avg_connectivity": trial.suggest_categorical(
             "avg_connectivity", [True, False]
         ),
@@ -181,16 +177,12 @@ def suggest_hyperparameters(
         model_params["embedding_size"] = trial.suggest_int(
             "embedding_size", low=32, high=640, step=32
         )
-        # model_params["embedding_size"] = trial.suggest_int(
-        #     "embedding_size", low=32, high=128, step=32
-        # )
 
     if model != "DeeperGCN":
         model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
         model_params["residual"] = trial.suggest_categorical(
             "residual", ["shared_source", "distinct_source", None]
         )
-        # model_params["residual"] = None
 
     return model_params, train_params
 
