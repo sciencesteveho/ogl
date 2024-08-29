@@ -59,7 +59,7 @@ class TargetAssembler:
         split: Dict[str, List[str]],
         pseudocount: float = 0.25,
     ):
-        """Instantiate the gene splitter."""
+        """Initialize the gene splitter."""
         self.experiment_config = experiment_config
         self.split = split
         self.pseudocount = pseudocount

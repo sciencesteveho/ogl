@@ -51,7 +51,7 @@ class GeneTrainTestSplitter:
     """
 
     def __init__(self, target_genes: List[str]) -> None:
-        """Instantiate the gene splitter."""
+        """Initialize the gene splitter."""
         self.target_genes = target_genes
 
     @time_decorator(print_args=False)

@@ -25,7 +25,7 @@ class GNNArchitectureBuilder:
     """Builder class to construct GNN models."""
 
     def __init__(self) -> None:
-        """Instantiate the GNNArchitectureBuilder class."""
+        """Initialize the GNNArchitectureBuilder class."""
         self.model_constructors = {
             "GCN": GCN,
             "GraphSAGE": GraphSAGE,

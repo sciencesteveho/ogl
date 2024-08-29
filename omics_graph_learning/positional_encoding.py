@@ -38,7 +38,7 @@ class PositionalEncoding(nn.Module):
     """
 
     def __init__(self, chromfile: str, binsize: int, embedding_dim: int = 5):
-        """Instantiate the PositionalEncoding object."""
+        """Initialize the PositionalEncoding object."""
         super(PositionalEncoding, self).__init__()
         self.embedding_dim = embedding_dim
         self.bins_df = self.get_bins(chromsize_file=chromfile, binsize=binsize)

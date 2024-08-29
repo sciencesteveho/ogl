@@ -416,7 +416,7 @@ class ScalerUtils:
     most of the same args"""
 
     def __init__(self) -> None:
-        """Instantiate the class."""
+        """Initialize the class."""
         args = self._parse_args()
         self.experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
         self.split_name = args.split_name

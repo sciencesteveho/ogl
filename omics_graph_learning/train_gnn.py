@@ -45,7 +45,7 @@ class TensorBoardLogger:
     """Log hyperparameters, metrics, and model graph to TensorBoard."""
 
     def __init__(self, log_dir: Path) -> None:
-        """Instantiate TensorBoard writer."""
+        """Initialize TensorBoard writer."""
         self.writer = SummaryWriter(log_dir)
 
     def log_hyperparameters(self, hparams: Dict[str, Any]) -> None:
@@ -125,7 +125,7 @@ class GNNTrainer:
         logger: logging.Logger,
         tb_logger: Optional[TensorBoardLogger] = None,
     ) -> None:
-        """Instantiate model trainer."""
+        """Initialize model trainer."""
         self.model = model
         self.device = device
         self.data = data

@@ -54,7 +54,7 @@ class GraphToPytorch:
         scaled_targets: bool = False,
         perturbation_config: Optional[PerturbationConfig] = None,
     ) -> None:
-        """Instantiate the GraphToPytorch object."""
+        """Initialize the GraphToPytorch object."""
         self.experiment_config = experiment_config
         self.split_name = split_name
         self.regression_target = regression_target

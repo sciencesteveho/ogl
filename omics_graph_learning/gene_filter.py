@@ -75,7 +75,7 @@ class TPMFilter:
         local_dir: Path,
         filter_mode: str = "within",
     ):
-        """Instantiate the data preprocessor."""
+        """Initialize the data preprocessor."""
         self.tissue_config = tissue_config
         self.split_path = split_path
         self.tpm_filter = tpm_filter

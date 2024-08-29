@@ -24,7 +24,7 @@ class RBPNetworkFilter:
         tpm_filter: int,
         rna_seq_file: str,
     ) -> None:
-        """Instantiate the RBPNetworkFilter class."""
+        """Initialize the RBPNetworkFilter class."""
         self.rbp_proteins = rbp_proteins
         self.gencode = gencode
         self.network_file = network_file

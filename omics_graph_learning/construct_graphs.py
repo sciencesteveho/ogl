@@ -43,7 +43,7 @@ class GraphConstructor:
         nodes: List[str],
         genes: List[str],
     ) -> None:
-        """Instantiate a GraphConstructor object."""
+        """Initialize a GraphConstructor object."""
         self.tissue = tissue
         self.interaction_dir = interaction_dir
         self.parse_dir = parse_dir
@@ -237,7 +237,7 @@ class GraphSerializer:
         tissue: str,
         build_positional_encoding: bool = False,
     ) -> None:
-        """Instantiate a GraphSerializer object."""
+        """Initialize a GraphSerializer object."""
         self.graph = graph
         self.graph_dir = graph_dir
         self.graph_type = graph_type

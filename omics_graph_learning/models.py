@@ -67,7 +67,7 @@ class AttentionTaskHead(nn.Module):
         num_heads: int = 4,
         dropout_rate: float = 0.1,
     ) -> None:
-        """Instantiate an MLP with multiheaded attention."""
+        """Initialize an MLP with multiheaded attention."""
         super().__init__()
         self.attention_layer = nn.MultiheadAttention(
             embedding_size, num_heads, batch_first=True, dropout=dropout_rate
