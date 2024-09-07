@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import List, Tuple, Union
 
 import pandas as pd
-import pybedtools  # type: ignore
+from pybedtools import BedTool  # type: ignore
 
 from config_handlers import TissueConfig
-from utils import time_decorator
+from utils.common import time_decorator
 
 
 def read_encode_rna_seq_data(
@@ -108,7 +108,7 @@ class TPMFilter:
             )
             gencode_filtered.saveas(genes)
         else:
-            gencode_filtered = pybedtools.BedTool(str(genes))
+            gencode_filtered = BedTool(str(genes))
             self.filtered_genes = [x[3] for x in gencode_filtered]
         return self.filtered_genes
 
@@ -119,7 +119,7 @@ class TPMFilter:
         tpm_filter: Union[float, int],
         percent_of_samples_filter: float,
         autosomes_only: bool = True,
-    ) -> pybedtools.BedTool:
+    ) -> BedTool:
         """
         Filter out genes in a GTEx tissue with less than (tpm) tpm across (%) of
         samples in the given dataframe. Additionally, we exclude analysis of sex
@@ -128,7 +128,7 @@ class TPMFilter:
         Returns:
             pybedtools object with +/- <window> windows around that gene
         """
-        gencode_bed = pybedtools.BedTool(gencode)
+        gencode_bed = BedTool(gencode)
         df = self._load_gtex_tpm_df(tpm_file=tpm_file, filter_mode=self.filter_mode)
 
         # Get list of filtered genes
@@ -162,17 +162,17 @@ class TPMFilter:
 
     @staticmethod
     def _filter_bedtool_by_genes(
-        bed: pybedtools.BedTool,
+        bed: BedTool,
         genes: List[str],
-    ) -> pybedtools.BedTool:
+    ) -> BedTool:
         """Filter a pybedtools object by a list of genes."""
         filter_term = lambda x: x[3] in genes
         return bed.filter(filter_term).saveas()
 
     @staticmethod
     def _filter_bedtool_by_autosomes(
-        bed: pybedtools.BedTool,
-    ) -> pybedtools.BedTool:
+        bed: BedTool,
+    ) -> BedTool:
         """Filter a pybedtools object by autosomes."""
         filter_term = lambda x: x[0] not in ["chrX", "chrY", "chrM"]
         return bed.filter(filter_term).saveas()

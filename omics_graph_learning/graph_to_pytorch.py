@@ -27,15 +27,15 @@ import torch
 from torch_geometric.data import Data  # type: ignore
 
 from config_handlers import ExperimentConfig
-from constants import NodePerturbation
-from constants import SUBSET_CHROMOSOMES
-from constants import TARGET_FILE
-from constants import TARGET_FILE_SCALED
-from constants import TRAINING_SPLIT_FILE
 from perturbation import get_node_perturbation
 from perturbation import perturb_edge_index
 from perturbation import perturb_node_features
 from perturbation import PerturbationConfig
+from utils.constants import NodePerturbation
+from utils.constants import SUBSET_CHROMOSOMES
+from utils.constants import TARGET_FILE
+from utils.constants import TARGET_FILE_SCALED
+from utils.constants import TRAINING_SPLIT_FILE
 
 
 class GraphToPytorch:

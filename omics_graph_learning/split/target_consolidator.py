@@ -14,11 +14,11 @@ import numpy as np
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
-from data_splitter import GeneTrainTestSplitter
-from gene_filter import TPMFilter
-from target_assembler import TargetAssembler
-from utils import _save_pickle
-from utils import dir_check_make
+from split.data_splitter import GeneTrainTestSplitter
+from split.gene_filter import TPMFilter
+from split.target_assembler import TargetAssembler
+from utils.common import _save_pickle
+from utils.common import dir_check_make
 
 
 class TrainingTargetConsolidator:

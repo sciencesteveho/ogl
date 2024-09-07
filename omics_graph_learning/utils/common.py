@@ -184,6 +184,27 @@ def _chk_file_and_run(file: str, cmd: str) -> None:
         subprocess.run(cmd, stdout=None, shell=True)
 
 
+def get_remaining_walltime(logger: logging.Logger) -> Union[int, None]:
+    """Get remaining walltime in seconds."""
+    try:
+        result = subprocess.run(
+            ["scontrol", "show", "job", "$SLURM_JOB_ID"], capture_output=True, text=True
+        )
+        for line in result.stdout.split("\n"):
+            if "TimeLeft=" in line:
+                time_left = line.split("TimeLeft=")[1].split()[0]
+                days, time = (
+                    time_left.split("-") if "-" in time_left else ("0", time_left)
+                )
+                hours, mins, secs = time.split(":")
+                return (
+                    int(days) * 86400 + int(hours) * 3600 + int(mins) * 60 + int(secs)
+                )
+    except Exception as e:
+        logger.warning(f"Failed to get remaining walltime: {e}")
+    return None
+
+
 # slurm operations
 def submit_slurm_job(job_script: str, args: str, dependency: Optional[str]) -> str:
     """Submits a SLURM job and returns its job ID."""
@@ -200,6 +221,19 @@ def get_physical_cores() -> int:
     process / overhead.
     """
     return psutil.cpu_count(logical=False) - 1
+
+
+def check_cuda_env() -> None:
+    """Set cuda blocking to debug potential errors across GPUs"""
+    cuda_launch_blocking = os.environ.get("CUDA_LAUNCH_BLOCKING")
+    torch_use_cuda_dsa = os.environ.get("TORCH_USE_CUDA_DSA")
+
+    print(f"CUDA_LAUNCH_BLOCKING is set to: {cuda_launch_blocking}")
+    print(f"TORCH_USE_CUDA_DSA is set to: {torch_use_cuda_dsa}")
+
+    if cuda_launch_blocking != "1" or torch_use_cuda_dsa != "1":
+        print("Warning: CUDA debugging environment variables are not set to '1'.")
+        print("This may affect error reporting and debugging capabilities.")
 
 
 # statistics tests

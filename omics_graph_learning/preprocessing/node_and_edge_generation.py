@@ -11,14 +11,14 @@ from typing import List
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
-from constants import ATTRIBUTES
-from construct_graphs import construct_tissue_graph
-from edge_parser import EdgeParser
-from local_context_parser import LocalContextParser
-from preprocessor import GenomeDataPreprocessor
-from target_consolidator import TrainingTargetConsolidator
-from utils import _get_files_in_directory
-from utils import setup_logging
+from graph.construct_graphs import construct_tissue_graph
+from preprocessing.data_preprocessor import GenomeDataPreprocessor
+from preprocessing.edge_parser import EdgeParser
+from preprocessing.local_context_parser import LocalContextParser
+from split.target_consolidator import TrainingTargetConsolidator
+from utils.common import _get_files_in_directory
+from utils.common import setup_logging
+from utils.constants import ATTRIBUTES
 
 logger = setup_logging()
 

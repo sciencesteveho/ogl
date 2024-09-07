@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data  # type: ignore
 
-from constants import NodePerturbation
+from utils.constants import NodePerturbation
 
 
 @dataclass

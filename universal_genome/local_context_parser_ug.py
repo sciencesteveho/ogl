@@ -22,13 +22,13 @@ from typing import Dict, List, Optional, Tuple
 import pybedtools
 from pybedtools.featurefuncs import extend_fields
 
-from utils import utils._listdir_isfile_wrapper
-from utils import utils.filter_genes_by_tpm
-from utils import utils.dir_check_make
-from utils import utils.genes_from_gencode
-from utils import NODES
-from utils import utils.parse_yaml
-from utils import utils.time_decorator
+from utils.common import _listdir_isfile_wrapper
+from utils.common import dir_check_make
+from utils.common import filter_genes_by_tpm
+from utils.common import genes_from_gencode
+from utils.common import NODES
+from utils.common import parse_yaml
+from utils.common import time_decorator
 
 ATTRIBUTES = [
     "gc",
@@ -714,7 +714,7 @@ class LocalContextParser:
         # prepare references
         self.gencode_ref = pybedtools.BedTool(genes)
         self.gene_windows = pybedtools.BedTool(gene_windows)
-        self.genesymbol_to_gencode = utils.genes_from_gencode(
+        self.genesymbol_to_gencode = genes_from_gencode(
             pybedtools.BedTool(f"{self.tissue_dir}/local/{self.gencode}")
         )
 
@@ -725,7 +725,7 @@ class LocalContextParser:
         self, genes: str, gene_windows: str, base_nodes: str
     ) -> None:
         """Prepare tpm filtered genes and gene windows"""
-        filtered_genes = utils.filter_genes_by_tpm(
+        filtered_genes = filter_genes_by_tpm(
             gencode=f"{self.root_dir}/shared_data/local/{self.gencode}",
             tissue=self.tissue,
             tpm_file=self.resources["tpm"],
@@ -739,7 +739,7 @@ class LocalContextParser:
 
     def _make_directories(self) -> None:
         """Directories for parsing genomic bedfiles into graph edges and nodes"""
-        utils.dir_check_make(self.parse_dir)
+        dir_check_make(self.parse_dir)
 
         for directory in [
             "edges/genes",
@@ -747,12 +747,12 @@ class LocalContextParser:
             "intermediate/slopped",
             "intermediate/sorted",
         ]:
-            utils.dir_check_make(f"{self.parse_dir}/{directory}")
+            dir_check_make(f"{self.parse_dir}/{directory}")
 
         for attribute in ATTRIBUTES:
-            utils.dir_check_make(f"{self.attribute_dir}/{attribute}")
+            dir_check_make(f"{self.attribute_dir}/{attribute}")
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _region_specific_features_dict(
         self, bed: str
     ) -> List[Dict[str, pybedtools.bedtool.BedTool]]:
@@ -793,7 +793,7 @@ class LocalContextParser:
 
         return bed_dict
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _slop_sort(
         self, bedinstance: Dict[str, str], chromfile: str, feat_window: int = 2000
     ) -> Tuple[
@@ -824,7 +824,7 @@ class LocalContextParser:
                 ).sort()
         return bedinstance_sorted, bedinstance_slopped
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _bed_intersect(self, node_type: str, all_files: str) -> None:
         """Function to intersect a slopped bed entry with all other node types.
         Each bed is slopped then intersected twice. First, it is intersected
@@ -889,7 +889,7 @@ class LocalContextParser:
                 f"{self.parse_dir}/edges/{node_type}_dupes_removed"
             )
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _aggregate_attributes(self, node_type: str) -> None:
         """For each node of a node_type get their overlap with gene windows then
         aggregate total nucleotides, gc content, and all other attributes
@@ -946,7 +946,7 @@ class LocalContextParser:
                 except pybedtools.helpers.BEDToolsError:
                     print(f"broken {attribute} for {node_type}")
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _generate_edges(self) -> None:
         """Unix concatenate and sort each edge file"""
 
@@ -974,7 +974,7 @@ class LocalContextParser:
                 cmds[cmd][0] + cmds[cmd][1],
             )
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _save_node_attributes(self, node: str) -> None:
         """
         Save attributes for all node entries. Used during graph construction for
@@ -1023,7 +1023,7 @@ class LocalContextParser:
         ) as output:
             pickle.dump(attr_dict_nochr, output)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def parse_context_data(self) -> None:
         """_summary_
 
@@ -1038,7 +1038,7 @@ class LocalContextParser:
             c -- _description_
         """
 
-        # @utils.time_decorator(print_args=True)
+        # @time_decorator(print_args=True)
         # def _save_intermediate(
         #     bed_dictionary: Dict[str, pybedtools.bedtool.BedTool], folder: str
         # ) -> None:
@@ -1048,7 +1048,7 @@ class LocalContextParser:
         #         if not os.path.exists(file):
         #             bed_dictionary[key].saveas(file)
 
-        # @utils.time_decorator(print_args=True)
+        # @time_decorator(print_args=True)
         # def _pre_concatenate_all_files(all_files: str) -> None:
         #     """Lorem Ipsum"""
         #     if not os.path.exists(all_files) or os.stat(all_files).st_size == 0:
@@ -1121,9 +1121,9 @@ def main() -> None:
     parser.add_argument("--config", type=str, help="Path to .yaml file with filenames")
 
     args = parser.parse_args()
-    params = utils.parse_yaml(args.config)
+    params = parse_yaml(args.config)
 
-    bedfiles = utils._listdir_isfile_wrapper(
+    bedfiles = _listdir_isfile_wrapper(
         dir=f"{params['dirs']['root_dir']}/{params['resources']['tissue']}/local",
     )
     bedfiles = [x for x in bedfiles if "chromatinloops" not in x]

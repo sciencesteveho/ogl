@@ -19,12 +19,12 @@ from typing import Any, Dict, List
 import networkx as nx
 import numpy as np
 
-from utils import utils.dir_check_make
-from utils import NODES
-from utils import utils.time_decorator
+from utils.common import dir_check_make
+from utils.common import NODES
+from utils.common import time_decorator
 
 
-@utils.time_decorator(print_args=True)
+@time_decorator(print_args=True)
 def graph_constructor(
     tissue: str,
     root_dir: str,
@@ -47,7 +47,7 @@ def graph_constructor(
     interaction_dir = f"{root_dir}/{tissue}/interaction"
     parse_dir = f"{root_dir}/{tissue}/parsing"
     graph_dir = f"{root_dir}/graphs/{tissue}"
-    utils.dir_check_make(graph_dir)
+    dir_check_make(graph_dir)
 
     def _base_graph(edges: List[str]):
         """Create a graph from list of edges"""
@@ -56,7 +56,7 @@ def graph_constructor(
             G.add_edges_from([(tup[0], tup[1], {"edge_type": tup[2]})])
         return G
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _get_edges(
         edge_file: str,
         edge_type: str,
@@ -88,7 +88,7 @@ def graph_constructor(
         if edge_type not in ("base", "local"):
             raise ValueError("Edge type must be 'base' or 'local'")
 
-    @utils.time_decorator(print_args=False)
+    @time_decorator(print_args=False)
     def _prepare_reference_attributes() -> Dict[str, Dict[str, Any]]:
         """Base_node attr are hard coded in as the first type to load. There are
         duplicate keys in preprocessing but they have the same attributes so
@@ -148,7 +148,7 @@ def graph_constructor(
     return g
 
 
-@utils.time_decorator(print_args=True)
+@time_decorator(print_args=True)
 def _nx_to_tensors(graph_dir: str, graph: nx.Graph, graph_type: str) -> None:
     """Save graphs as np tensors, additionally saves a dictionary to map
     nodes to new integer labels

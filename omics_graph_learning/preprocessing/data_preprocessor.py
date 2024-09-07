@@ -19,11 +19,11 @@ import pandas as pd
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
-from constants import REGULATORY_ELEMENTS
-from utils import _get_chromatin_loop_file
-from utils import check_and_symlink
-from utils import dir_check_make
-from utils import time_decorator
+from utils.common import _get_chromatin_loop_file
+from utils.common import check_and_symlink
+from utils.common import dir_check_make
+from utils.common import time_decorator
+from utils.constants import REGULATORY_ELEMENTS
 
 # import requests
 

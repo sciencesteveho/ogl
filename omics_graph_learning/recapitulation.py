@@ -33,8 +33,8 @@ from tqdm import tqdm
 from graph_to_pytorch import graph_to_pytorch
 from perturbation import _device_check
 from perturbation import _load_GAT_model_for_inference
-import utils
-from utils import TISSUES_early_testing
+from utils.common import TISSUES_early_testing
+import utils.common as utils
 
 
 @torch.no_grad()

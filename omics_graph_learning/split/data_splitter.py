@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from config_handlers import ExperimentConfig
-from utils import time_decorator
+from utils.common import time_decorator
 
 
 class GeneTrainTestSplitter:

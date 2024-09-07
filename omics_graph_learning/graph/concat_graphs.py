@@ -16,10 +16,10 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 from config_handlers import ExperimentConfig
-from constants import TARGET_FILE
-from constants import TRAINING_SPLIT_FILE
-from utils import NumpyGraphChecker
-from utils import setup_logging
+from utils.common import NumpyGraphChecker
+from utils.common import setup_logging
+from utils.constants import TARGET_FILE
+from utils.constants import TRAINING_SPLIT_FILE
 
 logger = setup_logging()
 

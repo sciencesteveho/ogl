@@ -17,9 +17,9 @@ import pandas as pd
 import pybedtools
 import requests
 
-from utils import utils.dir_check_make
-from utils import utils.parse_yaml
-from utils import utils.time_decorator
+from utils.common import dir_check_make
+from utils.common import parse_yaml
+from utils.common import time_decorator
 
 
 class UniversalGenomeDataPreprocessor:
@@ -71,13 +71,13 @@ class UniversalGenomeDataPreprocessor:
 
     def _make_directories(self) -> None:
         """Make directories for processing"""
-        utils.dir_check_make(f"{self.root_dir}/shared_data")
+        dir_check_make(f"{self.root_dir}/shared_data")
 
         for directory in ["local", "interaction", "unprocessed"]:
-            utils.dir_check_make(f"{self.tissue_dir}/{directory}")
+            dir_check_make(f"{self.tissue_dir}/{directory}")
 
         for directory in ["local", "interaction"]:
-            utils.dir_check_make(f"{self.root_dir}/shared_data/{directory}")
+            dir_check_make(f"{self.root_dir}/shared_data/{directory}")
 
     def _run_cmd(self, cmd: str) -> None:
         """Simple wrapper for subprocess as options across this script are
@@ -87,7 +87,7 @@ class UniversalGenomeDataPreprocessor:
     def _symlink_rawdata(self) -> None:
         """Make symlinks for tissue specific files in unprocessed folder"""
 
-        def utils.check_and_symlink(dst, src, boolean=False):
+        def check_and_symlink(dst, src, boolean=False):
             try:
                 if boolean == True:
                     if (bool(file) and os.path.exists(src)) and (
@@ -107,13 +107,13 @@ class UniversalGenomeDataPreprocessor:
         }
 
         for file in interact_files:
-            utils.check_and_symlink(
+            check_and_symlink(
                 dst=f"{self.tissue_dir}/interaction/" + self.interaction[file],
                 src=interact_files[file],
                 boolean=False,
             )
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _add_TAD_id(self, bed: str) -> None:
         """Add identification number to each TAD"""
         cmd = f"awk -v FS='\t' -v OFS='\t' '{{print $1, $2, $3, \"tad_\"NR}}' {self.data_dir}/{bed} \
@@ -121,7 +121,7 @@ class UniversalGenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _superenhancers(self, bed: str) -> None:
         """Simple parser to remove superenhancer bed unneeded info"""
         cmd = f" tail -n +2 {self.data_dir}/{bed} \
@@ -133,7 +133,7 @@ class UniversalGenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def _tf_binding_sites(self, bed: str) -> None:
         cmd = f" awk -vOFS='\t' '{{print $1,$2,$3,$12}}' \
             | awk -F '\t' -v OFS='\t' \"$4 == \"\"{{$4 = \"notfs\"}};1' \
@@ -141,13 +141,13 @@ class UniversalGenomeDataPreprocessor:
 
         self._run_cmd(cmd)
 
-    # @utils.time_decorator(print_args=True)
+    # @time_decorator(print_args=True)
     # def _split_merge_fractional_methylation(self) -> None:
     #     """Splits fractional methylation into merged bedfiles for each sample.
     #     We keep CpGs if fractional methylation is greater than 0.70 and adjacent
     #     methylated CpGs are merged.
     #     """
-    #     utils.dir_check_make(f"{self.dirs['methylation_dir']}/processing")
+    #     dir_check_make(f"{self.dirs['methylation_dir']}/processing")
 
     #     for chr in range(1, 23):
     #         df = pd.read_csv(
@@ -176,7 +176,7 @@ class UniversalGenomeDataPreprocessor:
     #         > {self.tissue_dir}/local/methylation-{column}_universalgenome.bed"
     #     self._run_cmd(cmd)
 
-    @utils.time_decorator(print_args=True)
+    @time_decorator(print_args=True)
     def prepare_data_files(self) -> None:
         """Pipeline to prepare all bedfiles"""
 
@@ -230,7 +230,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    params = utils.parse_yaml(args.config)
+    params = parse_yaml(args.config)
 
     preprocessObject = UniversalGenomeDataPreprocessor(params)
     preprocessObject.prepare_data_files()

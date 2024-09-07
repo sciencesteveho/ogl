@@ -15,30 +15,25 @@ the optimization."""
 
 
 import argparse
-import json
 import logging
 import math
 import os
 from pathlib import Path
-import socket
-import subprocess
-import time
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-import optuna
-from optuna.trial import FrozenTrial
-from optuna.trial import TrialState
+import optuna  # type: ignore
+from optuna.storages import JournalStorage
+from optuna.storages.journal import JournalFileBackend
 import pandas as pd
 import plotly  # type: ignore
 from scipy.stats import pearsonr  # type: ignore
-from sqlalchemy.exc import OperationalError
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric  # type: ignore
-from torchinfo import summary  # type: ignore
 
 from config_handlers import ExperimentConfig
 from gnn_architecture_builder import build_gnn_architecture
@@ -47,63 +42,55 @@ from schedulers import OptimizerSchedulerHandler
 from train_gnn import build_gnn_architecture
 from train_gnn import GNNTrainer
 from train_gnn import prep_loader
-from utils import dir_check_make
-from utils import PyGDataChecker
-from utils import setup_logging
-from utils import tensor_out_to_array
+from utils.common import check_cuda_env
+from utils.common import dir_check_make
+from utils.common import PyGDataChecker
+from utils.common import setup_logging
+from utils.common import tensor_out_to_array
 
 # helpers for trial
 EPOCHS = 20
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
 N_TRIALS = 200
-RANDOM_SEED = 42
-# MAX_RETRIES = 5
-# RETRY_DELAY = 1
+PATIENCE = 5
 
 
-def check_cuda_env() -> None:
-    """Set cuda blocking to debug potential errors across GPUs"""
-    cuda_launch_blocking = os.environ.get("CUDA_LAUNCH_BLOCKING")
-    torch_use_cuda_dsa = os.environ.get("TORCH_USE_CUDA_DSA")
+def set_optim_directory(experiment_config: ExperimentConfig) -> Path:
+    """Ensure an optimization directory exists."""
+    model_dir = (
+        experiment_config.root_dir / "models" / experiment_config.experiment_name
+    )
+    optuna_dir = model_dir / "optuna"
 
-    print(f"CUDA_LAUNCH_BLOCKING is set to: {cuda_launch_blocking}")
-    print(f"TORCH_USE_CUDA_DSA is set to: {torch_use_cuda_dsa}")
-
-    if cuda_launch_blocking != "1" or torch_use_cuda_dsa != "1":
-        print("Warning: CUDA debugging environment variables are not set to '1'.")
-        print("This may affect error reporting and debugging capabilities.")
+    dir_check_make(optuna_dir)
+    return optuna_dir
 
 
-def get_remaining_walltime(logger: logging.Logger) -> Union[int, None]:
-    """Get remaining walltime in seconds."""
-    try:
-        result = subprocess.run(
-            ["scontrol", "show", "job", "$SLURM_JOB_ID"], capture_output=True, text=True
+def suggest_embedding_size(
+    trial: optuna.Trial, heads: Optional[int] = None, model: Optional[str] = None
+) -> int:
+    """Suggest embedding size based on model and number of heads, because heads
+    increase dimensionality by heads * embedding_size.
+    """
+    if model == "DeeperGCN":
+        return trial.suggest_int("embedding_size", low=64, high=512, step=64)
+    if model == "PNA":
+        return trial.suggest_int("embedding_size", low=64, high=384, step=64)
+    if heads:
+        embedding_high = {4: 128, 3: 170, 2: 256}.get(heads, 512)
+        return trial.suggest_int("embedding_size", low=64, high=embedding_high, step=64)
+    return trial.suggest_int("embedding_size", low=64, high=512, step=64)
+
+
+def suggest_gnn_layers(trial: optuna.Trial, model: str) -> int:
+    """Suggest GNN layers based on the model."""
+    if model == "DeeperGCN":
+        gnn_layers_log = trial.suggest_float(
+            "gnn_layers_float", low=1.79, high=3.18, log=True
         )
-        for line in result.stdout.split("\n"):
-            if "TimeLeft=" in line:
-                time_left = line.split("TimeLeft=")[1].split()[0]
-                days, time = (
-                    time_left.split("-") if "-" in time_left else ("0", time_left)
-                )
-                hours, mins, secs = time.split(":")
-                return (
-                    int(days) * 86400 + int(hours) * 3600 + int(mins) * 60 + int(secs)
-                )
-    except Exception as e:
-        logger.warning(f"Failed to get remaining walltime: {e}")
-    return None
-
-
-def setup_device(local_rank: int = 0) -> torch.device:
-    """Set up device based on available resources."""
-    if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            return torch.device(f"cuda:{local_rank}")
-        else:
-            return torch.device("cuda:0")
-    return torch.device("cpu")
+        return 2 * round(math.exp(gnn_layers_log) / 2)
+    return trial.suggest_int("gnn_layers", low=2, high=10)
 
 
 def suggest_hyperparameters(
@@ -136,6 +123,7 @@ def suggest_hyperparameters(
         "positional_encoding": trial.suggest_categorical(
             "positional_encoding", [True, False]
         ),
+        "gnn_layers": suggest_gnn_layers(trial, model),
     }
 
     train_params = {
@@ -148,7 +136,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=32, high=1056, step=64),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=512, step=64),
         "avg_connectivity": trial.suggest_categorical(
             "avg_connectivity", [True, False]
         ),
@@ -158,28 +146,15 @@ def suggest_hyperparameters(
     if model in ["GAT", "UniMPTransformer"]:
         heads = trial.suggest_int("heads", 1, 4)
         model_params["heads"] = heads
-
-        embedding_high = {4: 192, 3: 288, 2: 384}.get(heads, 640)
-        model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=embedding_high, step=32
+        model_params["embedding_size"] = suggest_embedding_size(
+            trial=trial, heads=heads, model=model
         )
-
-    elif model == "DeeperGCN":
-        gnn_layers_log = trial.suggest_float(
-            "gnn_layers_float", low=1.79, high=3.18, log=True
-        )
-        model_params["gnn_layers"] = 2 * round(math.exp(gnn_layers_log) / 2)
-        model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=512, step=32
-        )
-
     else:
-        model_params["embedding_size"] = trial.suggest_int(
-            "embedding_size", low=32, high=640, step=32
+        model_params["embedding_size"] = suggest_embedding_size(
+            trial=trial, model=model
         )
 
     if model != "DeeperGCN":
-        model_params["gnn_layers"] = trial.suggest_int("gnn_layers", low=2, high=12)
         model_params["residual"] = trial.suggest_categorical(
             "residual", ["shared_source", "distinct_source", None]
         )
@@ -196,13 +171,11 @@ def train_and_evaluate(
     logger: logging.Logger,
 ) -> Tuple[float, float]:
     """Run training and evaluation."""
-    patience = 5
     best_r = -float("inf")
     best_rmse = float("inf")
     early_stop_counter = 0
 
     for epoch in range(EPOCHS + 1):
-        # train
         loss = trainer.train(train_loader=train_loader, epoch=epoch)
         logger.info(f"Epoch {epoch}, Loss: {loss}")
 
@@ -217,18 +190,8 @@ def train_and_evaluate(
             mask="val",
         )
 
-        print(f"pred_tensor: {pred_tensor}")
-        print(f"pred_tensor shape: {pred_tensor.shape}")
-        print(f"target_tensor: {target_tensor}")
-        print(f"target_tensor shape: {target_tensor.shape}")
-
         predictions = tensor_out_to_array(pred_tensor)
         targets = tensor_out_to_array(target_tensor)
-
-        print(f"predictions: {predictions}")
-        print(f"predictions shape: {predictions.shape}")
-        print(f"targets: {targets}")
-        print(f"targets shape: {targets.shape}")
 
         # calculate metrics on validation set
         r, p_val = pearsonr(predictions, targets)
@@ -245,7 +208,7 @@ def train_and_evaluate(
             early_stop_counter = 0
         else:
             early_stop_counter += 1
-            if early_stop_counter >= patience:
+            if early_stop_counter >= PATIENCE:
                 logger.info(f"Early stopping at epoch {epoch}")
                 break
 
@@ -263,92 +226,145 @@ def train_and_evaluate(
     return best_r, best_rmse
 
 
+def get_objective_loaders(
+    data: torch_geometric.data.Data,
+    batch_size: int,
+    layers: int,
+    avg_connectivity: bool,
+) -> Tuple[torch_geometric.data.DataLoader, torch_geometric.data.DataLoader]:
+    """Get the objective loaders for training and validation."""
+    train_loader = prep_loader(
+        data=data,
+        mask="optimization_mask",
+        batch_size=batch_size,
+        shuffle=True,
+        layers=layers,
+        avg_connectivity=avg_connectivity,
+    )
+
+    val_loader = prep_loader(
+        data=data,
+        mask="val_mask",
+        batch_size=batch_size,
+        layers=layers,
+        avg_connectivity=avg_connectivity,
+    )
+
+    return train_loader, val_loader
+
+
+def suggest_and_log_hyperparameters(
+    trial: optuna.Trial, logger: logging.Logger
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Suggest hyperparameters and log them."""
+    model_params, train_params = suggest_hyperparameters(trial)
+    logger.info("=" * 50)
+    logger.info(f"Starting Trial {trial.number} with parameters:")
+    logger.info(f"Model Params: {model_params}")
+    logger.info(f"Train Params: {train_params}")
+    logger.info("=" * 50)
+    logger.handlers[0].flush()
+    return model_params, train_params
+
+
+def load_and_validate_data(
+    experiment_config: ExperimentConfig,
+    args: argparse.Namespace,
+    positional_encoding: bool,
+) -> torch_geometric.data.Data:
+    """Load graph data and validate"""
+    data = GraphToPytorch(
+        experiment_config=experiment_config,
+        split_name=args.split_name,
+        regression_target=args.target,
+        positional_encoding=positional_encoding,
+    ).make_data_object()
+
+    PyGDataChecker.check_pyg_data(data)  # validate data
+    return data
+
+
+def get_model_and_optimizer(
+    data: torch_geometric.data.Data,
+    model_params: Dict[str, Any],
+    train_params: Dict[str, Any],
+    warmup_steps: int,
+    total_steps: int,
+) -> Tuple[
+    torch.nn.Module, torch.optim.Optimizer, Union[LRScheduler, ReduceLROnPlateau]
+]:
+    """Get the model, optimizer, and scheduler for each trial."""
+    model = build_gnn_architecture(
+        in_size=data.x.shape[1],
+        out_channels=1,
+        train_dataset=None,
+        **model_params,
+    )
+
+    optimizer = OptimizerSchedulerHandler.set_optimizer(
+        optimizer_type=train_params["optimizer_type"],
+        learning_rate=train_params["learning_rate"],
+        model_params=model.parameters(),
+    )
+
+    scheduler = OptimizerSchedulerHandler.set_scheduler(
+        scheduler_type=train_params["scheduler_type"],
+        optimizer=optimizer,
+        warmup_steps=warmup_steps,
+        training_steps=total_steps,
+    )
+    return model, optimizer, scheduler
+
+
 def objective(
     trial: optuna.Trial,
     experiment_config: ExperimentConfig,
     args: argparse.Namespace,
     logger: logging.Logger,
-    rank: int,
     device: torch.device,
 ) -> float:
     """Objective function to be optimized by Optuna."""
     try:
         # get trial hyperparameters
-        model_params, train_params = suggest_hyperparameters(trial)
-        gnn_layers = model_params["gnn_layers"]
-        avg_connectivity = train_params["avg_connectivity"]
+        model_params, train_params = suggest_and_log_hyperparameters(
+            trial=trial, logger=logger
+        )
         batch_size = train_params["batch_size"]
-        learning_rate = train_params["learning_rate"]
-        optimizer_type = train_params["optimizer_type"]
-        scheduler_type = train_params["scheduler_type"]
-
-        # log trial hyperparameters
-        logger.info("=" * 50)
-        logger.info(f"Starting Trial {trial.number} with parameters:")
-        logger.info(f"Model Params: {model_params}")
-        logger.info(f"Train Params: {train_params}")
-        logger.info("=" * 50)
-        logger.handlers[0].flush()
 
         # load graph data
-        data = GraphToPytorch(
+        data = load_and_validate_data(
             experiment_config=experiment_config,
-            split_name=args.split_name,
-            regression_target=args.target,
+            args=args,
             positional_encoding=model_params["positional_encoding"],
-        ).make_data_object()
-
-        # check data integreity
-        PyGDataChecker.check_pyg_data(data)
+        )
 
         # set data loaders
-        train_loader = prep_loader(
+        train_loader, val_loader = get_objective_loaders(
             data=data,
-            mask="optimization_mask",
             batch_size=batch_size,
-            shuffle=True,
-            layers=gnn_layers,
-            avg_connectivity=avg_connectivity,
+            layers=model_params["gnn_layers"],
+            avg_connectivity=train_params["avg_connectivity"],
         )
 
-        val_loader = prep_loader(
-            data=data,
-            mask="val_mask",
-            batch_size=batch_size,
-            layers=gnn_layers,
-            avg_connectivity=avg_connectivity,
-        )
-
-        # define and build model
-        model = build_gnn_architecture(
-            in_size=data.x.shape[1],
-            out_channels=1,
-            train_dataset=train_loader,
-            **model_params,
-        )
-        model = model.to(device)
-
-        # print model architecture and dimensions
-        logger.info(model)
-
-        # set up optimizer
+        # get steps for optimizer and scheduler
         total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
             train_loader=train_loader,
             batch_size=batch_size,
             epochs=100,  # calculate warmup steps as a fraction of 100 epochs
         )
 
-        optimizer = OptimizerSchedulerHandler.set_optimizer(
-            optimizer_type=optimizer_type,
-            learning_rate=learning_rate,
-            model_params=model.parameters(),
-        )
-        scheduler = OptimizerSchedulerHandler.set_scheduler(
-            scheduler_type=scheduler_type,
-            optimizer=optimizer,
+        # define and build model, optimizer, and scheduler
+        model, optimizer, scheduler = get_model_and_optimizer(
+            data=data,
+            model_params=model_params,
+            train_params=train_params,
             warmup_steps=warmup_steps,
-            training_steps=total_steps,
+            total_steps=total_steps,
         )
+
+        # print model architecture and dimensions
+        logger.info(model)
+        model = model.to(device)
 
         # initialize trainer
         trainer = GNNTrainer(
@@ -368,286 +384,62 @@ def objective(
         trial.set_user_attr("best_r", best_r)  # save best rmse
         return best_r
     except RuntimeError as e:
-        if "CUDA out of memory" in str(e):
-            trial.report(float("inf"), EPOCHS)
-            logger.info(f"Trial {trial.number} pruned due to CUDA out of memory")
-            return float("inf")
-        else:
-            logger.error(f"RuntimeError in trial {trial.number}: {str(e)}")
-            raise e
+        return handle_cuda_out_of_memory_error(e=e, trial=trial, logger=logger)
+
+
+def handle_cuda_out_of_memory_error(
+    e: RuntimeError, trial: optuna.Trial, logger: logging.Logger
+) -> float:
+    """Handle CUDA out of memory error."""
+    if "CUDA out of memory" in str(e):
+        trial.report(float("inf"), EPOCHS)
+        logger.info(f"Trial {trial.number} pruned due to CUDA out of memory")
+        return float("inf")
+    else:
+        logger.error(f"RuntimeError in trial {trial.number}: {str(e)}")
+        raise e
 
 
 def run_optimization(
-    rank: int,
-    world_size: int,
     args: argparse.Namespace,
     logger: logging.Logger,
     optuna_dir: Path,
-) -> None:
+    device: torch.device,
+    n_trials: int,
+) -> optuna.Study:
     """Run the optimization process per GPU."""
-
-    # initialize distributed training, if detected
-    device = setup_device(rank)
-    logger.info(f"Process {rank}/{world_size} starting optimization on device {device}")
-
-    if world_size > 1:
-        try:
-            # set environment variables for distributed training
-            os.environ["MASTER_ADDR"] = socket.gethostbyname(socket.gethostname())
-            os.environ["MASTER_PORT"] = "29500"  # default port for PyTorch
-
-            logger.info(
-                f"Initializing process group with rank {rank}, world_size {world_size}"
-            )
-            logger.info(
-                f"MASTER_ADDR: {os.environ['MASTER_ADDR']}, MASTER_PORT: {os.environ['MASTER_PORT']}"
-            )
-
-            # try NCCL first & fall back to GLOO if NCCL is not available
-            try:
-                dist.init_process_group("nccl", rank=rank, world_size=world_size)
-                logger.info("Initialized process group with NCCL backend")
-            except RuntimeError:
-                logger.warning(
-                    "NCCL initialization failed, falling back to GLOO backend"
-                )
-                dist.init_process_group("gloo", rank=rank, world_size=world_size)
-                logger.info("Initialized process group with GLOO backend")
-        except Exception as e:
-            logger.error(f"Failed to initialize distributed process group: {str(e)}")
-            raise
-
     experiment_config = ExperimentConfig.from_yaml(args.config)
-
-    # use filelock to prevent simultaneous access to the database
-    # lock_file = f"{optuna_dir}/optuna_study.lock"
-    # with filelock.FileLock(lock_file, timeout=60):
-    #     for attempt in range(MAX_RETRIES):
-    #         try:
-    #             study = optuna.create_study(
-    #                 study_name=study_name,
-    #                 storage=storage_url,
-    #                 load_if_exists=True,
-    #                 direction="maximize",
-    #                 pruner=optuna.pruners.HyperbandPruner(
-    #                     min_resource=MIN_RESOURCE,
-    #                     max_resource=EPOCHS,
-    #                     reduction_factor=REDUCTION_FACTOR,
-    #                 ),
-    #             )
-    #             logger.info(f"Created or loaded existing study: {study_name}")
-    #             break
-    #         except (OperationalError, KeyError) as e:
-    #             if attempt < MAX_RETRIES - 1:
-    #                 logger.warning(
-    #                     f"Error accessing study (attempt {attempt + 1}): {e}"
-    #                 )
-    #                 time.sleep(RETRY_DELAY)
-    #             else:
-    #                 logger.error(
-    #                     f"Failed to create or load study after {MAX_RETRIES} attempts"
-    #                 )
-    #                 raise
-
-    # create a study with Hyperband Pruner
-    username = "stevesho"
-    password = "skynet"
-    host = "localhost"
-    port = "5432"
-    database = "optuna_db"
-
-    # storage_url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    storage_url = "postgresql://stevesho:skynet@localhost:5432/optuna_db"
     study_name = "distributed_optimization"
 
-    try:
-        study = optuna.create_study(
-            study_name=study_name,
-            storage=None,
-            load_if_exists=False,
-            direction="maximize",
-            pruner=optuna.pruners.HyperbandPruner(
-                min_resource=MIN_RESOURCE,
-                max_resource=EPOCHS,
-                reduction_factor=REDUCTION_FACTOR,
-            ),
-        )
-        logger.info(f"Created new in-memory study: {study_name}")
-    except Exception as e:
-        logger.error(f"Error creating/loading study: {str(e)}")
-        raise
+    # set up JournalStorage
+    storage_file = optuna_dir / "optuna_journal_storage.log"
+    storage = JournalStorage(JournalFileBackend(str(storage_file)))
 
-    n_trials = N_TRIALS if world_size == 1 else N_TRIALS // world_size
-
-    start_time = time.time()
-    for trial_num in range(n_trials):
-        remaining_time = get_remaining_walltime(logger)
-        if remaining_time is not None and remaining_time <= 10800:  # 3 hours
-            logger.info("Less than 3 hours remaining, stopping optimization")
-            break
-
-        try:
-            study.optimize(
-                lambda trial: objective(
-                    trial, experiment_config, args, logger, rank, device
-                ),
-                n_trials=n_trials,
-                gc_after_trial=True,
-            )
-        except Exception as e:
-            logger.error(f"Error during optimization: {str(e)}")
-            raise
-
-        save_study_results(study, rank, optuna_dir, logger)
-
-        # check time after trials
-        elapsed_time = time.time() - start_time
-        logger.info(
-            f"Completed trial {trial_num + 1}/{n_trials}. Elapsed time: {elapsed_time:.2f} seconds"
-        )
-
-    # synchronize all processes
-    if world_size > 1:
-        dist.barrier()
-
-
-def save_study_results(
-    study: optuna.Study,
-    rank: int,
-    optuna_dir: Path,
-    logger: logging.Logger,
-) -> None:
-    """Save trial results to JSON."""
-    trial_results = [
-        {
-            "number": trial.number,
-            "value": trial.value,
-            "params": trial.params,
-            "state": str(trial.state),
-        }
-        for trial in study.trials
-        if trial.state == TrialState.COMPLETE
-    ]
-    results_file = optuna_dir / f"optuna_results_{rank}.json"
-    with open(results_file, "w") as f:
-        json.dump(trial_results, f)
-    logger.info(f"Saved trial results to {results_file}")
-
-
-def recreate_study(
-    study_name: str, storage: str, storage_url: str, loaded_trials: List[Dict]
-) -> optuna.study.Study:
-    """Recreate a study from a list of loaded trials (via JSON)."""
+    # create the study
     study = optuna.create_study(
         study_name=study_name,
         storage=storage,
-        direction="Maximize",
         load_if_exists=True,
+        direction="maximize",
+        pruner=optuna.pruners.HyperbandPruner(
+            min_resource=MIN_RESOURCE,
+            max_resource=EPOCHS,
+            reduction_factor=REDUCTION_FACTOR,
+        ),
+    )
+    logger.info(f"Created new study: {study_name}")
+
+    study.optimize(
+        lambda trial: objective(trial, experiment_config, args, logger, device),
+        n_trials=n_trials,
+        gc_after_trial=True,
     )
 
-    existing_trial_numbers = {t.number for t in study.trials}
-
-    for trial_data in loaded_trials:
-        if trial_data["number"] not in existing_trial_numbers:
-            trial = FrozenTrial(
-                number=trial_data["number"],
-                state=TrialState[trial_data["state"]],
-                value=trial_data["value"],
-                datetime_start=None,
-                datetime_complete=None,
-                params=trial_data["params"],
-                distributions={
-                    param: optuna.distributions.UniformDistribution(0, 1)
-                    for param in trial_data["params"]
-                },
-                user_attrs={},
-                system_attrs={},
-                intermediate_values={},
-                trial_id=trial_data["number"],
-            )
-            study.add_trial(trial)
     return study
 
 
-def load_all_study_results(optuna_dir: Path, num_gpus: int) -> List[Dict[str, Any]]:
-    """Load all trial results from JSON files."""
-    all_trials = []
-    for rank in range(num_gpus):
-        results_file = optuna_dir / f"optuna_results_{rank}.json"
-        if results_file.exists():
-            with open(results_file, "r") as f:
-                all_trials.extend(json.load(f))
-    return all_trials
-
-
-def display_results(optuna_dir: Path, logger: logging.Logger) -> None:
-    """Display the results of the Optuna studies."""
-    # collect results from all JSON files
-    all_trials = []
-    for results_file in optuna_dir.glob("optuna_results_*.json"):
-        with open(results_file, "r") as f:
-            all_trials.extend(json.load(f))
-
-    # convert to DataFrame
-    df = pd.DataFrame(all_trials)
-
-    # display results
-    logger.info("Study statistics:\n")
-    logger.info(f"Number of finished trials: {len(df)}\n")
-    logger.info(f"Number of pruned trials: {len(df[df['state'] == 'PRUNED'])}\n")
-    logger.info(f"Number of complete trials: {len(df[df['state'] == 'COMPLETE'])}\n")
-
-    # find best trial
-    best_trial = df.loc[df["value"].idxmax()]
-    logger.info("Best trial:")
-    logger.info(f"Best Pearson's r: {best_trial['value']}")
-    logger.info("Best params:")
-    for key, value in best_trial["params"].items():
-        logger.info(f"\t{key}: {value}")
-
-    # save results
-    df = df[df["state"] == "COMPLETE"]  # keep only results that did not prune
-    df = df.rename(columns={"value": "pearson_r"})
-    df = df.sort_values("pearson_r", ascending=False)  # higher r is better
-    df.to_csv(optuna_dir / "optuna_results.csv", index=False)
-
-    # display results in a dataframe
-    logger.info(f"\nOverall Results (ordered by accuracy):\n {df}")
-
-    # recreate the optuna study object and find the most important
-    # hyperparameters
-    temp_study = optuna.create_study(direction="maximize")
-    for _, row in df.iterrows():
-        temp_study.add_trial(
-            optuna.trial.create_trial(
-                params=row["params"],
-                value=row["pearson_r"],
-                state=optuna.trial.TrialState.COMPLETE,
-            )
-        )
-
-    most_important_parameters = optuna.importance.get_param_importances(temp_study)
-
-    # display the most important hyperparameters
-    logger.info("\nMost important hyperparameters:")
-    for key, value in most_important_parameters.items():
-        logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
-
-    # plot and save importances to file
-    optuna.visualization.plot_optimization_history(temp_study).write_image(
-        f"{optuna_dir}/history.png"
-    )
-    optuna.visualization.plot_param_importances(study=temp_study).write_image(
-        f"{optuna_dir}/importances.png"
-    )
-    optuna.visualization.plot_slice(study=temp_study).write_image(
-        f"{optuna_dir}/slice.png"
-    )
-
-
-def main() -> None:
-    """Main function to optimize hyperparameters w/ optuna!"""
-    check_cuda_env()
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Optimize hyperparameters with Optuna."
     )
@@ -674,52 +466,46 @@ def main() -> None:
         "--split_name",
         type=str,
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--n_trials", type=int, help="Number of trials to run for this study."
+    )
+    return parser.parse_args()
 
-    # determine the number of available GPUs
-    num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
-    world_size = num_gpus if num_gpus > 0 else 1
+
+def main() -> None:
+    """Main function to optimize hyperparameters w/ optuna!"""
+    check_cuda_env()
+    args = parse_arguments()
 
     # set up directories
     experiment_config = ExperimentConfig.from_yaml(args.config)
-    model_dir = (
-        experiment_config.root_dir / "models" / experiment_config.experiment_name
-    )
-    optuna_dir = model_dir / "optuna"
-    dir_check_make(optuna_dir)
+    optuna_dir = set_optim_directory(experiment_config)
 
     # set up logging
-    logger = setup_logging(
-        str(optuna_dir / f"{experiment_config.experiment_name}_optuna.log")
+    job_id = os.environ.get("SLURM_ARRAY_TASK_ID", "0")
+    log_file = (
+        optuna_dir / f"{experiment_config.experiment_name}_optuna_job_{job_id}.log"
+    )
+    logger = setup_logging(str(log_file))
+
+    logger.info("Starting optimization process")
+    logger.info(f"Configuration: {args}")
+
+    study = run_optimization(
+        args=args,
+        logger=logger,
+        optuna_dir=optuna_dir,
+        device=torch.device("cuda"),
+        n_trials=args.n_trials,
     )
 
-    # run optimization
-    logger.info(f"Starting optimization process with {world_size} processes")
-    logger.info(f"Configuration: {args}")
-    if world_size > 1:
-        try:
-            mp.spawn(
-                run_optimization,
-                args=(world_size, args, logger, optuna_dir),
-                nprocs=world_size,
-                join=True,
-            )
-        except Exception as e:
-            logger.error(f"Error in multiprocessing spawn: {str(e)}")
-            raise
-    else:
-        run_optimization(0, world_size, args, logger, optuna_dir)
-
-    # display results after optimization is over
-    if world_size == 1 or (world_size > 1 and dist.get_rank() == 0):
-        # study = optuna.load_study(
-        #     study_name="flexible_optimization", storage="sqlite:///optuna_study.db"
-        # )
-        # display_results(study, optuna_dir, logger)
-        display_results(optuna_dir, logger)
-
-    if world_size > 1:
-        dist.destroy_process_group()
+    # log best trial for this job
+    best_trial = study.best_trial
+    logger.info(f"Best trial in this job: {best_trial.number}")
+    logger.info(f"Best Pearson's r in this job: {best_trial.value}")
+    logger.info("Best params in this job:")
+    for key, value in best_trial.params.items():
+        logger.info(f"\t{key}: {value}")
 
 
 if __name__ == "__main__":

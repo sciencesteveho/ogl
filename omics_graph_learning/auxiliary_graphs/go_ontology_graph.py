@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
 
 
 """Code to parse a gene relationship graph from GO ontology annotations"""

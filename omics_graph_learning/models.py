@@ -45,7 +45,7 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
-from utils import save_error_state
+from utils.common import save_error_state
 
 
 class AttentionTaskHead(nn.Module):

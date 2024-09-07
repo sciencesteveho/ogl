@@ -8,17 +8,19 @@ on a HPC via the SLURM scheduler."""
 
 import argparse
 import os
+from pathlib import Path
+import shutil
 import sys
 from typing import List, Optional, Tuple
 
 import pytest
 
 from config_handlers import ExperimentConfig
-from constants import NodePerturbation
-from utils import _dataset_split_name
-from utils import _run_command
-from utils import setup_logging
-from utils import submit_slurm_job
+from utils.common import _dataset_split_name
+from utils.common import _run_command
+from utils.common import setup_logging
+from utils.common import submit_slurm_job
+from utils.constants import NodePerturbation
 
 logger = setup_logging()
 
@@ -71,6 +73,61 @@ class PipelineRunner:
     def __init__(self, config: ExperimentConfig, args: argparse.Namespace) -> None:
         self.config = config
         self.args = args
+
+    def clean_up(self) -> None:
+        """Remove intermediate files in tissue-specific directories."""
+
+        def _remove_files_in_dir(directory: Path) -> None:
+            """Remove files in a directory, avoiding removing symlinks
+            recursively!
+            """
+            for item in directory.iterdir():
+                if item.is_dir() and not item.is_symlink():
+                    shutil.rmtree(item)
+                elif item.is_file() or (
+                    item.is_symlink() and not item.resolve().is_dir()
+                ):
+                    item.unlink()
+
+        directories_to_clean: List[Path] = []
+        for tissue in self.config.tissues:
+            tissue_dir = self.config.working_directory / tissue
+            directories_to_clean += [
+                tissue_dir / "local",
+                tissue_dir / "parsing" / "attributes",
+                tissue_dir / "parsing" / "intermediate",
+                tissue_dir / "interaction",
+                tissue_dir / "unprocessed",
+            ]
+
+            # files to preserve
+            interaction_edges = tissue_dir / "interaction" / "interaction_edges.txt"
+            basenodes_hg38 = (
+                tissue_dir / "parsing" / "attributes" / "basenodes_hg38.txt"
+            )
+
+            if interaction_edges.exists():
+                shutil.move(
+                    str(interaction_edges), str(tissue_dir / "interaction_edges.txt")
+                )
+
+            if basenodes_hg38.exists():
+                shutil.move(str(basenodes_hg38), str(tissue_dir / "basenodes_hg38.txt"))
+
+        # remove all files in the directories; do not follow symlinks
+        for directory in directories_to_clean:
+            if directory.is_dir():
+                for item in directory.iterdir():
+                    if item.is_dir() and not item.is_symlink():
+                        shutil.rmtree(item)
+                    elif item.is_file() or (
+                        item.is_symlink() and not item.resolve().is_dir()
+                    ):
+                        item.unlink()
+
+                # Remove the empty directory itself
+                if directory.exists():
+                    directory.rmdir()
 
     def _get_file_paths(self, split_name: str) -> Tuple[str, str]:
         """Construct file paths for graphs to check if files exist"""
@@ -302,6 +359,9 @@ class PipelineRunner:
             )
             self.submit_gnn_job(split_name, None)
 
+        if self.args.clean_up:
+            self.clean_up()
+
 
 def validate_args(args: argparse.Namespace) -> None:
     """Helper function to validate CLI arguments that have dependencies."""
@@ -432,6 +492,12 @@ def parse_pipeline_arguments() -> argparse.Namespace:
         "--run-tests",
         action="store_true",
         help="Run unit tests before executing the pipeline",
+        default=False,
+    )
+    parser.add_argument(
+        "--clean-up",
+        action="store_true",
+        help="Remove intermediate files in tissue-specific directories",
         default=False,
     )
     args = parser.parse_args()

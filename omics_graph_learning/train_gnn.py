@@ -26,19 +26,19 @@ from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from config_handlers import ExperimentConfig
-from constants import EARLY_STOP_PATIENCE
 from gnn_architecture_builder import build_gnn_architecture
 from graph_to_pytorch import GraphToPytorch
 from ogl import parse_pipeline_arguments
 from perturbation import PerturbationConfig
 from schedulers import OptimizerSchedulerHandler
-from utils import _set_matplotlib_publication_parameters
-from utils import dir_check_make
-from utils import plot_predicted_versus_expected
-from utils import plot_training_losses
-from utils import PyGDataChecker
-from utils import setup_logging
-from utils import tensor_out_to_array
+from utils.common import _set_matplotlib_publication_parameters
+from utils.common import dir_check_make
+from utils.common import plot_predicted_versus_expected
+from utils.common import plot_training_losses
+from utils.common import PyGDataChecker
+from utils.common import setup_logging
+from utils.common import tensor_out_to_array
+from utils.constants import EARLY_STOP_PATIENCE
 
 
 class TensorBoardLogger:

@@ -1,6 +1,5 @@
 #! /usr/bin_element/env python
 # -*- coding: utf-8 -*-
-#
 
 
 """Create a secondary graph structure based off of sequence similarity of
@@ -19,7 +18,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from Bio import Align
 import pandas as pd
-import pybedtools
 from pybedtools import BedTool  # type: ignore
 
 
@@ -42,7 +40,7 @@ def _chr_lengths_ucsc(chrom_sizes_file: str) -> dict[str, int]:
     return chrom_lengths
 
 
-def _get_regulatory_element_size_metrics(elements: pybedtools.BedTool) -> float:
+def _get_regulatory_element_size_metrics(elements: BedTool) -> float:
     """Get the mean and standard deviation of the regulatory element sizes."""
     element_sizes = [int(feature[2]) - int(feature[1]) for feature in elements]
     return int(statistics.stdev(element_sizes))
@@ -66,12 +64,12 @@ def _bin_genome(
 
 
 def _bin_elements(
-    reg_elements: pybedtools.BedTool,
+    reg_elements: BedTool,
     row: pd.Series,
-) -> pybedtools.BedTool:
+) -> BedTool:
     """Get regulatory elements that are within the given bin_element."""
     return reg_elements.intersect(
-        pybedtools.BedTool(  # type: ignore
+        BedTool(  # type: ignore
             f"{row['chrom']}\t{row['start']}\t{row['end']}", from_string=True
         ),
         sorted=True,
@@ -123,7 +121,7 @@ def similar_enhancers(
 
 
 def _map_elements_to_nucleotide_content(
-    bin_element: pybedtools.BedTool,
+    bin_element: BedTool,
     fasta: str,
 ) -> Dict[str, str]:
     """Map regulatory elements to nucleotide content."""

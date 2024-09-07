@@ -25,10 +25,10 @@ from sklearn.preprocessing import RobustScaler  # type: ignore
 from omics_graph_learning.test.scaled_feature_accuracy import (
     ScaledFeatureAccuracy,
 )  # type: ignore
-from utils import dir_check_make
-from utils import get_physical_cores
-from utils import ScalerUtils
-from utils import setup_logging
+from utils.common import dir_check_make
+from utils.common import get_physical_cores
+from utils.common import ScalerUtils
+from utils.common import setup_logging
 
 logger = setup_logging()
 CORES = get_physical_cores()

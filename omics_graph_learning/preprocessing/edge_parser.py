@@ -24,16 +24,15 @@ from typing import (
 
 import pandas as pd
 from pybedtools import BedTool  # type: ignore
-import pybedtools  # type: ignore
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
-from constants import REGULATORY_ELEMENTS
-from rbp_network_filter import RBPNetworkFilter
-from utils import _get_chromatin_loop_file
-from utils import genes_from_gencode
-from utils import setup_logging
-from utils import time_decorator
+from preprocessing.rbp_network_filter import RBPNetworkFilter
+from utils.common import _get_chromatin_loop_file
+from utils.common import genes_from_gencode
+from utils.common import setup_logging
+from utils.common import time_decorator
+from utils.constants import REGULATORY_ELEMENTS
 
 logger = setup_logging()
 

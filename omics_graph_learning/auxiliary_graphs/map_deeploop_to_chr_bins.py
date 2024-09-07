@@ -3,6 +3,7 @@
 
 """Simple utility to map deeploop anchors back to their chromosome positions"""
 
+
 import argparse
 import os
 from pathlib import Path
@@ -22,7 +23,7 @@ def main() -> None:
         "/ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/process_deeploop/scripts"
     )
 
-    map_file = map_file_path / f"{args.chr}.bed"
+    mapping_file_path = map_file_path / f"{args.chr}.bed"
     anchor_file_path = (
         working_dir
         / args.cell_line
@@ -38,7 +39,7 @@ def main() -> None:
 
     # create a dictionary from the map file
     anchor_to_location = {}
-    with open(map_file, "r") as map_file:
+    with open(mapping_file_path, "r") as map_file:
         for line in map_file:
             chrom, start, end, anchor = line.strip().split()
             anchor_to_location[anchor] = (chrom, start, end)

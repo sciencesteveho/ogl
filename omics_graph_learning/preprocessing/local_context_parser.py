@@ -24,14 +24,14 @@ from pybedtools.featurefuncs import extend_fields  # type: ignore
 
 from config_handlers import ExperimentConfig
 from config_handlers import TissueConfig
-from constants import ATTRIBUTES
 from positional_encoding import PositionalEncoding
-from utils import _chk_file_and_run
-from utils import dir_check_make
-from utils import genes_from_gencode
-from utils import get_physical_cores
-from utils import setup_logging
-from utils import time_decorator
+from utils.common import _chk_file_and_run
+from utils.common import dir_check_make
+from utils.common import genes_from_gencode
+from utils.common import get_physical_cores
+from utils.common import setup_logging
+from utils.common import time_decorator
+from utils.constants import ATTRIBUTES
 
 logger = setup_logging()
 

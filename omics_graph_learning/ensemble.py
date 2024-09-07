@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
 
 
 """Module to _ensemble models multiple models. On finalized models, validation is
