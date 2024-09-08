@@ -10,7 +10,7 @@ as a series of numpy arrays."""
 
 from pathlib import Path
 import pickle
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 
 import networkx as nx  # type: ignore
 import numpy as np
@@ -366,7 +366,7 @@ class GraphSerializer:
 
 def check_missing_target_genes(
     graph: nx.Graph, target_genes: List[str], tissue: str
-) -> None:
+) -> Set[str]:
     """Check for missing target genes in the graph and log the results.
 
     Targets are chosen via TPM filter, but they might not necessarily remain in
@@ -388,11 +388,15 @@ def check_missing_target_genes(
     else:
         logger.info("All target genes are present in the final graph.")
 
+    # return present genes
+    return gene_nodes
+
 
 def construct_tissue_graph(
     nodes: List[str],
     experiment_name: str,
     working_directory: Path,
+    split_name: str,
     graph_type: str,
     tissue: str,
     target_genes: List[str],
@@ -401,10 +405,10 @@ def construct_tissue_graph(
     """Pipeline to generate per-sample graphs."""
 
     # set directories
-    graph_dir = working_directory / "graphs"
+    split_dir = working_directory / "graphs" / split_name
     interaction_dir = working_directory / tissue / "interaction"
     parse_dir = working_directory / tissue / "parsing"
-    dir_check_make(graph_dir)
+    dir_check_make(split_dir)
 
     # construct graph
     graph = GraphConstructor(
@@ -417,12 +421,16 @@ def construct_tissue_graph(
     ).construct_graph()
 
     # check for missing target genes
-    check_missing_target_genes(graph=graph, target_genes=target_genes, tissue=tissue)
+    present_genes = check_missing_target_genes(
+        graph=graph, target_genes=target_genes, tissue=tissue
+    )
+    with open(split_dir / f"{experiment_name}_{tissue}_genes.pkl", "wb") as output:
+        pickle.dump(present_genes, output)
 
     # serialize to arrays
     serializer = GraphSerializer(
         graph=graph,
-        graph_dir=graph_dir,
+        graph_dir=split_dir,
         graph_type=graph_type,
         prefix=experiment_name,
         tissue=tissue,

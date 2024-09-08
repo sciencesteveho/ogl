@@ -138,7 +138,7 @@ def _get_files_in_directory(dir: Path) -> List[str]:
 
 
 # data loading and saving
-def _load_pickle(file_path: str) -> Any:
+def _load_pickle(file_path: Union[str, Path]) -> Any:
     """Wrapper to load a pkl"""
     with open(file_path, "rb") as file:
         return pickle.load(file)

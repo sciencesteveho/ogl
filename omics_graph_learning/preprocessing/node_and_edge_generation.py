@@ -19,6 +19,7 @@ from split.target_consolidator import TrainingTargetConsolidator
 from utils.common import _get_files_in_directory
 from utils.common import setup_logging
 from utils.constants import ATTRIBUTES
+from visualization.targets import generate_all_target_plots
 
 logger = setup_logging()
 
@@ -132,6 +133,7 @@ def training_target_consolidator(
 def create_tissue_graph(
     experiment_config: ExperimentConfig,
     tissue_config: TissueConfig,
+    split_name: str,
     target_genes: List[str],
 ) -> None:
     """Creates a graph for the individual tissue. Concatting is dealt with after
@@ -143,6 +145,7 @@ def create_tissue_graph(
         nodes=experiment_config.nodes,
         experiment_name=experiment_config.experiment_name,
         working_directory=experiment_config.working_directory,
+        split_name=split_name,
         graph_type=experiment_config.graph_type,
         tissue=tissue,
         target_genes=target_genes,
@@ -193,6 +196,11 @@ def main() -> None:
         with contextlib.suppress(ValueError):
             experiment_config.nodes.remove("dyadic")
 
+    # set up some common variables
+    split_dir = experiment_config.working_directory / "graphs" / args.split_name
+    experiment_name = experiment_config.experiment_name
+    tissue = tissue_config.resources["tissue"]
+
     logger.info(
         f"Starting pipeline for {experiment_config.experiment_name}! "
         "Checking to see if pre-split data has been parsed..."
@@ -233,7 +241,16 @@ def main() -> None:
     create_tissue_graph(
         experiment_config=experiment_config,
         tissue_config=tissue_config,
+        split_name=args.split_name,
         target_genes=target_genes,
+    )
+
+    # plot the targets
+    generate_all_target_plots(
+        target_file=split_dir / f"training_targets_{tissue}.pkl",
+        gene_file=split_dir / f"{experiment_name}_{tissue}_genes.pkl",
+        gencode_gtf=experiment_config.reference_dir / tissue_config.local["gencode"],
+        save_path=split_dir,
     )
 
 

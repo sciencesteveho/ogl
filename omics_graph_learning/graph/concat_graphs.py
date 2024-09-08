@@ -7,7 +7,6 @@ indexes"""
 
 
 import argparse
-import logging
 from pathlib import Path
 import pickle
 import subprocess
@@ -152,7 +151,7 @@ def _concatenate_graphs(
         pickle.dump(concat_idxs, output, protocol=4)
 
 
-def combined_graphs(
+def combine_graphs(
     experiment_graph_directory: Path,
     tissues: List[str],
 ) -> None:
@@ -202,23 +201,23 @@ def main() -> None:
     graph_type = params.graph_type
 
     # set up dirs
+    split_dir = params.graph_dir / args.split_name
     experiment_graph_directory = (
-        params.graph_dir / f"{params.experiment_name}_{graph_type}_graph"
+        split_dir / f"{params.experiment_name}_{graph_type}_graph"
     )
-    target_directory = params.graph_dir / args.split_name
 
     # combine training splits
-    splits = combine_splits(tissues=params.tissues, split_directory=target_directory)
-    with open(target_directory / TRAINING_SPLIT_FILE, "wb") as output:
+    splits = combine_splits(tissues=params.tissues, split_directory=split_dir)
+    with open(split_dir / TRAINING_SPLIT_FILE, "wb") as output:
         pickle.dump(splits, output, protocol=4)
 
     # combine all targets
-    targets = combine_targets(tissues=params.tissues, target_directory=target_directory)
-    with open(target_directory / TARGET_FILE, "wb") as output:
+    targets = combine_targets(tissues=params.tissues, target_directory=split_dir)
+    with open(split_dir / TARGET_FILE, "wb") as output:
         pickle.dump(targets, output, protocol=4)
 
     # concat all graphs
-    combined_graphs(
+    combine_graphs(
         experiment_graph_directory=experiment_graph_directory, tissues=params.tissues
     )
 

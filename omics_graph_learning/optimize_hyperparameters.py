@@ -52,7 +52,6 @@ from utils.common import tensor_out_to_array
 EPOCHS = 20
 MIN_RESOURCE = 3
 REDUCTION_FACTOR = 3
-N_TRIALS = 200
 PATIENCE = 5
 
 

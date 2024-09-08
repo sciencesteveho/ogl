@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pytest
 
@@ -20,19 +20,10 @@ from utils.common import _dataset_split_name
 from utils.common import _run_command
 from utils.common import setup_logging
 from utils.common import submit_slurm_job
+from utils.constants import N_TRIALS
 from utils.constants import NodePerturbation
 
 logger = setup_logging()
-
-
-def run_tests() -> bool:
-    """Run selected unit tests to ensure pipeline code is functioning correctly.
-
-    Returns:
-        bool: `True` if all tests pass, `False` otherwise
-    """
-    exit_code = pytest.main([])
-    return exit_code == 0  # pytest.ExitCode.OK is 0
 
 
 class PipelineRunner:
@@ -276,17 +267,38 @@ class PipelineRunner:
         """Submit GNN training job."""
         train_args = self.prepare_gnn_training_args(self.args, split_name)
         if self.args.optimize_params:
-            submit_slurm_job(
+            self.submit_optimization(split_name, dependency)
+        submit_slurm_job(
+            job_script="train_gnn.sh", args=train_args, dependency=dependency
+        )
+        logger.info("GNN training job submitted.")
+
+    def submit_optimization(self, split_name: str, dependency: Optional[str]) -> None:
+        """Submit hyperparameter optimization jobs."""
+        slurm_ids = []
+        if not self.args.n_gpus:
+            raise ValueError(
+                "Number of GPUs must be specified when optimizing hyperparameters."
+            )
+        num_trials = calculate_trials(self.args.n_gpus)
+        for _ in range(self.args.n_gpus):
+            job_id = submit_slurm_job(
                 job_script="optimize_params.sh",
-                args=f"{self.args.experiment_yaml} {self.args.target} {split_name}",
+                args=f"{self.args.experiment_yaml} {self.args.target} {split_name} {num_trials}",
                 dependency=dependency,
             )
-            logger.info("Hyperparameter optimization job submitted.")
-        else:
-            submit_slurm_job(
-                job_script="train_gnn.sh", args=train_args, dependency=dependency
-            )
-            logger.info("GNN training job submitted.")
+            slurm_ids.append(job_id)
+        logger.info(f"{self.args.n_gpus} hyperparameter optimization jobs submitted.")
+        self.plot_importances(slurm_ids)
+
+    def plot_importances(self, slurmids: List[str]) -> None:
+        """Submit job to plot feature importances."""
+        submit_slurm_job(
+            job_script="importances.sh",
+            args=f"{self.args.experiment_yaml}",
+            dependency=":".join(slurmids),
+        )
+        logger.info("Feature importances plot job submitted.")
 
     def all_pipeline_jobs(self, intermediate_graph: str, split_name: str) -> None:
         """Submit all pipeline jobs if a final graph is not found."""
@@ -386,6 +398,29 @@ def validate_args(args: argparse.Namespace) -> None:
             "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
         )
         sys.exit(1)
+
+    if args.optimize_params and args.num_gpus is None:
+        logger.error(
+            "Error: specifying --n_gpus is required when --optimize_params is set."
+        )
+        sys.exit(1)
+
+
+def run_tests() -> bool:
+    """Run selected unit tests to ensure pipeline code is functioning correctly.
+
+    Returns:
+        bool: `True` if all tests pass, `False` otherwise
+    """
+    exit_code = pytest.main([])
+    return exit_code == 0  # pytest.ExitCode.OK is 0
+
+
+def calculate_trials(n_gpus: int) -> int:
+    """Calculate the number of trials to run for hyperparameter optimization
+    (per gpu).
+    """
+    return N_TRIALS // n_gpus
 
 
 def parse_pipeline_arguments() -> argparse.Namespace:
@@ -490,6 +525,7 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--total_random_edges", type=int, default=None)
     parser.add_argument("--gene_only_loader", action="store_true")
     parser.add_argument("--optimize_params", action="store_true")
+    parser.add_argument("--n_gpus", type=int)
     parser.add_argument(
         "--clean-up",
         action="store_true",
