@@ -33,6 +33,7 @@ from utils.common import genes_from_gencode
 from utils.common import setup_logging
 from utils.common import time_decorator
 from utils.constants import REGULATORY_ELEMENTS
+from visualization.contacts import generate_chromatin_contact_density_plot
 
 logger = setup_logging()
 
@@ -111,6 +112,12 @@ class EdgeParser:
 
         self._initialize_directories_and_vars()
         self._initialize_references()
+
+        # plot chromatin contact density
+        generate_chromatin_contact_density_plot(
+            file=self.loop_file,
+            save_path=self.tissue_dir,
+        )
 
     def _initialize_directories_and_vars(self) -> None:
         """Initialize directory paths"""
@@ -193,32 +200,11 @@ class EdgeParser:
         if self.regulatory_schema == "encode":
             bedtools_objects["dyadic"] = None
 
-        # return (
-        #     bedtools_objects["enhancer"],
-        #     bedtools_objects["promoter"],
-        #     bedtools_objects["dyadic"],
-        # )
-
         return (
             self._add_slop_window(bedtools_objects["enhancer"], 500),
             self._add_slop_window(bedtools_objects["promoter"], 500),
             self._add_slop_window(bedtools_objects["dyadic"], 500),
         )
-
-        # Code for filtering distal enhancers. Ignoring for now.
-        # if self.regulatory_schema in ["encode", "intersect"]:
-        #     bedtools_objects["distal_enhancers"] = (
-        #         bedtools_objects["enhancers"].filter(lambda x: x[3] == "dELS").saveas()
-        #     )
-        # else:
-        #     bedtools_objects["distal_enhancers"] = None
-
-        # return (
-        #     bedtools_objects["enhancers"],
-        #     bedtools_objects["distal_enhancers"],
-        #     bedtools_objects["promoters"],
-        #     bedtools_objects["dyadic"],
-        # )
 
     @time_decorator(print_args=True)
     def parse_edges(self) -> None:
@@ -273,7 +259,6 @@ class EdgeParser:
         self,
         target_list: str,
         tissue_active_mirnas: str,
-        # ) -> Generator[Tuple[str, str, float, str], None, None]:
     ) -> Generator[Tuple[str, str, str], None, None]:
         """Filters all miRNA -> target interactions from miRTarBase and based on
         the active miRNAs in the given tissue.
@@ -295,7 +280,6 @@ class EdgeParser:
     def _tf_markers(
         self,
         interaction_file: str,
-        # ) -> Generator[Tuple[str, str, float, str], None, None]:
     ) -> Generator[Tuple[str, str, str], None, None]:
         """Filters tf markers based on specified conditions.
 
@@ -308,7 +292,7 @@ class EdgeParser:
         tf_keep = ["TF", "I Marker", "TFMarker"]
         with open(interaction_file, newline="") as file:
             reader = csv.reader(file, delimiter="\t")
-            next(reader)  # Skip header
+            next(reader)  # skip header
 
             tf_markers = []
             for line in reader:
@@ -630,7 +614,7 @@ class EdgeParser:
         )
         second_anchor_overlaps = self._reverse_anchors(second_anchor_overlaps)
 
-        # Set TSS bool if either first_feature or second_feature matches
+        # set TSS bool if either first_feature or second_feature matches
         tss = first_feature in [self.tss, self.gencode_ref] or second_feature in [
             self.tss,
             self.gencode_ref,
@@ -728,7 +712,7 @@ class EdgeParser:
                     (super_enhancers, super_enhancers, "se_se"),
                 ]
 
-        # Add gene_gene interactions if specified
+        # add gene_gene interactions if specified
         if gene_gene:
             gencode_2kb = self._add_slop_window(self.gencode_ref, 2000)
             overlaps.append((gencode_2kb, gencode_2kb, "g_g"))

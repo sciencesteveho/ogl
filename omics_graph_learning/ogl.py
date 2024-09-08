@@ -36,8 +36,10 @@ def run_tests() -> bool:
 
 
 class PipelineRunner:
-    """Class for handling the entire pipeline, from datZZZZa parsing to graph
-    construction and GNN training.
+    """Class for handling the entire pipeline, from data parsing to graph
+    construction and GNN training. The specific implementation is designed for
+    running on a SLURM cluster and there are accompanying SLURM scripts for each
+    step.
 
     Attributes:
         config (ExperimentConfig): Experiment configuration
@@ -489,12 +491,6 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--gene_only_loader", action="store_true")
     parser.add_argument("--optimize_params", action="store_true")
     parser.add_argument(
-        "--run-tests",
-        action="store_true",
-        help="Run unit tests before executing the pipeline",
-        default=False,
-    )
-    parser.add_argument(
         "--clean-up",
         action="store_true",
         help="Remove intermediate files in tissue-specific directories",
@@ -507,15 +503,9 @@ def parse_pipeline_arguments() -> argparse.Namespace:
 
 def main() -> None:
     """Run OGL pipeline, from data parsing to graph constructuion to GNN
-    training with checks to avoid redundant computation."""
+    training with checks to avoid redundant computation.
+    """
     args = parse_pipeline_arguments()
-
-    # run unit tests first
-    # if args.run_tests:
-    #     passed_tests = run_tests()
-    #     if not passed_tests:
-    #         print("Unit tests failed. Exiting.")
-    #         sys.exit(1)
 
     # run OGL pipeline
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)

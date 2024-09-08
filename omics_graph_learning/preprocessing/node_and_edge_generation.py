@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-"""Metadata handler for and pipeline execution for part 1 of OGL."""
+"""Handler for and pipeline execution for OGL preprocessing steps."""
 
 
 import argparse
