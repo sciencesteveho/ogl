@@ -399,7 +399,7 @@ def validate_args(args: argparse.Namespace) -> None:
         )
         sys.exit(1)
 
-    if args.optimize_params and args.num_gpus is None:
+    if args.optimize_params and args.n_gpus is None:
         logger.error(
             "Error: specifying --n_gpus is required when --optimize_params is set."
         )
