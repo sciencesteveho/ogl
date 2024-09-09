@@ -25,6 +25,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import matplotlib.figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
 import pandas as pd
 import psutil  # type: ignore
 from pybedtools import BedTool  # type: ignore
@@ -34,9 +36,6 @@ import seaborn as sns  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 import yaml  # type: ignore
-
-from omics_graph_learning.config_handlers import ExperimentConfig
-from omics_graph_learning.config_handlers import TissueConfig
 
 
 # decorator to track execution time
@@ -500,9 +499,20 @@ class ScalerUtils:
 def _get_chromatin_loop_file(
     experiment_config: ExperimentConfig, tissue_config: TissueConfig
 ) -> str:
-    """Returns the specified loop file"""
+    """Returns the specified loop file. Loop files either end in loops.bedpe or
+    contacts.bedpe. There is no redundancy in the naming, so it looks for one
+    and if it doesn't find it, it looks for the other.
+    """
     method, resolution = experiment_config.baseloops.split("_")
-    return f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}_loops.bedpe"
+    prefix = f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}"
+    suffixes = ["_loops.bedpe", "_contacts.bedpe"]
+    for suffix in suffixes:
+        file = f"{prefix}{suffix}"
+        if os.path.isfile(file):
+            return file
+    raise FileNotFoundError(
+        f"Loop file not found for {tissue_config.resources['tissue']}"
+    )
 
 
 def _dataset_split_name(
