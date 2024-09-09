@@ -26,16 +26,16 @@ import numpy as np
 import torch
 from torch_geometric.data import Data  # type: ignore
 
-from config_handlers import ExperimentConfig
-from perturbation import get_node_perturbation
-from perturbation import perturb_edge_index
-from perturbation import perturb_node_features
-from perturbation import PerturbationConfig
-from utils.constants import NodePerturbation
-from utils.constants import SUBSET_CHROMOSOMES
-from utils.constants import TARGET_FILE
-from utils.constants import TARGET_FILE_SCALED
-from utils.constants import TRAINING_SPLIT_FILE
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.perturbation import get_node_perturbation
+from omics_graph_learning.perturbation import perturb_edge_index
+from omics_graph_learning.perturbation import perturb_node_features
+from omics_graph_learning.perturbation import PerturbationConfig
+from omics_graph_learning.utils.constants import NodePerturbation
+from omics_graph_learning.utils.constants import SUBSET_CHROMOSOMES
+from omics_graph_learning.utils.constants import TARGET_FILE
+from omics_graph_learning.utils.constants import TARGET_FILE_SCALED
+from omics_graph_learning.utils.constants import TRAINING_SPLIT_FILE
 
 
 class GraphToPytorch:

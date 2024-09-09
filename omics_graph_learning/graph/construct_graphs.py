@@ -16,9 +16,9 @@ import networkx as nx  # type: ignore
 import numpy as np
 import pandas as pd
 
-from utils.common import dir_check_make
-from utils.common import setup_logging
-from utils.common import time_decorator
+from omics_graph_learning.utils.common import dir_check_make
+from omics_graph_learning.utils.common import setup_logging
+from omics_graph_learning.utils.common import time_decorator
 
 logger = setup_logging()
 

@@ -9,10 +9,9 @@ from typing import List, Optional
 
 import networkx as nx  # type: ignore
 import numpy as np
-import torch
 from torch_geometric.data import Data  # type: ignore
 
-from utils.constants import NodePerturbation
+from omics_graph_learning.utils.constants import NodePerturbation
 
 
 @dataclass

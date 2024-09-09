@@ -15,13 +15,13 @@ from typing import List, Optional, Tuple, Union
 
 import pytest
 
-from config_handlers import ExperimentConfig
-from utils.common import _dataset_split_name
-from utils.common import _run_command
-from utils.common import setup_logging
-from utils.common import submit_slurm_job
-from utils.constants import N_TRIALS
-from utils.constants import NodePerturbation
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.utils.common import _dataset_split_name
+from omics_graph_learning.utils.common import _run_command
+from omics_graph_learning.utils.common import setup_logging
+from omics_graph_learning.utils.common import submit_slurm_job
+from omics_graph_learning.utils.constants import N_TRIALS
+from omics_graph_learning.utils.constants import NodePerturbation
 
 logger = setup_logging()
 

@@ -35,8 +35,8 @@ import torch
 from torch_geometric.data import Data  # type: ignore
 import yaml  # type: ignore
 
-from config_handlers import ExperimentConfig
-from config_handlers import TissueConfig
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
 
 
 # decorator to track execution time

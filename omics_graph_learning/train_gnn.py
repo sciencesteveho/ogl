@@ -25,20 +25,20 @@ from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from config_handlers import ExperimentConfig
-from gnn_architecture_builder import build_gnn_architecture
-from graph_to_pytorch import GraphToPytorch
-from ogl import parse_pipeline_arguments
-from perturbation import PerturbationConfig
-from schedulers import OptimizerSchedulerHandler
-from utils.common import _set_matplotlib_publication_parameters
-from utils.common import dir_check_make
-from utils.common import plot_predicted_versus_expected
-from utils.common import plot_training_losses
-from utils.common import PyGDataChecker
-from utils.common import setup_logging
-from utils.common import tensor_out_to_array
-from utils.constants import EARLY_STOP_PATIENCE
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.gnn_architecture_builder import build_gnn_architecture
+from omics_graph_learning.graph_to_pytorch import GraphToPytorch
+from omics_graph_learning.ogl import parse_pipeline_arguments
+from omics_graph_learning.perturbation import PerturbationConfig
+from omics_graph_learning.schedulers import OptimizerSchedulerHandler
+from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.utils.common import dir_check_make
+from omics_graph_learning.utils.common import plot_predicted_versus_expected
+from omics_graph_learning.utils.common import plot_training_losses
+from omics_graph_learning.utils.common import PyGDataChecker
+from omics_graph_learning.utils.common import setup_logging
+from omics_graph_learning.utils.common import tensor_out_to_array
+from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 
 
 class TensorBoardLogger:

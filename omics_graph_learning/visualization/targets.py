@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns  # type: ignore
 
-from utils.common import _load_pickle
-from utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.utils.common import _load_pickle
+from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
 
 
 def flatten_targets(targets: Dict[str, np.ndarray]) -> np.ndarray:

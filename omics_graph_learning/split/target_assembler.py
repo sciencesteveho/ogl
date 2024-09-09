@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler  # type: ignore
 
-from config_handlers import ExperimentConfig
-from config_handlers import TissueConfig
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
 from split.gene_filter import read_encode_rna_seq_data
 from utils.common import _load_pickle
 from utils.common import time_decorator

@@ -12,13 +12,13 @@ from typing import Dict, List
 
 import numpy as np
 
-from config_handlers import ExperimentConfig
-from config_handlers import TissueConfig
-from split.data_splitter import GeneTrainTestSplitter
-from split.gene_filter import TPMFilter
-from split.target_assembler import TargetAssembler
-from utils.common import _save_pickle
-from utils.common import dir_check_make
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
+from omics_graph_learning.split.data_splitter import GeneTrainTestSplitter
+from omics_graph_learning.split.gene_filter import TPMFilter
+from omics_graph_learning.split.target_assembler import TargetAssembler
+from omics_graph_learning.utils.common import _save_pickle
+from omics_graph_learning.utils.common import dir_check_make
 
 
 class TrainingTargetConsolidator:

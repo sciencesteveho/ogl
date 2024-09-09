@@ -45,8 +45,6 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import TransformerConv
 from torch_geometric.nn.models import DeepGCNLayer  # type: ignore
 
-from utils.common import save_error_state
-
 
 class AttentionTaskHead(nn.Module):
     """A node regression task head augmented with multiheaded attention. A
@@ -292,7 +290,6 @@ class ModularGNN(nn.Module):
                 )
                 print(f"Input shapes: x={x.shape}, edge_index={edge_index.shape}")
                 print(f"Model state: {self.state_dict().keys()}")
-                # save_error_state(self, (x, edge_index, regression_mask), e)
             raise e
 
     def _general_task_head(
@@ -303,8 +300,6 @@ class ModularGNN(nn.Module):
         """Create a general task head for the model, a single linear layer that
         regresses to the output size.
         """
-        # if self.shared_mlp_layers == 1:
-        #     in_size = in_size * self.heads if self.heads else in_size
         return nn.Linear(in_size, out_size)
 
     def _residuals(

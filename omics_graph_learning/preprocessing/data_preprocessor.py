@@ -17,13 +17,13 @@ from typing import Dict, List, Union
 
 import pandas as pd
 
-from config_handlers import ExperimentConfig
-from config_handlers import TissueConfig
-from utils.common import _get_chromatin_loop_file
-from utils.common import check_and_symlink
-from utils.common import dir_check_make
-from utils.common import time_decorator
-from utils.constants import REGULATORY_ELEMENTS
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
+from omics_graph_learning.utils.common import _get_chromatin_loop_file
+from omics_graph_learning.utils.common import check_and_symlink
+from omics_graph_learning.utils.common import dir_check_make
+from omics_graph_learning.utils.common import time_decorator
+from omics_graph_learning.utils.constants import REGULATORY_ELEMENTS
 
 # import requests
 

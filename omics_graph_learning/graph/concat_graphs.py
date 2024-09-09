@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import ExperimentConfig
 from utils.common import NumpyGraphChecker
 from utils.common import setup_logging
 from utils.constants import TARGET_FILE

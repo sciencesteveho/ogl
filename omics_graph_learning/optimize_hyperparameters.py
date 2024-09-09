@@ -35,18 +35,18 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric  # type: ignore
 
-from config_handlers import ExperimentConfig
-from gnn_architecture_builder import build_gnn_architecture
-from graph_to_pytorch import GraphToPytorch
-from schedulers import OptimizerSchedulerHandler
-from train_gnn import build_gnn_architecture
-from train_gnn import GNNTrainer
-from train_gnn import prep_loader
-from utils.common import check_cuda_env
-from utils.common import dir_check_make
-from utils.common import PyGDataChecker
-from utils.common import setup_logging
-from utils.common import tensor_out_to_array
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.gnn_architecture_builder import build_gnn_architecture
+from omics_graph_learning.graph_to_pytorch import GraphToPytorch
+from omics_graph_learning.schedulers import OptimizerSchedulerHandler
+from omics_graph_learning.train_gnn import build_gnn_architecture
+from omics_graph_learning.train_gnn import GNNTrainer
+from omics_graph_learning.train_gnn import prep_loader
+from omics_graph_learning.utils.common import check_cuda_env
+from omics_graph_learning.utils.common import dir_check_make
+from omics_graph_learning.utils.common import PyGDataChecker
+from omics_graph_learning.utils.common import setup_logging
+from omics_graph_learning.utils.common import tensor_out_to_array
 
 # helpers for trial
 EPOCHS = 20

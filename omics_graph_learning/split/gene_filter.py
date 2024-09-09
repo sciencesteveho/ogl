@@ -10,7 +10,7 @@ from typing import List, Tuple, Union
 import pandas as pd
 from pybedtools import BedTool  # type: ignore
 
-from config_handlers import TissueConfig
+from omics_graph_learning.config_handlers import TissueConfig
 from utils.common import time_decorator
 
 
