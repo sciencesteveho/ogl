@@ -25,8 +25,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import matplotlib.figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
-from omics_graph_learning.config_handlers import ExperimentConfig
-from omics_graph_learning.config_handlers import TissueConfig
 import pandas as pd
 import psutil  # type: ignore
 from pybedtools import BedTool  # type: ignore
@@ -36,6 +34,9 @@ import seaborn as sns  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 import yaml  # type: ignore
+
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
 
 
 # decorator to track execution time
@@ -503,7 +504,7 @@ def _get_chromatin_loop_file(
     contacts.bedpe. There is no redundancy in the naming, so it looks for one
     and if it doesn't find it, it looks for the other.
     """
-    method, resolution = experiment_config.baseloops.split("_")
+    method, resolution = experiment_config.baseloops.rsplit("_", 1)
     prefix = f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}"
     suffixes = ["_loops.bedpe", "_contacts.bedpe"]
     for suffix in suffixes:
