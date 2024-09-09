@@ -66,6 +66,7 @@ class PipelineRunner:
     def __init__(self, config: ExperimentConfig, args: argparse.Namespace) -> None:
         self.config = config
         self.args = args
+        self.graph_dir = self.config.graph_dir
 
     def clean_up(self) -> None:
         """Remove intermediate files in tissue-specific directories."""
@@ -125,14 +126,13 @@ class PipelineRunner:
     def _get_file_paths(self, split_name: str) -> Tuple[str, str]:
         """Construct file paths for graphs to check if files exist"""
         experiment_name = self.config.experiment_name
-        graph_dir = self.config.graph_dir
         final_graph = os.path.join(
-            graph_dir,
+            self.graph_dir,
             split_name,
             f"{experiment_name}_{self.config.graph_type}_scaled.pkl",
         )
         intermediate_graph = os.path.join(
-            graph_dir,
+            self.graph_dir,
             split_name,
             f"{experiment_name}_{self.config.graph_type}_graph.pkl",
         )
@@ -141,10 +141,9 @@ class PipelineRunner:
     def _check_all_intermediates(self, split_name: str) -> bool:
         """Check if all intermediate graphs are present."""
         tissues = self.config.tissues
-        graph_dir = self.config.graph_dir
         for tissue in tissues:
             intermediate_graph = os.path.join(
-                graph_dir,
+                self.graph_dir,
                 split_name,
                 f"{tissue}_{self.config.graph_type}_graph.pkl",
             )
@@ -334,7 +333,9 @@ class PipelineRunner:
             "Intermediate graph found. Checking if all other tissues are done..."
         )
         if not self._check_all_intermediates(split_name):
-            logger.info("Not all intermediates found. Re-running entire pipeline.")
+            logger.info(
+                "Not all intermediates found. Re-running pipeline (with built in check, so edges won't be reparsed if they are done)."
+            )
             return self.graph_construction_jobs(split_name)
 
         logger.info("All intermediates found. Concatenating graphs.")
