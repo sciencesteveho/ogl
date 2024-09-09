@@ -18,9 +18,9 @@ from sklearn.preprocessing import StandardScaler  # type: ignore
 
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.config_handlers import TissueConfig
-from split.gene_filter import read_encode_rna_seq_data
-from utils.common import _load_pickle
-from utils.common import time_decorator
+from omics_graph_learning.split.gene_filter import read_encode_rna_seq_data
+from omics_graph_learning.utils.common import _load_pickle
+from omics_graph_learning.utils.common import time_decorator
 
 
 class TargetAssembler:
