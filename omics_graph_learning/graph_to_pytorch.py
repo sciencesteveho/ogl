@@ -210,12 +210,11 @@ class GraphToPytorch:
             with open(file_path, "rb") as f:
                 return pickle.load(f)
 
-        graph_dir = experiment_config.graph_dir
         experiment_name = experiment_config.experiment_name
-        experiment_dir = graph_dir / split_name
+        experiment_dir = experiment_config.graph_dir / split_name
 
         file_paths = {
-            "index": graph_dir / f"{experiment_name}_{graph_type}_graph_idxs.pkl",
+            "index": experiment_dir / f"{experiment_name}_{graph_type}_graph_idxs.pkl",
             "split": experiment_dir / TRAINING_SPLIT_FILE,
             "target": experiment_dir
             / (TARGET_FILE_SCALED if scaled_targets else TARGET_FILE),

@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.utils.common import check_and_symlink
 from omics_graph_learning.utils.common import NumpyGraphChecker
 from omics_graph_learning.utils.common import setup_logging
 from omics_graph_learning.utils.constants import TARGET_FILE
@@ -169,15 +170,22 @@ def combine_graphs(
     if len(tissues) > 1:
         _concatenate_graphs(tissues, base_graph_path, experiment_graph_directory)
     else:
+        # symlink if only one tissue
         for suffix in [".pkl", "_idxs.pkl"]:
-            subprocess.run(
-                [
-                    "cp",
-                    f"{base_graph_path}{suffix}",
-                    f"{experiment_graph_directory}{suffix}",
-                ],
-                check=True,
+            check_and_symlink(
+                f"{base_graph_path}{suffix}",
+                f"{experiment_graph_directory}{suffix}",
             )
+
+        # for suffix in [".pkl", "_idxs.pkl"]:
+        #     subprocess.run(
+        #         [
+        #             "cp",
+        #             f"{base_graph_path}{suffix}",
+        #             f"{experiment_graph_directory}{suffix}",
+        #         ],
+        #         check=True,
+        #     )
 
 
 def main() -> None:
