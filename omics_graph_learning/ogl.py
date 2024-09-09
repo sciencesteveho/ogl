@@ -5,6 +5,15 @@
 """Main script for running the Omics Graph Learning pipeline, built for running
 on a HPC via the SLURM scheduler."""
 
+import sys
+
+print(sys.path)
+import omics_graph_learning
+
+print(omics_graph_learning.__file__)
+from omics_graph_learning import config_handlers
+
+print(config_handlers.__file__)
 
 import argparse
 import os
@@ -24,15 +33,6 @@ from omics_graph_learning.utils.constants import N_TRIALS
 from omics_graph_learning.utils.constants import NodePerturbation
 
 logger = setup_logging()
-import sys
-
-print(sys.path)
-import omics_graph_learning
-
-print(omics_graph_learning.__file__)
-from omics_graph_learning import config_handlers
-
-print(config_handlers.__file__)
 
 
 class PipelineRunner:
