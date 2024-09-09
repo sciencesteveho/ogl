@@ -133,6 +133,7 @@ class PipelineRunner:
         )
         intermediate_graph = os.path.join(
             graph_dir,
+            split_name,
             f"{experiment_name}_{self.config.graph_type}_graph.pkl",
         )
         return final_graph, intermediate_graph
@@ -267,18 +268,19 @@ class PipelineRunner:
         train_args = self.prepare_gnn_training_args(self.args, split_name)
         if self.args.optimize_params:
             self.submit_optimization(split_name, dependency)
-        submit_slurm_job(
-            job_script="train_gnn.sh", args=train_args, dependency=dependency
-        )
-        logger.info("GNN training job submitted.")
+        else:
+            submit_slurm_job(
+                job_script="train_gnn.sh", args=train_args, dependency=dependency
+            )
+            logger.info("GNN training job submitted.")
 
     def submit_optimization(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit hyperparameter optimization jobs."""
-        slurm_ids = []
         if not self.args.n_gpus:
             raise ValueError(
                 "Number of GPUs must be specified when optimizing hyperparameters."
             )
+        slurm_ids = []
         num_trials = calculate_trials(self.args.n_gpus)
         for _ in range(self.args.n_gpus):
             job_id = submit_slurm_job(
