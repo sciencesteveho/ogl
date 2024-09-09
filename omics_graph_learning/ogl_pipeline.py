@@ -67,6 +67,7 @@ class PipelineRunner:
         self.config = config
         self.args = args
         self.graph_dir = self.config.graph_dir
+        self.tissues = self.config.tissues
 
     def clean_up(self) -> None:
         """Remove intermediate files in tissue-specific directories."""
@@ -84,7 +85,7 @@ class PipelineRunner:
                     item.unlink()
 
         directories_to_clean: List[Path] = []
-        for tissue in self.config.tissues:
+        for tissue in self.tissues:
             tissue_dir = self.config.working_directory / tissue
             directories_to_clean += [
                 tissue_dir / "local",
@@ -140,8 +141,7 @@ class PipelineRunner:
 
     def _check_all_intermediates(self, split_name: str) -> bool:
         """Check if all intermediate graphs are present."""
-        tissues = self.config.tissues
-        for tissue in tissues:
+        for tissue in self.tissues:
             intermediate_graph = os.path.join(
                 self.graph_dir,
                 split_name,
@@ -160,7 +160,6 @@ class PipelineRunner:
 
     def run_node_and_edge_generation(self, split_name: str) -> List[str]:
         """Run node and edge generation jobs."""
-        tissues = self.config.tissues
         partition_specific_script = (
             "pipeline_node_and_edge_generation_mem.sh"
             if self.args.partition == "EM"
@@ -168,7 +167,7 @@ class PipelineRunner:
         )
 
         slurmids = []
-        for tissue in tissues:
+        for tissue in self.tissues:
             args = f"{self.args.experiment_yaml} \
                 {self.config.sample_config_dir}/{tissue}.yaml \
                 {self.args.tpm_filter} \

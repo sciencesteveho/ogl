@@ -463,8 +463,8 @@ class ScalerUtils:
         self.scaler_dir = self.split_dir / "scalers"
 
         # files
-        self.idxs = self.graph_dir / f"{self.file_prefix}_graph_idxs.pkl"
-        self.graph = self.graph_dir / f"{self.file_prefix}_graph.pkl"
+        self.idxs = self.split_dir / f"{self.file_prefix}_graph_idxs.pkl"
+        self.graph = self.split_dir / f"{self.file_prefix}_graph.pkl"
         self.split = self.split_dir / "training_split_combined.pkl"
 
     def load_from_file(self, file_path: Union[Path, str]) -> Dict[str, Any]:
