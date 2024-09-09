@@ -17,11 +17,11 @@ from typing import Dict, List, Tuple, Union
 
 import joblib  # type: ignore
 import numpy as np
+from ogl.tests.scaled_feature_accuracy import ScaledFeatureAccuracy
 from scipy import stats  # type: ignore
 from sklearn.pipeline import Pipeline  # type: ignore
 from sklearn.preprocessing import MinMaxScaler  # type: ignore
 from sklearn.preprocessing import RobustScaler  # type: ignore
-from tests.scaled_feature_accuracy import ScaledFeatureAccuracy
 
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import get_physical_cores
