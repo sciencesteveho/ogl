@@ -28,7 +28,7 @@ from tqdm import tqdm  # type: ignore
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.gnn_architecture_builder import build_gnn_architecture
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
-from omics_graph_learning.ogl import parse_pipeline_arguments
+from omics_graph_learning.ogl_pipeline import parse_pipeline_arguments
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
