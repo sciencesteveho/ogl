@@ -287,7 +287,9 @@ class PipelineRunner:
                 dependency=dependency,
             )
             slurm_ids.append(job_id)
-        logger.info(f"{self.args.n_gpus} hyperparameter optimization jobs submitted.")
+        logger.info(
+            f"{self.args.n_gpus} hyperparameter optimization jobs submitted for {num_trials} each."
+        )
         self.plot_importances(slurm_ids)
 
     def plot_importances(self, slurmids: List[str]) -> None:
