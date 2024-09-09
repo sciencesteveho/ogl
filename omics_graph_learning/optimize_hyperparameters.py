@@ -356,6 +356,7 @@ def objective(
         # define and build model, optimizer, and scheduler
         model, optimizer, scheduler = get_model_and_optimizer(
             data=data,
+            train_loader=train_loader,
             model_params=model_params,
             train_params=train_params,
             warmup_steps=warmup_steps,
