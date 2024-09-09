@@ -285,6 +285,7 @@ def load_and_validate_data(
 
 def get_model_and_optimizer(
     data: torch_geometric.data.Data,
+    train_loader: torch_geometric.data.DataLoader,
     model_params: Dict[str, Any],
     train_params: Dict[str, Any],
     warmup_steps: int,
@@ -296,7 +297,7 @@ def get_model_and_optimizer(
     model = build_gnn_architecture(
         in_size=data.x.shape[1],
         out_channels=1,
-        train_dataset=None,
+        train_dataset=train_loader if model_params["model"] == "PNA" else None,
         **model_params,
     )
 
