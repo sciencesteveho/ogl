@@ -94,7 +94,7 @@ def main() -> None:
     logger = setup_logging()
 
     # set up the directories
-    experiment_config = ExperimentConfig.from_yaml(args.experimental_config)
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
     optuna_dir = set_optim_directory(experiment_config)
 
     # load the study
