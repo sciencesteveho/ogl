@@ -83,7 +83,7 @@ def main() -> None:
         description="Plot the results of the Optuna optimization process."
     )
     parser.add_argument(
-        "--config",
+        "--experiment_config",
         type=str,
         required=True,
         help="Path to experiment YAML file",
