@@ -40,18 +40,18 @@ def display_results(
         f"{len(study.get_trials(states=[optuna.trial.TrialState.COMPLETE]))}"
     )
 
-    best_trial = study.best_trial
-    logger.info("Best trial:")
-    logger.info(f"Best Pearson's r: {best_trial.value}")
-    logger.info("Best params:")
-    for key, value in best_trial.params.items():
-        logger.info(f"\t{key}: {value}")
-
     # save to csv
     df = study.trials_dataframe()
     df = df.sort_values(
         "value", key=lambda x: x.map(custom_sort_pearson), ascending=False
     )
+
+    logger.info("Best trial:")
+    logger.info(f"Best Pearson's r: {df['value'].iloc[0]}")
+    logger.info("Best params:")
+    for key, value in df.iloc[0]["params"].items():
+        logger.info(f"\t{key}: {value}")
+
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
     logger.info(f"Ten best runs: {df.head(10)}")
 
