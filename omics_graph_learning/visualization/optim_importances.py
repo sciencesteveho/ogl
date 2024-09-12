@@ -49,8 +49,9 @@ def display_results(
     logger.info("Best trial:")
     logger.info(f"Best Pearson's r: {df['value'].iloc[0]}")
     logger.info("Best params:")
-    for key, value in df.iloc[0]["params"].items():
-        logger.info(f"\t{key}: {value}")
+    # print params for best trial
+    for column in df.columns:
+        logger.info(f"{column}: {df[column].iloc[0]}")
 
     df.to_csv(optuna_dir / "optuna_results.csv", index=False)
     logger.info(f"Ten best runs: {df.head(10)}")
