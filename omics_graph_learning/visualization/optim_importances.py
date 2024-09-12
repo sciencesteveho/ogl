@@ -64,9 +64,9 @@ def plot_importances(
     most_important_parameters = optuna.importance.get_param_importances(study)
 
     # display the most important hyperparameters
-    logger.info("\nMost important hyperparameters:")
-    for key, value in most_important_parameters.items():
-        logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
+    # logger.info("\nMost important hyperparameters:")
+    # for key, value in most_important_parameters.items():
+    #     logger.info("  {}:{}{:.2f}%".format(key, (15 - len(key)) * " ", value * 100))
 
     # plot and save importances to file
     optuna.visualization.plot_optimization_history(study).write_image(
