@@ -73,22 +73,20 @@ def suggest_embedding_size(
     increase dimensionality by heads * embedding_size.
     """
     if model == "DeeperGCN":
-        return trial.suggest_int("embedding_size", low=64, high=384, step=64)
+        return trial.suggest_int("embedding_size", low=64, high=256, step=64)
     if model == "PNA":
         return trial.suggest_int("embedding_size", low=64, high=256, step=64)
     if heads:
-        embedding_high = {4: 128, 3: 170, 2: 256}.get(heads, 384)
+        embedding_max = 320
+        embedding_high = embedding_max // heads
         return trial.suggest_int("embedding_size", low=64, high=embedding_high, step=64)
-    return trial.suggest_int("embedding_size", low=64, high=384, step=64)
+    return trial.suggest_int("embedding_size", low=64, high=320, step=64)
 
 
 def suggest_gnn_layers(trial: optuna.Trial, model: str) -> int:
     """Suggest GNN layers based on the model."""
     if model == "DeeperGCN":
-        gnn_layers_log = trial.suggest_float(
-            "gnn_layers_float", low=1.79, high=3.18, log=True
-        )
-        return 2 * round(math.exp(gnn_layers_log) / 2)
+        return trial.suggest_int("gnn_layers", low=6, high=12)
     return trial.suggest_int("gnn_layers", low=2, high=8)
 
 
@@ -135,7 +133,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=32, high=384, step=32),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=320, step=32),
         "avg_connectivity": trial.suggest_categorical(
             "avg_connectivity", [True, False]
         ),
@@ -390,12 +388,12 @@ def objective(
 
 def handle_cuda_out_of_memory_error(
     e: RuntimeError, trial: optuna.Trial, logger: logging.Logger
-) -> float:
+) -> None:
     """Handle CUDA out of memory error."""
     if "CUDA out of memory" in str(e):
         trial.report(float("inf"), EPOCHS)
         logger.info(f"Trial {trial.number} pruned due to CUDA out of memory")
-        return float("inf")
+        raise optuna.exceptions.TrialPruned()
     else:
         logger.error(f"RuntimeError in trial {trial.number}: {str(e)}")
         raise e
