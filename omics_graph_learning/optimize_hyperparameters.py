@@ -125,7 +125,7 @@ def suggest_hyperparameters(
 
     train_params = {
         "learning_rate": trial.suggest_float(
-            "learning_rate", low=1e-6, high=1e-2, log=True
+            "learning_rate", low=5e-5, high=5e-2, log=True
         ),
         "optimizer_type": trial.suggest_categorical(
             "optimizer_type", ["Adam", "AdamW"]
