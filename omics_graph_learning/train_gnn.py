@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from scipy import stats  # type: ignore
+from scipy.stats import pearsonr  # type: ignore
 import torch
 import torch.nn.functional as F
 from torch.optim import Optimizer
@@ -39,6 +40,7 @@ from omics_graph_learning.utils.common import PyGDataChecker
 from omics_graph_learning.utils.common import setup_logging
 from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
+from omics_graph_learning.utils.constants import RANDOM_SEEDS
 
 
 class TensorBoardLogger:
@@ -198,7 +200,7 @@ class GNNTrainer:
         epoch: int,
         mask: str,
         subset_batches: Optional[int] = None,
-    ) -> Tuple[float, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[float, torch.Tensor, torch.Tensor, float]:
         """Base function for model evaluation or inference."""
         self.model.eval()
         pbar = tqdm(total=len(data_loader))
@@ -248,7 +250,10 @@ class GNNTrainer:
         mse = F.mse_loss(predictions, targets)
         rmse = torch.sqrt(mse)
 
-        return rmse.item(), predictions, targets
+        # calculate Pearson correlation
+        r, _ = pearsonr(predictions, targets)
+
+        return rmse.item(), predictions, targets, r
 
     def train_model(
         self,
@@ -274,25 +279,35 @@ class GNNTrainer:
 
             # train
             loss = self.train(train_loader=train_loader, epoch=epoch)
-            self.logger.info(f"\nEpoch: {epoch:03d}, Train: {loss}")
+            self.logger.info(f"\nEpoch: {epoch:03d}, Train loss: {loss}")
 
             # validation
-            val_rmse, _, _ = self.evaluate(
+            val_rmse, _, _, r = self.evaluate(
                 data_loader=val_loader, epoch=epoch, mask="val"
             )
-            self.logger.info(f"\nEpoch: {epoch:03d}, Validation: {val_rmse:.4f}")
+            self.logger.info(
+                f"\nEpoch: {epoch:03d}, "
+                f"Validation RMSE: {val_rmse:.4f}, "
+                f"Validation Pearson's R: {r:.4f}",
+            )
 
             # test
-            test_rmse, _, _ = self.evaluate(
+            test_rmse, _, _, r = self.evaluate(
                 data_loader=test_loader, epoch=epoch, mask="test"
             )
-            self.logger.info(f"\nEpoch: {epoch:03d}, Test: {test_rmse:.4f}")
+            self.logger.info(
+                f"\nEpoch: {epoch:03d}, "
+                f"Test RMSE: {test_rmse:.4f}"
+                f"Test Pearson's R: {r:.4f}"
+            )
 
             # log metrics to tensorboard
             metrics = {
                 "Training loss": loss,
                 "Validation RMSE": val_rmse,
+                "Validation Pearson's R": r,
                 "Test RMSE": test_rmse,
+                "Test Pearson's R": r,
             }
             if self.tb:
                 self.tb.log_metrics(metrics, epoch)
@@ -368,12 +383,13 @@ class GNNTrainer:
         return rmse.item(), all_preds, labels, original_indices
 
 
-def setup_device(args: argparse.Namespace) -> torch.device:
+def setup_device(args: argparse.Namespace) -> Tuple[torch.device, int]:
     """Check for GPU and set device accordingly."""
+    seed = RANDOM_SEEDS[args.run_number]
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
-        return torch.device(f"cuda:{args.device}")
-    return torch.device("cpu")
+        torch.cuda.manual_seed(seed)
+        return torch.device(f"cuda:{args.device}"), seed
+    return torch.device("cpu"), seed
 
 
 def prep_loader(
@@ -617,7 +633,9 @@ def main() -> None:
     )
 
     # check for GPU
-    device = setup_device(args)
+    device, seed = setup_device(args)
+    logger.info(f"Using device: {device}")
+    logger.info(f"Random seed set to: {seed}")
 
     # get graph data
     data = GraphToPytorch(
