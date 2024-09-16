@@ -7,6 +7,7 @@ on a HPC via the SLURM scheduler."""
 
 
 import argparse
+import contextlib
 import os
 from pathlib import Path
 import shutil
@@ -248,17 +249,19 @@ class PipelineRunner:
 
         if args.heads:
             train_args += f" --heads {args.heads}"
-        if args.total_random_edges:
-            if args.edge_perturbation == "randomize_edges":
-                train_args += f" --total_random_edges {args.total_random_edges}"
-            else:
-                raise ValueError(
-                    "`total_random_edges` should only be set when `randomize_edges` is True"
-                )
-        if args.node_perturbation:
-            train_args += f" --node_perturbation {args.node_perturbation}"
-        if args.edge_perturbation:
-            train_args += f" --edge_perturbation {args.edge_perturbation}"
+
+        with contextlib.suppress(AttributeError):
+            if args.total_random_edges:
+                if args.edge_perturbation == "randomize_edges":
+                    train_args += f" --total_random_edges {args.total_random_edges}"
+                else:
+                    raise ValueError(
+                        "`total_random_edges` should only be set when `randomize_edges` is True"
+                    )
+            if args.node_perturbation:
+                train_args += f" --node_perturbation {args.node_perturbation}"
+            if args.edge_perturbation:
+                train_args += f" --edge_perturbation {args.edge_perturbation}"
         return train_args + bool_flags
 
     def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
