@@ -25,8 +25,8 @@ import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
 
+from architecture_builder import build_gnn_architecture
 from omics_graph_learning.config_handlers import ExperimentConfig
-from omics_graph_learning.gnn_architecture_builder import build_gnn_architecture
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
@@ -64,14 +64,14 @@ class TensorBoardLogger:
         edge_index_shape: int,
     ) -> None:
         """Log model graph to TensorBoard."""
+        device = next(model.parameters()).device
 
         # create a dummy input
-        dummy_x = torch.zeros(input_shape, device=model.device)
+        dummy_x = torch.zeros(input_shape, device=device)
         dummy_edge_index = torch.zeros(
-            edge_index_shape, dtype=torch.long, device=model.device
+            edge_index_shape, dtype=torch.long, device=device
         )
-        dummy_mask = torch.ones(input_shape[0], dtype=torch.bool, device=model.device)
-
+        dummy_mask = torch.ones(input_shape[0], dtype=torch.bool, device=device)
         self.writer.add_graph(model, (dummy_x, dummy_edge_index, dummy_mask, "train"))
 
     def close(self) -> None:
