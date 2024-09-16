@@ -31,8 +31,7 @@ from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.arg_parser import OGLCLIParser
-from omics_graph_learning.utils.common import \
-    _set_matplotlib_publication_parameters
+from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import plot_predicted_versus_expected
 from omics_graph_learning.utils.common import plot_training_losses
@@ -678,11 +677,11 @@ def main() -> None:
     ).to(device)
 
     # log model graph to tensorboard
-    tb_logger.log_model_graph(
-        model=model,
-        input_shape=data.x.shape,
-        edge_index_shape=data.edge_index.shape,
-    )
+    # tb_logger.log_model_graph(
+    #     model=model,
+    #     input_shape=data.x.shape,
+    #     edge_index_shape=data.edge_index.shape,
+    # )
 
     # set up optimizer & scheduler
     total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
