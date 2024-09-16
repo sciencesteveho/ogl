@@ -6,6 +6,7 @@
 
 
 import argparse
+import contextlib
 import sys
 from typing import List
 
@@ -218,14 +219,16 @@ class OGLCLIParser:
             print(f"Error: --heads is required when model is {args.model}")
             sys.exit(1)
 
-        if args.total_random_edges and args.edge_perturbation != "randomize_edges":
-            print(
-                "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
-            )
-            sys.exit(1)
-
         if args.optimize_params and args.n_gpus is None:
             print(
                 "Error: specifying --n_gpus is required when --optimize_params is set."
             )
             sys.exit(1)
+
+        # only validate if perturbation arguments exist
+        with contextlib.suppress(AttributeError):
+            if args.total_random_edges and args.edge_perturbation != "randomize_edges":
+                print(
+                    "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
+                )
+                sys.exit(1)
