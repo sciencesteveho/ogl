@@ -494,7 +494,7 @@ def parse_pipeline_arguments() -> argparse.Namespace:
         "--residual",
         type=str,
         default=None,
-        choices=["shared_source", "distinct_source", None],
+        choices=["shared_source", "distinct_source", "None"],
     )
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch_size", type=int, default=256)
@@ -547,6 +547,9 @@ def main() -> None:
     training with checks to avoid redundant computation.
     """
     args = parse_pipeline_arguments()
+    for arg, value in vars(args).items():
+        if value == "None":
+            setattr(args, arg, None)
 
     # run OGL pipeline
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
