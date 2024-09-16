@@ -78,6 +78,7 @@ class OGLCLIParser:
             type=str,
             choices=["RM", "EM"],
             help="Partition for SLURM scheduling",
+            default="RM",
         )
         self.parser.add_argument(
             "--tpm_filter",
@@ -207,11 +208,6 @@ class OGLCLIParser:
     @staticmethod
     def _validate_args(args: argparse.Namespace) -> None:
         """Helper function to validate CLI arguments that have dependencies."""
-        with contextlib.suppress(AttributeError):
-            if args.partition not in ["RM", "EM"]:
-                print("Error: --partition must be 'RM' or 'EM'")
-                sys.exit(1)
-
         if args.target != "rna_seq" and args.filter_mode is None:
             print("Error: if target type is not `rna_seq`, --filter_mode is required")
             sys.exit(1)
