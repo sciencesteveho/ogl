@@ -698,25 +698,7 @@ def compute_masked_regression(
     if regression_indices.numel() == 0:
         return torch.zeros(1, device=x.device)
 
-    # attention-augmented task head or general task head
-    # print(f"Task head type: {type(task_head)}")
-    # print(f"Task head shape: {x.shape}")
-    # print(f"Regression indices shape: {regression_indices.shape}")
-    # print(f"x shape: {x.shape}")
-    # print(f"Regression mask shape: {regression_mask.shape}")
-    # print(f"x with regression indices shape: {x[regression_indices].shape}")
-    # if isinstance(task_head, nn.Linear):
-    #     print(f"Linear layer weight shape: {task_head.weight.shape}")
-    #     print(
-    #         f"Linear layer bias shape: {task_head.bias.shape if task_head.bias is not None else 'No bias'}"
-    #     )
-    # elif isinstance(task_head, AttentionTaskHead):
-    #     print(f"Attention layer input size: {task_head.attention_layer.embed_dim}")
-    #     print(f"Attention layer output size: {task_head.linear.weight.shape[0]}")
-
     out = task_head(x[regression_indices])
-    # print(f"Output shape: {out.shape}")
-
     return output_tensor(x=x, out=out, regression_indices=regression_indices)
 
 

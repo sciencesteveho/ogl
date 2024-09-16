@@ -31,7 +31,8 @@ from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.arg_parser import OGLCLIParser
-from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.utils.common import \
+    _set_matplotlib_publication_parameters
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import plot_predicted_versus_expected
 from omics_graph_learning.utils.common import plot_training_losses
@@ -72,7 +73,7 @@ class TensorBoardLogger:
             edge_index_shape, dtype=torch.long, device=device
         )
         dummy_mask = torch.ones(input_shape[0], dtype=torch.bool, device=device)
-        self.writer.add_graph(model, (dummy_x, dummy_edge_index, dummy_mask, "train"))
+        self.writer.add_graph(model, (dummy_x, dummy_edge_index, dummy_mask))
 
     def close(self) -> None:
         """Close TensorBoard writer."""
