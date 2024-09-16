@@ -32,8 +32,7 @@ from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.arg_parser import OGLCLIParser
-from omics_graph_learning.utils.common import \
-    _set_matplotlib_publication_parameters
+from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import plot_predicted_versus_expected
 from omics_graph_learning.utils.common import plot_training_losses
@@ -388,7 +387,7 @@ def get_seed(run_number: int) -> int:
     """Get seed for reproducibility. We run models for 3 runs, each of which
     uses a different seed.
     """
-    return RANDOM_SEEDS[run_number + 1]
+    return RANDOM_SEEDS[run_number - 1]
 
 
 def setup_device(args: argparse.Namespace) -> Tuple[torch.device, int]:
