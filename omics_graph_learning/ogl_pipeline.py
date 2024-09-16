@@ -229,7 +229,7 @@ class PipelineRunner:
         )
 
         train_args = (
-            f"--experiment_config {args.experiment_yaml} "
+            f"--experiment_yaml {args.experiment_yaml} "
             f"--model {args.model} "
             f"--target {args.target} "
             f"--gnn_layers {args.gnn_layers} "
@@ -444,7 +444,6 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--partition",
         type=str,
-        required=True,
         choices=["RM", "EM"],
         help="Partition for SLURM scheduling",
     )
