@@ -9,11 +9,12 @@ the OGL pipeline."""
 import argparse
 import json
 import logging
-import math
 from pathlib import Path
 import time
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import numpy as np
+from scipy import stats  # type: ignore
 import torch
 import torch.nn.functional as F
 from torch.optim import Optimizer
@@ -22,7 +23,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
-from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from omics_graph_learning.config_handlers import ExperimentConfig
@@ -226,10 +226,6 @@ class GNNTrainer:
                 edge_index=data.edge_index,
                 regression_mask=regression_mask,
             )
-            # print(f"out: {out.shape}")
-            # print(f"out masked shaped: {out[regression_mask].shape}")
-            # print(f"regression_mask: {regression_mask.shape}")
-            # print(f"data.y: {data.y.shape}")
 
             # ensure output is 1D
             out_masked = out[regression_mask].squeeze()
@@ -243,9 +239,6 @@ class GNNTrainer:
                 labels_masked = labels_masked.unsqueeze(0)
             labels.append(labels_masked.cpu())
 
-            # outs.append(out[regression_mask].squeeze().cpu())
-            # labels.append(data.y[regression_mask].squeeze().cpu())
-
             pbar.update(1)
         pbar.close()
 
@@ -256,6 +249,73 @@ class GNNTrainer:
         rmse = torch.sqrt(mse)
 
         return rmse.item(), predictions, targets
+
+    def train_model(
+        self,
+        train_loader: torch_geometric.data.DataLoader,
+        val_loader: torch_geometric.data.DataLoader,
+        test_loader: torch_geometric.data.DataLoader,
+        epochs: int,
+        model_dir: Path,
+        args: argparse.Namespace,
+    ) -> Tuple[torch.nn.Module, float, bool]:
+        """Execute training loop for GNN models.
+
+        The loop will train and evaluate the model on the validation set with
+        minibatching. Afterward, the model is evaluated on the test set
+        utilizing all neighbors.
+        """
+        if self.tb:
+            self.tb.log_hyperparameters(vars(args))
+
+        best_validation = float(0)
+        stop_counter = 0  # set up early stopping counter
+        for epoch in range(epochs + 1):
+
+            # train
+            loss = self.train(train_loader=train_loader, epoch=epoch)
+            self.logger.info(f"\nEpoch: {epoch:03d}, Train: {loss}")
+
+            # validation
+            val_rmse, _, _ = self.evaluate(
+                data_loader=val_loader, epoch=epoch, mask="val"
+            )
+            self.logger.info(f"\nEpoch: {epoch:03d}, Validation: {val_rmse:.4f}")
+
+            # test
+            test_rmse, _, _ = self.evaluate(
+                data_loader=test_loader, epoch=epoch, mask="test"
+            )
+            self.logger.info(f"\nEpoch: {epoch:03d}, Test: {test_rmse:.4f}")
+
+            # log metrics to tensorboard
+            metrics = {
+                "Training loss": loss,
+                "Validation RMSE": val_rmse,
+                "Test RMSE": test_rmse,
+            }
+            if self.tb:
+                self.tb.log_metrics(metrics, epoch)
+
+            # step scheduler if normal plateau scheduler
+            if isinstance(self.scheduler, ReduceLROnPlateau):
+                self.scheduler.step(val_rmse)
+
+            if args.early_stop:
+                if epoch == 0 or val_rmse < best_validation:
+                    stop_counter = 0
+                    best_validation = val_rmse
+                    torch.save(
+                        self.model.state_dict(),
+                        model_dir / f"{args.model}_best_model.pt",
+                    )
+                elif best_validation < val_rmse:
+                    stop_counter += 1
+                if stop_counter == EARLY_STOP_PATIENCE:
+                    self.logger.info("***********Early stopping!")
+                    break
+
+        return self.model, best_validation, stop_counter == EARLY_STOP_PATIENCE
 
     @staticmethod
     @torch.no_grad()
@@ -307,75 +367,6 @@ class GNNTrainer:
 
         return rmse.item(), all_preds, labels, original_indices
 
-    def train_model(
-        self,
-        train_loader: torch_geometric.data.DataLoader,
-        val_loader: torch_geometric.data.DataLoader,
-        test_loader: torch_geometric.data.DataLoader,
-        epochs: int,
-        model_dir: Path,
-        args: argparse.Namespace,
-    ) -> Tuple[torch.nn.Module, float]:
-        """Execute training loop for GNN models.
-
-        The loop will train and evaluate the model on the validation set with
-        minibatching. Afterward, the model is evaluated on the test set
-        utilizing all neighbors.
-        """
-        if self.tb:
-            self.tb.log_hyperparameters(vars(args))
-
-        best_validation = float(0)
-        stop_counter = 0  # set up early stopping counter
-        for epoch in range(epochs + 1):
-            loss = self.train(train_loader=train_loader, epoch=epoch)
-            self.logger.info(f"\nEpoch: {epoch:03d}, Train: {loss}")
-
-            val_rmse, _, _ = self.evaluate(
-                data_loader=val_loader, epoch=epoch, mask="val"
-            )
-            self.logger.info(f"\nEpoch: {epoch:03d}, Validation: {val_rmse:.4f}")
-
-            test_rmse, _, _, _ = self.inference_all_neighbors(
-                model=self.model,
-                device=self.device,
-                data=self.data,
-                data_loader=test_loader,
-                mask=self.data.test_mask_loss,
-                epoch=epoch,
-            )
-            self.logger.info(f"\nEpoch: {epoch:03d}, Test: {test_rmse:.4f}")
-
-            # log metrics to tensorboard
-            metrics = {
-                "Training loss": loss,
-                "Validation RMSE": val_rmse,
-                "Test RMSE": test_rmse,
-            }
-            if self.tb:
-                self.tb.log_metrics(metrics, epoch)
-
-            # step scheduler if normal plateau scheduler
-            if isinstance(self.scheduler, ReduceLROnPlateau):
-                self.scheduler.step(val_rmse)
-
-            if args.early_stop:
-                if epoch == 0 or val_rmse < best_validation:
-                    stop_counter = 0
-                    best_validation = val_rmse
-                    torch.save(
-                        self.model.state_dict(),
-                        model_dir
-                        / f"{args.model}_{epoch}_mse_{best_validation:.4f}.pt",
-                    )
-                elif best_validation < val_rmse:
-                    stop_counter += 1
-                if stop_counter == EARLY_STOP_PATIENCE:
-                    self.logger.info("***********Early stopping!")
-                    break
-
-        return self.model, best_validation
-
 
 def setup_device(args: argparse.Namespace) -> torch.device:
     """Check for GPU and set device accordingly."""
@@ -422,48 +413,65 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def plot_loss_and_performance(
+def boostrap_evaluation(
+    predictions: torch.Tensor,
+    labels: torch.Tensor,
+    n_bootstraps: int = 1000,
+    confidence: float = 0.95,
+) -> Tuple[float, float, float]:
+    """Perform bootstrap evaluation by resampling with replacement."""
+    n_samples = len(predictions)
+    bootstrap_rmses: List[float] = []
+
+    for _ in range(n_bootstraps):
+        indices = np.random.choice(n_samples, n_samples, replace=True)
+        bootstrap_pred = predictions[indices]
+        bootstrap_labels = labels[indices]
+        mse = F.mse_loss(bootstrap_pred, bootstrap_labels)
+        rmse = torch.sqrt(mse)
+        bootstrap_rmses.append(rmse.item())
+
+    mean_rmse = np.mean(bootstrap_rmses)
+    ci_lower, ci_upper = stats.t.interval(
+        confidence,
+        len(bootstrap_rmses) - 1,
+        loc=mean_rmse,
+        scale=stats.sem(bootstrap_rmses),
+    )
+
+    return mean_rmse, ci_lower, ci_upper
+
+
+def load_final_model(
+    model_name: str,
+    model: torch.nn.Module,
     device: torch.device,
-    data: torch_geometric.data.Data,
-    data_loader: torch_geometric.data.DataLoader,
     model_dir: Path,
-    model: Optional[torch.nn.Module],
+) -> torch.nn.Module:
+    """Load final model from checkpoint."""
+    checkpoint = torch.load(
+        model_dir / f"{model_name}_best_model.pt", map_location=device
+    )
+    model.load_state_dict(checkpoint, strict=False)
+    return model
+
+
+def make_model_plots(
+    outs: torch.Tensor,
+    labels: torch.Tensor,
+    rmse: float,
+    model_dir: Path,
     tb_logger: TensorBoardLogger,
-    best_validation: Optional[float] = None,
 ) -> None:
     """Plot training losses and performance"""
     # set params for plotting
     _set_matplotlib_publication_parameters()
 
-    # plot either final model or best validation model
-    # if best_validation:
-    #     models_dir = model_dir / "models"
-    #     best_checkpoint = models_dir.glob(f"*{best_validation}")
-    #     checkpoint = torch.load(best_checkpoint, map_location=device)
-    #     model.load_state_dict(checkpoint, strict=False)
-    #     if model is not None:
-    #         model.to(device)
-    # elif model:
-    # model.to(device)
-
-    # get predictions
-    if model is None:
-        raise ValueError("Model is None. Cannot plot performance")
-
-    rmse, outs, labels, original_indices = GNNTrainer.inference_all_neighbors(
-        model=model,
-        device=device,
-        data=data,
-        data_loader=data_loader,
-        split="test",
-        mask=data.test_mask_loss,
-    )
-
-    # convert output tensors to numpy arrays
+    # convert to numpy arrays
     predictions_median = tensor_out_to_array(outs)
     labels_median = tensor_out_to_array(labels)
 
-    # plot training losses
+    # plot loss
     loss = plot_training_losses(
         log=model_dir / "logs" / "training_log.txt",
     )
@@ -476,6 +484,72 @@ def plot_loss_and_performance(
         rmse=rmse,
     )
     tb_logger.writer.add_figure("Model performance", performance)
+
+
+def post_model_evaluation(
+    model_name: str,
+    model: torch.nn.Module,
+    device: torch.device,
+    data: torch_geometric.data.Data,
+    data_loader: torch_geometric.data.DataLoader,
+    tb_logger: TensorBoardLogger,
+    logger: logging.Logger,
+    run_dir: Path,
+    early_stop: bool,
+) -> None:
+    """Plot training losses and performance"""
+
+    # load early stopping model, otherwise, use the final model
+    if early_stop:
+        model = load_final_model(
+            model_name=model_name,
+            model=model,
+            device=device,
+            model_dir=run_dir,
+        )
+
+    if model is not None:
+        model.to(device)
+    else:
+        raise ValueError("Model is None. Cannot plot performance")
+
+    rmse, outs, labels, _ = GNNTrainer.inference_all_neighbors(
+        model=model,
+        device=device,
+        data=data,
+        data_loader=data_loader,
+        split="test",
+        mask=data.test_mask_loss,
+    )
+
+    # bootstrap evaluation
+    mean_rmse, ci_lower, ci_upper = boostrap_evaluation(
+        predictions=outs,
+        labels=labels,
+    )
+
+    logger.info(f"Final, all neighbor test RMSE: {rmse:.4f}")
+    logger.info(f"Bootstrap RMSE: {mean_rmse:.4f} [{ci_lower:.4f}, {ci_upper:.4f}]")
+
+    metrics = {
+        "Final test RMSE": rmse,
+        "Bootstrap RMSE": mean_rmse,
+        "CI lower": ci_lower,
+        "CI upper": ci_upper,
+    }
+
+    tb_logger.log_metrics(metrics, epoch=0)
+    with open(run_dir / "eval_metrics.json", "w") as output:
+        json.dump(metrics, output, indent=4)
+
+    # make model plots
+    make_model_plots(
+        outs=outs,
+        labels=labels,
+        rmse=rmse,
+        model_dir=run_dir,
+        tb_logger=tb_logger,
+    )
 
     # map node indices back to original idx
     # predictions_dict = {idx.item(): pred.item() for idx, pred in zip(original_indices, outs)}
@@ -498,13 +572,14 @@ def _dump_metadata_json(
 def _experiment_setup(
     args: argparse.Namespace, experiment_config: ExperimentConfig
 ) -> Tuple[Path, logging.Logger]:
-    """Load experiment configuration from YAML file."""
-
-    # prepare directories and set up logging
-    model_base_dir = (
-        experiment_config.root_dir / "models" / experiment_config.experiment_name
+    """Prepare directories and set up logging for experiment."""
+    # set run_number
+    run_dir = (
+        experiment_config.root_dir
+        / "models"
+        / experiment_config.experiment_name
+        / f"run_{args.run_number}"
     )
-    run_dir = model_base_dir / f"run_{int(time.time())}"
 
     for folder in ["logs", "plots"]:
         dir_check_make(run_dir / folder)
@@ -659,7 +734,7 @@ def main() -> None:
     )
 
     logger.info(f"Training for {epochs} epochs")
-    model, final_val_rmse = trainer.train_model(
+    model, _, early_stop = trainer.train_model(
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
@@ -672,17 +747,19 @@ def main() -> None:
     prof.stop()
     torch.save(
         model.state_dict(),
-        model_dir / f"{args.model}_final_mse_{final_val_rmse:.3f}.pt",
+        model_dir / f"{args.model}_final_model.pt",
     )
 
-    # generate loss and prediction plots
-    plot_loss_and_performance(
+    # generate loss and prediction plots for best model
+    post_model_evaluation(
+        model_name=args.model,
         model=model,
         device=device,
         data=data,
         data_loader=test_loader,
         model_dir=model_dir,
         tb_logger=tb_logger,
+        early_stop=early_stop,
     )
 
     tb_logger.writer.close()

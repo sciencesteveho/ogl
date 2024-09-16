@@ -529,6 +529,7 @@ def parse_pipeline_arguments() -> argparse.Namespace:
     parser.add_argument("--gene_only_loader", action="store_true")
     parser.add_argument("--optimize_params", action="store_true")
     parser.add_argument("--n_gpus", type=int)
+    parser.add_argument("--run_number", type=int, default=1)
     parser.add_argument(
         "--clean-up",
         action="store_true",
