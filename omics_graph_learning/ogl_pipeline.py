@@ -10,18 +10,17 @@ import argparse
 import os
 from pathlib import Path
 import shutil
-import sys
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import pytest
 
 from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.utils.arg_parser import OGLCLIParser
 from omics_graph_learning.utils.common import _dataset_split_name
 from omics_graph_learning.utils.common import _run_command
 from omics_graph_learning.utils.common import setup_logging
 from omics_graph_learning.utils.common import submit_slurm_job
 from omics_graph_learning.utils.constants import N_TRIALS
-from omics_graph_learning.utils.constants import NodePerturbation
 
 logger = setup_logging()
 
@@ -381,35 +380,6 @@ class PipelineRunner:
             self.clean_up()
 
 
-def validate_args(args: argparse.Namespace) -> None:
-    """Helper function to validate CLI arguments that have dependencies."""
-    if args.partition not in ["RM", "EM"]:
-        logger.error("Error: --partition must be 'RM' or 'EM'")
-        sys.exit(1)
-
-    if args.target != "rna_seq" and args.filter_mode is None:
-        logger.error(
-            "Error: if target type is not `rna_seq`, --filter_mode is required"
-        )
-        sys.exit(1)
-
-    if args.model in ["GAT", "UniMPTransformer"] and args.heads is None:
-        logger.error(f"Error: --heads is required when model is {args.model}")
-        sys.exit(1)
-
-    if args.total_random_edges and args.edge_perturbation != "randomize_edges":
-        logger.error(
-            "Error: if --total_random_edges is set, --edge_perturbation must be `randomize_edges`"
-        )
-        sys.exit(1)
-
-    if args.optimize_params and args.n_gpus is None:
-        logger.error(
-            "Error: specifying --n_gpus is required when --optimize_params is set."
-        )
-        sys.exit(1)
-
-
 def run_tests() -> bool:
     """Run selected unit tests to ensure pipeline code is functioning correctly.
 
@@ -427,128 +397,11 @@ def calculate_trials(n_gpus: int) -> int:
     return N_TRIALS // n_gpus
 
 
-def parse_pipeline_arguments() -> argparse.Namespace:
-    """Parse command-line arguments for the entire pipeline."""
-    # set up list of perturbation options
-    perturbation_choices: List[str] = [
-        perturbation.name for perturbation in NodePerturbation
-    ]
-
-    parser = argparse.ArgumentParser(description="Omics Graph Learning Pipeline")
-    parser.add_argument(
-        "--experiment_yaml",
-        type=str,
-        required=True,
-        help="Path to experiment YAML file",
-    )
-    parser.add_argument(
-        "--partition",
-        type=str,
-        choices=["RM", "EM"],
-        help="Partition for SLURM scheduling",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="GCN",
-        choices=[
-            "GCN",
-            "GraphSAGE",
-            "PNA",
-            "GAT",
-            "UniMPTransformer",
-            "DeeperGCN",
-            "MLP",
-        ],
-    )
-    parser.add_argument(
-        "--target",
-        type=str,
-        default="expression_median_only",
-        choices=[
-            "expression_median_only",
-            "expression_media_and_foldchange",
-            "difference_from_average",
-            "foldchange_from_average",
-            "protein_targets",
-            "rna_seq",
-        ],
-    )
-    parser.add_argument("--tpm_filter", type=float, default=0.5)
-    parser.add_argument("--percent_of_samples_filter", type=float, default=0.1)
-    parser.add_argument(
-        "--filter_mode",
-        type=str,
-        help="Mode to filter genes, specifying within the target tissue or across all possible gtex tissues (e.g. `within` or `across`). This is required if the target type is not `rna_seq`",
-        default="within",
-    )
-    parser.add_argument("--gnn_layers", type=int, default=2)
-    parser.add_argument("--linear_layers", type=int, default=3)
-    parser.add_argument(
-        "--activation", type=str, default="relu", choices=["relu", "leakyrelu", "gelu"]
-    )
-    parser.add_argument("--attention_task_head", action="store_true", default=False)
-    parser.add_argument("--dimensions", type=int, default=256)
-    parser.add_argument(
-        "--residual",
-        type=str,
-        default=None,
-        choices=["shared_source", "distinct_source", "None"],
-    )
-    parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--learning_rate", type=float, default=1e-4)
-    parser.add_argument(
-        "--optimizer", type=str, default="Adam", choices=["Adam", "AdamW"]
-    )
-    parser.add_argument(
-        "--scheduler",
-        type=str,
-        default="plateau",
-        choices=["plateau", "cosine", "linear_warmup"],
-    )
-    parser.add_argument("--dropout", type=float, default=0.1)
-    parser.add_argument("--heads", type=int, default=None)
-    parser.add_argument("--positional_encoding", action="store_true")
-    parser.add_argument("--early_stop", action="store_true", default=True)
-    parser.add_argument(
-        "--node_perturbation",
-        type=str,
-        default=None,
-        choices=perturbation_choices,
-        help="Type of node based perturbation to apply. Choose from either `zero_node_feats`, `randomize_node_feats`, `randomize_node_feat_order`, or pick the name of a specific feat to perturb",
-    )
-    parser.add_argument(
-        "--edge_perturbation",
-        type=str,
-        default=None,
-        choices=["randomize_edges", "remove_all_edges", "remove_specific_edges"],
-        help="Type of node based perturbation to apply. Choose from either `zero_node_feats`, `randomize_node_feats`, `randomize_node_feat_order`, or pick the name of a specific feat to perturb",
-    )
-    parser.add_argument("--total_random_edges", type=int, default=None)
-    parser.add_argument("--gene_only_loader", action="store_true")
-    parser.add_argument("--optimize_params", action="store_true")
-    parser.add_argument("--n_gpus", type=int)
-    parser.add_argument("--run_number", type=int, default=1)
-    parser.add_argument(
-        "--clean-up",
-        action="store_true",
-        help="Remove intermediate files in tissue-specific directories",
-        default=False,
-    )
-    args = parser.parse_args()
-    validate_args(args)
-    return args
-
-
 def main() -> None:
     """Run OGL pipeline, from data parsing to graph constructuion to GNN
     training with checks to avoid redundant computation.
     """
-    args = parse_pipeline_arguments()
-    for arg, value in vars(args).items():
-        if value == "None":
-            setattr(args, arg, None)
+    args = OGLCLIParser().parse_args()
 
     # run OGL pipeline
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)

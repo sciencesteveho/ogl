@@ -28,9 +28,9 @@ from tqdm import tqdm  # type: ignore
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.gnn_architecture_builder import build_gnn_architecture
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
-from omics_graph_learning.ogl_pipeline import parse_pipeline_arguments
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
+from omics_graph_learning.utils.arg_parser import OGLCLIParser
 from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import plot_predicted_versus_expected
@@ -400,19 +400,6 @@ def prep_loader(
     )
 
 
-def parse_arguments() -> argparse.Namespace:
-    """Parse args for training GNN"""
-    parser = parse_pipeline_arguments()
-    parser.add_argument("--split_name", type=str, required=True)
-    parser.add_argument(
-        "--seed", type=int, default=42, help="random seed to use (default: 42)"
-    )
-    parser.add_argument(
-        "--device", type=int, default=0, help="which gpu to use if any (default: 0)"
-    )
-    return parser.parse_args()
-
-
 def boostrap_evaluation(
     predictions: torch.Tensor,
     labels: torch.Tensor,
@@ -614,11 +601,17 @@ def prepare_pertubation_config(
     return None
 
 
+def parse_training_args() -> argparse.Namespace:
+    """Parse training arguments."""
+    parser = OGLCLIParser()
+    parser.add_gnn_training_args()
+    return parser.parse_args()
+
+
 def main() -> None:
     """Main function to train GNN on graph data!"""
-    args = parse_arguments()
+    args = parse_training_args()
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
-
     model_dir, logger = _experiment_setup(
         args=args, experiment_config=experiment_config
     )
@@ -632,7 +625,6 @@ def main() -> None:
         split_name=args.split_name,
         regression_target=args.target,
         positional_encoding=args.positional_encoding,
-        perturbation_config=prepare_pertubation_config(args),
     ).make_data_object()
 
     # check data integreity
