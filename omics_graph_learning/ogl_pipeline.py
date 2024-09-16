@@ -244,6 +244,7 @@ class PipelineRunner:
             f"--scheduler {args.scheduler} "
             f"--dropout {args.dropout} "
             f"--split_name {split_name} "
+            f"--run_number {args.run_number} "
         )
 
         if args.heads:
