@@ -35,7 +35,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch_geometric  # type: ignore
 
-from architecture_builder import build_gnn_architecture
+from omics_graph_learning.architecture_builder import build_gnn_architecture
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler

@@ -26,7 +26,7 @@ import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from architecture_builder import build_gnn_architecture
+from omics_graph_learning.architecture_builder import build_gnn_architecture
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
