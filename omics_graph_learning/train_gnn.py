@@ -709,6 +709,7 @@ def main() -> None:
     tb_logger.log_model_graph(
         model=model,
         data=data,
+        device=device,
     )
 
     # set up optimizer & scheduler

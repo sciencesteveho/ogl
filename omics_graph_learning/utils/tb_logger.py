@@ -91,10 +91,9 @@ class TensorBoardLogger:
         self,
         model: torch.nn.Module,
         data: torch_geometric.data.Data,
+        device: torch.device,
     ) -> None:
         """Log model graph to TensorBoard using a toy input."""
-        device = next(model.parameters()).device
-
         # get toy input tensors
         input_x, edge_index, mask = self.get_toy_input(data)
 
