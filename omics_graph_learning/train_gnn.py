@@ -703,7 +703,8 @@ def main() -> None:
         skip_connection=args.residual,
         attention_task_head=args.attention_task_head,
         train_dataset=train_loader if args.model == "PNA" else None,
-    ).to(device)
+    )
+    model = model.to(device)
 
     # log model graph to tensorboard
     tb_logger.log_model_graph(

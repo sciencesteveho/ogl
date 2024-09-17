@@ -98,8 +98,9 @@ class TensorBoardLogger:
         input_x, edge_index, mask = self.get_toy_input(data)
 
         # ensure dummy inputs are on the correct device
-        for tensor in (input_x, edge_index, mask):
-            tensor.to(device)
+        input_x = input_x.to(device)
+        edge_index = edge_index.to(device)
+        mask = mask.to(device)
 
         self.writer.add_graph(model, (input_x, edge_index, mask))
 
