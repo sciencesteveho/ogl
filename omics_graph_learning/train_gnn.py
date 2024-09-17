@@ -279,14 +279,14 @@ class GNNTrainer:
 
             # train
             loss = self.train(train_loader=train_loader, epoch=epoch)
-            self.logger.info(f"\nEpoch: {epoch:03d}, Train loss: {loss}")
+            self.logger.info(f"Epoch: {epoch:03d}, Train loss: {loss}")
 
             # validation
             val_rmse, _, _, r = self.evaluate(
                 data_loader=val_loader, epoch=epoch, mask="val"
             )
             self.logger.info(
-                f"\nEpoch: {epoch:03d}, "
+                f"Epoch: {epoch:03d}, "
                 f"Validation RMSE: {val_rmse:.4f}, "
                 f"Validation Pearson's R: {r:.4f}",
             )
@@ -296,7 +296,7 @@ class GNNTrainer:
                 data_loader=test_loader, epoch=epoch, mask="test"
             )
             self.logger.info(
-                f"\nEpoch: {epoch:03d}, "
+                f"Epoch: {epoch:03d}, "
                 f"Test RMSE: {test_rmse:.4f} "
                 f"Test Pearson's R: {r:.4f}"
             )
@@ -750,7 +750,7 @@ def main() -> None:
         tb_logger=tb_logger,
     )
 
-    logger.info(f"Training for {epochs} epochs")
+    logger.info(f"Training for {epochs} epochs (early stopping)")
     model, _, early_stop = trainer.train_model(
         train_loader=train_loader,
         val_loader=val_loader,
