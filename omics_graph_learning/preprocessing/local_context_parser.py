@@ -19,7 +19,6 @@ from subprocess import Popen
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pybedtools import BedTool  # type: ignore
-import pybedtools  # type: ignore
 from pybedtools.featurefuncs import extend_fields  # type: ignore
 
 from omics_graph_learning.config_handlers import ExperimentConfig
@@ -82,15 +81,15 @@ class LocalContextParser:
     """
 
     # var helpers
-    ALL_CONCATENATED_FILE = "all_concat.bed"
-    SORTED_CONCATENATED_FILE = "all_concat_sorted.bed"
+    all_concatenated_file = "all_concat.bed"
+    sorted_concatenated_file = "all_concat_sorted.bed"
 
     # list helpers
-    DIRECT = ["tads", "loops"]
-    NODE_FEATS = ["start", "end", "size"] + ATTRIBUTES
+    direct = ["tads", "loops"]
+    node_feats = ["start", "end", "size"] + ATTRIBUTES
 
     # helper for CPU cores
-    CORES = get_physical_cores()
+    cores = get_physical_cores()
 
     def __init__(
         self,
@@ -198,14 +197,14 @@ class LocalContextParser:
             pool.starmap(self._bed_intersect, zip(self.nodes, repeat(all_files)))
 
         # get size and all attributes - one process per nodetype
-        with Pool(processes=self.CORES) as pool:
+        with Pool(processes=self.cores) as pool:
             pool.map(self._aggregate_attributes, ["basenodes"] + self.nodes)
 
         # parse edges into individual files
         self._generate_edges()
 
         # save node attributes as reference for later - one process per nodetype
-        with Pool(processes=self.CORES) as pool:
+        with Pool(processes=self.cores) as pool:
             pool.map(self._save_node_attributes, ["basenodes"] + self.nodes)
 
         # cleanup
@@ -280,7 +279,7 @@ class LocalContextParser:
         return {
             key: self._slop_and_keep_original(value, chromfile, feat_window)
             for key, value in bedcollection.items()
-            if key not in ATTRIBUTES + self.DIRECT
+            if key not in ATTRIBUTES + self.direct
         }
 
     @time_decorator(print_args=True)
@@ -330,7 +329,7 @@ class LocalContextParser:
         #     """Insulate regions by intersection with chr loops and making sure
         #     both sides overlap"""
 
-        if node_type in self.DIRECT:
+        if node_type in self.direct:
             _unix_intersect(node_type, type="direct")
             self._filter_duplicate_bed_entries(
                 BedTool(self.edge_dir / f"{node_type}.bed")
@@ -424,11 +423,11 @@ class LocalContextParser:
         cmds = {
             "cat_cmd": [
                 f"cat {self.edge_dir}/*_dupes_removed* >",
-                f"{self.edge_dir}/{self.ALL_CONCATENATED_FILE}",
+                f"{self.edge_dir}/{self.all_concatenated_file}",
             ],
             "sort_cmd": [
-                f"LC_ALL=C sort --parallel={self.CORES} -S 70% -k10,10 {self.edge_dir}/{self.ALL_CONCATENATED_FILE} |",
-                "uniq >" f"{self.edge_dir}/{self.SORTED_CONCATENATED_FILE}",
+                f"LC_ALL=C sort --parallel={self.cores} -S 70% -k10,10 {self.edge_dir}/{self.all_concatenated_file} |",
+                "uniq >" f"{self.edge_dir}/{self.sorted_concatenated_file}",
             ],
         }
         for cmd in cmds:
@@ -573,7 +572,7 @@ class LocalContextParser:
 
     def _cleanup_edge_files(self) -> None:
         """Remove intermediate files"""
-        retain = [self.SORTED_CONCATENATED_FILE]
+        retain = [self.sorted_concatenated_file]
         for item in os.listdir(self.edge_dir):
             if item not in retain:
                 os.remove(self.edge_dir / item)

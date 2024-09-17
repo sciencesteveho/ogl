@@ -1,3 +1,4 @@
+# sourcery skip: lambdas-should-be-short
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 

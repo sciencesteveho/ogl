@@ -9,6 +9,7 @@ the OGL pipeline."""
 import argparse
 import json
 import logging
+import math
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -21,7 +22,6 @@ import torch.nn.functional as F
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
@@ -41,44 +41,7 @@ from omics_graph_learning.utils.common import setup_logging
 from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 from omics_graph_learning.utils.constants import RANDOM_SEEDS
-
-
-class TensorBoardLogger:
-    """Log hyperparameters, metrics, and model graph to TensorBoard."""
-
-    def __init__(self, log_dir: Path) -> None:
-        """Initialize TensorBoard writer."""
-        self.writer = SummaryWriter(log_dir)
-
-    def log_hyperparameters(self, hparams: Dict[str, Any]) -> None:
-        """Log hyperparameters to TensorBoard."""
-        self.writer.add_hparams(hparams, {})
-
-    def log_metrics(self, metrics: Dict[str, float], step: int) -> None:
-        """Log metrics to TensorBoard."""
-        for name, value in metrics.items():
-            self.writer.add_scalar(name, value, step)
-
-    def log_model_graph(
-        self,
-        model: torch.nn.Module,
-        input_shape: Tuple[int, int],
-        edge_index_shape: int,
-    ) -> None:
-        """Log model graph to TensorBoard."""
-        device = next(model.parameters()).device
-
-        # create a dummy input
-        dummy_x = torch.zeros(input_shape, device=device)
-        dummy_edge_index = torch.zeros(
-            edge_index_shape, dtype=torch.long, device=device
-        )
-        dummy_mask = torch.ones(input_shape[0], dtype=torch.bool, device=device)
-        self.writer.add_graph(model, (dummy_x, dummy_edge_index, dummy_mask))
-
-    def close(self) -> None:
-        """Close TensorBoard writer."""
-        self.writer.close()
+from omics_graph_learning.utils.tb_logger import TensorBoardLogger
 
 
 class GNNTrainer:
@@ -172,6 +135,12 @@ class GNNTrainer:
             )
             mse_loss.backward()
 
+            # log gradients, weights, LR to tensorboard
+            if self.tb:
+                self.log_tensorboard_data(
+                    loader=train_loader, epoch=epoch, batch_idx=batch_idx
+                )
+
             # check for NaN gradients
             for name, param in self.model.named_parameters():
                 if param.grad is not None and torch.isnan(param.grad).any():
@@ -263,12 +232,16 @@ class GNNTrainer:
         epochs: int,
         model_dir: Path,
         args: argparse.Namespace,
+        min_epochs: int = 0,
     ) -> Tuple[torch.nn.Module, float, bool]:
         """Execute training loop for GNN models.
 
         The loop will train and evaluate the model on the validation set with
         minibatching. Afterward, the model is evaluated on the test set
         utilizing all neighbors.
+
+        To account for warm-up schedulers, the function passes min_epochs. Early
+        stopping counter starts after min_epochs + early_stop_patience // 2.
         """
         if self.tb:
             self.tb.log_hyperparameters(vars(args))
@@ -316,21 +289,35 @@ class GNNTrainer:
             if isinstance(self.scheduler, ReduceLROnPlateau):
                 self.scheduler.step(val_rmse)
 
+            # early stopping logic
             if args.early_stop:
-                if epoch == 0 or val_rmse < best_validation:
+                if val_rmse < best_validation:
                     stop_counter = 0
                     best_validation = val_rmse
                     torch.save(
                         self.model.state_dict(),
                         model_dir / f"{args.model}_best_model.pt",
                     )
-                elif best_validation < val_rmse:
+                else:
                     stop_counter += 1
-                if stop_counter == EARLY_STOP_PATIENCE:
-                    self.logger.info("***********Early stopping!")
+
+                # check if minimum epochs have been reached before allowing
+                # early stopping
+                if epoch >= min_epochs and stop_counter >= EARLY_STOP_PATIENCE:
+                    self.logger.info("*********** Early stopping triggered!")
                     break
 
         return self.model, best_validation, stop_counter == EARLY_STOP_PATIENCE
+
+    def log_tensorboard_data(
+        self, loader: torch_geometric.data.DataLoader, epoch: int, batch_idx: int
+    ) -> None:
+        """Log data to tensorboard."""
+        if self.tb:
+            current_step = epoch * len(loader) + batch_idx
+            self.tb.log_gradients(self.model, current_step)
+            self.tb.log_weights(self.model, current_step)
+            self.tb.log_learning_rate(self.optimizer, current_step)
 
     @staticmethod
     @torch.no_grad()
@@ -523,14 +510,26 @@ def post_model_evaluation(
     else:
         raise ValueError("Model is None. Cannot plot performance")
 
-    rmse, outs, labels, _ = GNNTrainer.inference_all_neighbors(
-        model=model,
-        device=device,
-        data=data,
-        data_loader=data_loader,
-        split="test",
-        mask=data.test_mask_loss,
-    )
+    # all neighors inference
+    # if cuda out of memory error, use normal inference
+    try:
+        rmse, outs, labels, _ = GNNTrainer.inference_all_neighbors(
+            model=model,
+            device=device,
+            data=data,
+            data_loader=data_loader,
+            split="test",
+            mask=data.test_mask_loss,
+        )
+    except RuntimeError:
+        logger.warning("CUDA out of memory error. Using normal inference.")
+        rmse, outs, labels, _ = GNNTrainer.inference(
+            model=model,
+            device=device,
+            data=data,
+            data_loader=data_loader,
+            mask="test",
+        )
 
     # bootstrap evaluation
     mean_rmse, ci_lower, ci_upper = boostrap_evaluation(
@@ -581,20 +580,21 @@ def _dump_metadata_json(
 
 def _experiment_setup(
     args: argparse.Namespace, experiment_config: ExperimentConfig
-) -> Tuple[Path, logging.Logger]:
+) -> Tuple[Path, logging.Logger, TensorBoardLogger]:
     """Prepare directories and set up logging for experiment."""
-    # set run_number
-    run_dir = (
-        experiment_config.root_dir
-        / "models"
-        / experiment_config.experiment_name
-        / f"run_{args.run_number}"
+    # set run directories
+    experiment_dir = (
+        experiment_config.root_dir / "models" / experiment_config.experiment_name
     )
+    run_dir = experiment_dir / f"run_{args.run_number}"
+    tb_dir = experiment_dir / "tensorboard"
 
     for folder in ["logs", "plots"]:
         dir_check_make(run_dir / folder)
 
+    # set up loggers
     logger = setup_logging(log_file=str(run_dir / "logs" / "training_log.txt"))
+    tb_logger = TensorBoardLogger(log_dir=tb_dir / f"run_{args.run_number}")
 
     # dump metadata to run directory
     _dump_metadata_json(
@@ -603,11 +603,10 @@ def _experiment_setup(
         run_dir=run_dir,
     )
 
-    # log experiment information
     logger.info("Experiment setup initialized.")
     logger.info(f"Experiment configuration: {experiment_config}")
     logger.info(f"Model directory: {run_dir}")
-    return run_dir, logger
+    return run_dir, logger, tb_logger
 
 
 def prepare_pertubation_config(
@@ -624,6 +623,17 @@ def prepare_pertubation_config(
     return None
 
 
+def calculate_min_epochs(args: argparse.Namespace) -> int:
+    """Calculate minimum epochs before early stopping kicks to account for
+    warm-up steps.
+    """
+    if args.scheduler in ("linear_warmup", "cosine"):
+        min_epochs = math.ceil(0.1 * args.epochs // 2)
+        min_epochs += EARLY_STOP_PATIENCE // 2
+        return min_epochs
+    return 0
+
+
 def parse_training_args() -> argparse.Namespace:
     """Parse training arguments."""
     parser = OGLCLIParser()
@@ -635,7 +645,7 @@ def main() -> None:
     """Main function to train GNN on graph data!"""
     args = parse_training_args()
     experiment_config = ExperimentConfig.from_yaml(args.experiment_yaml)
-    model_dir, logger = _experiment_setup(
+    run_dir, logger, tb_logger = _experiment_setup(
         args=args, experiment_config=experiment_config
     )
 
@@ -654,9 +664,6 @@ def main() -> None:
 
     # check data integreity
     PyGDataChecker.check_pyg_data(data)
-
-    # set up tensorboard logger
-    tb_logger = TensorBoardLogger(log_dir=model_dir / "tensorboard")
 
     # set up data loaders
     mask_suffix = "_loss" if args.gene_only_loader else ""
@@ -683,8 +690,6 @@ def main() -> None:
     )
 
     # CHOOSE YOUR WEAPON
-    num_targets = len(data.y[0]) if len(data.y.shape) > 1 else 1
-
     model = build_gnn_architecture(
         model=args.model,
         activation=args.activation,
@@ -697,16 +702,14 @@ def main() -> None:
         dropout_rate=args.dropout or None,
         skip_connection=args.residual,
         attention_task_head=args.attention_task_head,
-        num_targets=num_targets,
         train_dataset=train_loader if args.model == "PNA" else None,
     ).to(device)
 
     # log model graph to tensorboard
-    # tb_logger.log_model_graph(
-    #     model=model,
-    #     input_shape=data.x.shape,
-    #     edge_index_shape=data.edge_index.shape,
-    # )
+    tb_logger.log_model_graph(
+        model=model,
+        data=data,
+    )
 
     # set up optimizer & scheduler
     total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
@@ -726,12 +729,15 @@ def main() -> None:
         training_steps=total_steps,
     )
 
+    # get min epochs before early stopping kicks in for warm-up
+    min_epochs = calculate_min_epochs(args)
+
     # start model training and initialize tensorboard utilities
     epochs = args.epochs
     prof = torch.profiler.profile(
         schedule=torch.profiler.schedule(wait=1, warmup=4, active=3, repeat=1),
         on_trace_ready=torch.profiler.tensorboard_trace_handler(
-            str(model_dir / "tensorboard")
+            str(run_dir / "tensorboard")
         ),
         record_shapes=True,
         profile_memory=True,
@@ -756,15 +762,16 @@ def main() -> None:
         val_loader=val_loader,
         test_loader=test_loader,
         epochs=epochs,
-        model_dir=model_dir,
+        model_dir=run_dir,
         args=args,
+        min_epochs=min_epochs,
     )
 
     # close out tensorboard utilities and save final model
     prof.stop()
     torch.save(
         model.state_dict(),
-        model_dir / f"{args.model}_final_model.pt",
+        run_dir / f"{args.model}_final_model.pt",
     )
 
     # generate loss and prediction plots for best model
@@ -774,7 +781,7 @@ def main() -> None:
         device=device,
         data=data,
         data_loader=test_loader,
-        model_dir=model_dir,
+        run_dir=run_dir,
         tb_logger=tb_logger,
         early_stop=early_stop,
     )

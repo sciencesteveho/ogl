@@ -439,7 +439,6 @@ class DeeperGCN(nn.Module):
         activation: The activation function.
         dropout_rate: The dropout rate.
         task_specific_mlp: Boolean indicating if task specific MLPs are used.
-        num_targets: The number of output targets.
     """
 
     def __init__(

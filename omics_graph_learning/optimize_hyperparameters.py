@@ -166,6 +166,7 @@ def train_and_evaluate(
     val_loader: torch_geometric.data.DataLoader,
     scheduler: LRScheduler,
     logger: logging.Logger,
+    min_epochs: int = 0,
 ) -> Tuple[float, float]:
     """Run training and evaluation."""
     best_r = -float("inf")
@@ -205,7 +206,7 @@ def train_and_evaluate(
             early_stop_counter = 0
         else:
             early_stop_counter += 1
-            if early_stop_counter >= PATIENCE:
+            if early_stop_counter >= PATIENCE and epoch >= min_epochs:
                 logger.info(f"Early stopping at epoch {epoch}")
                 break
 
@@ -375,9 +376,17 @@ def objective(
             logger=logger,
         )
 
+        # set epoch min for warmup schedulers
+        if train_params["scheduler_type"] in ["linear_warmup", "cosine"]:
+            min_epochs = 10 + (
+                PATIENCE // 3
+            )  # 10 epochs for warmup and 2 epochs for patience
+        else:
+            min_epochs = 0
+
         # training loop
         best_r, _ = train_and_evaluate(
-            trial, trainer, train_loader, val_loader, scheduler, logger
+            trial, trainer, train_loader, val_loader, scheduler, logger, min_epochs
         )
 
         trial.set_user_attr("best_r", best_r)  # save best rmse

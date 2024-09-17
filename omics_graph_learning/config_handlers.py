@@ -42,7 +42,7 @@ class ExperimentConfig:
     >>> config = ExperimentConfig.from_yaml("k562_combined_contacts.yaml")
     """
 
-    VALID_LOG_TRANSFORMS = {"log2", "log1p", "log10"}
+    valid_log_transforms = {"log2", "log1p", "log10"}
 
     # Params
     attribute_references: Dict[str, str]
@@ -141,9 +141,9 @@ class ExperimentConfig:
     @classmethod
     def validate_log_transform(cls, value: str) -> str:
         """Check if the log_transform value is valid"""
-        if value not in cls.VALID_LOG_TRANSFORMS:
+        if value not in cls.valid_log_transforms:
             raise ValueError(
-                f"log_transform value must be one of {cls.VALID_LOG_TRANSFORMS}, got '{value}'."
+                f"log_transform value must be one of {cls.valid_log_transforms}, got '{value}'."
             )
         return value
 

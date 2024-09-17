@@ -28,11 +28,11 @@ class GraphConstructor:
     context."""
 
     # hardcoded helpers, column idxs
-    SOURCE_IDX = 0
-    TARGET_IDX = 1
-    EDGE_ATTR_IDX = 2
-    FIRST_NODE_IDX = 3
-    SECOND_NODE_IDX = 7
+    source_idx = 0
+    target_idx = 1
+    edge_attr_idx = 2
+    first_node_idx = 3
+    second_node_idx = 7
 
     def __init__(
         self,
@@ -87,9 +87,9 @@ class GraphConstructor:
         edges = self._get_edges()
         graph = nx.from_pandas_edgelist(
             edges,
-            source=self.SOURCE_IDX,
-            target=self.TARGET_IDX,
-            edge_attr=self.EDGE_ATTR_IDX,
+            source=self.source_idx,
+            target=self.target_idx,
+            edge_attr=self.edge_attr_idx,
         )
         logger.info(
             f"Base graph has {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
@@ -188,8 +188,8 @@ class GraphConstructor:
                 edge_file,
                 sep="\t",
                 header=None,
-                usecols=[self.FIRST_NODE_IDX, self.SECOND_NODE_IDX],
-            ).rename(columns={self.FIRST_NODE_IDX: 0, self.SECOND_NODE_IDX: 1})
+                usecols=[self.first_node_idx, self.second_node_idx],
+            ).rename(columns={self.first_node_idx: 0, self.second_node_idx: 1})
             df[2] = "local"
         else:
             df = pd.read_csv(edge_file, sep="\t", header=None)

@@ -177,16 +177,6 @@ def combine_graphs(
                 f"{experiment_graph_directory}{suffix}",
             )
 
-        # for suffix in [".pkl", "_idxs.pkl"]:
-        #     subprocess.run(
-        #         [
-        #             "cp",
-        #             f"{base_graph_path}{suffix}",
-        #             f"{experiment_graph_directory}{suffix}",
-        #         ],
-        #         check=True,
-        #     )
-
 
 def main() -> None:
     """Pipeline to concatenate tissue graphs"""
