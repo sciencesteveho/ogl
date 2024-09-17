@@ -50,9 +50,9 @@ from omics_graph_learning.utils.common import tensor_out_to_array
 
 # helpers for trial
 EPOCHS = 20
-MIN_RESOURCE = 3
+MIN_RESOURCE = 4
 REDUCTION_FACTOR = 3
-PATIENCE = 5
+PATIENCE = 6
 
 
 def set_optim_directory(experiment_config: ExperimentConfig) -> Path:

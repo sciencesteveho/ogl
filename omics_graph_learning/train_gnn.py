@@ -297,7 +297,7 @@ class GNNTrainer:
             )
             self.logger.info(
                 f"\nEpoch: {epoch:03d}, "
-                f"Test RMSE: {test_rmse:.4f}"
+                f"Test RMSE: {test_rmse:.4f} "
                 f"Test Pearson's R: {r:.4f}"
             )
 

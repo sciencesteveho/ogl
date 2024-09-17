@@ -57,7 +57,7 @@ class NodePerturbation(Enum):
 # integer constants
 HG38_TOTAL_BASEPAIRS = 3088269227
 MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
-EARLY_STOP_PATIENCE = 15
+EARLY_STOP_PATIENCE = 10
 N_TRIALS = 200
 RANDOM_SEEDS = [42, 84, 168]
 
