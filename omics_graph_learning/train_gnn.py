@@ -360,7 +360,7 @@ class GNNTrainer:
             )
 
             # filter for input nodes
-            input_nodes_mask = batch.input_id < batch.num_input_nodes
+            input_nodes_mask = batch.input_id < batch.num_nodes
             predictions.append(out[input_nodes_mask].squeeze().cpu())
             node_indices.extend(batch.input_id[input_nodes_mask].cpu().tolist())
 
@@ -530,8 +530,8 @@ def post_model_evaluation(
             split="test",
             mask=data.test_mask_loss,
         )
-    except RuntimeError:
-        logger.warning("CUDA out of memory error. Using normal inference.")
+    except Exception:
+        logger.warning("Error. Using normal inference.")
         rmse, outs, labels, _ = GNNTrainer.inference(
             model=model,
             device=device,

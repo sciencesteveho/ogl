@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
-"""Code that handles perturbation of the graph data."""
+"""Code to handle perturbations of the graph data."""
+
 
 from dataclasses import dataclass
 from typing import List, Optional
