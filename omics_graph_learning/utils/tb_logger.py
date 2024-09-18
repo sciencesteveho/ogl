@@ -12,11 +12,6 @@ from typing import Any, Dict
 import torch
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
-import torch_geometric  # type: ignore
-from torch_geometric.utils import coalesce  # type: ignore
-from torch_geometric.utils import degree  # type: ignore
-from torch_geometric.utils import subgraph  # type: ignore
-from torch_geometric.utils import to_undirected  # type: ignore
 
 
 class TensorBoardLogger:
@@ -92,115 +87,39 @@ class TensorBoardLogger:
         for name, param in model.named_parameters():
             self.writer.add_histogram(f"Weights/{name}", param, step)
 
+    @torch.no_grad()
     def log_model_graph(
         self,
         model: torch.nn.Module,
-        data: torch_geometric.data.Data,
         device: torch.device,
-        sample_size: int = 100,
+        feature_size: int = 39,
+        num_dummy_nodes: int = 2,
     ) -> None:
-        """Log model graph to TensorBoard using a sampled subgraph."""
-        # quick check data integrity
-        assert (
-            data.edge_index.max() < data.num_nodes
-        ), "Edge index contains out-of-range node indices."
-        assert data.edge_index.min() >= 0, "Edge index contains negative node indices."
-
+        """Log the model architecture to TensorBoard using toy inputs."""
         try:
-            print(
-                f"Starting log_model_graph with sample_size={sample_size} and num_nodes={data.num_nodes}"
+            print("Logging model graph.")
+            model.eval()
+
+            # create toy node features
+            dummy_x = torch.randn(num_dummy_nodes, feature_size).to(device)
+            print(f"Dummy node features (x) shape: {dummy_x.shape}")
+
+            # create a simple edge index
+            dummy_edge_index = torch.tensor([[0, 1], [1, 0]], dtype=torch.long).to(
+                device
             )
+            print(f"Dummy edge_index shape: {dummy_edge_index.shape}")
 
-            if data.num_nodes < sample_size:
-                print(f"Adjusting sample_size to match num_nodes: {data.num_nodes}")
-                sample_size = data.num_nodes
-
-            # ensure edge_index is undirected
-            data.edge_index = to_undirected(data.edge_index)
-            data.edge_index, _ = coalesce(
-                data.edge_index, None, data.num_nodes, data.num_nodes
+            # create toy regression mask
+            dummy_regression_mask = torch.tensor([True, False], dtype=torch.bool).to(
+                device
             )
-            print(
-                f"Edge_index is undirected and coalesced with shape: {data.edge_index.shape}"
+            print(f"Dummy regression_mask: {dummy_regression_mask}")
+
+            self.writer.add_graph(
+                model, (dummy_x, dummy_edge_index, dummy_regression_mask)
             )
-
-            # compute degrees
-            degrees = degree(data.edge_index[0], num_nodes=data.num_nodes)
-
-            # select a high-degree node as seed
-            high_degree_node = degrees.argmax().item()
-            seed_nodes = torch.tensor([high_degree_node])
-            print(f"High-degree seed node selected: {seed_nodes.item()}")
-
-            # check degree of seed node
-            seed_degree = degrees[seed_nodes].item()
-            print(f"Seed node {seed_nodes.item()} has degree: {seed_degree}")
-            if seed_degree == 0:
-                raise ValueError(f"Seed node {seed_nodes.item()} is isolated.")
-
-            # extract k-hop subgraph
-            sub_nodes, sub_edge_index, subsets, _ = (
-                torch_geometric.utils.k_hop_subgraph(
-                    node_idx=seed_nodes,
-                    num_hops=5,
-                    edge_index=data.edge_index,
-                    num_nodes=data.num_nodes,
-                    flow="source_to_target",
-                )
-            )
-
-            # debugging the contents of `subsets`
-            print(f"Number of subsets: {len(subsets)}")
-            if len(subsets) == 0:
-                raise ValueError(
-                    f"Subsets are empty for seed node {seed_nodes.item()}."
-                )
-
-            for i, subset in enumerate(subsets):
-                print(f"Subset {i}: {subset}")
-
-            print(
-                f"Subgraph extracted: {sub_nodes.numel()} nodes and {sub_edge_index.size(1)} edges."
-            )
-
-            if sub_nodes.numel() > sample_size:
-                print("Subgraph has more nodes than sample_size. Reducing nodes.")
-                sub_nodes = sub_nodes[torch.randperm(sub_nodes.numel())[:sample_size]]
-
-            print(f"Final sub_nodes count: {sub_nodes.numel()}")
-
-            # get subgraph
-            sub_edge_index, _ = subgraph(
-                subset=sub_nodes,
-                edge_index=data.edge_index,
-                relabel_nodes=True,
-                num_nodes=data.num_nodes,
-            )
-
-            print(
-                f"Subgraph edge index: {sub_edge_index.size(1)} edges after relabeling."
-            )
-
-            # get subgraph features and mask
-            sub_x = data.x[sub_nodes]
-            sub_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-            sub_mask[sub_nodes] = True
-
-            # move to GPU
-            sub_x = sub_x.to(device)
-            sub_edge_index = sub_edge_index.to(device)
-            sub_mask = sub_mask.to(device)
-
-            print(
-                f"Subgraph moved to device: {device}. Features shape: {sub_x.shape}, Edge index shape: {sub_edge_index.shape}"
-            )
-
-            # log the graph!
-            self.writer.add_graph(model, (sub_x, sub_edge_index, sub_mask))
-            print(
-                f"Successfully logged subgraph with {sub_nodes.numel()} nodes "
-                f"and {sub_edge_index.size(1)} edges."
-            )
+            print("Successfully logged the model graph to TensorBoard.")
 
         except Exception as e:
             print(f"Failed to log model graph: {e}")

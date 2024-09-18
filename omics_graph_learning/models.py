@@ -424,7 +424,7 @@ class ModularGNN(nn.Module):
 
 
 class DeeperGCN(nn.Module):
-    """DeeperGCN model architecture.Does not inherit from the ModularGNN class
+    """DeeperGCN model architecture. Does not inherit from the ModularGNN class
     as it uses the DeepGCNLayer as well as a different initial layer and
     unshared params and activations. residual connections are not coded into the
     forward pass because they're inherent to the architecture and handled by the
