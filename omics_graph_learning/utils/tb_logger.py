@@ -97,19 +97,14 @@ class TensorBoardLogger:
         sample_size: int = 100,
     ) -> None:
         """Log model graph to TensorBoard using a sampled subgraph."""
-        # sample a connected subgraph
         try:
-            # ensure the graph is connected; if not, sample from the largest component
-            if data.num_nodes < sample_size:
-                sample_size = data.num_nodes
-
             # randomly sample a seed node and extract a subgraph
-            seed_nodes = torch.randint(0, data.num_nodes, (1,)).squeeze()
+            seed_nodes = torch.randint(0, sample_size, (1,)).squeeze()
             sub_nodes = torch_geometric.utils.k_hop_subgraph(
                 node_idx=seed_nodes,
-                num_hops=10,
+                num_hops=2,
                 edge_index=data.edge_index,
-                num_nodes=data.num_nodes,
+                num_nodes=sample_size,
                 flow="source_to_target",
             )[0]
 
@@ -121,12 +116,12 @@ class TensorBoardLogger:
                 subset=sub_nodes,
                 edge_index=data.edge_index,
                 relabel_nodes=True,
-                num_nodes=data.num_nodes,
+                num_nodes=sample_size,
             )
 
             # get subgraph features and mask
             sub_x = data.x[sub_nodes]
-            sub_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+            sub_mask = torch.zeros(sample_size, dtype=torch.bool)
             sub_mask[sub_nodes] = True
 
             # move to gpu
