@@ -13,7 +13,10 @@ import torch
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 import torch_geometric  # type: ignore
+from torch_geometric.utils import coalesce  # type: ignore
+from torch_geometric.utils import degree  # type: ignore
 from torch_geometric.utils import subgraph  # type: ignore
+from torch_geometric.utils import to_undirected  # type: ignore
 
 
 class TensorBoardLogger:
@@ -97,6 +100,12 @@ class TensorBoardLogger:
         sample_size: int = 100,
     ) -> None:
         """Log model graph to TensorBoard using a sampled subgraph."""
+        # quick check data integrity
+        assert (
+            data.edge_index.max() < data.num_nodes
+        ), "Edge index contains out-of-range node indices."
+        assert data.edge_index.min() >= 0, "Edge index contains negative node indices."
+
         try:
             print(
                 f"Starting log_model_graph with sample_size={sample_size} and num_nodes={data.num_nodes}"
@@ -106,10 +115,30 @@ class TensorBoardLogger:
                 print(f"Adjusting sample_size to match num_nodes: {data.num_nodes}")
                 sample_size = data.num_nodes
 
-            seed_nodes = torch.randint(0, data.num_nodes, (1,)).squeeze()
-            print(f"Seed node selected: {seed_nodes}")
+            # ensure edge_index is undirected
+            data.edge_index = to_undirected(data.edge_index)
+            data.edge_index, _ = coalesce(
+                data.edge_index, None, data.num_nodes, data.num_nodes
+            )
+            print(
+                f"Edge_index is undirected and coalesced with shape: {data.edge_index.shape}"
+            )
 
-            # extract subgraph
+            # compute degrees
+            degrees = degree(data.edge_index[0], num_nodes=data.num_nodes)
+
+            # select a high-degree node as seed
+            high_degree_node = degrees.argmax().item()
+            seed_nodes = torch.tensor([high_degree_node])
+            print(f"High-degree seed node selected: {seed_nodes.item()}")
+
+            # check degree of seed node
+            seed_degree = degrees[seed_nodes].item()
+            print(f"Seed node {seed_nodes.item()} has degree: {seed_degree}")
+            if seed_degree == 0:
+                raise ValueError(f"Seed node {seed_nodes.item()} is isolated.")
+
+            # extract k-hop subgraph
             sub_nodes, sub_edge_index, subsets, _ = (
                 torch_geometric.utils.k_hop_subgraph(
                     node_idx=seed_nodes,
@@ -120,13 +149,15 @@ class TensorBoardLogger:
                 )
             )
 
-            # check if subsets are valid
-            if len(subsets) == 0 or all(subset.numel() == 0 for subset in subsets):
+            # debugging the contents of `subsets`
+            print(f"Number of subsets: {len(subsets)}")
+            if len(subsets) == 0:
                 raise ValueError(
-                    f"No valid nodes found within 2 hops of seed node {seed_nodes}"
+                    f"Subsets are empty for seed node {seed_nodes.item()}."
                 )
-            else:
-                print(f"Valid subsets found for seed node {seed_nodes}: {subsets}")
+
+            for i, subset in enumerate(subsets):
+                print(f"Subset {i}: {subset}")
 
             print(
                 f"Subgraph extracted: {sub_nodes.numel()} nodes and {sub_edge_index.size(1)} edges."
