@@ -98,42 +98,69 @@ class TensorBoardLogger:
     ) -> None:
         """Log model graph to TensorBoard using a sampled subgraph."""
         try:
+            print(
+                f"Starting log_model_graph with sample_size={sample_size} and num_nodes={data.num_nodes}"
+            )
+
+            # ensure sample_size doesn't exceed the total number of nodes
+            if data.num_nodes < sample_size:
+                print(f"Adjusting sample_size to match num_nodes: {data.num_nodes}")
+                sample_size = data.num_nodes
+
             # randomly sample a seed node and extract a subgraph
-            seed_nodes = torch.randint(0, sample_size, (1,)).squeeze()
-            sub_nodes = torch_geometric.utils.k_hop_subgraph(
+            seed_nodes = torch.randint(0, data.num_nodes, (1,)).squeeze()
+            print(f"Seed node selected: {seed_nodes}")
+
+            sub_nodes, sub_edge_index, _, _ = torch_geometric.utils.k_hop_subgraph(
                 node_idx=seed_nodes,
                 num_hops=2,
                 edge_index=data.edge_index,
-                num_nodes=sample_size,
+                num_nodes=data.num_nodes,
                 flow="source_to_target",
-            )[0]
+            )
 
+            print(
+                f"Subgraph extracted: {sub_nodes.numel()} nodes and {sub_edge_index.size(1)} edges."
+            )
+
+            # ensure subgraph node count doesn't exceed sample_size
             if sub_nodes.numel() > sample_size:
+                print("Subgraph has more nodes than sample_size. Reducing nodes.")
                 sub_nodes = sub_nodes[torch.randperm(sub_nodes.numel())[:sample_size]]
 
-            # get subgraph
+            print(f"Final sub_nodes count: {sub_nodes.numel()}")
+
+            # Get subgraph
             sub_edge_index, _ = subgraph(
                 subset=sub_nodes,
                 edge_index=data.edge_index,
                 relabel_nodes=True,
-                num_nodes=sample_size,
+                num_nodes=data.num_nodes,
+            )
+
+            print(
+                f"Subgraph edge index: {sub_edge_index.size(1)} edges after relabeling."
             )
 
             # get subgraph features and mask
             sub_x = data.x[sub_nodes]
-            sub_mask = torch.zeros(sample_size, dtype=torch.bool)
+            sub_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
             sub_mask[sub_nodes] = True
 
-            # move to gpu
+            # move to GPU
             sub_x = sub_x.to(device)
             sub_edge_index = sub_edge_index.to(device)
             sub_mask = sub_mask.to(device)
 
+            print(
+                f"Subgraph moved to device: {device}. Features shape: {sub_x.shape}, Edge index shape: {sub_edge_index.shape}"
+            )
+
             # log the graph!
             self.writer.add_graph(model, (sub_x, sub_edge_index, sub_mask))
             print(
-                f"Logged subgraph with {sub_nodes.numel()}"
-                f"nodes and {sub_edge_index.size(1)} edges."
+                f"Successfully logged subgraph with {sub_nodes.numel()} nodes "
+                f"and {sub_edge_index.size(1)} edges."
             )
 
         except Exception as e:
