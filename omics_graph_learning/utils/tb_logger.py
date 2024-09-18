@@ -51,12 +51,10 @@ class TensorBoardLogger:
             tb_logger=tb_logger,
         )
 
-    # set up a unique identifier for logging
-
-                current_step = epoch * len(loader) + batch_idx
-            self.tb.log_gradients(self.model, current_step)
-            self.tb.log_weights(self.model, current_step)
-            self.tb.log_learning_rate(self.optimizer, current_step)
+    # Log hyperparameters and metrics
+    >>> tb_logger.log_gradients(model, current_step)
+    >>> tb_logger.log_weights(model, current_step)
+    >>> tb_logger.log_learning_rate(optimizer, current_step)
     """
 
     def __init__(self, log_dir: Path) -> None:

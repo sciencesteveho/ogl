@@ -20,7 +20,39 @@ import torch_geometric  # type: ignore
 
 class OptimizerSchedulerHandler:
     """Organizer class for selecting optimizer, scheduler, and calculating
-    training sets for proper warm-up.
+    training sets for proper warm-up. The class provides a set of static methods
+    and should be used as such as opposed to instantiating an object.
+
+    Methods
+    --------
+    set_scheduler:
+        Returns the selected learning rate scheduler.
+    set_optimizer:
+        Returns the selected gradient descent optimizer.
+    calculate_training_steps:
+        Calculate the total number of projected warm-up and training steps.
+
+    Examples:
+    --------
+    # First, calculate the total number of training steps and warm-up steps
+    >>> total_steps, warmup_steps = OptimizerSchedulerHandler.calculate_training_steps(
+            train_loader=train_loader,
+            batch_size=args.batch_size,
+            epochs=args.epochs,
+        )
+
+    # Call the optimizer and scheduler
+    >>> optimizer = OptimizerSchedulerHandler.set_optimizer(
+            optimizer_type=args.optimizer,
+            learning_rate=args.learning_rate,
+            model_params=model.parameters(),
+        )
+    >>> scheduler = OptimizerSchedulerHandler.set_scheduler(
+            scheduler_type=args.scheduler,
+            optimizer=optimizer,
+            warmup_steps=warmup_steps,
+            training_steps=total_steps,
+        )
     """
 
     @classmethod
@@ -34,16 +66,20 @@ class OptimizerSchedulerHandler:
         """Set learning rate scheduler"""
         if scheduler_type == "plateau":
             return ReduceLROnPlateau(
-                optimizer, mode="min", factor=0.5, patience=20, min_lr=1e-5
+                optimizer,
+                mode="min",
+                factor=0.5,
+                patience=5,
+                min_lr=1e-6,
             )
         if scheduler_type == "cosine":
-            return cls.get_cosine_schedule_with_warmup(
+            return cls._get_cosine_schedule_with_warmup(
                 optimizer=optimizer,
                 num_warmup_steps=warmup_steps,
                 num_training_steps=training_steps,
             )
         elif scheduler_type == "linear_warmup":
-            return cls.get_linear_schedule_with_warmup(
+            return cls._get_linear_schedule_with_warmup(
                 optimizer=optimizer,
                 num_warmup_steps=warmup_steps,
                 num_training_steps=training_steps,
@@ -83,11 +119,11 @@ class OptimizerSchedulerHandler:
         return total_steps, warmup_steps
 
     @staticmethod
-    def get_cosine_schedule_with_warmup(
+    def _get_cosine_schedule_with_warmup(
         optimizer: Optimizer,
         num_warmup_steps: int,
         num_training_steps: int,
-        num_cycles: float = 0.5,
+        num_cycles: float = 1.0,
         last_epoch: int = -1,
     ) -> LRScheduler:
         """
@@ -117,7 +153,7 @@ class OptimizerSchedulerHandler:
         return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
     @staticmethod
-    def get_linear_schedule_with_warmup(
+    def _get_linear_schedule_with_warmup(
         optimizer: Optimizer,
         num_warmup_steps: int,
         num_training_steps: int,

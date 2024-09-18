@@ -252,8 +252,10 @@ class GNNTrainer:
         if self.tb:
             self.tb.log_hyperparameters(vars(args))
 
-        best_validation = float(0)
-        stop_counter = 0  # set up early stopping counter
+        # set up early stopping counter
+        best_validation = float("inf")
+        stop_counter = 0
+
         for epoch in range(epochs + 1):
 
             # train
@@ -790,12 +792,11 @@ def main() -> None:
         device=device,
         data=data,
         data_loader=test_loader,
-        run_dir=run_dir,
         tb_logger=tb_logger,
+        logger=logger,
+        run_dir=run_dir,
         early_stop=early_stop,
     )
-
-    tb_logger.writer.close()
 
 
 if __name__ == "__main__":
