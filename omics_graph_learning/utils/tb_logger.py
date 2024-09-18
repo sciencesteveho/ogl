@@ -102,35 +102,43 @@ class TensorBoardLogger:
                 f"Starting log_model_graph with sample_size={sample_size} and num_nodes={data.num_nodes}"
             )
 
-            # ensure sample_size doesn't exceed the total number of nodes
             if data.num_nodes < sample_size:
                 print(f"Adjusting sample_size to match num_nodes: {data.num_nodes}")
                 sample_size = data.num_nodes
 
-            # randomly sample a seed node and extract a subgraph
             seed_nodes = torch.randint(0, data.num_nodes, (1,)).squeeze()
             print(f"Seed node selected: {seed_nodes}")
 
-            sub_nodes, sub_edge_index, _, _ = torch_geometric.utils.k_hop_subgraph(
-                node_idx=seed_nodes,
-                num_hops=2,
-                edge_index=data.edge_index,
-                num_nodes=data.num_nodes,
-                flow="source_to_target",
+            # extract subgraph
+            sub_nodes, sub_edge_index, subsets, _ = (
+                torch_geometric.utils.k_hop_subgraph(
+                    node_idx=seed_nodes,
+                    num_hops=5,
+                    edge_index=data.edge_index,
+                    num_nodes=data.num_nodes,
+                    flow="source_to_target",
+                )
             )
+
+            # check if subsets are valid
+            if len(subsets) == 0 or all(subset.numel() == 0 for subset in subsets):
+                raise ValueError(
+                    f"No valid nodes found within 2 hops of seed node {seed_nodes}"
+                )
+            else:
+                print(f"Valid subsets found for seed node {seed_nodes}: {subsets}")
 
             print(
                 f"Subgraph extracted: {sub_nodes.numel()} nodes and {sub_edge_index.size(1)} edges."
             )
 
-            # ensure subgraph node count doesn't exceed sample_size
             if sub_nodes.numel() > sample_size:
                 print("Subgraph has more nodes than sample_size. Reducing nodes.")
                 sub_nodes = sub_nodes[torch.randperm(sub_nodes.numel())[:sample_size]]
 
             print(f"Final sub_nodes count: {sub_nodes.numel()}")
 
-            # Get subgraph
+            # get subgraph
             sub_edge_index, _ = subgraph(
                 subset=sub_nodes,
                 edge_index=data.edge_index,
