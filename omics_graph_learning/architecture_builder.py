@@ -22,7 +22,31 @@ from omics_graph_learning.models import UniMPTransformer
 
 
 class GNNArchitectureBuilder:
-    """Builder class to construct GNN models."""
+    """Builder class to construct GNN models.
+
+    Methods
+    --------
+    build:
+        Construct the GNN model based on the input args.
+
+    Examples:
+    --------
+    >>> model = build_gnn_architecture(
+            model=args.model,
+            activation=args.activation,
+            in_size=data.x.shape[1],
+            embedding_size=args.dimensions,
+            out_channels=1,
+            gnn_layers=args.gnn_layers,
+            shared_mlp_layers=args.linear_layers,
+            heads=args.heads,
+            dropout_rate=args.dropout or None,
+            skip_connection=args.residual,
+            attention_task_head=args.attention_task_head,
+            train_dataset=train_loader if args.model == "PNA" else None,
+        )
+    >>> model = model.to(device)
+    """
 
     def __init__(self) -> None:
         """Initialize the GNNArchitectureBuilder class."""

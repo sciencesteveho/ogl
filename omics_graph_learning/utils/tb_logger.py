@@ -50,10 +50,14 @@ class TensorBoardLogger:
             logger=logger,
             tb_logger=tb_logger,
         )
-    """
 
-    num_toy_nodes = 100
-    num_toy_edges = 200
+    # set up a unique identifier for logging
+
+                current_step = epoch * len(loader) + batch_idx
+            self.tb.log_gradients(self.model, current_step)
+            self.tb.log_weights(self.model, current_step)
+            self.tb.log_learning_rate(self.optimizer, current_step)
+    """
 
     def __init__(self, log_dir: Path) -> None:
         """Initialize TensorBoard writer."""

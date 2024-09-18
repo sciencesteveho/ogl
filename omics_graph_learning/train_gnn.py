@@ -12,7 +12,7 @@ import logging
 import math
 from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from scipy import stats  # type: ignore
@@ -56,27 +56,32 @@ class GNNTrainer:
     inference_all_neighbors:
         Evaluate GNN model on test set using all neighbors
     training_loop:
-        Execute training loop for GNN models
+        Execute training loop for GNN model
+    log_tensorboard_data:
+        Log data to tensorboard on the last batch of an epoch.
 
     Examples:
     --------
+    # instantiate trainer
     >>> trainer = GNNTrainer(
             model=model,
             device=device,
             data=data,
             optimizer=optimizer,
             scheduler=scheduler,
-            logger=logger
+            logger=logger,
+            tb_logger=tb_logger,
         )
 
-    >>> trainer.training_loop(
+    # train model
+    >>> model, _, early_stop = trainer.train_model(
             train_loader=train_loader,
             val_loader=val_loader,
             test_loader=test_loader,
             epochs=epochs,
-            writer=writer,
-            model_dir=model_dir,
-            args=args
+            model_dir=run_dir,
+            args=args,
+            min_epochs=min_epochs,
         )
     """
 
@@ -135,10 +140,11 @@ class GNNTrainer:
             )
             mse_loss.backward()
 
-            # log gradients, weights, LR to tensorboard
+            # log if last batch of epoch
             if self.tb:
                 self.log_tensorboard_data(
-                    loader=train_loader, epoch=epoch, batch_idx=batch_idx
+                    epoch=epoch,
+                    last_batch=batch_idx == len(train_loader) - 1,
                 )
 
             # check for NaN gradients
@@ -310,14 +316,15 @@ class GNNTrainer:
         return self.model, best_validation, stop_counter == EARLY_STOP_PATIENCE
 
     def log_tensorboard_data(
-        self, loader: torch_geometric.data.DataLoader, epoch: int, batch_idx: int
+        self,
+        epoch: int,
+        last_batch: bool = False,
     ) -> None:
-        """Log data to tensorboard."""
-        if self.tb:
-            current_step = epoch * len(loader) + batch_idx
-            self.tb.log_gradients(self.model, current_step)
-            self.tb.log_weights(self.model, current_step)
-            self.tb.log_learning_rate(self.optimizer, current_step)
+        """Log data to tensorboard on the last batch of an epoch."""
+        if last_batch:
+            self.tb.log_learning_rate(self.optimizer, epoch)
+            self.tb.log_weights(self.model, epoch)
+            self.tb.log_gradients(self.model, epoch)
 
     @staticmethod
     @torch.no_grad()
