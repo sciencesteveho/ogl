@@ -709,8 +709,8 @@ def main() -> None:
     # log model graph to tensorboard
     tb_logger.log_model_graph(
         model=model,
-        data=data,
         device=device,
+        feature_size=data.x.shape[1],
     )
 
     # set up optimizer & scheduler
