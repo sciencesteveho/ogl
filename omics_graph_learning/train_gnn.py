@@ -90,9 +90,9 @@ class GNNTrainer:
         model: torch.nn.Module,
         device: torch.device,
         data: torch_geometric.data.Data,
-        optimizer: Optimizer,
-        scheduler: Union[LRScheduler, ReduceLROnPlateau],
-        logger: logging.Logger,
+        optimizer: Optional[Optimizer] = None,
+        scheduler: Optional[Union[LRScheduler, ReduceLROnPlateau]] = None,
+        logger: Optional[logging.Logger] = None,
         tb_logger: Optional[TensorBoardLogger] = None,
     ) -> None:
         """Initialize model trainer."""
@@ -102,9 +102,7 @@ class GNNTrainer:
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.logger = logger
-
-        if tb_logger:
-            self.tb = tb_logger
+        self.tb_logger = tb_logger
 
     def train(
         self,
@@ -116,7 +114,7 @@ class GNNTrainer:
         self.model.train()
         pbar = tqdm(total=len(train_loader))
         pbar.set_description(
-            f"\nTraining {self.model.__class__.__name__} model @ epoch: {epoch:04d} - "
+            f"\nTraining {self.model.__class__.__name__} model @ epoch: {epoch} - "
         )
 
         total_loss = float(0)
@@ -180,7 +178,7 @@ class GNNTrainer:
         self.model.eval()
         pbar = tqdm(total=len(data_loader))
         pbar.set_description(
-            f"\nEvaluating {self.model.__class__.__name__} model @ epoch: {epoch:04d}"
+            f"\nEvaluating {self.model.__class__.__name__} model @ epoch: {epoch}"
         )
 
         outs, labels = [], []
@@ -328,51 +326,57 @@ class GNNTrainer:
             self.tb.log_weights(self.model, epoch)
             self.tb.log_gradients(self.model, epoch)
 
-    @staticmethod
     @torch.no_grad()
     def inference_all_neighbors(
-        model: torch.nn.Module,
-        device: torch.device,
-        data: torch_geometric.data.Data,
+        self,
         data_loader: torch_geometric.data.DataLoader,
         mask: torch.Tensor,
         split: str = "test",
         epoch: Optional[int] = None,
     ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Use model for inference or to evaluate on validation set"""
-        model.eval()
+        self.model.eval()
         predictions = []
         node_indices = []
 
         description = "\nEvaluating"
         if epoch is not None:
-            description += f" epoch: {epoch:04d}"
+            description += f" epoch: {epoch}"
 
         for batch in tqdm(data_loader, desc=description):
-            batch = batch.to(device)
+            batch = batch.to(self.device)
             regression_mask = getattr(batch, f"{split}_mask_loss")
 
             # forward pass
-            out = model(
+            out = self.model(
                 x=batch.x,
                 edge_index=batch.edge_index,
                 regression_mask=regression_mask,
             )
 
+            # use input id directly
+            input_nodes_indices = batch.input_id.long()
+
             # filter for input nodes
-            input_nodes_mask = batch.input_id < batch.num_nodes
-            predictions.append(out[input_nodes_mask].squeeze().cpu())
-            node_indices.extend(batch.input_id[input_nodes_mask].cpu().tolist())
+            valid_indices_mask = input_nodes_indices < out.size(0)
+            valid_input_nodes = input_nodes_indices[valid_indices_mask]
+            if valid_input_nodes.numel() == 0:
+                continue
+
+            predictions.append(out[valid_input_nodes].squeeze().cpu())
+            node_indices.extend(valid_input_nodes.cpu().tolist())
 
         # concatenate predictions and sort by node index
         all_preds = torch.cat(predictions)
+
+        # sort predictions by node index
         original_indices = torch.tensor(node_indices)
         sorted_indices = torch.argsort(torch.tensor(node_indices))
         all_preds = all_preds[sorted_indices]
         original_indices = original_indices[sorted_indices]
 
         # get predictions
-        labels = data.y[mask].squeeze()
+        labels = self.data.y[mask].squeeze()
         mse = F.mse_loss(all_preds, labels)
         rmse = torch.sqrt(mse)
 
@@ -521,24 +525,30 @@ def post_model_evaluation(
 
     # all neighors inference
     # if cuda out of memory error, use normal inference
+    post_eval_trainer = GNNTrainer(
+        model=model,
+        device=device,
+        data=data,
+        logger=logger,
+        tb_logger=tb_logger,
+    )
     try:
-        rmse, outs, labels, _ = GNNTrainer.inference_all_neighbors(
-            model=model,
-            device=device,
-            data=data,
+        rmse, outs, labels, _ = post_eval_trainer.inference_all_neighbors(
             data_loader=data_loader,
-            split="test",
             mask=data.test_mask_loss,
+            split="test",
+            epoch=0,
         )
     except Exception:
         logger.warning("Error. Using normal inference.")
-        rmse, outs, labels, _ = GNNTrainer.inference(
-            model=model,
-            device=device,
-            data=data,
+        rmse, outs, labels, _ = post_eval_trainer.evaluate(
             data_loader=data_loader,
+            epoch=0,
             mask="test",
         )
+
+    # pearson
+    r, _ = pearsonr(outs, labels)
 
     # bootstrap evaluation
     mean_rmse, ci_lower, ci_upper = boostrap_evaluation(
@@ -546,10 +556,12 @@ def post_model_evaluation(
         labels=labels,
     )
 
+    logger.info(f"Final, all neighbor test pearson: {r:.4f}")
     logger.info(f"Final, all neighbor test RMSE: {rmse:.4f}")
     logger.info(f"Bootstrap RMSE: {mean_rmse:.4f} [{ci_lower:.4f}, {ci_upper:.4f}]")
 
     metrics = {
+        "Final test pearson": r,
         "Final test RMSE": rmse,
         "Bootstrap RMSE": mean_rmse,
         "CI lower": ci_lower,
