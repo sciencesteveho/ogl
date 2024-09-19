@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
 import seaborn as sns  # type: ignore
 
-from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 CHROM_SIZES = {
     "chr1": 248956422,
@@ -73,7 +73,7 @@ def plot_contact_size_distribution(
     df: pd.DataFrame, save_path: Path, max_size: int = 2000000
 ) -> None:
     """Plot distribution of chromatin contact sizes."""
-    _set_matplotlib_publication_parameters()
+    set_matplotlib_publication_parameters()
     plt.figure(figsize=(4, 4.5))
     sns.histplot(data=df, x="size", bins=200, kde=True)
     plt.xlim(0, max_size)

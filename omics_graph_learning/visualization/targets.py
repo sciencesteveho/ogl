@@ -15,7 +15,7 @@ import pandas as pd
 import seaborn as sns  # type: ignore
 
 from omics_graph_learning.utils.common import _load_pickle
-from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 
 def flatten_targets(targets: Dict[str, np.ndarray]) -> np.ndarray:
@@ -88,7 +88,7 @@ def plot_target_distribution(
     filtered: bool = False,
 ) -> None:
     """Plot distribution of targets."""
-    _set_matplotlib_publication_parameters()
+    set_matplotlib_publication_parameters()
     title = (
         "Distribution of Unfiltered Regression Targets"
         if filtered
@@ -135,7 +135,7 @@ def gene_barplots_per_chromosome(
     first showing unfiltered genes, the second showing the genes after filtering
     during graph construction.
     """
-    _set_matplotlib_publication_parameters()
+    set_matplotlib_publication_parameters()
 
     # merge data to plot together
     plot_data = combine_gene_distributions(genes, genes_filtered)

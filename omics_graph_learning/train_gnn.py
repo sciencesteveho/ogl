@@ -32,7 +32,6 @@ from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.arg_parser import OGLCLIParser
-from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import plot_predicted_versus_expected
 from omics_graph_learning.utils.common import plot_training_losses
@@ -42,6 +41,7 @@ from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 from omics_graph_learning.utils.constants import RANDOM_SEEDS
 from omics_graph_learning.utils.tb_logger import TensorBoardLogger
+from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 
 class GNNTrainer:
@@ -320,8 +320,9 @@ class GNNTrainer:
         """Log data to tensorboard on the last batch of an epoch."""
         if last_batch:
             self.tb_logger.log_learning_rate(self.optimizer, epoch)
-            self.tb_logger.log_weights(self.model, epoch)
-            self.tb_logger.log_gradients(self.model, epoch)
+            self.tb_logger.log_summary_statistics(self.model, epoch)
+            self.tb_logger.log_aggregate_module_metrics(self.model, epoch)
+            self.tb_logger.log_gradient_norms(self.model, epoch)
 
     @torch.no_grad()
     def inference_all_neighbors(

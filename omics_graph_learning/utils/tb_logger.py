@@ -6,6 +6,7 @@
 weights and gradient histograms."""
 
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict
 
@@ -71,12 +72,6 @@ class TensorBoardLogger:
         for name, value in metrics.items():
             self.writer.add_scalar(name, value, step)
 
-    def log_gradients(self, model: torch.nn.Module, step: int) -> None:
-        """Log gradients of model parameters to TensorBoard."""
-        for name, param in model.named_parameters():
-            if param.grad is not None:
-                self.writer.add_histogram(f"Gradients/{name}", param.grad, step)
-
     def log_learning_rate(self, optimizer: Optimizer, step: int) -> None:
         """Log learning rate to TensorBoard."""
         for idx, param_group in enumerate(optimizer.param_groups):
@@ -84,10 +79,86 @@ class TensorBoardLogger:
             if lr is not None:
                 self.writer.add_scalar(f"Learning_Rate/group_{idx}", lr, step)
 
-    def log_weights(self, model: torch.nn.Module, step: int) -> None:
-        """Log model weights to TensorBoard."""
+    def log_gradient_norms(self, model: torch.nn.Module, step: int) -> None:
+        """Log L2 norm of model gradients to TensorBoard."""
         for name, param in model.named_parameters():
-            self.writer.add_histogram(f"Weights/{name}", param, step)
+            if param.grad is not None:
+                grad_norm = torch.norm(param.grad, p=2)
+                self.writer.add_scalar(f"Gradient_Norms/{name}", grad_norm, step)
+
+    def log_aggregate_module_metrics(self, model: torch.nn.Module, step: int) -> None:
+        """Log aggregate metrics grouped by module type to TensorBoard."""
+        weight_stats = defaultdict(list)
+        bias_stats = defaultdict(list)
+        grad_weight_stats = defaultdict(list)
+        grad_bias_stats = defaultdict(list)
+
+        for module_name, module in model.named_modules():
+            if module_name == "":
+                continue  # skip root module
+
+            module_type = type(module).__name__
+            for param_name, param in module.named_parameters(recurse=False):
+
+                # separate weights and biases
+                if "bias" in param_name:
+                    bias_stats[module_type].append(param.data.view(-1))
+                    if param.grad is not None:
+                        grad_bias_stats[module_type].append(param.grad.view(-1))
+                else:
+                    weight_stats[module_type].append(param.data.view(-1))
+                    if param.grad is not None:
+                        grad_weight_stats[module_type].append(param.grad.view(-1))
+
+        # aggregate and log metrics
+        for module_type, params in weight_stats.items():
+            params_concat = torch.cat(params)
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/mean_weight", params_concat.mean(), step
+            )
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/std_weight", params_concat.std(), step
+            )
+
+        for module_type, params in bias_stats.items():
+            params_concat = torch.cat(params)
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/mean_bias", params_concat.mean(), step
+            )
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/std_bias", params_concat.std(), step
+            )
+
+        for module_type, grads in grad_weight_stats.items():
+            grads_concat = torch.cat(grads)
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/mean_grad_weight", grads_concat.mean(), step
+            )
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/std_grad_weight", grads_concat.std(), step
+            )
+
+        for module_type, grads in grad_bias_stats.items():
+            grads_concat = torch.cat(grads)
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/mean_grad_bias", grads_concat.mean(), step
+            )
+            self.writer.add_scalar(
+                f"Aggregate/{module_type}/std_grad_bias", grads_concat.std(), step
+            )
+
+    def log_summary_statistics(self, model: torch.nn.Module, step: int) -> None:
+        """Log summary statistics of model parameters and gradients to TensorBoard."""
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                self.writer.add_scalar(f"Summary/{name}/mean", param.mean(), step)
+                self.writer.add_scalar(f"Summary/{name}/std", param.std(), step)
+                self.writer.add_scalar(f"Summary/{name}/min", param.min(), step)
+                self.writer.add_scalar(f"Summary/{name}/max", param.max(), step)
+                self.writer.add_scalar(f"Summary/{name}/median", param.median(), step)
+                self.writer.add_scalar(
+                    f"Summary/{name}/sparsity", (param == 0).float().mean(), step
+                )
 
     @torch.no_grad()
     def log_model_graph(

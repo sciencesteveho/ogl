@@ -22,7 +22,6 @@ import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
-import matplotlib.figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 import pandas as pd
@@ -694,83 +693,3 @@ def gene_list_from_graphs(root_dir: str, tissue: str) -> List[str]:
     not have edges in smaller window"""
     directory = f"{root_dir}/{tissue}/parsing/graphs"
     return [gene.split("_")[0] for gene in os.listdir(directory)]
-
-
-# plotting utilities
-def _set_matplotlib_publication_parameters() -> None:
-    plt.rcParams.update(
-        {
-            "font.size": 7,
-            "axes.titlesize": 7,
-            "axes.labelsize": 7,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 7,
-            "legend.fontsize": 7,
-            "figure.dpi": 300,
-            "font.sans-serif": "Nimbus Sans",
-        }
-    )
-
-
-@time_decorator(print_args=True)
-def plot_training_losses(
-    log: str,
-) -> matplotlib.figure.Figure:
-    """Plots training losses from training log"""
-    plt.figure(figsize=(3.125, 2.25))
-    _set_matplotlib_publication_parameters()
-
-    losses: Dict[str, List[float]] = {"Train": [], "Test": [], "Validation": []}
-    with open(log, newline="") as file:
-        reader = csv.reader(file, delimiter=":")
-        for line in reader:
-            for substr in line:
-                for key in losses:
-                    if key in substr:
-                        losses[key].append(float(line[-1].split(" ")[-1]))
-
-    # # remove last item in train
-    # try:
-    #     loss_df = pd.DataFrame(losses)
-    # except ValueError:
-    #     losses["Train"] = losses["Train"][:-1]
-    if len(losses["Train"]) > len(losses["Test"]):
-        losses["Train"] = losses["Train"][:-1]
-
-    sns.lineplot(data=losses)
-    plt.margins(x=0)
-    plt.xlabel("Epoch", fontsize=7)
-    plt.ylabel("MSE Loss", fontsize=7)
-    plt.title(
-        "Training loss",
-        wrap=True,
-        fontsize=7,
-    )
-    plt.tight_layout()
-    return plt
-
-
-@time_decorator(print_args=True)
-def plot_predicted_versus_expected(
-    predicted: torch.Tensor,
-    expected: torch.Tensor,
-    rmse: torch.Tensor,
-) -> matplotlib.figure.Figure:
-    """Plots predicted versus expected values for a given model"""
-    plt.figure(figsize=(3.15, 2.95))
-    _set_matplotlib_publication_parameters()
-
-    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
-    plt.margins(x=0)
-    plt.xlabel("Expected Log2 TPM", fontsize=7)
-    plt.ylabel("Predicted Log2 TPM", fontsize=7)
-    plt.title(
-        f"Expected versus predicted TPM\n"
-        f"RMSE: {rmse}\n"
-        f"Spearman's R: {stats.spearmanr(expected, predicted)[0]}\n"
-        f"Pearson: {stats.pearsonr(expected, predicted)[0]}",
-        wrap=True,
-        fontsize=7,
-    )
-    plt.tight_layout()
-    return plt

@@ -12,7 +12,7 @@ import seaborn as sns  # type: ignore
 
 from omics_graph_learning.evaluate_models import ModelComparison
 from omics_graph_learning.evaluate_models import ModelMetrics
-from omics_graph_learning.utils.common import _set_matplotlib_publication_parameters
+from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 
 class ModelVisualization:
@@ -25,7 +25,7 @@ class ModelVisualization:
     ):
         self.model_metrics = model_metrics
         self.model_comparison = model_comparison
-        _set_matplotlib_publication_parameters()
+        set_matplotlib_publication_parameters()
 
     def plot_performance_with_error_bars(self) -> None:
         """Plot performance with error bars (95% CI) for a ModelMetrics
