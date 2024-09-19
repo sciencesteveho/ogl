@@ -565,7 +565,7 @@ def post_model_evaluation(
         "CI upper": ci_upper,
     }
 
-    tb_logger.log_metrics(metrics, epoch=0)
+    tb_logger.log_metrics(metrics, 0)
     with open(run_dir / "eval_metrics.json", "w") as output:
         json.dump(metrics, output, indent=4)
 
