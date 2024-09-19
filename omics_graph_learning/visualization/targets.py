@@ -7,7 +7,6 @@
 
 import csv
 from pathlib import Path
-import pickle
 from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt  # type: ignore

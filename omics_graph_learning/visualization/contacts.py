@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Union
 
 import matplotlib.pyplot as plt  # type: ignore
-import numpy as np
 import pandas as pd
 import seaborn as sns  # type: ignore
 
