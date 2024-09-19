@@ -2,16 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-# Load model
-# Load data w/ modification
-# loader = NeighborLoader(new_data, input_nodes=new_node_ids, ...)
-# out = model(new_data.x, new_data.edge_index)
-# compare co-essential perturbations to random perturbation
-#
-# grep -e Artery_Aorta -e Brain_Hippocampus -e Liver -e Lung -e Muscle_Skeletal -e Pancreas -e  Heart_Left_Ventricle -e Small_Intestine_Terminal_Ileum filtered_cops_gtex.tsv | cut -f1,3,5
-
-
-"""_summary_ of project"""
+"""Working recapitulation code."""
 
 
 import argparse
@@ -23,12 +14,12 @@ import random
 from typing import Dict, List, Tuple
 
 import numpy as np
-from scipy import stats
+from scipy import stats  # type: ignore
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
-from tqdm import tqdm
+from torch_geometric.loader import NeighborLoader  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 from graph_to_pytorch import graph_to_pytorch
 from perturbation import _device_check
@@ -38,14 +29,16 @@ import utils.common as utils
 
 
 @torch.no_grad()
-def all_inference(model, device, data_loader):
+def all_inference(
+    model: nn.Module, device: torch.device, data_loader: NeighborLoader
+) -> Tuple[float, List[Any], List[Any], Dict[int, List[float]]]:
     model.eval()
 
     pbar = tqdm(total=len(data_loader))
     pbar.set_description("Performing inference")
 
     mse, outs, labels = [], [], []
-    expression = {}
+    expression: Dict[int, List[float]] = {}
     for data in data_loader:
         data = data.to(device)
         out = model(data.x, data.edge_index)
@@ -71,11 +64,11 @@ def all_inference(model, device, data_loader):
     return math.sqrt(float(loss.mean())), outs, labels, expression
 
 
-def _pre_nest_tissue_dict(tissues):
+def _pre_nest_tissue_dict(tissues: List[str]) -> Dict[str, Dict]:
     return {tissue: {} for tissue in tissues}
 
 
-def _flatten_inference_array(input_list):
+def _flatten_inference_array(input_list: List[List[float]]) -> List[float]:
     result_list = []
 
     for arr in input_list:
@@ -92,7 +85,7 @@ def _get_idxs_for_coessential_pairs(
     positive_coessential_genes: str,
     negative_coessential_genes: str,
     graph_idxs: Dict[str, str],
-) -> List[Tuple[int, int]]:
+) -> Dict[str, Dict[str, Dict[int, List[int]]]]:
     """_summary_ of function
 
     Create a dictionary of coessential genes for each tissue of the following
@@ -109,7 +102,9 @@ def _get_idxs_for_coessential_pairs(
         }
     """
 
-    def _prepopulate_dict_with_keys(pairs, tissue):
+    def _prepopulate_dict_with_keys(
+        pairs: List[Tuple[str, str]], tissue: str
+    ) -> Dict[int, List[int]]:
         all_genes = [tup[0] for tup in pairs] + [tup[1] for tup in pairs]
         return {
             graph_idxs[f"{gene}_{tissue}"]: []
@@ -117,7 +112,9 @@ def _get_idxs_for_coessential_pairs(
             if f"{gene}_{tissue}" in graph_idxs
         }
 
-    def _populate_dict_with_co_pairs(pairs, tissue, pre_dict):
+    def _populate_dict_with_co_pairs(
+        pairs: List[Tuple[str, str]], tissue: str, pre_dict: Dict[int, List[int]]
+    ) -> Dict[int, List[int]]:
         for pair in pairs:
             with contextlib.suppress(KeyError):
                 idx1 = graph_idxs[f"{pair[0]}_{tissue}"]
@@ -159,21 +156,23 @@ def _get_idxs_for_coessential_pairs(
 
 
 def _random_gene_pairs(
-    coessential_genes: Dict[int, List[int]],
+    coessential_genes: Dict[str, Dict[str, Dict[int, List[int]]]],
     graph_idxs: Dict[str, str],
     model_dir: str = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/alldata_combinedloops",
-) -> List[Tuple[int, int]]:
+) -> Dict[str, Dict[str, Dict[int, List[int]]]]:
     """_summary_ of function"""
 
-    def _get_number_of_pairs(subdict):
+    def _get_number_of_pairs(subdict: Dict[int, List[int]]) -> int:
         total = sum(len(value) + 1 for value in subdict.values())
         return total
 
-    def _gencode_to_idx_list(tissue, genes):
+    def _gencode_to_idx_list(tissue: str, genes: List[str]) -> List[int]:
         gencode_keys = {f"{gene}_{tissue}" for gene in genes}
         return [graph_idxs[key] for key in gencode_keys if key in graph_idxs]
 
-    def _generate_random_pairs(tissue_genes, total_pairs):
+    def _generate_random_pairs(
+        tissue_genes: List[str], total_pairs: int
+    ) -> List[Tuple[int, int]]:
         gencode_idxs = _gencode_to_idx_list(tissue=tissue, genes=tissue_genes)
         random_pairs = []
 
@@ -219,68 +218,41 @@ def _random_gene_pairs(
     return random_copairs
 
 
-def _average_values_across_dict(dictionary):
+def _average_values_across_dict(dictionary: Dict[Any, List[float]]) -> Dict[Any, float]:
     """Given a dictionary where each value is a list of floats, returns the same
     dictionary but replaces the list of floats with the average"""
-    for key, value in dictionary.items():
-        dictionary[key] = np.mean(value)
-    return dictionary
+    return {key: np.mean(value) for key, value in dictionary.items()}
 
 
-def _store_baseline():
-    """STEPS
-    1. store baseline TPMs for each gene from checkpoint model
-    for coessential dict and random pairs dict:
-        for each key:
-            remove the key from the graph
-            run inference
-            for each value:
-                get inferred TPM
-                calculate difference from baseline
-                store back into a dict
-    """
+def _calculate_difference(
+    baseline_dict: Dict[int, float],
+    perturbed_dict: Dict[int, float],
+    key1: int,
+    key2: int,
+) -> float:
+    baseline = baseline_dict[key1]
+    perturbed = perturbed_dict[key2]
+    return abs(baseline - perturbed)
 
 
-def _scale_coordinate(scaler, coordinate):
-    """_summary_ of function"""
+def generate_unique_tuples(
+    input_list: List[int], existing_tuples: List[Tuple[int, int]], num_tuples: int
+) -> List[Tuple[int, int]]:
+    unique_tuples = []
 
+    while len(unique_tuples) < num_tuples:
+        value1 = random.choice(input_list)
+        value2 = random.choice(input_list)
 
-def _perturb_eQTLs():
-    """
-    idxs:
-        0 = tissue
-        1 = gene
-        5 = beta
-        8 = chrom
-        9 = start
-        10 = end
-    if del in 4
+        # Ensure values are not the same
+        if value1 != value2:
+            new_tuple = (value1, value2)
 
-    split eqtls into plus and minus, per tissue
-    for eqtl
-        convert start and end to coords
-        in graph
-            delete all nodes between start and end
-            run inference
-            check direction of effect
-        store difference from baseline
-    """
+            # Check if the tuple already exists in the existing_tuples list
+            if new_tuple not in existing_tuples:
+                unique_tuples.append(new_tuple)
 
-
-def _remove_lethal_genes():
-    """_summary_ of function"""
-
-
-def _remove_random_genes():
-    """_summary_ of function"""
-
-
-# def _ablate_housekeeping_genes():
-#     """_summary_ of function"""
-
-
-# def _ablate_random_genes():
-#     """_summary_ of function"""
+    return unique_tuples
 
 
 def main() -> None:
@@ -372,28 +344,6 @@ def main() -> None:
         coessential_genes=coessential_genes,
         graph_idxs=graph_idxs,
     )
-
-    def _calculate_difference(baseline_dict, perturbed_dict, key1, key2):
-        baseline = baseline_dict[key1]
-        perturbed = perturbed_dict[key2]
-        return abs(baseline - perturbed)
-
-    def generate_unique_tuples(input_list, existing_tuples, num_tuples):
-        unique_tuples = []
-
-        while len(unique_tuples) < num_tuples:
-            value1 = random.choice(input_list)
-            value2 = random.choice(input_list)
-
-            # Ensure values are not the same
-            if value1 != value2:
-                new_tuple = (value1, value2)
-
-                # Check if the tuple already exists in the existing_tuples list
-                if new_tuple not in existing_tuples:
-                    unique_tuples.append(new_tuple)
-
-        return unique_tuples
 
     batch_size = 2048
     all_positive = []

@@ -359,7 +359,7 @@ def create_edge_index(
     """Create the edge index tensor for the graph, reversing the edge index to
     ensure an undirected graph.
 
-    Additionally, function will perturbing if a perturbation type is provided.
+    Additionally, function will perturb if a perturbation type is provided.
 
     Args:
         graph_data (dict): The graph data dictionary.
