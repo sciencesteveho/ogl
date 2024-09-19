@@ -139,11 +139,10 @@ class GNNTrainer:
             mse_loss.backward()
 
             # log if last batch of epoch
-            if self.tb:
-                self.log_tensorboard_data(
-                    epoch=epoch,
-                    last_batch=batch_idx == len(train_loader) - 1,
-                )
+            self.log_tensorboard_data(
+                epoch=epoch,
+                last_batch=batch_idx == len(train_loader) - 1,
+            )
 
             # check for NaN gradients
             for name, param in self.model.named_parameters():
@@ -247,8 +246,7 @@ class GNNTrainer:
         To account for warm-up schedulers, the function passes min_epochs. Early
         stopping counter starts after min_epochs + early_stop_patience // 2.
         """
-        if self.tb:
-            self.tb.log_hyperparameters(vars(args))
+        self.tb_logger.log_hyperparameters(vars(args))
 
         # set up early stopping counter
         best_validation = float("inf")
@@ -288,8 +286,7 @@ class GNNTrainer:
                 "Test RMSE": test_rmse,
                 "Test Pearson's R": r,
             }
-            if self.tb:
-                self.tb.log_metrics(metrics, epoch)
+            self.tb_logger.log_metrics(metrics, epoch)
 
             # step scheduler if normal plateau scheduler
             if isinstance(self.scheduler, ReduceLROnPlateau):
@@ -322,9 +319,9 @@ class GNNTrainer:
     ) -> None:
         """Log data to tensorboard on the last batch of an epoch."""
         if last_batch:
-            self.tb.log_learning_rate(self.optimizer, epoch)
-            self.tb.log_weights(self.model, epoch)
-            self.tb.log_gradients(self.model, epoch)
+            self.tb_logger.log_learning_rate(self.optimizer, epoch)
+            self.tb_logger.log_weights(self.model, epoch)
+            self.tb_logger.log_gradients(self.model, epoch)
 
     @torch.no_grad()
     def inference_all_neighbors(
