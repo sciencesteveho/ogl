@@ -41,8 +41,7 @@ from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 from omics_graph_learning.utils.constants import RANDOM_SEEDS
 from omics_graph_learning.utils.tb_logger import TensorBoardLogger
-from omics_graph_learning.visualization.training import \
-    plot_predicted_versus_expected
+from omics_graph_learning.visualization.training import plot_predicted_versus_expected
 from omics_graph_learning.visualization.training import plot_training_losses
 
 
@@ -423,7 +422,7 @@ def prep_loader(
     )
 
 
-def boostrap_evaluation(
+def bootstrap_evaluation(
     predictions: torch.Tensor,
     labels: torch.Tensor,
     n_bootstraps: int = 1000,
@@ -431,25 +430,25 @@ def boostrap_evaluation(
 ) -> Tuple[float, float, float]:
     """Perform bootstrap evaluation by resampling with replacement."""
     n_samples = len(predictions)
-    bootstrap_rmses: List[float] = []
+    bootstrap_correlations: List[float] = []
 
     for _ in range(n_bootstraps):
         indices = np.random.choice(n_samples, n_samples, replace=True)
-        bootstrap_pred = predictions[indices]
-        bootstrap_labels = labels[indices]
-        mse = F.mse_loss(bootstrap_pred, bootstrap_labels)
-        rmse = torch.sqrt(mse)
-        bootstrap_rmses.append(rmse.item())
+        bootstrap_pred = predictions[indices].numpy()
+        bootstrap_labels = labels[indices].numpy()
 
-    mean_rmse = np.mean(bootstrap_rmses)
+        correlation, _ = stats.pearsonr(bootstrap_pred, bootstrap_labels)
+        bootstrap_correlations.append(correlation)
+
+    mean_correlation = np.mean(bootstrap_correlations)
     ci_lower, ci_upper = stats.t.interval(
         confidence,
-        len(bootstrap_rmses) - 1,
-        loc=mean_rmse,
-        scale=stats.sem(bootstrap_rmses),
+        len(bootstrap_correlations) - 1,
+        loc=mean_correlation,
+        scale=stats.sem(bootstrap_correlations),
     )
 
-    return mean_rmse, ci_lower, ci_upper
+    return mean_correlation, ci_lower, ci_upper
 
 
 def load_final_model(
@@ -546,19 +545,21 @@ def post_model_evaluation(
     r, _ = pearsonr(outs, labels)
 
     # bootstrap evaluation
-    mean_rmse, ci_lower, ci_upper = boostrap_evaluation(
+    mean_correlation, ci_lower, ci_upper = bootstrap_evaluation(
         predictions=outs,
         labels=labels,
     )
 
     logger.info(f"Final, all neighbor test pearson: {r:.4f}")
     logger.info(f"Final, all neighbor test RMSE: {rmse:.4f}")
-    logger.info(f"Bootstrap RMSE: {mean_rmse:.4f} [{ci_lower:.4f}, {ci_upper:.4f}]")
+    logger.info(
+        f"Bootstrap Pearson: {mean_correlation:.4f} [{ci_lower:.4f}, {ci_upper:.4f}]"
+    )
 
     metrics = {
         "Final test pearson": r,
         "Final test RMSE": rmse,
-        "Bootstrap RMSE": mean_rmse,
+        "Bootstrap pearson": mean_correlation,
         "CI lower": ci_lower,
         "CI upper": ci_upper,
     }
