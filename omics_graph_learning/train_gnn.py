@@ -41,7 +41,9 @@ from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 from omics_graph_learning.utils.constants import RANDOM_SEEDS
 from omics_graph_learning.utils.tb_logger import TensorBoardLogger
-from omics_graph_learning.visualization import set_matplotlib_publication_parameters
+from omics_graph_learning.visualization.training import \
+    plot_predicted_versus_expected
+from omics_graph_learning.visualization.training import plot_training_losses
 
 
 class GNNTrainer:
@@ -472,18 +474,9 @@ def make_model_plots(
     tb_logger: TensorBoardLogger,
 ) -> None:
     """Plot training losses and performance"""
-    # set params for plotting
-    _set_matplotlib_publication_parameters()
-
     # convert to numpy arrays
     predictions_median = tensor_out_to_array(outs)
     labels_median = tensor_out_to_array(labels)
-
-    # plot loss
-    loss = plot_training_losses(
-        log=model_dir / "logs" / "training_log.txt",
-    )
-    tb_logger.writer.add_figure("Training loss", loss)
 
     # plot performance
     performance = plot_predicted_versus_expected(
@@ -492,6 +485,10 @@ def make_model_plots(
         rmse=rmse,
     )
     tb_logger.writer.add_figure("Model performance", performance)
+
+    # plot loss
+    loss = plot_training_losses(tensorboard_log=tb_logger.log_dir)
+    tb_logger.writer.add_figure("Training loss", loss)
 
 
 def post_model_evaluation(
