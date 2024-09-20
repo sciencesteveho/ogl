@@ -103,6 +103,18 @@ class GNNTrainer:
         self.logger = logger
         self.tb_logger = tb_logger
 
+    def log_tensorboard_data(
+        self,
+        epoch: int,
+        last_batch: bool = False,
+    ) -> None:
+        """Log data to tensorboard on the last batch of an epoch."""
+        if last_batch:
+            self.tb_logger.log_learning_rate(self.optimizer, epoch)
+            self.tb_logger.log_summary_statistics(self.model, epoch)
+            self.tb_logger.log_aggregate_module_metrics(self.model, epoch)
+            self.tb_logger.log_gradient_norms(self.model, epoch)
+
     def train(
         self,
         train_loader: torch_geometric.data.DataLoader,
@@ -310,18 +322,6 @@ class GNNTrainer:
                     break
 
         return self.model, best_validation, stop_counter == EARLY_STOP_PATIENCE
-
-    def log_tensorboard_data(
-        self,
-        epoch: int,
-        last_batch: bool = False,
-    ) -> None:
-        """Log data to tensorboard on the last batch of an epoch."""
-        if last_batch:
-            self.tb_logger.log_learning_rate(self.optimizer, epoch)
-            self.tb_logger.log_summary_statistics(self.model, epoch)
-            self.tb_logger.log_aggregate_module_metrics(self.model, epoch)
-            self.tb_logger.log_gradient_norms(self.model, epoch)
 
     @torch.no_grad()
     def inference_all_neighbors(
