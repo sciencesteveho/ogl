@@ -266,23 +266,27 @@ class PipelineRunner:
 
     def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit GNN training job."""
-        if self.args.run_number:
+        if self.args.optimize_params:
+            self.submit_optimization(split_name, dependency)
+        elif self.args.run_number:
             train_args = self.prepare_gnn_training_args(
                 self.args, split_name, self.args.run_number
             )
+            submit_slurm_job(
+                job_script="train_gnn.sh", args=train_args, dependency=dependency
+            )
+            logger.info("GNN training job submitted.")
         else:
             for run_number in range(1, 4):
                 train_args = self.prepare_gnn_training_args(
                     self.args, split_name, run_number
                 )
-                self.submit_gnn_job_single(train_args, split_name, dependency)
-        if self.args.optimize_params:
-            self.submit_optimization(split_name, dependency)
-        else:
-            submit_slurm_job(
-                job_script="train_gnn.sh", args=train_args, dependency=dependency
-            )
-            logger.info("GNN training job submitted.")
+                submit_slurm_job(
+                    job_script="train_gnn.sh",
+                    args=train_args,
+                    dependency=dependency,
+                )
+                logger.info(f"GNN training job submitted for run {run_number}.")
 
     def submit_optimization(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit hyperparameter optimization jobs."""
