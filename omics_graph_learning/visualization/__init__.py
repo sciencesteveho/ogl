@@ -1,6 +1,6 @@
 """Visualization utilities for the omics graph learning."""
 
-import matplotliub.pyplot as plt  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
 
 
 def set_matplotlib_publication_parameters() -> None:
