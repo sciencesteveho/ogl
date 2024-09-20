@@ -33,8 +33,6 @@ from omics_graph_learning.perturbation import PerturbationConfig
 from omics_graph_learning.schedulers import OptimizerSchedulerHandler
 from omics_graph_learning.utils.arg_parser import OGLCLIParser
 from omics_graph_learning.utils.common import dir_check_make
-from omics_graph_learning.utils.common import plot_predicted_versus_expected
-from omics_graph_learning.utils.common import plot_training_losses
 from omics_graph_learning.utils.common import PyGDataChecker
 from omics_graph_learning.utils.common import setup_logging
 from omics_graph_learning.utils.common import tensor_out_to_array

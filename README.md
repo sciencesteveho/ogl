@@ -2,7 +2,7 @@
 Tools to construct graphs heterogenous multi-omics data and train a GNN to regress values of gene expression and protein abundance. Graphs are mutagenized to query the impact of individual features on biological function.
 
 <div align="center">
-    <img src='docs/_static/placeholder.png'>
+    <img src='docs/_static/high_level_schematic.png'>
 </div>
 
 ## Overview
