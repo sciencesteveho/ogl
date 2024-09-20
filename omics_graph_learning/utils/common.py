@@ -503,8 +503,11 @@ def _get_chromatin_loop_file(
     contacts.bedpe. There is no redundancy in the naming, so it looks for one
     and if it doesn't find it, it looks for the other.
     """
-    method, resolution = experiment_config.baseloops.rsplit("_", 1)
-    prefix = f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}"
+    if "_" in experiment_config.baseloops:
+        method, resolution = experiment_config.baseloops.rsplit("_", 1)
+        prefix = f"{experiment_config.baseloop_dir}/{method}/{resolution}/{tissue_config.resources['tissue']}"
+    else:
+        prefix = f"{experiment_config.baseloop_dir}/{experiment_config.baseloops}/{tissue_config.resources['tissue']}"
     suffixes = ["_loops.bedpe", "_contacts.bedpe"]
     for suffix in suffixes:
         file = f"{prefix}{suffix}"

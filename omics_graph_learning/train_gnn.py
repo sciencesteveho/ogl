@@ -467,7 +467,6 @@ def make_model_plots(
     outs: torch.Tensor,
     labels: torch.Tensor,
     rmse: float,
-    model_dir: Path,
     tb_logger: TensorBoardLogger,
 ) -> None:
     """Plot training losses and performance"""
@@ -571,7 +570,6 @@ def post_model_evaluation(
         outs=outs,
         labels=labels,
         rmse=rmse,
-        model_dir=run_dir,
         tb_logger=tb_logger,
     )
 

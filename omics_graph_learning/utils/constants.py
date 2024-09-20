@@ -204,16 +204,43 @@ REGULATORY_ELEMENTS: Dict[str, Dict[str, str]] = {
 
 # optimization helpers
 SUBSET_CHROMOSOMES = [
-    "chr1",  # large chromosome
-    "chr2",  # large chromosome
-    "chr5",  # medium to large chromosome
-    "chr7",  # medium chromosome
-    "chr9",  # medium chromosome
-    "chr20",  # small chromosome
-    "chr22",  # small chromosome
-    "chr17",  # gene-dense chromosome
-    "chr15",  # medium to small chromosome
-    "chr19",  # gene-dense chromosome
-    "chr3",  # large chromosome
-    "chr10",  # medium chromosome
+    "chr1",  # large chromosome, very high gene density (4924 genes)
+    "chr2",  # large chromosome, high gene density (3787 genes)
+    "chr15",  # medium to small chromosome, moderate gene density (1988 genes)
+    "chr11",  # medium chromosome, high gene density (3046 genes)
+    "chr4",  # medium chromosome, moderate gene density (2418 genes)
+    "chr17",  # medium chromosome, high gene density (2763 genes)
+    "chr3",  # large chromosome, moderate gene density (2862 genes)
+    "chr12",  # medium chromosome, moderate gene density (2773 genes)
+    "chr5",  # medium to large chromosome, moderate gene density (2735 genes)
+    "chr6",  # medium chromosome, moderate gene density (2738 genes)
+    "chr14",  # medium chromosome, moderate gene density (2044 genes)
+    "chr7",  # medium chromosome, moderate gene density (2704 genes)
 ]
+
+
+"""
+Gene density reference
+    4924 chr1
+    2095 chr10
+    3046 chr11
+    2773 chr12
+    1239 chr13
+    2044 chr14
+    1988 chr15
+    2317 chr16
+    2763 chr17
+    1113 chr18
+    2626 chr19
+    3787 chr2
+    1299 chr20
+    791 chr21
+    1224 chr22
+    2862 chr3
+    2418 chr4
+    2735 chr5
+    2738 chr6
+    2704 chr7
+    2226 chr8
+    2102 chr9
+"""

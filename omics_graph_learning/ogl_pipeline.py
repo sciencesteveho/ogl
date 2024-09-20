@@ -211,7 +211,7 @@ class PipelineRunner:
         )
 
     def prepare_gnn_training_args(
-        self, args: argparse.Namespace, split_name: str
+        self, args: argparse.Namespace, split_name: str, run_number: int
     ) -> str:
         """Prepare arguments for GNN training."""
         bool_flags = " ".join(
@@ -244,7 +244,7 @@ class PipelineRunner:
             f"--scheduler {args.scheduler} "
             f"--dropout {args.dropout} "
             f"--split_name {split_name} "
-            f"--run_number {args.run_number} "
+            f"--run_number {run_number} "
         )
 
         if args.heads:
@@ -266,7 +266,16 @@ class PipelineRunner:
 
     def submit_gnn_job(self, split_name: str, dependency: Optional[str]) -> None:
         """Submit GNN training job."""
-        train_args = self.prepare_gnn_training_args(self.args, split_name)
+        if self.args.run_number:
+            train_args = self.prepare_gnn_training_args(
+                self.args, split_name, self.args.run_number
+            )
+        else:
+            for run_number in range(1, 4):
+                train_args = self.prepare_gnn_training_args(
+                    self.args, split_name, run_number
+                )
+                self.submit_gnn_job_single(train_args, split_name, dependency)
         if self.args.optimize_params:
             self.submit_optimization(split_name, dependency)
         else:

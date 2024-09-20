@@ -60,6 +60,8 @@ class TensorBoardLogger:
 
     def __init__(self, log_dir: Path) -> None:
         """Initialize TensorBoard writer."""
+        self.log_dir = log_dir
+
         log_dir.mkdir(parents=True, exist_ok=True)
         self.writer = SummaryWriter(log_dir)
 

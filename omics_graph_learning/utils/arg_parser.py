@@ -162,7 +162,11 @@ class OGLCLIParser:
         )
         self.parser.add_argument("--dropout", type=float, default=0.1)
         self.parser.add_argument("--heads", type=int, default=None)
-        self.parser.add_argument("--run_number", type=int, default=1)
+        self.parser.add_argument(
+            "--run_number",
+            type=int,
+            help="Run number to specify for GNN training. If not specified, the pipeline will instead submit three jobs [0, 1, 2] and train three models across three seeds.",
+        )
 
     def add_boolean_flags(self) -> None:
         """Add boolean flags to the parser."""

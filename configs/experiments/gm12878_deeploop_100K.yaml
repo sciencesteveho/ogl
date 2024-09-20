@@ -78,7 +78,7 @@ training_targets:
   protein_abundance_matrix: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/matrices/protein_relative_abundance_all_gtex.csv
   protein_abundance_medians: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/matrices/protein_relative_abundance_median_gtex.csv
   test_chrs:
-    - chr12
-    - chr13
+    - chr8
+    - chr9
   val_chrs:
-    - chr11
+    - chr10
