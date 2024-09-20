@@ -134,9 +134,6 @@ def suggest_hyperparameters(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
         "batch_size": trial.suggest_int("batch_size", low=32, high=320, step=32),
-        "avg_connectivity": trial.suggest_categorical(
-            "avg_connectivity", [True, False]
-        ),
     }
 
     # set heads and embedding size for attention-based models
@@ -228,7 +225,6 @@ def get_objective_loaders(
     data: torch_geometric.data.Data,
     batch_size: int,
     layers: int,
-    avg_connectivity: bool,
 ) -> Tuple[torch_geometric.data.DataLoader, torch_geometric.data.DataLoader]:
     """Get the objective loaders for training and validation."""
     train_loader = prep_loader(
@@ -237,7 +233,6 @@ def get_objective_loaders(
         batch_size=batch_size,
         shuffle=True,
         layers=layers,
-        avg_connectivity=avg_connectivity,
     )
 
     val_loader = prep_loader(
@@ -245,7 +240,6 @@ def get_objective_loaders(
         mask="val_mask",
         batch_size=batch_size,
         layers=layers,
-        avg_connectivity=avg_connectivity,
     )
 
     return train_loader, val_loader
@@ -342,7 +336,6 @@ def objective(
             data=data,
             batch_size=batch_size,
             layers=model_params["gnn_layers"],
-            avg_connectivity=train_params["avg_connectivity"],
         )
 
         # get steps for optimizer and scheduler
