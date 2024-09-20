@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Union
 
 import matplotlib  # type: ignore
+from matplotlib.figure import Figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
 from scipy import stats  # type: ignore
@@ -39,47 +40,46 @@ def _load_tb_loss(tensorboard_log: Union[str, Path]) -> Dict[str, List[float]]:
     }
 
 
-def plot_training_losses(tensorboard_log: Union[str, Path]) -> matplotlib.figure.Figure:
+def plot_training_losses(tensorboard_log: Union[str, Path]) -> Figure:
     """Plots training losses. Get values from tensorboard log."""
     losses = _load_tb_loss(tensorboard_log)
     df = pd.DataFrame(losses)
-
     set_matplotlib_publication_parameters()
-    plt.figure(figsize=(3.125, 2.25))
 
-    sns.lineplot(x="Epoch", y="Training loss", data=df, label="Training Loss")
-    sns.lineplot(x="Epoch", y="Validation RMSE", data=df, label="Validation RMSE")
-    sns.lineplot(x="Epoch", y="Test RMSE", data=df, label="Test RMSE")
-
-    plt.margins(x=0)
-    plt.xlabel("Epoch", fontsize=7)
-    plt.ylabel("Loss / RMSE", fontsize=7)
-    plt.title("Training and Validation Metrics", fontsize=7)
-    plt.tight_layout()
-
-    return plt
+    fig, ax = plt.subplots(figsize=(3.125, 2.25))
+    sns.lineplot(x="Epoch", y="Training loss", data=df, label="Training Loss", ax=ax)
+    sns.lineplot(
+        x="Epoch", y="Validation RMSE", data=df, label="Validation RMSE", ax=ax
+    )
+    sns.lineplot(x="Epoch", y="Test RMSE", data=df, label="Test RMSE", ax=ax)
+    ax.margins(x=0)
+    ax.set_xlabel("Epoch", fontsize=7)
+    ax.set_ylabel("Loss / RMSE", fontsize=7)
+    ax.set_title("Training and Validation Metrics", fontsize=7)
+    fig.tight_layout()
+    return fig
 
 
 def plot_predicted_versus_expected(
     predicted: torch.Tensor,
     expected: torch.Tensor,
     rmse: torch.Tensor,
-) -> matplotlib.figure.Figure:
+) -> Figure:
     """Plots predicted versus expected values for a given model"""
     set_matplotlib_publication_parameters()
-    plt.figure(figsize=(3.15, 2.95))
 
-    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1})
-    plt.margins(x=0)
-    plt.xlabel("Expected Log2 TPM", fontsize=7)
-    plt.ylabel("Predicted Log2 TPM", fontsize=7)
-    plt.title(
+    fig, ax = plt.subplots(figsize=(3.15, 2.95))
+    sns.regplot(x=expected, y=predicted, scatter_kws={"s": 2, "alpha": 0.1}, ax=ax)
+    ax.margins(x=0)
+    ax.set_xlabel("Expected Log2 TPM", fontsize=7)
+    ax.set_ylabel("Predicted Log2 TPM", fontsize=7)
+    ax.set_title(
         f"Expected versus predicted TPM\n"
         f"RMSE: {rmse}\n"
-        f"Spearman's R: {stats.spearmanr(expected, predicted)[0]}\n"
-        f"Pearson: {stats.pearsonr(expected, predicted)[0]}",
+        f"Spearman's R: {stats.spearmanr(expected, predicted)[0]:.4f}\n"
+        f"Pearson: {stats.pearsonr(expected, predicted)[0]:.4f}",
         wrap=True,
         fontsize=7,
     )
-    plt.tight_layout()
-    return plt
+    fig.tight_layout()
+    return fig

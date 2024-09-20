@@ -715,7 +715,7 @@ def main() -> None:
         shared_mlp_layers=args.linear_layers,
         heads=args.heads,
         dropout_rate=args.dropout or None,
-        skip_connection=args.residual,
+        residual=args.residual,
         attention_task_head=args.attention_task_head,
         train_dataset=train_loader if args.model == "PNA" else None,
     )
