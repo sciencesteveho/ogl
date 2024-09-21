@@ -449,14 +449,14 @@ class DeeperGCN(nn.Module):
         gnn_layers: int,
         linear_layers: int,
         activation: str,
-        dropout_rate: Optional[float] = 0.5,
         attention_task_head: bool = False,
+        dropout_rate: Optional[float] = None,
     ):
         """Initialize the model"""
         super().__init__()
-        self.dropout_rate = dropout_rate
-        self.attention_task_head = attention_task_head
         self.activation_name = activation
+        self.attention_task_head = attention_task_head
+        self.dropout_rate = dropout_rate
 
         self.convs = nn.ModuleList()
         self.linears = nn.ModuleList()
@@ -553,7 +553,7 @@ class DeeperGCN(nn.Module):
             norm=norm,
             act=act,
             block="res+" if layer_number > 1 else "plain",
-            dropout=0.1,
+            dropout=self.dropout_rate or 0.1,
             ckpt_grad=1 if layer_number == 1 else (layer_number % 3),
         )
 
