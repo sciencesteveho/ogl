@@ -21,11 +21,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from graph_to_pytorch import graph_to_pytorch
-from perturbation import _device_check
-from perturbation import _load_GAT_model_for_inference
-from utils.common import TISSUES_early_testing
-import utils.common as utils
+from graph_to_pytorch import graph_to_pytorch  # type: ignore
+from perturbation import _device_check  # type: ignore
+from perturbation import _load_GAT_model_for_inference  # type: ignore
 
 
 @torch.no_grad()
