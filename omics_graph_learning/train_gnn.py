@@ -327,8 +327,7 @@ class GNNTrainer:
     def inference_all_neighbors(
         self,
         data_loader: torch_geometric.data.DataLoader,
-        mask: torch.Tensor,
-        split: str = "test",
+        mask: str = "test",
         epoch: Optional[int] = None,
     ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Use model for inference or to evaluate on validation set"""
@@ -342,7 +341,7 @@ class GNNTrainer:
 
         for batch in tqdm(data_loader, desc=description):
             batch = batch.to(self.device)
-            regression_mask = getattr(batch, f"{split}_mask_loss")
+            regression_mask = getattr(batch, f"{mask}_mask_loss")
 
             # forward pass
             out = self.model(
@@ -368,12 +367,12 @@ class GNNTrainer:
 
         # sort predictions by node index
         original_indices = torch.tensor(node_indices)
-        sorted_indices = torch.argsort(torch.tensor(node_indices))
+        sorted_indices = torch.argsort(original_indices)
         all_preds = all_preds[sorted_indices]
         original_indices = original_indices[sorted_indices]
 
         # get predictions
-        labels = self.data.y[mask].squeeze()
+        labels = self.data.y[original_indices].squeeze()
         mse = F.mse_loss(all_preds, labels)
         rmse = torch.sqrt(mse)
 
@@ -526,16 +525,15 @@ def post_model_evaluation(
     try:
         rmse, outs, labels, _ = post_eval_trainer.inference_all_neighbors(
             data_loader=data_loader,
-            mask=data.test_mask_loss,
-            split="test",
+            mask="test",
             epoch=0,
         )
     except Exception:
         logger.warning("Error. Using normal inference.")
         rmse, outs, labels, _ = post_eval_trainer.evaluate(
             data_loader=data_loader,
-            epoch=0,
             mask="test",
+            epoch=0,
         )
 
     # pearson
