@@ -34,7 +34,7 @@ experiment_name: regulatory_only_gm12878_fdr_filtered_hic_0.1
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 
-feat_window: 5000
+feat_window: 6250
 
 gene_gene: false
 
