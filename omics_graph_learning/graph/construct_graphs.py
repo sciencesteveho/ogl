@@ -195,8 +195,10 @@ class GraphConstructor:
             df = pd.read_csv(edge_file, sep="\t", header=None)
 
         suffix = f"_{self.tissue}" if add_tissue else ""
-        df[0] += suffix
-        df[1] += suffix
+
+        # avoid adding suffix multiple times
+        df[0] = df[0].apply(lambda x: x if x.endswith(suffix) else f"{x}{suffix}")
+        df[1] = df[1].apply(lambda x: x if x.endswith(suffix) else f"{x}{suffix}")
 
         return df
 

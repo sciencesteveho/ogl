@@ -133,7 +133,7 @@ def suggest_hyperparameters(
         "scheduler_type": trial.suggest_categorical(
             "scheduler_type", ["plateau", "linear_warmup", "cosine"]
         ),
-        "batch_size": trial.suggest_int("batch_size", low=32, high=320, step=32),
+        "batch_size": trial.suggest_int("batch_size", low=32, high=256, step=32),
     }
 
     # set heads and embedding size for attention-based models

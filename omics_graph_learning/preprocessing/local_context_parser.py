@@ -234,6 +234,14 @@ class LocalContextParser:
                 feature = extend_fields(feature, 4)
                 feature[3] = f"{feature[0]}_{feature[1]}_{prefix}"
             else:
+                # ensure feat does not already have chr_start
+                parts = feature[3].split("_")
+                if (
+                    len(parts) >= 3
+                    and parts[0] == feature[0]
+                    and parts[1] == feature[1]
+                ):
+                    return feature
                 feature[3] = f"{feature[0]}_{feature[1]}_{feature[3]}"
             return feature
 

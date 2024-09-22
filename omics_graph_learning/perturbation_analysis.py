@@ -2,7 +2,31 @@
 # -*- coding: utf-8 -*-
 
 
-"""Working recapitulation code."""
+"""Analyze model via perturbations of the graph data.
+
+To assess the model, we perform a variety of graph perturbations derived from
+experimental data:
+    1. Co-essential gene pairs from Wainberg et al, Nature, 2021. Assumption:
+       given coessential modules, if we delete the paired coessential gene, we
+       should see a larger change in expression compared to a gene picked at
+       random from the same connected component.
+    2. Lethal genes from Blomen at al, Nature, 2015. Assumption: if we delete a
+       lethal gene, the surrounding genes should have a larger change in
+       expression compared to a gene picked at random from the same connected
+       component.
+    3. Aggregated CRISPRi enhancer screens released by Gschwind et al., 2024.
+       For experimentally verified CRISPRi validated CRE gene links, if we see
+       if the CREs in our graph overlap with the validated CREs, we can delete
+       the CREs and see if the expression of the linked genes change more than a
+       deletion of a random CRE in the same connected component, assuming that
+       the gene is in the same connected component.
+    4. Single cell enhancer-enhancer associations from Ziyani, Delaneau, &
+       Ribeiro, Communications Biology, 2024. For a given enhancer-enhancer
+       pair, we first filter for a list of pairs for which both enhancers are in
+       the same connected component. We then assume that deletion of an enhancer
+       in the pair will have a larger effect on the expression of the linked
+       genes than a random enhancer in the same connected component.
+"""
 
 
 import argparse
@@ -22,8 +46,10 @@ from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from graph_to_pytorch import graph_to_pytorch  # type: ignore
-from perturbation import _device_check  # type: ignore
-from perturbation import _load_GAT_model_for_inference  # type: ignore
+from omics_graph_learning.perturb_graph import _device_check  # type: ignore
+from omics_graph_learning.perturb_graph import (
+    _load_GAT_model_for_inference,
+)  # type: ignore
 
 
 @torch.no_grad()
