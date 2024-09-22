@@ -106,7 +106,7 @@ class GraphConstructor:
                         add_tissue=True,
                     ),
                     self._get_edge_data(
-                        self.parse_dir / "edges" / "all_concat_sorted.bed",
+                        self.parse_dir / "edges" / "all_concat_sorted_filtered.bed",
                         local=True,
                         add_tissue=True,
                     ),
