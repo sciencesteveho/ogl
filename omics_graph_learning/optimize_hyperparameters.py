@@ -178,7 +178,7 @@ def train_and_evaluate(
             raise optuna.exceptions.TrialPruned()
 
         # validation
-        rmse, pred_tensor, target_tensor = trainer.evaluate(
+        rmse, pred_tensor, target_tensor, _ = trainer.evaluate(
             data_loader=val_loader,
             epoch=epoch,
             mask="val",
