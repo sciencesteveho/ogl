@@ -1,4 +1,5 @@
---- attribute_references:
+---
+attribute_references:
   gencode: gencode_v26_node_attr.bed
   mirna: ensembl_mirna_coordinates_hg38.bed
   mirnatargets: mirtargets_filtered.txt
