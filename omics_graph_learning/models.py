@@ -708,6 +708,7 @@ def output_tensor(
     with all zeroes, before filling in values for the regression indices.
     """
     full_out = torch.zeros(x.size(0), device=x.device)
+    out = out.to(x.device)
 
     # fill in the outputs only for regression indices if they exist
     if regression_indices.numel() > 0:

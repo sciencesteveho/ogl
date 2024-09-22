@@ -143,35 +143,36 @@ class GNNTrainer:
                 regression_mask=data.train_mask_loss,
             )
 
-            mse_loss = F.mse_loss(
-                out[data.train_mask_loss].squeeze(),
-                data.y[data.train_mask_loss].squeeze(),
-            )
-            mse_loss.backward()
-
-            # log if last batch of epoch
-            if self.tb_logger:
-                self.log_tensorboard_data(
-                    epoch=epoch,
-                    last_batch=batch_idx == len(train_loader) - 1,
+            # check if there are regression nodes in the batch
+            if data.train_mask_loss.sum() > 0:
+                mse_loss = F.mse_loss(
+                    out[data.train_mask_loss].squeeze(),
+                    data.y[data.train_mask_loss].squeeze(),
                 )
+                mse_loss.backward()
 
-            # check for NaN gradients
-            for name, param in self.model.named_parameters():
-                if param.grad is not None and torch.isnan(param.grad).any():
-                    print(f"NaN gradient detected in {name}")
+                # log if last batch of epoch
+                if self.tb_logger:
+                    self.log_tensorboard_data(
+                        epoch=epoch,
+                        last_batch=batch_idx == len(train_loader) - 1,
+                    )
 
-            self.optimizer.step()
+                # check for NaN gradients
+                for name, param in self.model.named_parameters():
+                    if param.grad is not None and torch.isnan(param.grad).any():
+                        print(f"NaN gradient detected in {name}")
 
-            # step warmup schedulers
-            if isinstance(self.scheduler, LRScheduler) and not isinstance(
-                self.scheduler, ReduceLROnPlateau
-            ):
-                self.scheduler.step()
+                self.optimizer.step()
 
-            total_loss += float(mse_loss) * int(data.train_mask_loss.sum())
-            total_examples += int(data.train_mask_loss.sum())
+                # step warmup schedulers
+                if isinstance(self.scheduler, LRScheduler) and not isinstance(
+                    self.scheduler, ReduceLROnPlateau
+                ):
+                    self.scheduler.step()
 
+                total_loss += float(mse_loss) * int(data.train_mask_loss.sum())
+                total_examples += int(data.train_mask_loss.sum())
             pbar.update(1)
 
         pbar.close()
@@ -227,6 +228,10 @@ class GNNTrainer:
 
             pbar.update(1)
         pbar.close()
+
+        # check if no regression nodes in the batches
+        if not outs or not labels:
+            return 0.0, torch.tensor([]), torch.tensor([]), 0.0
 
         # calculate RMSE
         predictions = torch.cat(outs)

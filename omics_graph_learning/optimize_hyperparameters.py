@@ -129,9 +129,10 @@ def suggest_hyperparameters(
         "optimizer_type": trial.suggest_categorical(
             "optimizer_type", ["Adam", "AdamW"]
         ),
-        "scheduler_type": trial.suggest_categorical(
-            "scheduler_type", ["plateau", "linear_warmup", "cosine"]
-        ),
+        # "scheduler_type": trial.suggest_categorical(
+        #     "scheduler_type", ["plateau", "linear_warmup", "cosine"]
+        # ),
+        "scheduler_type": "plateau",
         "batch_size": trial.suggest_int("batch_size", low=32, high=256, step=32),
     }
 
