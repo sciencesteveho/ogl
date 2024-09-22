@@ -150,10 +150,11 @@ class GNNTrainer:
             mse_loss.backward()
 
             # log if last batch of epoch
-            self.log_tensorboard_data(
-                epoch=epoch,
-                last_batch=batch_idx == len(train_loader) - 1,
-            )
+            if self.tb_logger:
+                self.log_tensorboard_data(
+                    epoch=epoch,
+                    last_batch=batch_idx == len(train_loader) - 1,
+                )
 
             # check for NaN gradients
             for name, param in self.model.named_parameters():
