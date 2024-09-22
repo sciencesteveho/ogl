@@ -16,7 +16,6 @@ the optimization."""
 
 import argparse
 import logging
-import math
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
