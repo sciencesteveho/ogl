@@ -693,9 +693,9 @@ def compute_masked_regression(
     # process only regression nodes
     regression_indices = regression_indices_tensor(regression_mask).to(x.device)
 
-    # return a 1D tensor w/ zeros if no regression nodes
+    # return a tensor of zeros if no regression nodes
     if regression_indices.numel() == 0:
-        return torch.zeros(1, device=x.device)
+        return torch.zeros(x.size(0), device=x.device)
 
     out = task_head(x[regression_indices])
     return output_tensor(x=x, out=out, regression_indices=regression_indices)
@@ -707,10 +707,13 @@ def output_tensor(
     """Produce the output tensor for the model. Creates a tensor of output shape
     with all zeroes, before filling in values for the regression indices.
     """
-    out = out.to(x.device)
     full_out = torch.zeros(x.size(0), device=x.device)
-    full_out[regression_indices] = out.squeeze()
-    return full_out.unsqueeze(0) if full_out.dim() == 0 else full_out
+
+    # fill in the outputs only for regression indices if they exist
+    if regression_indices.numel() > 0:
+        full_out[regression_indices] = out.squeeze()
+
+    return full_out
 
 
 def regression_indices_tensor(regression_mask: torch.Tensor) -> torch.Tensor:
