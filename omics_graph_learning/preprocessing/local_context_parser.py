@@ -608,7 +608,7 @@ class LocalContextParser:
 
     def _cleanup_edge_files(self) -> None:
         """Remove intermediate files"""
-        retain = [self.filtered_concatenated_file]
+        retain = [self.filtered_concatenated_file, self.sorted_concatenated_file]
         for item in os.listdir(self.edge_dir):
             if item not in retain:
                 os.remove(self.edge_dir / item)
