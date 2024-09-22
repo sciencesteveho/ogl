@@ -83,7 +83,6 @@ class LocalContextParser:
     # var helpers
     all_concatenated_file = "all_concat.bed"
     sorted_concatenated_file = "all_concat_sorted.bed"
-    filtered_concatenated_file = "all_concat_sorted_filtered.bed"
 
     # list helpers
     direct = ["tads", "loops"]
@@ -203,9 +202,6 @@ class LocalContextParser:
 
         # parse edges into individual files
         self._generate_edges()
-
-        # filter edges to retain only those involving basenodes
-        self._filter_edges_with_basenodes()
 
         # save node attributes as reference for later - one process per nodetype
         with Pool(processes=self.cores) as pool:
@@ -444,34 +440,6 @@ class LocalContextParser:
                 cmds[cmd][0] + cmds[cmd][1],
             )
 
-    @time_decorator(print_args=True)
-    def _filter_edges_with_basenodes(self) -> None:
-        """Filter the concatenated edge file to retain only edges involving
-        basenodes.
-        """
-        sorted_concat = self.edge_dir / self.sorted_concatenated_file
-        filtered_edges = self.edge_dir / self.filtered_concatenated_file
-        basenodes_file = self.local_dir / "basenodes_hg38.txt"
-        logger.info(
-            f"Filtering edges in {sorted_concat}"
-            "to retain only those involving basenodes."
-        )
-
-        awk_command = f"""
-            awk 'BEGIN{{while(getline < "{basenodes_file}") {{basenodes[$4]=1}}}}
-            ($4 in basenodes) || ($8 in basenodes)' "{sorted_concat}" > "{filtered_edges}"
-        """
-
-        # filter edges
-        try:
-            subprocess.run(awk_command, shell=True, check=True)
-            logger.info(f"Filtered edges saved to {filtered_edges}.")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error during awk filtering: {e}")
-            raise
-
-        logger.info(f"Filtered edges saved to {filtered_edges}.")
-
     def _save_node_attributes(self, node: str) -> None:
         """Save attributes for all node entries to create node attributes during
         graph construction."""
@@ -608,7 +576,7 @@ class LocalContextParser:
 
     def _cleanup_edge_files(self) -> None:
         """Remove intermediate files"""
-        retain = [self.filtered_concatenated_file, self.sorted_concatenated_file]
+        retain = [self.sorted_concatenated_file]
         for item in os.listdir(self.edge_dir):
             if item not in retain:
                 os.remove(self.edge_dir / item)
