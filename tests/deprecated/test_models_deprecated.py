@@ -1,6 +1,61 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+    @torch.no_grad()
+    def inference_all_neighbors(
+        self,
+        data_loader: torch_geometric.data.DataLoader,
+        mask: str = "test",
+        epoch: Optional[int] = None,
+    ) -> Tuple[float, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Use model for inference or to evaluate on validation set"""
+        self.model.eval()
+        predictions = []
+        node_indices = []
+
+        description = "\nEvaluating"
+        if epoch is not None:
+            description += f" epoch: {epoch}"
+
+        for batch in tqdm(data_loader, desc=description):
+            batch = batch.to(self.device)
+            regression_mask = getattr(batch, f"{mask}_mask_loss")
+
+            # forward pass
+            out = self.model(
+                x=batch.x,
+                edge_index=batch.edge_index,
+                regression_mask=regression_mask,
+            )
+
+            # use input id directly
+            input_nodes_indices = batch.input_id.long()
+
+            # filter for input nodes
+            valid_indices_mask = input_nodes_indices < out.size(0)
+            valid_input_nodes = input_nodes_indices[valid_indices_mask]
+            if valid_input_nodes.numel() == 0:
+                continue
+
+            predictions.append(out[valid_input_nodes].squeeze().cpu())
+            node_indices.extend(valid_input_nodes.cpu().tolist())
+
+        # concatenate predictions and sort by node index
+        all_preds = torch.cat(predictions)
+
+        # sort predictions by node index
+        original_indices = torch.tensor(node_indices)
+        sorted_indices = torch.argsort(original_indices)
+        all_preds = all_preds[sorted_indices]
+        original_indices = original_indices[sorted_indices]
+
+        # get predictions
+        labels = self.data.y[original_indices].squeeze()
+        mse = F.mse_loss(all_preds, labels)
+        rmse = torch.sqrt(mse)
+
+        return rmse.item(), all_preds, labels, original_indices
+
 
 """Test the flexible GNN module and submodules. Ensure that dimensions are
 consistent, operators are proper, and layers are correctly implemented."""
