@@ -22,7 +22,7 @@ derived_directories:
   local_data_dir: shared_data/local
   matrix_dir: shared_data/targets/matrices
   raw_data_dir: raw_tissue_data
-  reference_dir: shared_data/reference
+  reference_dir: shared_data/references
   regulatory_dir: shared_data/regulatory_elements
   shared_data_dir: shared_data
   target_dir: shared_data/targets
