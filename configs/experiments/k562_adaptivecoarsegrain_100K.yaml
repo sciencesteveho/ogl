@@ -7,7 +7,7 @@ attribute_references:
   super_enhancers: se_node_attr.bed
   tf_motifs: collapsed_motifs_overlapping_consensus_footprints_hg38.bed
 
-baseloops: deeploop_100000
+baseloops: adaptivecoarsegrain_100000
 
 blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38-blacklist.v2.bed
 
@@ -30,7 +30,7 @@ derived_directories:
 
 differentiate_tf: false
 
-experiment_name: regulatory_only_k562_deeploop_100k
+experiment_name: regulatory_only_k562_adaptivecoarsegrain_100000
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 
@@ -38,7 +38,7 @@ feat_window: 6250
 
 gene_gene: false
 
-graph_type: base
+graph_type: full
 
 interaction_types: null
 
@@ -78,7 +78,7 @@ training_targets:
   protein_abundance_matrix: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/matrices/protein_relative_abundance_all_gtex.csv
   protein_abundance_medians: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/matrices/protein_relative_abundance_median_gtex.csv
   test_chrs:
-    - chr12
-    - chr13
+    - chr8
+    - chr9
   val_chrs:
-    - chr11
+    - chr10
