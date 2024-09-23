@@ -13,7 +13,7 @@ blacklist: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/
 
 chromfile: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.chrom.sizes
 
-config_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/configs
+config_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/ogl/configs
 
 derived_directories:
   baseloop_dir: shared_data/processed_loops
