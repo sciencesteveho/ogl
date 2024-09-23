@@ -100,7 +100,7 @@ def plot_target_distribution(
         else "regression_target_distribution.png"
     )
 
-    plt.figure(figsize=(4, 4))
+    plt.figure(figsize=(2.5, 2.5))
     sns.kdeplot(data=[train, validation, test], common_norm=False, fill=True)
     plt.xlabel("TPM (log transformed)")
     plt.ylabel("Density")
@@ -142,7 +142,7 @@ def gene_barplots_per_chromosome(
     plot_data["index"] = plot_data["index"].str.replace("chr", "")
 
     # plot!
-    plt.figure(figsize=(5.5, 3))
+    plt.figure(figsize=(4, 2.5))
     ax = sns.barplot(
         data=plot_data,
         x="index",
