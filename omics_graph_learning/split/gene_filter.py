@@ -156,7 +156,12 @@ class TPMFilter:
     ) -> List[str]:
         """Filter rna_seq data by TPM"""
         gencode = BedTool(gencode_bed)
-        return [feature[3] for feature in gencode if "protein_coding" in str(feature)]
+        return [
+            feature[3]
+            for feature in gencode
+            if "protein_coding" in str(feature)
+            and feature[0] not in ["chrX", "chrY", "chrM"]
+        ]
 
         # rna_seq_file: str,
         # tpm_filter: Union[float, int],
