@@ -209,8 +209,7 @@ class GenomeDataPreprocessor:
 
     @time_decorator(print_args=True)
     def _tf_binding_sites(self, bed: str) -> None:
-        """
-        Parse tissue-specific transcription factor binding sites Vierstra et
+        """Parse tissue-specific transcription factor binding sites Vierstra et
         al., Nature, 2020, or from Funk et al., Cell Reports, 2020. Funk et al.,
         footprints are 20-seed HINT TFs with score > 200 and use the locations
         of the motifs, not the footprints, as HINT footprints are motif
@@ -297,7 +296,8 @@ class GenomeDataPreprocessor:
     @time_decorator(print_args=True)
     def _combined_cpg(self, beds: List[str], path: str) -> None:
         """Combined methylation signal across CpGs and average by dividing by
-        the amount of files combined."""
+        the amount of files combined.
+        """
         cmd = f"cat {' '.join([f'{path}/{bed}' for bed in beds])} \
                 | sort -k1,1, -k2,2n \
                 | bedtools merge -i - -c 11 -o mean \
@@ -322,7 +322,8 @@ class GenomeDataPreprocessor:
         """Process CPGs with optional liftover. Bookended methylated CpGs are
         merged. If the config includes multiple CpGs, then methylation signal is
         combined across CpGs and averaged by dividing by the amount of files
-        combined."""
+        combined.
+        """
         if isinstance(bed, list):
             self._combined_cpg(beds=bed, path=f"{self.tissue_dir}/unprocessed")
             cpg_bed = "merged_cpgs"
@@ -437,7 +438,8 @@ class GenomeDataPreprocessor:
     def _count_per_million(df: pd.DataFrame) -> pd.DataFrame:
         """CPM (counts per million) normalization for miRNA-seq counts. Assumes
         there is a column named "count" in the dataframe with gene
-        quantifications"""
+        quantifications.
+        """
         try:
             total = df["count"].sum()
         except KeyError as e:
