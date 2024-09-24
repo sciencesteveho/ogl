@@ -365,20 +365,32 @@ class PyGDataChecker:
     def print_mask_info(self) -> None:
         """Prints information about the masks and corresponding target variables."""
         print("\nMask information:")
-        for key in ["train_mask", "val_mask", "test_mask"]:
-            if hasattr(self.data, key):
-                mask = getattr(self.data, key)
-                print(f"{key}: {mask.sum().item()} nodes")
-                if hasattr(self.data, "y"):
-                    masked_y = self.data.y[mask]
-                    print(f" Mean: {masked_y.mean().item():.4f}")
-                    print(f" Std: {masked_y.std().item():.4f}")
-                    print(f" Min: {masked_y.min().item():.4f}")
-                    print(f" Max: {masked_y.max().item():.4f}")
-                    if torch.isnan(masked_y).any().item():
-                        print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
-                    if torch.isinf(masked_y).any().item():
-                        print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
+        for key in [
+            "train_mask",
+            "val_mask",
+            "test_mask",
+            "train_mask_loss",
+            "val_mask_loss",
+            "test_mask_loss",
+        ]:
+            if not hasattr(self.data, key):
+                return
+            mask = getattr(self.data, key)
+            print(f"{key}: {mask.sum().item()} nodes")
+            if hasattr(self.data, "y"):
+                self._print_mask_info(mask)
+
+    def _print_mask_info(self, mask: torch.Tensor) -> None:
+        """Prints information about the masks and corresponding target variables."""
+        masked_y = self.data.y[mask]
+        print(f" Mean: {masked_y.mean().item():.4f}")
+        print(f" Std: {masked_y.std().item():.4f}")
+        print(f" Min: {masked_y.min().item():.4f}")
+        print(f" Max: {masked_y.max().item():.4f}")
+        if torch.isnan(masked_y).any().item():
+            print(f" Contains NaN: {torch.isnan(masked_y).any().item()}")
+        if torch.isinf(masked_y).any().item():
+            print(f" Contains Inf: {torch.isinf(masked_y).any().item()}")
 
     def run_pyg_data_check(self) -> None:
         """Runs all checks and prints all statistics for the PyG Data object."""
