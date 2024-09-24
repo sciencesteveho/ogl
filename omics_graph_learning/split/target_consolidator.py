@@ -117,8 +117,7 @@ class TrainingTargetConsolidator:
         # filter GTEx genes
         if self.target == "rna_seq":
             filtered_genes = TPMFilter.filtered_genes_from_encode_rna_data(
-                rna_seq_file=self.tissue_config.resources["rna"],
-                tpm_filter=self.tpm_filter,
+                gencode_bed=self.local_dir / self.tissue_config.local["gencode"],
             )
         elif self.filter_mode == "across":
             tpm_file = self.experiment_config.expression_all_matrix

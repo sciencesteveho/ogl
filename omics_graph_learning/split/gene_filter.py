@@ -150,24 +150,23 @@ class TPMFilter:
 
         return gencode_filtered.sort()
 
-    def _get_protein_coding_genes(self) -> List[str]:
-        """Retrieve protein coding genes from the gencode gtf file."""
-        gencode_bed = BedTool(self.local_dir / self.tissue_config.local["gencode"])
-        return [
-            feature[3] for feature in gencode_bed if "protein_coding" in str(feature)
-        ]
-
     def filtered_genes_from_encode_rna_data(
         self,
-        rna_seq_file: str,
-        tpm_filter: Union[float, int],
+        gencode_bed: Path,
     ) -> List[str]:
         """Filter rna_seq data by TPM"""
+        gencode = BedTool(gencode_bed)
+        return [feature[3] for feature in gencode if "protein_coding" in str(feature)]
+
+        # rna_seq_file: str,
+        # tpm_filter: Union[float, int],
         # df = read_encode_rna_seq_data(rna_seq_file)
         # filtered_df = df[df["TPM"] >= tpm_filter]
         # return list(filtered_df.index)
         # temp change - use all protein coding genes instead of TPM filter
-        return self._get_protein_coding_genes()
+        # def _get_protein_coding_genes(self) -> List[str]:
+        # """Retrieve protein coding genes from the gencode gtf file."""
+        # gencode_bed = BedTool(self.local_dir / self.tissue_config.local["gencode"])
 
     @staticmethod
     def _filter_bedtool_by_genes(
