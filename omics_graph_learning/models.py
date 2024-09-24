@@ -19,7 +19,7 @@ The models include four different classes of architectures:
     Graph attention networks V2 (GATv2)
     UniMPTransformer (GCN with UniMP transformer operator)
 
-(3) Large scale models (GNN with large number of layers):
+(3) Large-scale models (GNNs designed for deep layers):
     DeeperGCN
 
 (4) Baseline: 3-layer MLP

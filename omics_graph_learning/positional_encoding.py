@@ -14,10 +14,10 @@ import torch.nn as nn
 
 
 class PositionalEncoding(nn.Module):
-    """Object to return positional encoding embeddings, inherits from nn.Module.
-    Some features are expected to span multiple bins, so we use a pooling
-    strategy to combine the embeddings of all bins the feature falls within.
-    Defaults to average pooling.
+    """NN module to create positional encodings for genomic features. Some
+    features are expected to span multiple bins, so we use a pooling strategy
+    to combine the embeddings of all bins the feature falls within. Defaults
+    to average pooling.
 
     Attributes:
         bins_df: The bins dataframe.

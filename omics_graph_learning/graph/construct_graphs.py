@@ -61,9 +61,6 @@ class GraphConstructor:
         # hops
         graph = self._prune_nodes_without_gene_connections(graph)
 
-        # remove self loops
-        graph = self._remove_self_loops(graph)
-
         # remove isolated nodes
         graph = self._remove_isolated_nodes(graph)
 
@@ -73,8 +70,11 @@ class GraphConstructor:
         # remove nodes in blacklist regions
         graph = self._remove_blacklist_nodes(graph)
         logger.info("Removed nodes in blacklist regions.")
-        self._log_gene_nodes(graph)
 
+        # remove self loops
+        graph = self._remove_self_loops(graph)
+
+        self._log_gene_nodes(graph)
         return graph
 
     def _log_gene_nodes(self, graph: nx.Graph) -> None:
