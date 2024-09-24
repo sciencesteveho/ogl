@@ -150,8 +150,8 @@ class TPMFilter:
 
         return gencode_filtered.sort()
 
+    @staticmethod
     def filtered_genes_from_encode_rna_data(
-        self,
         gencode_bed: Path,
     ) -> List[str]:
         """Filter rna_seq data by TPM"""
