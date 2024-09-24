@@ -193,7 +193,7 @@ class TrainingTargetConsolidator:
         # this code below is implemented incase the reference gencode version
         # and the tpm version are mismatched
         # remove targets that returned -1 value
-        for split_type in ["train", "test", "vallidation"]:
+        for split_type in ["train", "test", "validation"]:
             targets[split_type] = {
                 sample: target
                 for sample, target in targets[split_type].items()
