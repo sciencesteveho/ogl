@@ -10,7 +10,7 @@ rna-seq data from ENCODE (also TPM, but at the sample level and not median)."""
 
 
 from copy import deepcopy
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from cmapPy.pandasGEXpress.parse_gct import parse  # type: ignore
 import numpy as np
@@ -97,6 +97,35 @@ class TargetAssembler:
                 )
             targets[partition] = partition_targets
         return targets
+
+    @staticmethod
+    def match_quantification(
+        gene: str, rna_quantifications: Dict[str, float]
+    ) -> Union[float, int]:
+        """Retrieve the RNA quantification for a given gene.
+
+        If the exact gene identifier is not found, attempt to find a match by
+        removing the version suffix and searching for any key that starts with
+        the base gene identifier.
+        """
+        # base gene identifier w/ annotation number (e.g., 'ENSG00000164164.15')
+        key = gene.split("_")[0]
+
+        try:
+            return rna_quantifications[key]
+        except KeyError as e:
+            # remove the annotation
+            base_key = key.split(".")[0]
+
+            if not (
+                possible_matches := [
+                    k for k in rna_quantifications if k.startswith(base_key + ".")
+                ]
+            ):
+                print(f"Gene '{gene}' not found in rna_quantifications.")
+                return -1
+            matched_key = possible_matches[0]
+            return rna_quantifications[matched_key]
 
     def _get_rna_quantifications(self, rna_matrix: str) -> Dict[str, float]:
         """Returns a dictionary of gene: log transformed + pseudocount TPM
@@ -507,31 +536,3 @@ class TargetAssembler:
                 f"Invalid log transformation type: {transform_type}. "
                 "Must be `log2`, `log1p`, or `log10`."
             )
-
-    @staticmethod
-    def match_quantification(gene: str, rna_quantifications: Dict[str, float]) -> float:
-        """Retrieve the RNA quantification for a given gene.
-
-        If the exact gene identifier is not found, attempt to find a match by
-        removing the version suffix and searching for any key that starts with
-        the base gene identifier.
-        """
-        # base gene identifier w/ annotation number (e.g., 'ENSG00000164164.15')
-        key = gene.split("_")[0]
-
-        try:
-            return rna_quantifications[key]
-        except KeyError as e:
-            # remove the annotation (e.g., '.15')
-            base_key = key.split(".")[0]
-
-            if not (
-                possible_matches := [
-                    k for k in rna_quantifications if k.startswith(base_key + ".")
-                ]
-            ):
-                raise KeyError(
-                    f"Gene '{gene}' not found in rna_quantifications."
-                ) from e
-            matched_key = possible_matches[0]
-            return rna_quantifications[matched_key]

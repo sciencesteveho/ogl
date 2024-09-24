@@ -190,6 +190,22 @@ class TrainingTargetConsolidator:
         )
         targets = self.assemble_targets(assembler=assembler)
 
+        # this code below is implemented incase the reference gencode version
+        # and the tpm version are mismatched
+        # remove targets that returned -1 value
+        for split_type in ["train", "test", "val"]:
+            targets[split_type] = {
+                sample: target
+                for sample, target in targets[split_type].items()
+                if not np.any(target == -1)
+            }
+
+        # new split after removing -1 values
+        split = {
+            split_type: list(targets[split_type].keys())
+            for split_type in ["train", "test", "val"]
+        }
+
         # scale targets
         scaled_targets = assembler.scale_targets(targets)
 
