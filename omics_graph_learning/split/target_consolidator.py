@@ -202,7 +202,7 @@ class TrainingTargetConsolidator:
 
         # new split after removing -1 values
         split = {
-            split_type: list(targets[split_type].keys())
+            split_type: [key.split("_")[0] for key in targets[split_type].keys()]
             for split_type in ["train", "test", "validation"]
         }
 
