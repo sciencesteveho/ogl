@@ -103,6 +103,12 @@ class OGLCLIParser:
             default=False,
         )
         self.parser.add_argument("--n_gpus", type=int)
+        self.parser.add_argument(
+            "--model_name",
+            type=str,
+            default=None,
+            help="Alternative model name.",
+        )
 
     def add_model_arguments(self) -> None:
         """Add arguments related to GNN model configuration or training."""
@@ -148,7 +154,7 @@ class OGLCLIParser:
             default=None,
             choices=["shared_source", "distinct_source", "None"],
         )
-        self.parser.add_argument("--epochs", type=int, default=100)
+        self.parser.add_argument("--epochs", type=int, default=60)
         self.parser.add_argument("--batch_size", type=int, default=256)
         self.parser.add_argument("--learning_rate", type=float, default=1e-4)
         self.parser.add_argument(

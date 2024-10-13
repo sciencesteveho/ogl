@@ -701,7 +701,10 @@ def _dump_metadata_json(
 ) -> None:
     """Dump metadata json to run directory."""
     metadata = vars(args)
-    metadata["experiment_name"] = experiment_config.experiment_name
+    if args.model_name:
+        metadata["experiment_name"] = args.model_name
+    else:
+        metadata["experiment_name"] = experiment_config.experiment_name
     metadata["start_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
     metadata["total_parameters"] = total_parameters
     with open(run_dir / "metadata.json", "w") as output:
@@ -713,9 +716,12 @@ def _experiment_setup(
 ) -> Tuple[Path, logging.Logger, TensorBoardLogger]:
     """Prepare directories and set up logging for experiment."""
     # set run directories
-    experiment_dir = (
-        experiment_config.root_dir / "models" / experiment_config.experiment_name
-    )
+    if args.model_name:
+        experiment_name = args.model_name
+    else:
+        experiment_name = experiment_config.experiment_name
+
+    experiment_dir = experiment_config.root_dir / "models" / experiment_name
     run_dir = experiment_dir / f"run_{args.run_number}"
     tb_dir = experiment_dir / "tensorboard"
 
@@ -751,7 +757,7 @@ def calculate_min_epochs(args: argparse.Namespace) -> int:
     warm-up steps.
     """
     if args.scheduler in ("linear_warmup", "cosine"):
-        min_epochs = math.ceil(0.1 * args.epochs)
+        min_epochs = math.ceil(0.15 * args.epochs)
         min_epochs += EARLY_STOP_PATIENCE // 2
         return min_epochs
     return 0
