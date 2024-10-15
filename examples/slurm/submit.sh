@@ -26,11 +26,43 @@ conda activate /ocean/projects/bio210019p/stevesho/ogl
 
 # BEST PERFORMING
 # /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/models/regulatory_only_k562_allcontacts_global_gat_2layers_200dim_4attnheads
+# regulatory_only_k562_allloopshicfdr_global_UniMPTransformer_2layers_200dim
+# regulatory_only_imr90_allcontacts_global/run_3/performance.png
+# regulatory_only_hepg2_esc_allcontacts_global/run_3/performance.png
+# regulatory_only_h1_esc_allcontacts_global/run_3/performance.png
+# regulatory_only_gm12878_allcontacts_global/run_3/performance.png
+
+
+# re-submit
+#  26305306           26305308
 
 
 # all cell lines with best params, all contacts 
 
-for cell in gm12878 hepg2 h1_esc imr90 hmec nhek; do
+for cell in k562 gm12878 hepg2 h1_esc imr90 hmec nhek; do
+  configs=("${cell}_allcontacts_global.yaml")
+  for config in "${configs[@]}"; do
+    python ogl/omics_graph_learning/ogl_pipeline.py \
+      --partition RM \
+      --experiment_yaml ogl/configs/experiments/"${config}" \
+      --target rna_seq \
+      --model GCN \
+      --gnn_layers 6 \
+      --linear_layers 2 \
+      --activation gelu \
+      --dimensions 64 \
+      --batch_size 64 \
+      --learning_rate 0.0005 \
+      --optimizer AdamW \
+      --scheduler cosine \
+      --dropout 0.3 \
+      --residual distinct_source \
+      --positional_encoding \
+      --model_name regulatory_"${cell}"_allcontacts_global_gcn
+  done
+done
+
+for cell in k562 gm12878 hepg2 h1_esc imr90 hmec nhek; do
   configs=("${cell}_allcontacts_global.yaml")
   for config in "${configs[@]}"; do
     python ogl/omics_graph_learning/ogl_pipeline.py \
@@ -41,7 +73,7 @@ for cell in gm12878 hepg2 h1_esc imr90 hmec nhek; do
       --gnn_layers 2 \
       --linear_layers 2 \
       --activation gelu \
-      --dimensions 200 \
+      --dimensions 128 \
       --batch_size 64 \
       --learning_rate 0.0005 \
       --optimizer AdamW \
@@ -49,7 +81,8 @@ for cell in gm12878 hepg2 h1_esc imr90 hmec nhek; do
       --dropout 0.3 \
       --residual distinct_source \
       --heads 4 \
-      --positional_encoding
+      --positional_encoding \
+      --model_name regulatory_"${cell}"_allcontacts_global_gat_2layers_128dim_4attnheads
   done
 done
 
@@ -63,7 +96,7 @@ for config in "${configs[@]}"; do
     --gnn_layers 2 \
     --linear_layers 2 \
     --activation gelu \
-    --dimensions 200 \
+    --dimensions 128 \
     --batch_size 64 \
     --learning_rate 0.0005 \
     --optimizer AdamW \
@@ -72,7 +105,7 @@ for config in "${configs[@]}"; do
     --residual distinct_source \
     --heads 4 \
     --positional_encoding \
-    --model_name regulatory_only_all_celllines_allcontacts_gat_2layers_200dim_4attnheads
+    --model_name regulatory_only_all_celllines_allcontacts_gat_2layers_128dim_4attnheads
 done
 
 configs=(k562_allcontacts_global.yaml)
@@ -85,7 +118,7 @@ for config in "${configs[@]}"; do
     --gnn_layers 2 \
     --linear_layers 2 \
     --activation gelu \
-    --dimensions 200 \
+    --dimensions 128 \
     --batch_size 64 \
     --learning_rate 0.0005 \
     --optimizer AdamW \
@@ -94,7 +127,7 @@ for config in "${configs[@]}"; do
     --residual distinct_source \
     --heads 4 \
     --positional_encoding \
-    --model_name regulatory_only_k562_allcontacts_global_gat_2layers_200dim_4attnheads_highdrop
+    --model_name regulatory_only_k562_allcontacts_global_gat_2layers_128dim_4attnheads_highdrop
 done
 
 configs=(k562_allcontacts_global.yaml)
@@ -107,7 +140,7 @@ for config in "${configs[@]}"; do
     --gnn_layers 2 \
     --linear_layers 2 \
     --activation gelu \
-    --dimensions 200 \
+    --dimensions 128 \
     --batch_size 64 \
     --learning_rate 0.0005 \
     --optimizer AdamW \
@@ -116,7 +149,7 @@ for config in "${configs[@]}"; do
     --residual distinct_source \
     --heads 4 \
     --positional_encoding \
-    --model_name regulatory_only_k562_allcontacts_global_unimp_2layers_200dim_4attnheads
+    --model_name regulatory_only_k562_allcontacts_global_unimp_2layers_128dim_4attnheads
 done
 
 configs=(k562_allcontacts_global.yaml)
@@ -129,7 +162,7 @@ for config in "${configs[@]}"; do
     --gnn_layers 2 \
     --linear_layers 2 \
     --activation gelu \
-    --dimensions 200 \
+    --dimensions 128 \
     --batch_size 64 \
     --learning_rate 0.0005 \
     --optimizer AdamW \
@@ -139,7 +172,7 @@ for config in "${configs[@]}"; do
     --heads 4 \
     --positional_encoding \
     --attention_task_head \
-    --model_name regulatory_only_k562_allcontacts_global_gat_2layers_200dim_4attnheads_attntask
+    --model_name regulatory_only_k562_allcontacts_global_gat_2layers_128dim_4attnheads_attntask
 done
 
 configs=(k562_allcontacts_global.yaml)
@@ -176,7 +209,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -199,7 +232,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -221,7 +254,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -243,7 +276,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -265,7 +298,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -288,7 +321,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -311,7 +344,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -333,7 +366,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -355,7 +388,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -377,7 +410,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -445,7 +478,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -467,7 +500,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -489,7 +522,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -510,7 +543,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 32 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
@@ -571,7 +604,7 @@ done
 #     --gnn_layers 2 \
 #     --linear_layers 2 \
 #     --activation gelu \
-#     --dimensions 200 \
+#     --dimensions 128 \
 #     --batch_size 64 \
 #     --learning_rate 0.0005 \
 #     --optimizer AdamW \
