@@ -32,64 +32,94 @@ conda activate /ocean/projects/bio210019p/stevesho/ogl
 # regulatory_only_h1_esc_allcontacts_global/run_3/performance.png
 # regulatory_only_gm12878_allcontacts_global/run_3/performance.png
 
+#  create mode 100644 configs/experiments/aorta_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/hippocampus_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/left_ventricle_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/liver_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/lung_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/mammary_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/pancreas_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/skeletal_muscle_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/skin_allcontacts_global.yaml
+#  create mode 100644 configs/experiments/small_intestine_allcontacts_global.yaml
 
-# re-submit
-#  26305306           26305308
 
+# re-run all non k562 models, and try running new tissue models
+for sample in gm12878 hepg2 h1_esc imr90 hmec nhek aorta hippocampus left_ventricle liver lung mammary pancreas skeletal_muscle skin small_intestine; do
+  config=("${sample}_allcontacts_global.yaml")
+  python ogl/omics_graph_learning/ogl_pipeline.py \
+    --partition RM \
+    --experiment_yaml ogl/configs/experiments/"${config}" \
+    --target rna_seq \
+    --model GAT \
+    --gnn_layers 2 \
+    --linear_layers 2 \
+    --activation gelu \
+    --dimensions 200 \
+    --batch_size 64 \
+    --learning_rate 0.0005 \
+    --optimizer AdamW \
+    --scheduler cosine \
+    --dropout 0.3 \
+    --residual distinct_source \
+    --heads 2 \
+    --positional_encoding \
+    --model_name regulatory_${sample}_allcontacts-global_gat_2layers_200dim_2attnheads
+done
 
 # train models at different params and with smooth l1 loss
-configs=(k562_allcontacts_global.yaml)
-for config in "${configs[@]}"; do
-  for dimensions in 64 128 200; do
-    for heads in 2 4; do
-      python ogl/omics_graph_learning/ogl_pipeline.py \
-        --partition RM \
-        --experiment_yaml ogl/configs/experiments/"${config}" \
-        --target rna_seq \
-        --model GAT \
-        --gnn_layers 2 \
-        --linear_layers 2 \
-        --activation gelu \
-        --dimensions ${dimensions} \
-        --batch_size 64 \
-        --learning_rate 0.0005 \
-        --optimizer AdamW \
-        --scheduler cosine \
-        --dropout 0.3 \
-        --residual distinct_source \
-        --heads ${heads} \
-        --positional_encoding \
-        --model_name regulatory_k562_allcontacts-global_gat_2layers_${dim}dim_${heads}attnheads
-    done
-  done
-done
+# configs=(k562_allcontacts_global.yaml)
+# for config in "${configs[@]}"; do
+#   for dimensions in 64 128 200; do
+#     for heads in 2 4; do
+#       python ogl/omics_graph_learning/ogl_pipeline.py \
+#         --partition RM \
+#         --experiment_yaml ogl/configs/experiments/"${config}" \
+#         --target rna_seq \
+#         --model GAT \
+#         --gnn_layers 2 \
+#         --linear_layers 2 \
+#         --activation gelu \
+#         --dimensions ${dimensions} \
+#         --batch_size 64 \
+#         --learning_rate 0.0005 \
+#         --optimizer AdamW \
+#         --scheduler cosine \
+#         --dropout 0.3 \
+#         --residual distinct_source \
+#         --heads ${heads} \
+#         --positional_encoding \
+#         --model_name regulatory_k562_allcontacts-global_gat_2layers_${dim}dim_${heads}attnheads
+#     done
+#   done
+# done
 
-configs=(k562_allcontacts_global.yaml)
-for config in "${configs[@]}"; do
-  for dimensions in 64 128 200; do
-    for heads in 2 4; do
-      python ogl/omics_graph_learning/ogl_pipeline.py \
-        --partition RM \
-        --experiment_yaml ogl/configs/experiments/"${config}" \
-        --target rna_seq \
-        --model GAT \
-        --gnn_layers 2 \
-        --linear_layers 2 \
-        --activation gelu \
-        --dimensions ${dimensions} \
-        --batch_size 64 \
-        --learning_rate 0.0005 \
-        --optimizer AdamW \
-        --scheduler cosine \
-        --dropout 0.3 \
-        --residual distinct_source \
-        --heads ${heads} \
-        --positional_encoding \
-        --regression_loss_type smooth_l1 \
-        --model_name regulatory_k562_allcontacts-global_gat_2layers_${dim}dim_${heads}attnheads_smoothl1
-    done
-  done
-done
+# configs=(k562_allcontacts_global.yaml)
+# for config in "${configs[@]}"; do
+#   for dimensions in 64 128 200; do
+#     for heads in 2 4; do
+#       python ogl/omics_graph_learning/ogl_pipeline.py \
+#         --partition RM \
+#         --experiment_yaml ogl/configs/experiments/"${config}" \
+#         --target rna_seq \
+#         --model GAT \
+#         --gnn_layers 2 \
+#         --linear_layers 2 \
+#         --activation gelu \
+#         --dimensions ${dimensions} \
+#         --batch_size 64 \
+#         --learning_rate 0.0005 \
+#         --optimizer AdamW \
+#         --scheduler cosine \
+#         --dropout 0.3 \
+#         --residual distinct_source \
+#         --heads ${heads} \
+#         --positional_encoding \
+#         --regression_loss_type smooth_l1 \
+#         --model_name regulatory_k562_allcontacts-global_gat_2layers_${dim}dim_${heads}attnheads_smoothl1
+#     done
+#   done
+# done
 
 # configs=(all_celllines_allcontacts.yaml)
 # for config in "${configs[@]}"; do
