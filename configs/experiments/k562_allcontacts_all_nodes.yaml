@@ -1,7 +1,7 @@
 ---
 attribute_references:
   gencode: gencode_v26_node_attr.bed
-  mirna: ensembl_mirna_coordinates_hg38.bed
+  mirna: mirbase_mirnas.bed
   mirnatargets: mirtargets_filtered.txt
   ref_dir: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references
   super_enhancers: se_node_attr.bed
@@ -30,7 +30,7 @@ derived_directories:
 
 differentiate_tf: false
 
-experiment_name: regulatory_only_k562_allcontacts_global
+experiment_name: regulatory_only_k562_allcontacts_all_nodes
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 
@@ -51,7 +51,13 @@ liftover_chain: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_proces
 log_transform: log2
 
 nodes:
+  - cpgislands
+  - crms
+  - ctcfccre
+  - superenhancers
   - tads
+  - tfbindingsites
+  - tss
 
 onehot_node_feats: 2
 
@@ -60,6 +66,8 @@ positional_encoding:
   train_positional_encoding: false
 
 rbp_network: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_network.txt
+
+rbp_proteins: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/rbp_proteins.txt
 
 regulatory_schema: intersect
 
