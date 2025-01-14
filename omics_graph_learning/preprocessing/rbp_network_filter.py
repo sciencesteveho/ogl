@@ -15,10 +15,8 @@ consider them active, and keep the RBP --> Gene edge.
 """
 
 import csv
-from typing import Dict, List, Tuple
 
 import pandas as pd
-from pybedtools import BedTool  # type: ignore
 
 
 class RBPNetworkFilter:
@@ -46,7 +44,7 @@ class RBPNetworkFilter:
         self,
         network_file: str,
         rna_seq_file: str,
-        tpm_filter: int = 2,
+        tpm_filter: int = 5,
     ) -> None:
         """Initialize the RBPNetworkFilter class."""
         self.network_file = network_file
@@ -55,29 +53,30 @@ class RBPNetworkFilter:
 
         # load reference rbps
         self.ref_rbp = {
-            line[0] for line in csv.reader(open(network_file), delimiter="\t")
+            line[0].split(".")[0]
+            for line in csv.reader(open(network_file), delimiter="\t")
         }
-        print(f"Number of reference RBPs: {len(self.ref_rbp)}")
 
     def filter_rbp_network(self) -> None:
         """Get RBP network."""
 
         # read rna-seq data and filter based on TPM
         rna_exp = self._read_encode_rna_seq_data(self.rna_seq_file)
+        rna_exp.index = rna_exp.index.str.split(".").str[0]  # strip version number
+
         rbp_df = rna_exp[rna_exp.index.isin(self.ref_rbp)]
         active_rbp = rbp_df[rbp_df["TPM"] >= self.tpm_filter]
-        print(f"Number of active RBPs: {len(active_rbp)}")
 
         # filter network based on active rbps
         rbp_network = [
             [line[0], line[1]]
             for line in csv.reader(open(self.network_file), delimiter="\t")
         ]
-        print(f"Number of edges in network: {len(rbp_network)}")
 
         # final TPM filtered network and attributes
-        self.filtered_network = [edge for edge in rbp_network if edge[0] in active_rbp]
-        print(f"Number of edges in filtered network: {len(self.filtered_network)}")
+        self.filtered_network = [
+            edge for edge in rbp_network if edge[0].split(".")[0] in active_rbp.index
+        ]
 
     def _read_encode_rna_seq_data(
         self,
