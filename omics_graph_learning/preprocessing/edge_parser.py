@@ -9,7 +9,6 @@ import contextlib
 import csv
 import os
 from pathlib import Path
-import pickle
 from typing import (
     Callable,
     Dict,
@@ -229,15 +228,16 @@ class EdgeParser:
 
     def _rbp_network(
         self,
-        tpm_filter: int = 2,
     ) -> Generator[Tuple[str, str, str], None, None]:
         """Filters RBP interactions based on tpm filter, derived from POSTAR3"""
         rbp_network_obj = RBPNetworkFilter(
             network_file=self.experiment_config.rbp_network,
             rna_seq_file=self.tissue_config.resources["rna"],
-            tpm_filter=tpm_filter,
         )
         rbp_network_obj.filter_rbp_network()
+        print("Checking that RBP network is not empty")
+        print(rbp_network_obj.filtered_network[0])
+        print(rbp_network_obj.filtered_network[1])
 
         for tup in rbp_network_obj.filtered_network:
             yield (
@@ -259,18 +259,25 @@ class EdgeParser:
         miRNA coordinates are derived from miRBase.
         """
         with open(tissue_active_mirnas, newline="") as file:
-            active_mirna = set(csv.reader(file, delimiter="\t"))
+            active_mirna = {row[0] for row in csv.reader(file, delimiter="\t")}
 
+        logger.info(f"Found {len(active_mirna)} active miRNAs.")
+        print(f"{active_mirna}")
+
+        count = 0
         with open(target_list, newline="") as file:
             target_reader = csv.reader(file, delimiter="\t")
-            next(target_reader)
             for line in target_reader:
+                print(f"line[0]: {line[0]}")
+                print(f"line[1]: {line[1]}")
                 if line[0] in active_mirna and line[1] in self.genesymbol_to_gencode:
                     yield (
                         line[0],
                         self.genesymbol_to_gencode[line[1]],
                         "mirna",
                     )
+                    count += 1
+        logger.info(f"Found {count} miRNA targets.")
 
     def _write_noderef_combination(self, node: str) -> None:
         """Writes chr, start, stop, node to a file. Gets coords from ref
@@ -303,12 +310,17 @@ class EdgeParser:
         mirna_generator = rbp_generator = iter([])
 
         if "mirna" in self.interaction_types:
+            print("mirna in self.interaction_types")
+            print(
+                f"Making mirna generator with {self.attribute_references['mirnatargets']} and {self.interaction_dir / f'active_mirna_{self.tissue}.txt'}"
+            )
             mirna_generator = self._mirna_targets(
-                target_list=self.interaction_dir / "active_mirna_{self.tissue}.txt",
+                target_list=self.attribute_references["mirnatargets"],
                 tissue_active_mirnas=self.interaction_dir
                 / f"active_mirna_{self.tissue}.txt",
             )
         if "rbp" in self.interaction_types:
+            print("rbp in self.interaction_types")
             rbp_generator = self._rbp_network()
 
         return (
@@ -333,7 +345,8 @@ class EdgeParser:
 
         Args:
             generator (Generator): The generator to run.
-            attr_refs (List[Dict[str, List[str]], Dict[str, List[str]]]): The attribute references.
+            attr_refs (List[Dict[str, List[str]], Dict[str, List[str]]]): The
+            attribute references.
         """
         for result in generator:
             self._write_edges(result)
