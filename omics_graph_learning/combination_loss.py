@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 
 class CombinationLoss(nn.Module):
-    """Custom loss function combining eithing root mean squared error (RMSE) or
+    """Custom loss function combining either root mean squared error (RMSE) or
     smooth L1 loss for regression and binary cross-entropy loss (BCE) for
     classification.
 
