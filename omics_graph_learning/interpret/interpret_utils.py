@@ -10,6 +10,7 @@ experiments.
 import pickle
 from typing import Dict, List, Tuple
 
+import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr  # type: ignore
 import torch
@@ -17,6 +18,24 @@ from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
+
+
+def compute_mean_abs_diff(sub: pd.DataFrame) -> float:
+    """Compute the mean absolute difference between the prediction and the
+    label.
+    """
+    return np.mean(np.abs(sub["prediction"] - sub["label"]))
+
+
+def classify_tpm(x: float) -> str:
+    """Bin gene expression values into high, medium, and low categories."""
+    if x >= 5:
+        return "high"
+    elif x >= 1:
+        return "medium"
+    elif x > 0:
+        return "low"
+    return "none"  # tpm <= 0
 
 
 def load_gencode_lookup(filepath: str) -> Dict[str, str]:
@@ -156,12 +175,12 @@ def get_best_predictions(
     gencode_to_symbol: Dict[str, str] = None,
     output_prefix: str = "",
     sample: str = "k562",
-    max_low_genes: int = 500,
-    min_pearson_r: float = 0.80,
+    max_low_genes: int = 1000,
+    max_mean_diff: float = 0.5,  # note that this is log2(TPM) space
 ) -> Tuple[List[int], pd.DataFrame]:
     """Get predictions for genes given a certain threshold.
-
-    1. We first compute Pearosn R for each gene across all data points
+    1. We compute the mean absolute difference between the prediction and the
+       label (log2tpm space)
     2. We bin by mean label:
         - high if >=5
         - medium if >= 1 and < 5
@@ -178,16 +197,27 @@ def get_best_predictions(
     # map node indices to gene IDs
     df_genes["gene_id"] = df_genes["node_idx"].map(node_idx_to_gene_id)
 
-    # compute differences without absolute value
-    df_genes["diff"] = df_genes["prediction"] - df_genes["label"]
+    # get absolute difference (|prediction - label|)
+    mean_abs_diffs = (
+        df_genes.groupby("gene_id")
+        .apply(compute_mean_abs_diff)
+        .reset_index(name="mean_abs_diff")
+    )
 
-    # filter genes with predicted output > prediction_threshold
-    df_filtered = df_genes[df_genes["prediction"] > prediction_threshold]
+    # add mean_abs_diff to df_genes
+    df_genes = df_genes.merge(mean_abs_diffs, on="gene_id", how="left")
 
-    # check if there are enough genes after filtering
-    if df_filtered.empty:
-        print(f"No gene predictions greater than {prediction_threshold} found.")
-        return []
+    # only keep genes with mean_abs_diff < max_mean_diff
+    df_genes = df_genes[df_genes["mean_abs_diff"] < max_mean_diff]
+
+    # bin genes TPM
+    df_genes["tpm_bin"] = df_genes["label"].apply(classify_tpm)
+    df_genes = df_genes[df_genes["bin"].isin(["high", "medium", "low"])]
+
+    # split bins
+    df_high = df_genes[df_genes["tpm_bin"] == "high"]
+    df_medium = df_genes[df_genes["tpm_bin"] == "medium"]
+    df_low = df_genes[df_genes["tpm_bin"] == "low"]
 
     # select topk genes with the smallest absolute difference
     df_topk = df_filtered.reindex(
