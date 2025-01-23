@@ -20,10 +20,16 @@ from torch_geometric.loader import NeighborLoader  # type: ignore
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
 
 
+def calculate_log2_fold_change(
+    baseline_prediction: float, perturbation_prediction: float
+) -> float:
+    """Calculate the log2 fold change from log2-transformed values."""
+    log2_fold_change = perturbation_prediction - baseline_prediction
+    return 2**log2_fold_change - 1
+
+
 def compute_mean_abs_diff(sub: pd.DataFrame) -> float:
-    """Compute the mean absolute difference between the prediction and the
-    label.
-    """
+    """Compute the mean absolute difference between prediction and label."""
     return np.mean(np.abs(sub["prediction"] - sub["label"]))
 
 
@@ -36,6 +42,12 @@ def classify_tpm(x: float) -> str:
     elif x > 0:
         return "low"
     return "none"  # tpm <= 0
+
+
+def map_symbol(gene_id: str, gencode_to_symbol: Dict[str, str]) -> str:
+    """Map gene IDs to gene symbols."""
+    ensg_id = gene_id.split("_")[0]
+    return gencode_to_symbol.get(ensg_id, gene_id)
 
 
 def load_gencode_lookup(filepath: str) -> Dict[str, str]:
@@ -120,7 +132,9 @@ def load_data_and_model(
 
 
 def get_baseline_predictions(
-    data: Data, mask: str, runner: PerturbRunner
+    data: Data,
+    runner: PerturbRunner,
+    mask: str = "all",
 ) -> pd.DataFrame:
     """Evaluate the model on a given mask and return predictions as a
     DataFrame.
@@ -128,7 +142,7 @@ def get_baseline_predictions(
     data = combine_masks(data)
     test_loader = NeighborLoader(
         data,
-        num_neighbors=[data.avg_edges] * 2,
+        num_neighbors=[data.avg_edges * 2] * 2,
         batch_size=64,
         input_nodes=getattr(data, f"{mask}_mask"),
         shuffle=False,
@@ -173,11 +187,9 @@ def get_best_predictions(
     gene_indices: List[int],
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str] = None,
-    output_prefix: str = "",
-    sample: str = "k562",
     max_low_genes: int = 1000,
     max_mean_diff: float = 0.5,  # note that this is log2(TPM) space
-) -> Tuple[List[int], pd.DataFrame]:
+) -> pd.DataFrame:
     """Get predictions for genes given a certain threshold.
     1. We compute the mean absolute difference between the prediction and the
        label (log2tpm space)
@@ -219,29 +231,17 @@ def get_best_predictions(
     df_medium = df_genes[df_genes["tpm_bin"] == "medium"]
     df_low = df_genes[df_genes["tpm_bin"] == "low"]
 
-    # select topk genes with the smallest absolute difference
-    df_topk = df_filtered.reindex(
-        df_filtered["diff"].abs().sort_values(ascending=True).index
-    ).head(topk)
+    # put cap on lowly expressed genes
+    unique_low_genes = df_low["gene_id"].nunique()
+    if len(unique_low_genes) > max_low_genes:
+        keep_low = np.random.choice(unique_low_genes, max_low_genes, replace=False)
+        df_low = df_low[df_low["gene_id"].isin(keep_low)]
+
+    # recombine df
+    df_filtered = pd.concat([df_high, df_medium, df_low], ignore_index=True)
 
     # get topk gene IDs and their corresponding node indices
-    topk_node_indices = df_topk["node_idx"].tolist()
+    df_filtered["gene_symbol"] = df_filtered["gene_id"].apply(map_symbol)
 
     # map node indices to gene symbols
-    topk_gene_names = []
-    for node_idx in topk_node_indices:
-        gene_id = node_idx_to_gene_id.get(node_idx)
-        if gene_id and "ENSG" in gene_id:
-            if gene_symbol := gencode_to_symbol.get(gene_id.split("_")[0]):
-                topk_gene_names.append(gene_symbol)
-            else:
-                topk_gene_names.append(gene_id)
-        else:
-            topk_gene_names.append(str(node_idx))
-
-    # save topk gene names to a file
-    with open(f"{output_prefix}/{sample}_top{topk}_gene_names.txt", "w") as f:
-        for gene in topk_gene_names:
-            f.write(f"{gene}\n")
-
-    return topk_node_indices, df_topk
+    return df_filtered

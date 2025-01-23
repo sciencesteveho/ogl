@@ -346,14 +346,6 @@ class PerturbRunner:
         return model
 
     @staticmethod
-    def calculate_log2_fold_change(
-        baseline_prediction: float, perturbation_prediction: float
-    ) -> float:
-        """Calculate the log2 fold change from log2-transformed values."""
-        log2_fold_change = perturbation_prediction - baseline_prediction
-        return 2**log2_fold_change - 1
-
-    @staticmethod
     def _ensure_tensor_dim(tensor: torch.Tensor) -> torch.Tensor:
         """Ensure tensor has the correct dimensions for evaluation."""
         tensor = tensor.squeeze()

@@ -18,8 +18,8 @@ def compute_gradient_saliency(
     data: Data,
     device: torch.device,
     mask: torch.Tensor,
-    regression_loss_type: str = "rmse",
-    alpha: float = 0.85,
+    regression_loss_type: str = "smooth_l1",
+    alpha: float = 0.95,
 ) -> torch.Tensor:
     """Compute gradient-based saliency for node features."""
     data.x.requires_grad = True  # track gradients on node features
