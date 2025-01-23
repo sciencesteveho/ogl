@@ -112,6 +112,21 @@ def compute_hop_distances(sub_data: Data, gene_node: int) -> Dict[int, int]:
     return nx.single_source_shortest_path_length(subgraph_nx, gene_node)
 
 
+def get_elements_in_subgraph(
+    sub_data: Data,
+    idxs_inv: Dict[int, str],
+    regulatory_element: str,
+) -> List[int]:
+    """Return the global node IDs for elements present in sub_data."""
+    regulatory_elements = []
+    for local_i in range(sub_data.num_nodes):
+        global_id = sub_data.n_id[local_i].item()
+        node_name = idxs_inv.get(global_id, "")
+        if regulatory_element in node_name:
+            regulatory_elements.append(global_id)
+    return regulatory_elements
+
+
 def remove_nodes_and_predict(
     runner: PerturbRunner,
     sub_data: Data,
