@@ -29,7 +29,7 @@ def build_explainer(model: nn.Module, epochs: int = 30, lr: float = 0.003) -> Ex
     return Explainer(
         model=model,
         algorithm=PGExplainer(epochs=epochs, lr=lr),
-        explanation_type=ExplanationType.model,
+        explanation_type=ExplanationType.phenomenon,
         model_mode=ModelMode.regression,
         node_mask_type=MaskType.attributes,
         edge_mask_type=MaskType.object,
