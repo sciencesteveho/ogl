@@ -226,7 +226,7 @@ def main() -> None:
 
     # get baseline predictions
     baseline_df = get_baseline_predictions(data=data, runner=runner)
-    pd.to_csv(outpath / "baseline_predictions.csv", index=False)
+    baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
 
     # get best predictions from model
     print("Getting best predictions...")
@@ -236,7 +236,7 @@ def main() -> None:
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=gencode_to_symbol,
     )
-    pd.to_csv(outpath / "best_predictions.csv", index=False)
+    best_prediction_df.to_csv(outpath / "best_predictions.csv", index=False)
 
     # run connected component perturbations
     print("Running Connected Component Perturbation...")
