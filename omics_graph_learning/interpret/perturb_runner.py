@@ -154,28 +154,20 @@ class PerturbRunner:
             )
 
             # collect masked outputs and labels
-            regression_out_masked = regression_out[mask_tensor]
-            labels_masked = data.y[mask_tensor]
-
-            class_out_masked = class_logits[mask_tensor]
-            class_labels_masked = data.class_labels[mask_tensor]
+            regression_out_masked = self._ensure_tensor_dim(regression_out[mask_tensor])
+            labels_masked = self._ensure_tensor_dim(data.y[mask_tensor])
+            class_out_masked = self._ensure_tensor_dim(class_logits[mask_tensor])
+            class_labels_masked = self._ensure_tensor_dim(
+                data.class_labels[mask_tensor]
+            )
 
             batch_node_indices = data.n_id[mask_tensor].cpu()
 
-            # ensure tensors are at least one-dimensional
-            if regression_out_masked.dim() == 0:
-                regression_out_masked = regression_out_masked.unsqueeze(0)
-                labels_masked = labels_masked.unsqueeze(0)
-                class_out_masked = class_out_masked.unsqueeze(0)
-                class_labels_masked = class_labels_masked.unsqueeze(0)
-                batch_node_indices = batch_node_indices.unsqueeze(0)
-
+            # append
             regression_outs.append(regression_out_masked.cpu())
             regression_labels.append(labels_masked.cpu())
-
             classification_outs.append(class_out_masked.cpu())
             classification_labels.append(class_labels_masked.cpu())
-
             node_indices.append(batch_node_indices)
 
             pbar.update(1)

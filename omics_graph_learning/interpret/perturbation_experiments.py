@@ -175,7 +175,7 @@ def main() -> None:
 
     # set seed and device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    seed = RANDOM_SEEDS[args.run_number]
+    seed = RANDOM_SEEDS[args.run_number - 1]
     torch.manual_seed(seed)
 
     # load experiment config to derive paths
@@ -224,15 +224,9 @@ def main() -> None:
         device=device,
     )
 
-    # initialize runner
-    runner = PerturbRunner(
-        model=runner.model,
-        device=device,
-        data=data,
-    )
-
     # get baseline predictions
     baseline_df = get_baseline_predictions(data=data, runner=runner)
+    pd.to_csv(outpath / "baseline_predictions.csv", index=False)
 
     # get best predictions from model
     print("Getting best predictions...")
