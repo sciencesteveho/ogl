@@ -92,7 +92,6 @@ def main() -> None:
         data=data,
         runner=runner,
         feature_indices=list(range(5, 42)),
-        mask="all",
         device=device,
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=symbol_to_gencode,
