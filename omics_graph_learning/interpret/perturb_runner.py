@@ -125,9 +125,13 @@ class PerturbRunner:
         """
         self.model.eval()
 
-        regression_outs = regression_labels = classification_outs = (
-            classification_labels
-        ) = node_indices = []
+        (
+            regression_outs,
+            regression_labels,
+            classification_outs,
+            classification_labels,
+            node_indices,
+        ) = ([], [], [], [], [])
 
         pbar = tqdm(total=len(data_loader))
         pbar.set_description(
