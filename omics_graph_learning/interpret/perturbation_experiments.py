@@ -7,8 +7,9 @@
 
 import argparse
 import os
+from pathlib import Path
 import pickle
-from typing import Tuple
+from typing import List, Tuple
 
 import pandas as pd
 from scipy.stats import ttest_ind  # type: ignore
@@ -38,13 +39,12 @@ from omics_graph_learning.utils.constants import RANDOM_SEEDS
 # )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(args: List[str] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--experiment_config", type=str, help="Path to experiment config."
     )
-    parser.add_argument("--sample", type=str, default="k562", help="Sample name")
     parser.add_argument(
         "--run_number",
         type=int,
@@ -53,23 +53,15 @@ def parse_args() -> argparse.Namespace:
         help="Run number to determine seed. Options: 1, 2, 3.",
     )
     parser.add_argument(
-        "--graph_experiment_name",
-        type=str,
-        default="k562_allcontacts_global_release",
-        help="Name of the graph experiment directory.",
-    )
-    parser.add_argument(
         "--model_name",
         type=str,
         help="Name of model directory used for training. This will be where the runs are stored. If not specified, will use the model name from the experiment config. If specified, then overwrite (such as for models with replicate runs)",
-        defauilt="k562_release_replicate_1",
     )
     parser.add_argument(
         "--model_checkpoint",
         type=str,
         help="Name of trained model checkpoint.",
         default="GAT_best_model.pt",
-        required=True,
     )
     # parser.add_argument(
     #     "--experiment",
@@ -95,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     #     default="/coessential_neg.txt",
     #     help="Path to negative coessential pairs file.",
     # )
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def _derive_paths(
@@ -126,8 +118,9 @@ def _derive_paths(
 
     # get idx file
     experiment_name = experiment_config.experiment_name
+    graph_type = experiment_config.graph_type
     experiment_dir = f"{root_dir}/experiments/{experiment_name}/graphs/{split_name}"
-    idx_file = f"{experiment_dir}/{experiment_name}_graph_idxs.pkl"
+    idx_file = f"{experiment_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
 
     # get gencode lookup
     gene_id_lookup = (
@@ -139,7 +132,7 @@ def _derive_paths(
 
 def _create_pyg_data(
     experiment_config: ExperimentConfig,
-    outpath: str,
+    outpath: Path,
     split_name: str,
     experiment_name: str,
 ) -> str:
@@ -169,6 +162,16 @@ def _create_pyg_data(
 def main() -> None:
     """Run graph perturbation experiments."""
     args = parse_args()
+    args = parse_args(
+        [
+            "--experiment_config",
+            "/ocean/projects/bio210019p/stevesho/data/preprocess/ogl/configs/experiments/k562_release.yaml",
+            "--run_number",
+            "3",
+            "--model_name",
+            "k562_release_replicate_1",
+        ]
+    )
 
     # set seed and device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -182,7 +185,7 @@ def main() -> None:
     )
 
     # make outpath
-    outpath = f"{root_dir}/interpretation/{experiment_name}"
+    outpath = root_dir / "interpretation" / experiment_name
     os.makedirs(outpath, exist_ok=True)
 
     # get graph file
@@ -239,7 +242,7 @@ def main() -> None:
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=gencode_to_symbol,
     )
-    pd.to_csv(f"{outpath}/best_predictions.csv", index=False)
+    pd.to_csv(outpath / "best_predictions.csv", index=False)
 
     # run connected component perturbations
     print("Running Connected Component Perturbation...")
@@ -255,7 +258,7 @@ def main() -> None:
     component_perturbation_results = experiment.run_perturbations(
         genes_to_analyze=genes_to_analyze,
     )
-    with open(f"{outpath}/connected_component_perturbations.pkl", "w") as f:
+    with open(outpath / "connected_component_perturbations.pkl", "w") as f:
         pickle.dump(component_perturbation_results, f)
 
     # run node feature ablation
@@ -270,9 +273,9 @@ def main() -> None:
         gencode_to_symbol=gencode_to_symbol,
     )
 
-    with open(f"{outpath}/node_feature_perturbations.pkl", "w") as f:
+    with open(outpath / "node_feature_perturbations.pkl", "w") as f:
         pickle.dump(feature_fold_changes, f)
-    with open(f"{outpath}/node_feature_top_genes.pkl", "w") as f:
+    with open(outpath / "node_feature_top_genes.pkl", "w") as f:
         pickle.dump(feature_top_genes, f)
 
     # print("Running Essential Gene Perturbation...")

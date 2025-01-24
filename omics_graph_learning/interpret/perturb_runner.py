@@ -55,7 +55,7 @@ class PerturbRunner:
         self.device = device
         self.data = data
 
-        self.criterion = CombinationLoss(alpha=0.8)
+        self.criterion = CombinationLoss(alpha=0.95, regression_loss_type="smooth_l1")
 
     def _forward_pass(
         self,
