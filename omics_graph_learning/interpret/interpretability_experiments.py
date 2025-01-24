@@ -20,6 +20,13 @@ from omics_graph_learning.interpret.interpret_utils import parse_interpret_args
 from omics_graph_learning.interpret.saliency import compute_gradient_saliency
 
 
+def scale_saliency(saliency_map: torch.Tensor) -> torch.Tensor:
+    """Scale saliency map to [0, 1]."""
+    saliency_min, _ = saliency_map.min(dim=0, keepdim=True)  # min feature
+    saliency_max, _ = saliency_map.max(dim=0, keepdim=True)  # max feature
+    return (saliency_map - saliency_min) / (saliency_max - saliency_min + 1e-9)
+
+
 def main() -> None:
     """Run experiments!"""
     # parse arguments
@@ -43,13 +50,18 @@ def main() -> None:
 
     # saliency maps
     # we are only interested in computing saliency maps for the genes
+    gene_indices = data.all_mask_loss.nonzero(as_tuple=False).squeeze()
+
     saliency_map = compute_gradient_saliency(
         model=runner.model,
         data=data,
         device=device,
-        mask=data.all_mask_loss,
+        gene_indices=gene_indices,
     )
-    torch.save(saliency_map, outpath / "saliency_map.pt")
+
+    # scale saliency map
+    scaled_saliency = scale_saliency(saliency_map)
+    torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
 
     # attention weights for genes
     attention_weights = get_attention_weights(
