@@ -7,17 +7,23 @@ experiments.
 """
 
 
+import argparse
+import os
+from pathlib import Path
 import pickle
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 
+from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
+from omics_graph_learning.utils.common import _dataset_split_name
+from omics_graph_learning.utils.config_handlers import ExperimentConfig
+from omics_graph_learning.utils.constants import RANDOM_SEEDS
 
 
 def calculate_log2_fold_change(
@@ -128,6 +134,85 @@ def load_data_and_model(
         idxs_inv,
         idxs,
         symbol_to_gencode,
+    )
+
+
+def _interpret_setup(args: argparse.Namespace) -> Tuple[
+    Data,
+    torch.device,
+    PerturbRunner,
+    Dict[int, str],
+    List[int],
+    Dict[int, str],
+    Dict[str, int],
+    Dict[str, str],
+    Path,
+]:
+    """Prepare shared setup for interpretation experiments: parses args, sets
+    device, random seed, derives paths, loads graph data in pyg, runner, and
+    model.
+    """
+    # set seed and device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    seed = RANDOM_SEEDS[args.run_number - 1]
+    torch.manual_seed(seed)
+
+    # load experiment config to derive paths
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
+    root_dir, split_name, experiment_name, idx_file, gene_id_lookup = _derive_paths(
+        experiment_config=experiment_config
+    )
+
+    # make outpath
+    outpath = root_dir / "interpretation" / experiment_name
+    os.makedirs(outpath, exist_ok=True)
+
+    # get graph file
+    graph_file = _create_pyg_data(
+        experiment_config=experiment_config,
+        outpath=outpath,
+        split_name=split_name,
+        experiment_name=experiment_name,
+    )
+
+    # get model checkpoint
+    if args.model_name:
+        model_name = args.model_name
+    else:
+        model_name = experiment_config.model_name
+
+    model_checkpoint = (
+        f"{root_dir}/models/{model_name}"
+        f"/run_{args.run_number}/{args.model_checkpoint}"
+    )
+
+    # load data
+    (
+        data,
+        runner,
+        node_idx_to_gene_id,
+        gene_indices,
+        idxs_inv,
+        idxs,
+        symbol_to_gencode,
+    ) = load_data_and_model(
+        lookup_file=gene_id_lookup,
+        graph_file=graph_file,
+        idx_file=idx_file,
+        model_file=model_checkpoint,
+        device=device,
+    )
+
+    return (
+        data,
+        device,
+        runner,
+        node_idx_to_gene_id,
+        gene_indices,
+        idxs_inv,
+        idxs,
+        symbol_to_gencode,
+        outpath,
     )
 
 
@@ -251,3 +336,127 @@ def get_best_predictions(
 
     # map node indices to gene symbols
     return df_filtered
+
+
+def invert_symbol_dict(symbol_to_gencode: dict[str, str]) -> dict[str, str]:
+    """Create a dictionary that goes ENSG -> symbol."""
+    return {ensg: symbol for symbol, ensg in symbol_to_gencode.items()}
+
+
+def parse_interpret_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--experiment_config", type=str, help="Path to experiment config."
+    )
+    parser.add_argument(
+        "--run_number",
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help="Run number to determine seed. Options: 1, 2, 3.",
+    )
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        help="Name of model directory used for training. This will be where the runs are stored. If not specified, will use the model name from the experiment config. If specified, then overwrite (such as for models with replicate runs)",
+    )
+    parser.add_argument(
+        "--model_checkpoint",
+        type=str,
+        help="Name of trained model checkpoint.",
+        default="GAT_best_model.pt",
+    )
+    # parser.add_argument(
+    #     "--experiment",
+    #     type=str,
+    #     default="all",
+    #     help="Which experiment(s) to run: node_features, connected_components, essential, nonessential, coessential, all.",
+    # )
+    # parser.add_argument(
+    #     "--lethal_file",
+    #     type=str,
+    #     default="/lethal_genes.txt",
+    #     help="Path to lethal_genes.txt for essential gene perturbation.",
+    # )
+    # parser.add_argument(
+    #     "--pos_pairs_file",
+    #     type=str,
+    #     default="/coessential_pos.txt",
+    #     help="Path to positive coessential pairs file.",
+    # )
+    # parser.add_argument(
+    #     "--neg_pairs_file",
+    #     type=str,
+    #     default="/coessential_neg.txt",
+    #     help="Path to negative coessential pairs file.",
+    # )
+    return parser.parse_args()
+
+
+def _derive_paths(
+    experiment_config: ExperimentConfig,
+) -> Tuple[str, str, str, str, str]:
+    """Derive the following requireds paths and variables from the experiment
+    config:
+        - root directory
+        - split_name
+        - idx_file
+        - gene_id_lookup
+    """
+    if len(experiment_config.tissues) > 1:
+        raise ValueError("Only one tissue is supported for perturbation experiments.")
+
+    # get root dir
+    root_dir = experiment_config.root_dir
+
+    # get split name
+    split_name = _dataset_split_name(
+        test_chrs=experiment_config.test_chrs,
+        val_chrs=experiment_config.val_chrs,
+        tpm_filter=0.5,
+        percent_of_samples_filter=0.1,
+    )
+    split_name += "_rna_seq"
+
+    # get idx file
+    experiment_name = experiment_config.experiment_name
+    graph_type = experiment_config.graph_type
+    experiment_dir = f"{root_dir}/experiments/{experiment_name}/graphs/{split_name}"
+    idx_file = f"{experiment_dir}/{experiment_name}_{graph_type}_graph_idxs.pkl"
+
+    # get gencode lookup
+    gene_id_lookup = (
+        f"{experiment_config.reference_dir}/gencode_to_genesymbol_lookup_table.txt"
+    )
+
+    return root_dir, split_name, experiment_name, idx_file, gene_id_lookup
+
+
+def _create_pyg_data(
+    experiment_config: ExperimentConfig,
+    outpath: Path,
+    split_name: str,
+    experiment_name: str,
+) -> str:
+    """Convert numpy graphs to pyg data object and save if it doesn't already
+    exist
+    """
+    # convert graph_data to pytorch
+    # check if file exists
+    graph_file = f"{outpath}/{experiment_name}_graph_data.pt"
+    if os.path.exists(graph_file):
+        return graph_file
+
+    target = "rna_seq"
+    positional_encoding = True
+
+    data = GraphToPytorch(
+        experiment_config=experiment_config,
+        split_name=split_name,
+        regression_target=target,
+        positional_encoding=positional_encoding,
+    ).make_data_object()
+    torch.save(data, graph_file)
+
+    return graph_file
