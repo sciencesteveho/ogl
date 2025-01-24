@@ -12,6 +12,7 @@ import networkx as nx  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
+from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from torch_geometric.utils import subgraph  # type: ignore
 from torch_geometric.utils import to_networkx  # type: ignore
 from tqdm import tqdm  # type: ignore
@@ -91,6 +92,40 @@ class ConnectedComponentPerturbation:
             input_nodes=torch.tensor([gene_node], dtype=torch.long),
             shuffle=False,
         )
+
+    def _build_k_hop_subgraph(
+        self,
+        gene_node: int,
+        num_hops: int = 3,
+    ) -> Data:
+        """Build a k-hop subgraph around the gene node."""
+        node_subgraph, edge_subgraph, mapping, _ = k_hop_subgraph(
+            node_idx=gene_node,
+            num_hops=num_hops,
+            edge_index=self.data.edge_index,
+            relabel_nodes=True,
+            num_nodes=self.data.num_nodes,
+        )
+
+        sub_x = self.data.x[node_subgraph]
+
+        mask_name = f"{self.mask_attr}_mask_loss"
+        if hasattr(self.data, mask_name):
+            global_mask = getattr(self.data, mask_name)
+            sub_mask = global_mask[node_subgraph]
+        else:
+            sub_mask = None
+
+        sub_data = Data(
+            x=sub_x,
+            edge_index=edge_subgraph,
+        )
+
+        sub_data.n_id = node_subgraph
+        if sub_mask is not None:
+            setattr(sub_data, mask_name, sub_mask)
+
+        return sub_data
 
     def _compute_baseline_prediction(
         self,
@@ -291,8 +326,8 @@ class ConnectedComponentPerturbation:
     def run_perturbations(
         self,
         genes_to_analyze: List[int],
-        num_hops: int = 5,
-        max_nodes_to_perturb: int = 150,
+        num_hops: int = 3,
+        max_nodes_to_perturb: int = 1000,
     ) -> Dict[str, Any]:
         """
         For each gene in genes_to_analyze:
@@ -319,11 +354,16 @@ class ConnectedComponentPerturbation:
             genes_to_analyze, desc="Connected component pertubration experiments"
         ):
 
-            # subgraph loader
-            loader = self._create_subgraph_loader(
+            # # subgraph loader
+            # loader = self._create_subgraph_loader(
+            #     gene_node=gene_node, num_hops=num_hops
+            # )
+            # sub_data = next(iter(loader)).to(self.device)
+
+            # build deterministic subgraph
+            sub_data = self._build_k_hop_subgraph(
                 gene_node=gene_node, num_hops=num_hops
-            )
-            sub_data = next(iter(loader)).to(self.device)
+            ).to(self.device)
 
             # compute baseline
             baseline = self._compute_baseline_prediction(

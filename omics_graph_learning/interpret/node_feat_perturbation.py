@@ -11,6 +11,7 @@ from typing import Dict, List, Tuple
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
+from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
 from omics_graph_learning.interpret.interpret_utils import combine_masks
@@ -31,6 +32,39 @@ def get_test_loader(
         input_nodes=getattr(data, f"{mask}_mask"),
         shuffle=False,
     )
+
+
+def get_test_k_hop_subgraph(
+    data: Data,
+    node_list: torch.Tensor,
+    k: int,
+) -> List[Data]:
+    """Return a list of k-hop subgraph Data objects, one per node in
+    `node_list`, capturing all neighbors up to k hops.
+    """
+    subgraphs = []
+    for node_id in node_list:
+        node_subgraph, edge_subgraph, mapping, _ = k_hop_subgraph(
+            node_idx=node_id.item(),
+            num_hops=k,
+            edge_index=data.edge_index,
+            relabel_nodes=True,
+            num_nodes=data.num_nodes,
+        )
+        sub_data = Data(
+            x=data.x[node_subgraph],
+            edge_index=edge_subgraph,
+        )
+
+        # attach global node IDs (for consistent indexing in code)
+        sub_data.n_id = node_subgraph
+
+        # attach the loss masks
+        if hasattr(data, "all_mask_loss"):
+            sub_data.all_mask_loss = data.all_mask_loss[node_subgraph]
+
+        subgraphs.append(sub_data)
+    return subgraphs
 
 
 def compute_baseline_output(
@@ -194,10 +228,10 @@ def perturb_node_features(
     data: Data,
     runner: PerturbRunner,
     feature_indices: List[int],
-    mask: str,
     device: torch.device,
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
+    mask: str = "all",
     top_n: int = 100,
 ) -> Tuple[Dict[int, float], Dict[int, List[Tuple[str, float]]]]:
     """Zero out specified node features and measure the impact on model output.
@@ -219,23 +253,26 @@ def perturb_node_features(
     Returns:
         ({feature_index: overall average diff}, {feature_index: list of top gene diffs})
     """
-    test_loader = get_test_loader(data, mask)
+    # test_loader = get_test_loader(data, mask)
     global_differences = defaultdict(lambda: defaultdict(list))
 
-    for batch in tqdm(test_loader, desc="Node Feature Perturbation"):
-        batch = batch.to(device)
-        mask_tensor = getattr(batch, f"{mask}_mask_loss")
+    gene_nodes = getattr(data, f"{mask}_mask_loss").nonzero(as_tuple=True)[0]
+    subgraph_batches = get_test_k_hop_subgraph(data, gene_nodes, k=2)
+
+    for sub_data in tqdm(subgraph_batches, desc="Node Feature Perturbation"):
+        sub_data = sub_data.to(device)
+        mask_tensor = getattr(sub_data, f"{mask}_mask_loss")
 
         # skip if no gene nodes present
         if mask_tensor.sum() == 0:
             continue
 
-        baseline_out = compute_baseline_output(runner, batch, mask_tensor)
+        baseline_out = compute_baseline_output(runner, sub_data, mask_tensor)
 
         # compute differences for each feature index
         batch_differences = compute_feature_perturbation(
             runner=runner,
-            batch=batch,
+            batch=sub_data,
             mask_tensor=mask_tensor,
             baseline_output=baseline_out,
             feature_indices=feature_indices,
