@@ -224,7 +224,7 @@ def get_best_predictions(
 
     # bin genes TPM
     df_genes["tpm_bin"] = df_genes["label"].apply(classify_tpm)
-    df_genes = df_genes[df_genes["bin"].isin(["high", "medium", "low"])]
+    df_genes = df_genes[df_genes["tpm_bin"].isin(["high", "medium", "low"])]
 
     # split bins
     df_high = df_genes[df_genes["tpm_bin"] == "high"]
