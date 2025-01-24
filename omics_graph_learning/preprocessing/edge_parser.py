@@ -294,7 +294,8 @@ class EdgeParser:
 
     def _prepare_interaction_generators(self) -> Tuple[Generator, Generator]:
         """Initiate interaction type generators"""
-        mirna_generator = rbp_generator = iter([])
+        mirna_generator = iter([])
+        rbp_generator = iter([])
 
         if "mirna" in self.interaction_types:
             mirna_generator = self._mirna_targets(
