@@ -91,7 +91,7 @@ def load_data_and_model(
 ]:
     """Load model, Data object, and index mappings."""
     # load gencode: symbol table
-    gencode_to_symbol = load_gencode_lookup(lookup_file)
+    symbol_to_gencode = load_gencode_lookup(lookup_file)
 
     # load PyG data
     data = torch.load(graph_file).to(device)
@@ -127,7 +127,7 @@ def load_data_and_model(
         gene_indices,
         idxs_inv,
         idxs,
-        gencode_to_symbol,
+        symbol_to_gencode,
     )
 
 
@@ -206,42 +206,48 @@ def get_best_predictions(
     # filter for gene nodes
     df_genes = df[df["node_idx"].isin(gene_indices)].copy()
 
-    # map node indices to gene IDs
-    df_genes["gene_id"] = df_genes["node_idx"].map(node_idx_to_gene_id)
-
-    # get absolute difference (|prediction - label|)
-    mean_abs_diffs = (
-        df_genes.groupby("gene_id")
-        .apply(compute_mean_abs_diff)
-        .reset_index(name="mean_abs_diff")
+    # aggregate by node_idx
+    df_agg = df_genes.groupby("node_idx", as_index=False).agg(
+        {
+            "prediction": "mean",
+            "label": "mean",  # will be the same as using 'first' but safer
+            "class_logits": "mean",
+            "class_label": "mean",  # will be the same as using 'first' but safer
+        }
     )
 
+    # map node indices to gene IDs
+    df_agg["gene_id"] = df_agg["node_idx"].map(node_idx_to_gene_id)
+
     # add mean_abs_diff to df_genes
-    df_genes = df_genes.merge(mean_abs_diffs, on="gene_id", how="left")
+    df_agg["mean_abs_diff"] = (df_agg["prediction"] - df_agg["label"]).abs()
 
     # only keep genes with mean_abs_diff < max_mean_diff
-    df_genes = df_genes[df_genes["mean_abs_diff"] < max_mean_diff]
+    df_agg = df_agg[df_agg["mean_abs_diff"] < max_mean_diff]
 
     # bin genes TPM
-    df_genes["tpm_bin"] = df_genes["label"].apply(classify_tpm)
-    df_genes = df_genes[df_genes["tpm_bin"].isin(["high", "medium", "low"])]
+    df_agg["tpm_bin"] = df_agg["label"].apply(classify_tpm)
+    df_agg = df_agg[df_agg["tpm_bin"].isin(["high", "medium", "low"])]
 
     # split bins
-    df_high = df_genes[df_genes["tpm_bin"] == "high"]
-    df_medium = df_genes[df_genes["tpm_bin"] == "medium"]
-    df_low = df_genes[df_genes["tpm_bin"] == "low"]
+    df_high = df_agg[df_agg["tpm_bin"] == "high"]
+    df_medium = df_agg[df_agg["tpm_bin"] == "medium"]
+    df_low = df_agg[df_agg["tpm_bin"] == "low"]
 
-    # put cap on lowly expressed genes
-    unique_low_genes = df_low["gene_id"].nunique()
-    if len(unique_low_genes) > max_low_genes:
-        keep_low = np.random.choice(unique_low_genes, max_low_genes, replace=False)
-        df_low = df_low[df_low["gene_id"].isin(keep_low)]
+    # put cap on lowly expressed genes by sorting on mean_abs_diff, smallest
+    # first
+    if len(df_low) > max_low_genes:
+        df_low = df_low.sort_values(by="mean_abs_diff", ascending=True).head(
+            max_low_genes
+        )
 
     # recombine df
     df_filtered = pd.concat([df_high, df_medium, df_low], ignore_index=True)
 
     # get topk gene IDs and their corresponding node indices
-    df_filtered["gene_symbol"] = df_filtered["gene_id"].apply(map_symbol)
+    df_filtered["gene_symbol"] = df_filtered["gene_id"].apply(
+        lambda g: map_symbol(g, gencode_to_symbol=gencode_to_symbol)
+    )
 
     # map node indices to gene symbols
     return df_filtered

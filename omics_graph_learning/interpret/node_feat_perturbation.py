@@ -13,6 +13,7 @@ from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from tqdm import tqdm  # type: ignore
 
+from omics_graph_learning.interpret.interpret_utils import combine_masks
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
 
 
@@ -22,6 +23,7 @@ def get_test_loader(
     batch_size: int = 64,
 ) -> NeighborLoader:
     """Create a neighborloader for test/validation/evaluation nodes."""
+    data = combine_masks(data)
     return NeighborLoader(
         data,
         num_neighbors=[data.avg_edges] * 2,
@@ -235,9 +237,8 @@ def perturb_node_features(
             runner=runner,
             batch=batch,
             mask_tensor=mask_tensor,
-            baseline_out=baseline_out,
+            baseline_output=baseline_out,
             feature_indices=feature_indices,
-            device=device,
         )
 
         # aggregate differences across batches

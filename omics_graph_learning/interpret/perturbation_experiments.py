@@ -39,7 +39,12 @@ from omics_graph_learning.utils.constants import RANDOM_SEEDS
 # )
 
 
-def parse_args(args: List[str] = None) -> argparse.Namespace:
+def invert_symbol_dict(symbol_to_gencode: dict[str, str]) -> dict[str, str]:
+    """Create a dictionary that goes ENSG -> symbol."""
+    return {ensg: symbol for symbol, ensg in symbol_to_gencode.items()}
+
+
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -87,7 +92,7 @@ def parse_args(args: List[str] = None) -> argparse.Namespace:
     #     default="/coessential_neg.txt",
     #     help="Path to negative coessential pairs file.",
     # )
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
 def _derive_paths(
@@ -162,16 +167,6 @@ def _create_pyg_data(
 def main() -> None:
     """Run graph perturbation experiments."""
     args = parse_args()
-    args = parse_args(
-        [
-            "--experiment_config",
-            "/ocean/projects/bio210019p/stevesho/data/preprocess/ogl/configs/experiments/k562_release.yaml",
-            "--run_number",
-            "3",
-            "--model_name",
-            "k562_release_replicate_1",
-        ]
-    )
 
     # set seed and device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -215,7 +210,7 @@ def main() -> None:
         gene_indices,
         idxs_inv,
         idxs,
-        gencode_to_symbol,
+        symbol_to_gencode,
     ) = load_data_and_model(
         lookup_file=gene_id_lookup,
         graph_file=graph_file,
@@ -223,6 +218,9 @@ def main() -> None:
         model_file=model_checkpoint,
         device=device,
     )
+
+    # invert symbol dict
+    gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
     # get baseline predictions
     baseline_df = get_baseline_predictions(data=data, runner=runner)
@@ -264,12 +262,12 @@ def main() -> None:
         mask="all",
         device=device,
         node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=gencode_to_symbol,
+        gencode_to_symbol=symbol_to_gencode,
     )
 
-    with open(outpath / "node_feature_perturbations.pkl", "w") as f:
+    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
         pickle.dump(feature_fold_changes, f)
-    with open(outpath / "node_feature_top_genes.pkl", "w") as f:
+    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
         pickle.dump(feature_top_genes, f)
 
     # print("Running Essential Gene Perturbation...")
