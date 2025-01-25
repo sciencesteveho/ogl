@@ -37,7 +37,7 @@ def get_test_loader(
 def get_test_k_hop_subgraph(
     data: Data,
     node_list: torch.Tensor,
-    k: int,
+    k: int = 2,
 ) -> List[Data]:
     """Return a list of k-hop subgraph Data objects, one per node in
     `node_list`, capturing all neighbors up to k hops.
@@ -257,7 +257,7 @@ def perturb_node_features(
     global_differences = defaultdict(lambda: defaultdict(list))
 
     gene_nodes = getattr(data, f"{mask}_mask_loss").nonzero(as_tuple=True)[0]
-    subgraph_batches = get_test_k_hop_subgraph(data, gene_nodes, k=2)
+    subgraph_batches = get_test_k_hop_subgraph(data, gene_nodes)
 
     for sub_data in tqdm(subgraph_batches, desc="Node Feature Perturbation"):
         sub_data = sub_data.to(device)

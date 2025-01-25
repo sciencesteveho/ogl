@@ -69,7 +69,24 @@ def main() -> None:
     )
     best_prediction_df.to_csv(outpath / "best_predictions.csv", index=False)
 
-    # run connected component perturbations
+    # experiment 1: run node feature ablation
+    print("Running Node Feature Perturbation...")
+    feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        feature_indices=list(range(5, 42)),
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+    )
+
+    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
+
+    # experiment 2: run systematic connected component perturbations on the
+    # k-hop subgraph
     print("Running Connected Component Perturbation...")
     experiment = ConnectedComponentPerturbation(
         data=data,
@@ -85,22 +102,6 @@ def main() -> None:
     )
     with open(outpath / "connected_component_perturbations.pkl", "w") as f:
         pickle.dump(component_perturbation_results, f)
-
-    # run node feature ablation
-    print("Running Node Feature Perturbation...")
-    feature_fold_changes, feature_top_genes = perturb_node_features(
-        data=data,
-        runner=runner,
-        feature_indices=list(range(5, 42)),
-        device=device,
-        node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=symbol_to_gencode,
-    )
-
-    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
-        pickle.dump(feature_fold_changes, f)
-    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
-        pickle.dump(feature_top_genes, f)
 
     # print("Running Essential Gene Perturbation...")
     # essential_fold_changes = essential_gene_perturbation(
