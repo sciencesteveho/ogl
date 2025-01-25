@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 
-"""Implementation of PGExplainer.
+"""Implementation of GNNxplainer.
 
-In contrast to perturbations, PGExplainer learns a generalizable strategy on
+In contrast to perturbations, GNNExplainer learns a generalizable strategy on
 graph embeddings and applies them to potential subgraphs. The explanations focus
 on subgraph structures rather than specific features as with perturbations.
 """
@@ -15,75 +15,87 @@ import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.explain import Explainer  # type: ignore
-from torch_geometric.explain import PGExplainer  # type: ignore
+from torch_geometric.explain import GNNExplainer  # type: ignore
 from torch_geometric.explain.config import ExplanationType  # type: ignore
-from torch_geometric.explain.config import MaskType  # type: ignore
-from torch_geometric.explain.config import ModelMode  # type: ignore
-from torch_geometric.loader import DataLoader  # type: ignore
-from torch_geometric.loader import NeighborLoader  # type: ignore
+from torch_geometric.utils import k_hop_subgraph  # type: ignore
+
+
+class MyModelWrapper(nn.Module):
+    """Wrap base_model so that GNNExplainer can call it easily."""
+
+    def __init__(self, base_model):
+        super().__init__()
+        self.base_model = base_model
+
+    def forward(self, x, edge_index, **kwargs):
+        """Use a dummy mask."""
+        mask = torch.ones(edge_index.size(1), dtype=torch.float, device=x.device)
+        if "edge_mask" in kwargs:
+            mask = kwargs["edge_mask"]
+        assert (
+            mask.shape[0] == edge_index.shape[1]
+        ), "Mask size does not match number of edges."
+        return self.base_model(x, edge_index, mask=mask)
 
 
 def build_explainer(model: nn.Module, epochs: int = 30, lr: float = 0.003) -> Explainer:
-    """Build a PGExplainer instance for explaning dataset phenomena."""
+    """Build a GNNExplainer instance for explaining a trained GNN model."""
+    wrapped_model = MyModelWrapper(model)
+
     return Explainer(
-        model=model,
-        algorithm=PGExplainer(epochs=epochs, lr=lr),
-        explanation_type=ExplanationType.phenomenon,
-        model_mode=ModelMode.regression,
-        node_mask_type=MaskType.attributes,
-        edge_mask_type=MaskType.object,
+        model=wrapped_model,
+        algorithm=GNNExplainer(epochs=epochs, lr=lr),
+        explanation_type=ExplanationType.model,
+        node_mask_type="attributes",
+        edge_mask_type="object",
+        model_config=dict(
+            mode="regression",
+            task_level="node",
+            return_type="raw",
+        ),
     )
 
 
-def train_explainer(
-    model: nn.Module,
-    sampled_indices: torch.Tensor,
-    epochs: int = 30,
-    lr: float = 0.003,
-    batch_size: int = 32,
-) -> None:
-    """Train the explainer on a sampled subset of nodes."""
-    # initialize the explainer
-    explainer = build_explainer(model=model, epochs=epochs, lr=lr)
-
-    sampled_dataset = torch.utils.data.TensorDataset(sampled_indices)
-    loader: DataLoader = DataLoader(
-        sampled_dataset, batch_size=batch_size, shuffle=True
-    )
-
-    # train explainer
-    for epoch in range(epochs):
-        trainloss = 0.0
-        print(f"Epoch {epoch+1}/{epochs} started.")
-        for batch in loader:
-            loss = explainer.algorithm.train(
-                epoch=epoch,
-                model=model,
-                x=batch.x,
-                edge_index=batch.edge_index,
-                y=batch.y,
-                batch=batch.batch,
-            )
-            trainloss += loss
-        print(f"Train loss: {trainloss:.4f}")
-    print("Training completed.")
-
-
-def generate_explanations(
-    explainer: Explainer,
-    data: Data,
-    target_indices: torch.Tensor,
-    batch_size: int = 32,
-) -> List[torch.Tensor]:
+def generate_explanations(explainer: Explainer, data: Data, index: int) -> Data:
     """Generate explanations for target nodes in batches."""
-    explainer.algorithm.eval()
-    all_explanations = []
-    loader: DataLoader = DataLoader(target_indices, batch_size=batch_size)
-    for batch in loader:
-        explanations = explainer(
-            x=data.x,
-            edge_index=data.edge_index,
-            node_idx=batch,
+    subset, edge_index, mapping, edge_mask = k_hop_subgraph(
+        node_idx=index,
+        num_hops=3,
+        edge_index=data.edge_index,
+        relabel_nodes=True,
+    )
+
+    subgraph = Data(
+        x=data.x[subset],
+        edge_index=edge_index,
+        y=data.y[subset],
+    )
+
+    subgraph.orig_nodes = subset
+    subgraph_target = mapping[0].item()
+    device = next(explainer.model.parameters()).device
+    subgraph = subgraph.to(device)
+
+    # debugging
+    print(f"Target Index: {index}")
+    print(f"Subgraph Size: {subgraph.num_nodes}")
+    print(f"Edge Index Shape: {subgraph.edge_index.shape}")
+    print(f"Subgraph Target (Local Index): {subgraph_target}")
+
+    try:
+        explanation = explainer(
+            x=subgraph.x,
+            edge_index=subgraph.edge_index,
+            index=subgraph_target,
         )
-        all_explanations.extend(explanations)
-    return all_explanations
+    except AssertionError as ae:
+        print(f"AssertionError for target index {index}: {ae}")
+        return None
+    except Exception as e:
+        print(f"Error for target index {index}: {e}")
+        return None
+
+    explanation.orig_nodes = subset.cpu()  # (Tensor of shape [# subgraph nodes])
+    explanation.global_target_node = index
+
+    return explanation
