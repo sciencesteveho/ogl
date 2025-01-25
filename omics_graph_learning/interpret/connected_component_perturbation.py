@@ -309,7 +309,7 @@ class ConnectedComponentPerturbation:
         self,
         genes_to_analyze: List[int],
         num_hops: int = 3,
-        max_nodes_to_perturb: int = 1000,
+        max_nodes_to_perturb: int = 1221,
     ) -> Dict[str, Any]:
         """
         For each gene in genes_to_analyze:
