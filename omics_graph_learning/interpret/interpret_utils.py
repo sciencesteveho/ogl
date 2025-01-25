@@ -181,7 +181,7 @@ def _interpret_setup(args: argparse.Namespace) -> Tuple[
     if args.model_name:
         model_name = args.model_name
     else:
-        model_name = experiment_config.model_name
+        model_name = experiment_config.experiment_name
 
     model_checkpoint = (
         f"{root_dir}/models/{model_name}"
