@@ -18,6 +18,8 @@ import pandas as pd
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
+from torch_geometric.utils import k_hop_subgraph  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 from omics_graph_learning.graph_to_pytorch import GraphToPytorch
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
@@ -265,6 +267,81 @@ def get_baseline_predictions(
             "class_label": classification_labels.cpu().numpy(),
         }
     )
+
+
+def get_baseline_predictions_k_hop(
+    data: Data,
+    runner: PerturbRunner,
+    k: int = 3,
+) -> pd.DataFrame:
+    """Evaluate the model using k-hop subgraphs on a given mask and return
+    predictions as a DataFrame.
+    """
+    device = runner.device
+    model = runner.model.to(device)
+
+    target_mask = getattr(data, "all_mask_loss")
+    target_nodes = target_mask.nonzero(as_tuple=True)[0].tolist()
+
+    regression_outs = []
+    regression_labels = []
+    node_indices = []
+    classification_outs = []
+    classification_labels = []
+
+    for node in tqdm(target_nodes):
+        subset, edge_index, mapping, _, _ = k_hop_subgraph(
+            node_idx=node,
+            num_hops=k,
+            edge_index=data.edge_index,
+            relabel_nodes=True,
+            num_nodes=data.num_nodes,
+        )
+
+        sub_x = data.x[subset].to(device)
+        sub_y = data.y[subset]
+        sub_class_labels = data.class_labels[subset]
+        sub_mask = target_mask[subset]
+
+        # forward pass
+        with torch.no_grad():
+            reg_out, class_out = model(sub_x, edge_index.to(device), sub_mask)
+
+        reg_val = reg_out[mapping].squeeze()
+        cls_val = class_out[mapping].squeeze()
+        label_val = sub_y[mapping].squeeze()
+        class_label_val = sub_class_labels[mapping].squeeze()
+
+        regression_outs.append(reg_val.item())
+        regression_labels.append(label_val.item())
+        node_indices.append(node)
+        classification_outs.append(cls_val.item())
+        classification_labels.append(class_label_val.item())
+
+        regression_outs = torch.tensor(regression_outs)
+        regression_labels = torch.tensor(regression_labels)
+        node_indices = torch.tensor(node_indices)
+        classification_outs = torch.tensor(classification_outs)
+        classification_labels = torch.tensor(classification_labels)
+
+        # ensure shape alignment
+        assert (
+            regression_outs.shape[0]
+            == regression_labels.shape[0]
+            == node_indices.shape[0]
+            == classification_outs.shape[0]
+            == classification_labels.shape[0]
+        ), "Mismatch in tensor shapes."
+
+        return pd.DataFrame(
+            {
+                "node_idx": node_indices.cpu().numpy(),
+                "prediction": regression_outs.cpu().numpy(),
+                "label": regression_labels.cpu().numpy(),
+                "class_logits": classification_outs.cpu().numpy(),
+                "class_label": classification_labels.cpu().numpy(),
+            }
+        )
 
 
 def get_best_predictions(
