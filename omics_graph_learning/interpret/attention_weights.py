@@ -3,109 +3,185 @@
 # -*- coding: utf-8 -*-
 
 
-"""Module to extract attention weights from a trained GATv2 models. The models
-are trained with (return_attention_weights=False), so we:
-    1) Set each GATv2Conv's return_attention_weights=True.
-    2) Register a forward hook that captures the alpha values.
-    3) Perform a forward pass with.
-    4) Return a {layer_name: alpha_tensor} dictionary."""
+"""Module to extract attention weights from a trained GATv2 models using a dummy
+model with alpha return.
+"""
 
 
 from typing import Dict, List, Optional, Tuple
 
 import torch  # type: ignore
+import torch.nn as nn  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.nn import GATv2Conv  # type: ignore
 
 
-def register_gat_hooks(model: torch.nn.Module) -> None:
-    """Registers a forward hook on each GATv2Conv to capture attention weights
-    from the forward pass. The captured tensor is stored in
-    `module.cached_alpha`.
+class GATv2ConvWithAlpha(nn.Module):
+    """A wrapper around the standard GATv2Conv that always returns (out, alpha)."""
+
+    def __init__(self, original_gat: GATv2Conv) -> None:
+        """Initialize the wrapper with the original GATv2Conv."""
+        super().__init__()
+        self.gat = original_gat
+
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Run forward pass to return (out, alpha)."""
+        out, (edge_iindex, alpha) = self.gat(
+            x,
+            edge_index,
+            return_attention_weights=True,
+        )
+        return out, alpha
+
+
+class GATv2AnalysisModel(nn.Module):
+    """A dummy model that mimics the original GATv2 model, but with alpha
+    extraction.
     """
 
-    def gat_attention_hook(
-        module: GATv2Conv,
-        input: Tuple[torch.Tensor, ...],
-        output: Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]],
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        heads: int,
+        num_layers: int = 2,
     ) -> None:
-        """If `return_attention_weights=True`, the forward pass of GATv2Conv
-        returns a tuple: (out, (edge_index, alpha)).
-        """
-        if isinstance(output, tuple) and len(output) == 2:
-            _, alpha_info = output  # alpha_info = (edge_index, alpha)
-            if len(alpha_info) == 2:
-                _, alpha = alpha_info
-                module.cached_alpha = alpha.detach().cpu()
+        """Initialize the analysis model with the same layer shapes."""
+        super().__init__()
+        self.num_layers = num_layers
+        self.layers = nn.ModuleList()
+
+        for i in range(num_layers):
+            if i == 0:
+                conv = GATv2Conv(
+                    in_channels,
+                    hidden_channels,
+                    heads=heads,
+                )
             else:
-                module.cached_alpha = None
-        else:
-            module.cached_alpha = None
+                conv = GATv2Conv(
+                    hidden_channels * heads,
+                    hidden_channels,
+                    heads=heads,
+                )
+            self.layers.append(GATv2ConvWithAlpha(conv))
 
-    # attach hook to each GATv2Conv
-    for _, submodule in model.named_modules():
-        if isinstance(submodule, GATv2Conv):
-            submodule.register_forward_hook(gat_attention_hook)
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor
+    ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """Run forward pass and return activations and alpha for each layer."""
+        all_alphas = []
+        for layer in self.layers:
+            out, alpha = layer(x, edge_index)
+            x = torch.relu(out)  # dummy activation
+            all_alphas.append(alpha)
+        return x, all_alphas
 
 
-def get_attention_weights(
-    model: torch.nn.Module,
+def load_weights_from_original(
+    original_model: nn.Module,
+    analysis_model: GATv2AnalysisModel,
+) -> None:
+    """Copy weights from the original GATv2 model to the analysis model."""
+    analysis_layers = analysis_model.layers
+    gat_layers: List[Tuple[str, GATv2Conv]] = []
+    gat_layers.extend(
+        (name, submodule)
+        for name, submodule in original_model.named_modules()
+        if isinstance(submodule, GATv2Conv)
+    )
+    gat_layers.sort(key=lambda x: x[0])  # sort by name e.g. convs.0, convs.1
+
+    if len(gat_layers) != len(analysis_layers):
+        print("Warning: Mismatch in number of GATv2Conv layers.")
+        print(
+            f"Original model has {len(gat_layers)} GAT layers; analysis has {len(analysis_layers)}."
+        )
+
+    # copy each submodule's weights
+    for i, ((original_name, orig_conv), analysis_layer) in enumerate(
+        zip(gat_layers, analysis_layers)
+    ):
+        analysis_layer.gat.load_state_dict(orig_conv.state_dict(), strict=True)
+        print(
+            f"Copied weights from original layer '{original_name}' -> analysis_layer[{i}]"
+        )
+
+
+def extract_attention(
+    analysis_model: GATv2AnalysisModel,
     data: Data,
-    mask: torch.Tensor,
-    batch_size: int = 128,
-) -> Dict[str, List[Tuple[torch.Tensor, torch.Tensor]]]:
-    """Extract GATv2 attention weights in batches for a large graph using
-    NeighborLoader.
+    mask: Optional[torch.Tensor],
+    batch_size: int = 1024,
+    num_neighbors: int = 15,
+) -> Dict[int, List[Tuple[torch.Tensor, torch.Tensor]]]:
+    """Run the analysis model in mini-batches to capture alpha."""
+    from torch_geometric.loader import NeighborLoader
 
-    Returns:
-        A dictionary mapping where each element of list_of_batches is
-        (global_edges, alpha) for that layer:
-            - global_edges is a torch.LongTensor of shape [2, E_sub], giving the
-              GLOBAL node indices for the edges in this batch.
-            - alpha is the attention tensor of shape [E_sub, num_heads] (or
-              similar).
-    """
-    alphas: Dict[str, List[Tuple[torch.Tensor, torch.Tensor]]] = {}
+    alphas: Dict[int, List[Tuple[torch.Tensor, torch.Tensor]]] = {
+        i: [] for i in range(analysis_model.num_layers)
+    }
 
-    # return attention weights in forward pass
-    for _, submodule in model.named_modules():
-        if isinstance(submodule, GATv2Conv):
-            submodule.return_attention_weights = True
-
-    # register hooks to capture attention weights
-    register_gat_hooks(model)
-
-    # load data in batches
+    # convert boolean mask -> node indices
+    input_nodes = mask.nonzero(as_tuple=True)[0] if mask is not None else None
     loader = NeighborLoader(
         data,
-        num_neighbors=[data.avg_edges] * 2,
+        num_neighbors=[num_neighbors] * 2,
         batch_size=batch_size,
-        input_nodes=mask,
+        input_nodes=input_nodes,
         shuffle=False,
     )
 
-    model.eval()
+    analysis_model.eval()
     with torch.no_grad():
         for batch_data in loader:
-
             # forward pass
-            sub_mask = mask[batch_data.n_id]
-            _ = model(batch_data.x, batch_data.edge_index, sub_mask)
-
-            # retrieve the alpha values stored by the hook for each conv
-            for layer_name, submodule in model.named_modules():
-                if isinstance(submodule, GATv2Conv):
-                    alpha_local = getattr(submodule, "cached_alpha", None)
-                    if alpha_local is not None:
-                        # map local node indices -> global node indices:
-                        global_edges = batch_data.n_id[batch_data.edge_index]
-
-                        # add to alpha_dict
-                        if layer_name not in alphas:
-                            alphas[layer_name] = []
-                        alphas[layer_name].append(
-                            (global_edges.cpu(), alpha_local.cpu())
-                        )
+            _, all_alphas = analysis_model(batch_data.x, batch_data.edge_index)
+            for layer_i, alpha in enumerate(all_alphas):
+                # map local->global for edges
+                global_edges = batch_data.n_id[batch_data.edge_index.cpu()]
+                alphas[layer_i].append((global_edges.cpu(), alpha.cpu()))
 
     return alphas
+
+
+def get_attention_weights(
+    original_model: nn.Module,
+    data: Data,
+    mask: torch.Tensor,
+    in_channels: int,
+    hidden_channels: int,
+    out_channels: int,
+    heads: int,
+    num_layers: int,
+    batch_size: int = 1024,
+    num_neighbors: int = 15,
+) -> Dict[int, List[Tuple[torch.Tensor, torch.Tensor]]]:
+    """Get the attention weights from a trained GATv2 model.
+    1 - build dummy
+    2 - copy weights
+    3 - batch infer alpha
+    4 - return {layer_idx: list_of_batches}
+    """
+    analysis_model = GATv2AnalysisModel(
+        in_channels=in_channels,
+        hidden_channels=hidden_channels,
+        out_channels=out_channels,
+        heads=heads,
+        num_layers=num_layers,
+    ).to(data.x.device)
+
+    # copy weights from original model
+    load_weights_from_original(original_model, analysis_model)
+
+    return extract_attention(
+        analysis_model,
+        data,
+        mask,
+        batch_size=batch_size,
+        num_neighbors=num_neighbors,
+    )

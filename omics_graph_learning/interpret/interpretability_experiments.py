@@ -9,6 +9,8 @@
 """
 
 
+from typing import Dict, List, Tuple
+
 import torch
 
 from omics_graph_learning.interpret.attention_weights import get_attention_weights
@@ -25,6 +27,39 @@ def scale_saliency(saliency_map: torch.Tensor) -> torch.Tensor:
     saliency_min, _ = saliency_map.min(dim=0, keepdim=True)  # min feature
     saliency_max, _ = saliency_map.max(dim=0, keepdim=True)  # max feature
     return (saliency_map - saliency_min) / (saliency_max - saliency_min + 1e-9)
+
+
+def compute_per_edge_attention(
+    attention_weights: Dict[int, List[Tuple[torch.Tensor, torch.Tensor]]],
+) -> Dict[Tuple[int, int], float]:
+    """Compute the average attention weight per edge across all heads and
+    occurrences.
+    """
+    from collections import defaultdict
+
+    edge_attention_sum = defaultdict(float)
+    edge_counts = defaultdict(int)
+
+    for batches in attention_weights.values():
+        for edge_index, alpha in batches:
+
+            # compute mean attention across heads for each edge
+            mean_alpha = alpha.mean(dim=1)
+
+            # iterate over each edge and its mean attention
+            for i in range(edge_index.size(1)):
+                src = edge_index[0, i].item()
+                tgt = edge_index[1, i].item()
+                attn = mean_alpha[i].item()
+
+                edge = (src, tgt)
+                edge_attention_sum[edge] += attn
+                edge_counts[edge] += 1
+
+    return {
+        edge: total_attn / edge_counts[edge]
+        for edge, total_attn in edge_attention_sum.items()
+    }
 
 
 def main() -> None:
@@ -49,9 +84,7 @@ def main() -> None:
     data = combine_masks(data)
 
     # saliency maps
-    # we are only interested in computing saliency maps for the genes
     gene_indices = data.all_mask_loss.nonzero(as_tuple=False).squeeze()
-
     saliency_map = compute_gradient_saliency(
         model=runner.model,
         data=data,
@@ -64,20 +97,32 @@ def main() -> None:
     torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
 
     # attention weights for genes
-    attention_weights = get_attention_weights(
-        model=runner.model,
+    raw_attention_weights = get_attention_weights(
+        original_model=runner.model,
         data=data,
         mask=data.all_mask_loss,
+        in_channels=42,
+        hidden_channels=200,
+        out_channels=1,
+        heads=2,
+        num_layers=2,
     )
-    torch.save(attention_weights, outpath / "attention_weights_genes.pt")
+    avg_attention = compute_per_edge_attention(raw_attention_weights)
+    torch.save(avg_attention, outpath / "attention_weights_genes.pt")
 
     # attention weights for all nodes
-    attention_weights_all = get_attention_weights(
-        model=runner.model,
+    raw_attention_weights_all = get_attention_weights(
+        original_model=runner.model,
         data=data,
         mask=data.all_mask,
+        in_channels=42,
+        hidden_channels=200,
+        out_channels=1,
+        heads=2,
+        num_layers=2,
     )
-    torch.save(attention_weights_all, outpath / "attention_weights_all_nodes.pt")
+    avg_attention_all = compute_per_edge_attention(raw_attention_weights_all)
+    torch.save(avg_attention_all, outpath / "attention_weights_all_nodes.pt")
 
     # explainer
     pg_explainer = build_explainer(model=runner.model, epochs=30, lr=0.003)
