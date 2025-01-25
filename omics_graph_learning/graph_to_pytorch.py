@@ -470,11 +470,18 @@ def create_node_tensors(
 
     # randomize node feature at index
     if randomize_node_feature_idx is not None:
-        print(f"Randomizing node feature at index {randomize_node_feature_idx}")
-        if positional_encoding and randomize_node_feature_idx < 5:
-            raise ValueError("Cannot randomize positional encoding")
+        if randomize_node_feature_idx == -1:
+            # randomize all node features if index is -1
+            print("Randomizing all node features")
+            node_feats = np.random.rand(*node_feats.shape)
+        else:
+            print(f"Randomizing node feature at index {randomize_node_feature_idx}")
+            if positional_encoding and randomize_node_feature_idx < 5:
+                raise ValueError("Cannot randomize positional encoding")
 
-        node_feats[:, randomize_node_feature_idx] = np.random.rand(node_feats.shape[0])
+            node_feats[:, randomize_node_feature_idx] = np.random.rand(
+                node_feats.shape[0]
+            )
 
     return torch.tensor(node_feats, dtype=torch.float)
 
