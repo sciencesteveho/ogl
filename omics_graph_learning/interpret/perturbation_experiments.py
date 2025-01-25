@@ -105,7 +105,7 @@ def main() -> None:
     component_perturbation_results = experiment.run_perturbations(
         genes_to_analyze=genes_to_analyze,
     )
-    with open(outpath / "connected_component_perturbations.pkl", "w") as f:
+    with open(outpath / "connected_component_perturbations.pkl", "wb") as f:
         pickle.dump(component_perturbation_results, f)
 
     # print("Running Essential Gene Perturbation...")
