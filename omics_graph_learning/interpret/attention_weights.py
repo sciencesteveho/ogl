@@ -15,6 +15,7 @@ import torch.nn as nn  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.nn import GATv2Conv  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 
 class GATv2ConvWithAlpha(nn.Module):
@@ -136,9 +137,10 @@ def extract_attention(
         shuffle=False,
     )
 
+    total_batches = len(loader)
     analysis_model.eval()
     with torch.no_grad():
-        for batch_data in loader:
+        for batch_data in tqdm(loader, total=total_batches):
             # forward pass
             _, all_alphas = analysis_model(batch_data.x, batch_data.edge_index)
             for layer_i, alpha in enumerate(all_alphas):

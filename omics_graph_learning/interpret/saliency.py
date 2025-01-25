@@ -9,6 +9,7 @@ import torch  # type: ignore
 import torch.nn.functional as F  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 
 def compute_gradient_saliency(
@@ -38,7 +39,7 @@ def compute_gradient_saliency(
     model.eval()
 
     # process batches and accumulate gradients
-    for start_idx in range(0, gene_indices.size(0), batch_size):
+    for start_idx in tqdm(range(0, gene_indices.size(0), batch_size)):
         end_idx = start_idx + batch_size
         batch_gene_ids = gene_indices[start_idx:end_idx]
 

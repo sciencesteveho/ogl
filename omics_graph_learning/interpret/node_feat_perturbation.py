@@ -253,7 +253,6 @@ def perturb_node_features(
     Returns:
         ({feature_index: overall average diff}, {feature_index: list of top gene diffs})
     """
-    # test_loader = get_test_loader(data, mask)
     global_differences = defaultdict(lambda: defaultdict(list))
 
     gene_nodes = getattr(data, f"{mask}_mask_loss").nonzero(as_tuple=True)[0]

@@ -75,24 +75,6 @@ class ConnectedComponentPerturbation:
         self.idxs_inv = idxs_inv
         self.mask_attr = mask_attr
 
-    def _create_subgraph_loader(
-        self,
-        gene_node: int,
-        num_hops: int,
-        batch_size: int = 1,
-    ) -> NeighborLoader:
-        """Create a NeighborLoader to fetches subgraph around a specific gene
-        node. We take avg_edges * 2 neighbors per hop to ensure we don't miss
-        critical parts of the graph.
-        """
-        return NeighborLoader(
-            data=self.data,
-            num_neighbors=[self.data.avg_edges * 2] * num_hops,
-            batch_size=batch_size,
-            input_nodes=torch.tensor([gene_node], dtype=torch.long),
-            shuffle=False,
-        )
-
     def _build_k_hop_subgraph(
         self,
         gene_node: int,
@@ -353,13 +335,6 @@ class ConnectedComponentPerturbation:
         for gene_node in tqdm(
             genes_to_analyze, desc="Connected component pertubration experiments"
         ):
-
-            # # subgraph loader
-            # loader = self._create_subgraph_loader(
-            #     gene_node=gene_node, num_hops=num_hops
-            # )
-            # sub_data = next(iter(loader)).to(self.device)
-
             # build deterministic subgraph
             sub_data = self._build_k_hop_subgraph(
                 gene_node=gene_node, num_hops=num_hops
