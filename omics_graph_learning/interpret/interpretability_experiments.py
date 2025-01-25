@@ -12,6 +12,7 @@
 from typing import Dict, List, Tuple
 
 import torch
+from tqdm import tqdm  # type: ignore
 
 from omics_graph_learning.interpret.attention_weights import get_attention_weights
 from omics_graph_learning.interpret.explainer import build_explainer
@@ -40,7 +41,8 @@ def compute_per_edge_attention(
     edge_attention_sum = defaultdict(float)
     edge_counts = defaultdict(int)
 
-    for batches in attention_weights.values():
+    # total length = only one per layer
+    for batches in tqdm(attention_weights.values(), total=2):
         for edge_index, alpha in batches:
 
             # compute mean attention across heads for each edge
@@ -125,6 +127,8 @@ def main() -> None:
     torch.save(avg_attention_all, outpath / "attention_weights_all_nodes.pt")
 
     # explainer
+    # we run explainer on the top 250 high/medium/low expression genes (750
+    # total) to identify subgraph structures
     pg_explainer = build_explainer(model=runner.model, epochs=30, lr=0.003)
     explanations = train_explainer(pg_explainer, data)
     torch.save(explanations, outpath / "pgexplainer_explanations.pt")

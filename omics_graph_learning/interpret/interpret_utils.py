@@ -283,14 +283,14 @@ def get_baseline_predictions_k_hop(
     target_mask = getattr(data, "all_mask_loss")
     target_nodes = target_mask.nonzero(as_tuple=True)[0].tolist()
 
-    regression_outs = []
-    regression_labels = []
-    node_indices = []
-    classification_outs = []
-    classification_labels = []
+    regression_outs_accumulate = []
+    regression_labels_accumulate = []
+    node_indices_accumulate = []
+    classification_outs_accumulate = []
+    classification_labels_accumulate = []
 
     for node in tqdm(target_nodes):
-        subset, edge_index, mapping, _, _ = k_hop_subgraph(
+        subset, edge_index, mapping, _ = k_hop_subgraph(
             node_idx=node,
             num_hops=k,
             edge_index=data.edge_index,
@@ -312,36 +312,36 @@ def get_baseline_predictions_k_hop(
         label_val = sub_y[mapping].squeeze()
         class_label_val = sub_class_labels[mapping].squeeze()
 
-        regression_outs.append(reg_val.item())
-        regression_labels.append(label_val.item())
-        node_indices.append(node)
-        classification_outs.append(cls_val.item())
-        classification_labels.append(class_label_val.item())
+        regression_outs_accumulate.append(reg_val.item())
+        regression_labels_accumulate.append(label_val.item())
+        node_indices_accumulate.append(node)
+        classification_outs_accumulate.append(cls_val.item())
+        classification_labels_accumulate.append(class_label_val.item())
 
-        regression_outs = torch.tensor(regression_outs)
-        regression_labels = torch.tensor(regression_labels)
-        node_indices = torch.tensor(node_indices)
-        classification_outs = torch.tensor(classification_outs)
-        classification_labels = torch.tensor(classification_labels)
+    regression_outs = torch.tensor(regression_outs_accumulate)
+    regression_labels = torch.tensor(regression_labels_accumulate)
+    node_indices = torch.tensor(node_indices_accumulate)
+    classification_outs = torch.tensor(classification_outs_accumulate)
+    classification_labels = torch.tensor(classification_labels_accumulate)
 
-        # ensure shape alignment
-        assert (
-            regression_outs.shape[0]
-            == regression_labels.shape[0]
-            == node_indices.shape[0]
-            == classification_outs.shape[0]
-            == classification_labels.shape[0]
-        ), "Mismatch in tensor shapes."
+    # ensure shape alignment
+    assert (
+        regression_outs.shape[0]
+        == regression_labels.shape[0]
+        == node_indices.shape[0]
+        == classification_outs.shape[0]
+        == classification_labels.shape[0]
+    ), "Mismatch in tensor shapes."
 
-        return pd.DataFrame(
-            {
-                "node_idx": node_indices.cpu().numpy(),
-                "prediction": regression_outs.cpu().numpy(),
-                "label": regression_labels.cpu().numpy(),
-                "class_logits": classification_outs.cpu().numpy(),
-                "class_label": classification_labels.cpu().numpy(),
-            }
-        )
+    return pd.DataFrame(
+        {
+            "node_idx": node_indices.cpu().numpy(),
+            "prediction": regression_outs.cpu().numpy(),
+            "label": regression_labels.cpu().numpy(),
+            "class_logits": classification_outs.cpu().numpy(),
+            "class_label": classification_labels.cpu().numpy(),
+        }
+    )
 
 
 def get_best_predictions(

@@ -17,7 +17,9 @@ from omics_graph_learning.interpret.connected_component_perturbation import (
     ConnectedComponentPerturbation,
 )
 from omics_graph_learning.interpret.interpret_utils import _interpret_setup
-from omics_graph_learning.interpret.interpret_utils import get_baseline_predictions
+from omics_graph_learning.interpret.interpret_utils import (
+    get_baseline_predictions_k_hop,
+)
 from omics_graph_learning.interpret.interpret_utils import get_best_predictions
 from omics_graph_learning.interpret.interpret_utils import invert_symbol_dict
 from omics_graph_learning.interpret.interpret_utils import parse_interpret_args
@@ -56,7 +58,10 @@ def main() -> None:
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
     # get baseline predictions
-    baseline_df = get_baseline_predictions(data=data, runner=runner)
+    baseline_df = get_baseline_predictions_k_hop(
+        data=data,
+        runner=runner,
+    )
     baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
 
     # get best predictions from model
