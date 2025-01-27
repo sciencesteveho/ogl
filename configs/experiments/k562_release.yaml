@@ -28,7 +28,7 @@ derived_directories:
   target_dir: shared_data/targets
   tpm_dir: shared_data/targets/tpm
 
-experiment_name: k562_allcontacts_global_release
+experiment_name: k562_release
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
 

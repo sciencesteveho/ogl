@@ -23,10 +23,10 @@ class CombinationLoss(nn.Module):
 
     Methods
     --------
-    forward::
+    forward:
         Compute the combined loss
 
-    Examples:
+    Examples
     --------
     # Initialize custom loss >>> criterion = RMSEandBCELoss(alpha=alpha)
 
