@@ -9,3 +9,4 @@ test/deprecated
 figures/
 examples/slurm/submit.sh
 configs/deprecated
+requirements-dev.txt
