@@ -61,8 +61,10 @@ def main() -> None:
     baseline_df = get_baseline_predictions_k_hop(
         data=data,
         runner=runner,
+        k=2,
     )
-    baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
+    # baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
+    baseline_df.to_csv(outpath / "baseline_predictions_2hop.csv", index=False)
 
     # get best predictions from model
     print("Getting best predictions...")
@@ -92,21 +94,21 @@ def main() -> None:
 
     # experiment 2: run systematic connected component perturbations on the
     # k-hop subgraph
-    print("Running Connected Component Perturbation...")
-    experiment = ConnectedComponentPerturbation(
-        data=data,
-        device=device,
-        runner=runner,
-        idxs_inv=idxs_inv,
-        mask_attr="all",
-    )
+    # print("Running Connected Component Perturbation...")
+    # experiment = ConnectedComponentPerturbation(
+    #     data=data,
+    #     device=device,
+    #     runner=runner,
+    #     idxs_inv=idxs_inv,
+    #     mask_attr="all",
+    # )
 
-    genes_to_analyze = best_prediction_df["node_idx"].tolist()
-    component_perturbation_results = experiment.run_perturbations(
-        genes_to_analyze=genes_to_analyze,
-    )
-    with open(outpath / "connected_component_perturbations.pkl", "wb") as f:
-        pickle.dump(component_perturbation_results, f)
+    # genes_to_analyze = best_prediction_df["node_idx"].tolist()
+    # component_perturbation_results = experiment.run_perturbations(
+    #     genes_to_analyze=genes_to_analyze,
+    # )
+    # with open(outpath / "connected_component_perturbations.pkl", "wb") as f:
+    #     pickle.dump(component_perturbation_results, f)
 
     # print("Running Essential Gene Perturbation...")
     # essential_fold_changes = essential_gene_perturbation(

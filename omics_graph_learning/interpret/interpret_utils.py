@@ -107,6 +107,7 @@ def load_data_and_model(
     # load node index dictionary
     with open(idx_file, "rb") as f:
         idxs = pickle.load(f)
+
     node_idx_to_gene_id, gene_indices = get_gene_idx_mapping(idxs)
 
     idxs_inv = {v: k for k, v in idxs.items()}  # inverse mapping
