@@ -15,7 +15,7 @@ def set_matplotlib_publication_parameters() -> None:
             "legend.fontsize": 7,
             "figure.titlesize": 7,
             "figure.dpi": 450,
-            "font.sans-serif": "Nimbus Sans",
+            "font.sans-serif": ["Arial", "Nimbus Sans"],
         }
     )
 
