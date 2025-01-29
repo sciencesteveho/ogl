@@ -66,6 +66,7 @@ def plot_predicted_versus_expected(
     expected: np.ndarray,
     rmse: float,
     save_path: Union[str, Path] = None,
+    title: bool = True,
 ) -> Figure:
     """Plots predicted versus expected values for a given model"""
     set_matplotlib_publication_parameters()
@@ -100,12 +101,13 @@ def plot_predicted_versus_expected(
     # set labels and title
     plot.ax_joint.set_xlabel("Predicted Log2 Expression")
     plot.ax_joint.set_ylabel("Expected Log2 Expression")
-    plot.figure.suptitle(
-        f"Predicted versus expected TPM\n"
-        rf"Spearman's $\rho$: {spearman_r:.4f}"
-        f"\nRMSE: {rmse:.4f}",
-        y=0.95,
-    )
+    if title:
+        plot.figure.suptitle(
+            f"Predicted versus expected TPM\n"
+            rf"Spearman's $\rho$: {spearman_r:.4f}"
+            f"\nRMSE: {rmse:.4f}",
+            y=0.95,
+        )
 
     # add colorbar
     plot.figure.colorbar(
@@ -123,7 +125,13 @@ def plot_predicted_versus_expected(
     slope, intercept, _, _, _ = stats.linregress(predicted, expected)
     x_fit = np.linspace(np.min(predicted) - 0.5, np.max(predicted) + 0.5, 100)
     y_fit = slope * x_fit + intercept
-    plot.ax_joint.plot(x_fit, y_fit, color="indianred", linewidth=0.9)
+    plot.ax_joint.plot(
+        x_fit,
+        y_fit,
+        color="indianred",
+        linewidth=0.9,
+        linestyle="--",
+    )
 
     # add a best-fit line at 45 degrees
     min_val = min(plot.ax_joint.get_xlim()[0], plot.ax_joint.get_ylim()[0])
@@ -132,15 +140,14 @@ def plot_predicted_versus_expected(
         [min_val, max_val],
         [min_val, max_val],
         color="lightgray",
-        linestyle="--",
         linewidth=0.9,
         label="Perfect Fit",
     )
 
     # add pearson R
     plot.ax_joint.text(
-        0.05,
-        0.95,
+        0.025,
+        1.05,
         r"$\mathit{r}$ = " + f"{pearson_r:.4f}",
         transform=plot.ax_joint.transAxes,
         fontsize=7,
