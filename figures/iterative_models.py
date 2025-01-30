@@ -13,11 +13,10 @@ from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
-import seaborn as sns  # type: ignore
-
 from omics_graph_learning.model_metrics import ModelMetrics
 from omics_graph_learning.visualization import set_matplotlib_publication_parameters
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
 
 
 def plot_optimization_history(
@@ -236,8 +235,8 @@ def _plot_iterative_performance(df: pd.DataFrame, outname: str) -> None:
         fmt="o",
         ecolor="gray",
         capsize=3,
-        capthick=1.1,
-        elinewidth=1.1,
+        capthick=0.75,
+        elinewidth=0.75,
         markerfacecolor="green",
         markeredgecolor="darkgreen",
         markersize=4,
