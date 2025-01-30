@@ -445,6 +445,12 @@ def parse_interpret_args() -> argparse.Namespace:
         help="Name of trained model checkpoint.",
         default="GAT_best_model.pt",
     )
+    parser.add_argument(
+        "--hops",
+        type=int,
+        default=2,
+        help="Number of hops for k-hop subgraph.",
+    )
     # parser.add_argument(
     #     "--experiment",
     #     type=str,
