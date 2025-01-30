@@ -229,6 +229,7 @@ class ConnectedComponentPerturbation:
         self,
         sub_data: Data,
         gene_node: int,
+        gene_name: str,
         selected_nodes: List[int],
         baseline_prediction: float,
         hop_dist_map: Dict[int, int],
@@ -237,6 +238,9 @@ class ConnectedComponentPerturbation:
         """Remove nodes in selected_nodes one at a time, compute fold_change,
         hop distance, and store in a dictionary.
         """
+        if gene_name not in store_dict:
+            store_dict[gene_name] = {}
+
         for node_remove in selected_nodes:
             new_pred = self._remove_nodes_and_predict(
                 sub_data, [node_remove], gene_node
@@ -245,7 +249,8 @@ class ConnectedComponentPerturbation:
                 continue
 
             node_name = self.idxs_inv.get(node_remove, str(node_remove))
-            store_dict[node_name] = {
+            # store in the dictionary under the specific gene
+            store_dict[gene_name][node_name] = {
                 "fold_change": calculate_log2_fold_change(
                     baseline_prediction, new_pred
                 ),
@@ -335,6 +340,9 @@ class ConnectedComponentPerturbation:
         for gene_node in tqdm(
             genes_to_analyze, desc="Connected component pertubration experiments"
         ):
+            # get gene name
+            gene_name = self.idxs_inv.get(gene_node, str(gene_node))
+
             # build deterministic subgraph
             sub_data = self._build_k_hop_subgraph(
                 gene_node=gene_node, num_hops=num_hops
@@ -363,32 +371,33 @@ class ConnectedComponentPerturbation:
             self._perform_single_node_perturbations(
                 sub_data=sub_data,
                 gene_node=gene_node,
+                gene_name=gene_name,
                 selected_nodes=selected_nodes,
                 baseline_prediction=baseline,
                 hop_dist_map=hop_map,
                 store_dict=perturbations["single"],
             )
 
-            # run joint node perturbations
-            for element_string, element in self.element_types:
-                # double removal
-                self._perform_joint_re_perturbations(
-                    sub_data=sub_data,
-                    gene_node=gene_node,
-                    baseline_prediction=baseline,
-                    element_type=element_string,
-                    group_size=2,
-                    store_dict=perturbations[f"double_{element}"],
-                )
-                # triple removal
-                self._perform_joint_re_perturbations(
-                    sub_data=sub_data,
-                    gene_node=gene_node,
-                    baseline_prediction=baseline,
-                    element_type=element_string,
-                    group_size=3,
-                    store_dict=perturbations[f"triple_{element}"],
-                )
+            # # run joint node perturbations
+            # for element_string, element in self.element_types:
+            #     # double removal
+            #     self._perform_joint_re_perturbations(
+            #         sub_data=sub_data,
+            #         gene_node=gene_node,
+            #         baseline_prediction=baseline,
+            #         element_type=element_string,
+            #         group_size=2,
+            #         store_dict=perturbations[f"double_{element}"],
+            #     )
+            #     # triple removal
+            #     self._perform_joint_re_perturbations(
+            #         sub_data=sub_data,
+            #         gene_node=gene_node,
+            #         baseline_prediction=baseline,
+            #         element_type=element_string,
+            #         group_size=3,
+            #         store_dict=perturbations[f"triple_{element}"],
+            #     )
 
         return perturbations
 
