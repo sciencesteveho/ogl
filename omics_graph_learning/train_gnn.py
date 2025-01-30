@@ -671,7 +671,7 @@ def post_model_evaluation(
         tb_logger.writer.add_scalar("Predictions", out.item(), step)
         tb_logger.writer.add_scalar("Labels", label.item(), step)
 
-    loss_val, rmse_val, labels_val, outs_val, pearson_r_val, accuracy_val = (
+    loss_val, rmse_val, outs_val, labels_val, pearson_r_val, accuracy_val = (
         post_eval_trainer.evaluate(
             data_loader=val_loader,
             mask="val",
@@ -699,9 +699,9 @@ def post_model_evaluation(
         "Validation pearson": pearson_r_val,
         "Validation RMSE": rmse_val,
         "Validation accuracy": accuracy_val,
-        "Bootstrap pearson": mean_correlation,
-        "CI lower": ci_lower,
-        "CI upper": ci_upper,
+        "Bootstrap pearson test": mean_correlation,
+        "CI lower test": ci_lower,
+        "CI upper test": ci_upper,
         "Bootstrap pearson val": mean_correlation_val,
         "CI lower val": ci_lower_val,
         "CI upper val": ci_upper_val,
@@ -928,20 +928,20 @@ def main() -> None:
     )
 
     logger.info(f"Training for {epochs} epochs (early stopping)")
-    # model, _, early_stop = trainer.train_model(
-    #     train_loader=train_loader,
-    #     val_loader=val_loader,
-    #     test_loader=test_loader,
-    #     epochs=epochs,
-    #     model_dir=run_dir,
-    #     args=args,
-    #     min_epochs=min_epochs,
-    # )
+    model, _, early_stop = trainer.train_model(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader,
+        epochs=epochs,
+        model_dir=run_dir,
+        args=args,
+        min_epochs=min_epochs,
+    )
 
-    # torch.save(
-    #     model.state_dict(),
-    #     run_dir / f"{args.model}_final_model.pt",
-    # )
+    torch.save(
+        model.state_dict(),
+        run_dir / f"{args.model}_final_model.pt",
+    )
 
     # generate loss and prediction plots for best model
     post_model_evaluation(
@@ -954,8 +954,8 @@ def main() -> None:
         tb_logger=tb_logger,
         logger=logger,
         run_dir=run_dir,
-        # early_stop=early_stop,
-        early_stop=True,
+        early_stop=early_stop,
+        # early_stop=True,
     )
 
 
