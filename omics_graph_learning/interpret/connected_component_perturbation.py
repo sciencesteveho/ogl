@@ -66,6 +66,7 @@ class ConnectedComponentPerturbation:
         device: torch.device,
         runner: PerturbRunner,
         idxs_inv: Dict[int, str],
+        hops: int = 2,
         mask_attr: str = "all",
     ) -> None:
         """Initialize the ConnectedComponentPerturbation object."""
@@ -74,16 +75,16 @@ class ConnectedComponentPerturbation:
         self.runner = runner
         self.idxs_inv = idxs_inv
         self.mask_attr = mask_attr
+        self.hops = hops
 
     def _build_k_hop_subgraph(
         self,
         gene_node: int,
-        num_hops: int = 3,
     ) -> Data:
         """Build a k-hop subgraph around the gene node."""
         node_subgraph, edge_subgraph, mapping, _ = k_hop_subgraph(
             node_idx=gene_node,
-            num_hops=num_hops,
+            num_hops=self.hops,
             edge_index=self.data.edge_index,
             relabel_nodes=True,
             num_nodes=self.data.num_nodes,
@@ -287,12 +288,16 @@ class ConnectedComponentPerturbation:
         self,
         sub_data: Data,
         gene_node: int,
+        gene_name: str,
         baseline_prediction: float,
         element_type: str,
         group_size: int,
         store_dict: Dict[Tuple[str, ...], float],
     ) -> None:
         """Do random removals of elements of type `element_type`."""
+        if gene_name not in store_dict:
+            store_dict[gene_name] = {}
+
         element_ids = self._get_elements_in_subgraph(
             sub_data=sub_data, regulatory_element=element_type
         )
@@ -308,12 +313,11 @@ class ConnectedComponentPerturbation:
         )
         if result is not None:
             (names, fc) = result
-            store_dict[names] = fc
+            store_dict[gene_name][names] = fc
 
     def run_perturbations(
         self,
         genes_to_analyze: List[int],
-        num_hops: int = 3,
         max_nodes_to_perturb: int = 1221,
     ) -> Dict[str, Any]:
         """
@@ -344,9 +348,7 @@ class ConnectedComponentPerturbation:
             gene_name = self.idxs_inv.get(gene_node, str(gene_node))
 
             # build deterministic subgraph
-            sub_data = self._build_k_hop_subgraph(
-                gene_node=gene_node, num_hops=num_hops
-            ).to(self.device)
+            sub_data = self._build_k_hop_subgraph(gene_node=gene_node).to(self.device)
 
             # compute baseline
             baseline = self._compute_baseline_prediction(
@@ -378,26 +380,27 @@ class ConnectedComponentPerturbation:
                 store_dict=perturbations["single"],
             )
 
-            # # run joint node perturbations
-            # for element_string, element in self.element_types:
-            #     # double removal
-            #     self._perform_joint_re_perturbations(
-            #         sub_data=sub_data,
-            #         gene_node=gene_node,
-            #         baseline_prediction=baseline,
-            #         element_type=element_string,
-            #         group_size=2,
-            #         store_dict=perturbations[f"double_{element}"],
-            #     )
-            #     # triple removal
-            #     self._perform_joint_re_perturbations(
-            #         sub_data=sub_data,
-            #         gene_node=gene_node,
-            #         baseline_prediction=baseline,
-            #         element_type=element_string,
-            #         group_size=3,
-            #         store_dict=perturbations[f"triple_{element}"],
-            #     )
+            # only run joint perturbations on 2-hops
+            if self.hops == 2:
+                for element_string, element in self.element_types:
+                    # double removal
+                    self._perform_joint_re_perturbations(
+                        sub_data=sub_data,
+                        gene_node=gene_node,
+                        baseline_prediction=baseline,
+                        element_type=element_string,
+                        group_size=2,
+                        store_dict=perturbations[f"double_{element}"],
+                    )
+                    # triple removal
+                    self._perform_joint_re_perturbations(
+                        sub_data=sub_data,
+                        gene_node=gene_node,
+                        baseline_prediction=baseline,
+                        element_type=element_string,
+                        group_size=3,
+                        store_dict=perturbations[f"triple_{element}"],
+                    )
 
         return perturbations
 

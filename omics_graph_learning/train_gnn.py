@@ -622,6 +622,7 @@ def make_model_plots(
 
 
 def post_model_evaluation(
+    model: torch.nn.Module,
     model_name: str,
     device: torch.device,
     data: torch_geometric.data.Data,
@@ -945,6 +946,7 @@ def main() -> None:
 
     # generate loss and prediction plots for best model
     post_model_evaluation(
+        model=model,
         model_name=args.model,
         device=device,
         data=data,
