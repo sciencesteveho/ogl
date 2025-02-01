@@ -104,7 +104,7 @@ def main() -> None:
         mask_attr="all",
     )
 
-    best_prediction_df = pd.read_csv(outpath / "best_predictions.csv")
+    best_prediction_df = pd.read_csv(outpath / f"best_predictions_{hops}_hop.csv")
     genes_to_analyze = best_prediction_df["node_idx"].tolist()
     component_perturbation_results = experiment.run_perturbations(
         genes_to_analyze=genes_to_analyze,
