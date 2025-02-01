@@ -387,6 +387,7 @@ class ConnectedComponentPerturbation:
                     self._perform_joint_re_perturbations(
                         sub_data=sub_data,
                         gene_node=gene_node,
+                        gene_name=gene_name,
                         baseline_prediction=baseline,
                         element_type=element_string,
                         group_size=2,
@@ -396,6 +397,7 @@ class ConnectedComponentPerturbation:
                     self._perform_joint_re_perturbations(
                         sub_data=sub_data,
                         gene_node=gene_node,
+                        gene_name=gene_name,
                         baseline_prediction=baseline,
                         element_type=element_string,
                         group_size=3,
