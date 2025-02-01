@@ -243,7 +243,7 @@ class ConnectedComponentPerturbation:
         sub_data: Data,
         list_of_nodes_to_remove: List[int],
         gene_node: int,
-        batch_size: int = 12,
+        batch_size: int = 8,
     ) -> List[Optional[float]]:
         """For each node in list_of_nodes_to_remove, create a perturbed
         subgraph. Then, process these perturbed subgraphs in mini-batches (of
