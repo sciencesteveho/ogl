@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx  # type: ignore
 import torch
+from torch_geometric.data import Batch  # type: ignore
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
@@ -138,6 +139,62 @@ class ConnectedComponentPerturbation:
             )
         return baseline_out[idx_in_subgraph].item()
 
+    def _create_perturbed_subgraph(
+        self,
+        sub_data: Data,
+        nodes_to_remove: List[int],
+        gene_node: int,
+    ) -> Optional[Data]:
+        """Given a subgraph, remove the specified nodes and return the resulting
+        perturbed subgraph as a new Data object. Returns None if none of the
+        nodes to remove are found or if the gene_node is no longer present
+        after perturbation.
+        """
+        if not nodes_to_remove:
+            return None
+
+        mask_tensor = getattr(sub_data, f"{self.mask_attr}_mask_loss")
+        remove_local_idxs = set()
+        for global_id in nodes_to_remove:
+            loc = (sub_data.n_id == global_id).nonzero(as_tuple=True)[0]
+            if loc.numel() > 0:
+                remove_local_idxs.add(loc.item())
+
+        if not remove_local_idxs:
+            return None
+
+        keep_mask = torch.tensor(
+            [i not in remove_local_idxs for i in range(sub_data.num_nodes)],
+            dtype=torch.bool,
+            device=self.device,
+        )
+
+        # create perturbed subgraph using the keep mask
+        perturbed_edge_idx, _, _ = subgraph(
+            subset=keep_mask,
+            edge_index=sub_data.edge_index,
+            relabel_nodes=True,
+            num_nodes=sub_data.num_nodes,
+            return_edge_mask=True,
+        )
+
+        perturbed_x = sub_data.x[keep_mask]
+        perturbed_mask = mask_tensor[keep_mask]
+        perturbed_n_id = sub_data.n_id[keep_mask]
+
+        # ensure the gene_node still exists
+        if (perturbed_n_id == gene_node).sum() == 0:
+            return None
+
+        mini_data = Data(
+            x=perturbed_x,
+            edge_index=perturbed_edge_idx,
+        )
+        mini_data.n_id = perturbed_n_id
+        setattr(mini_data, f"{self.mask_attr}_mask_loss", perturbed_mask)
+
+        return mini_data
+
     def _get_elements_in_subgraph(
         self,
         sub_data: Data,
@@ -161,70 +218,92 @@ class ConnectedComponentPerturbation:
         gene_node: int,
     ) -> Optional[float]:
         """Remove the specified nodes from the subgraph, then compute the
-        model's prediction for the gene node in the perturbed subgraph.
-
-        Args:
-            runner: PerturbRunner object containing the loaded model.
-            sub_data: Subgraph batch.
-            node_to_remove: Node to remove from the subgraph.
-            gene_node: Gene node to predict.
-            device: Device to run the model on.
-            mask_attr: Attribute name for the mask.
-
-        Returns:
-            Optional[float]: The perturbation prediction for the gene node, or
-            None if the gene_node is missing in the perturbed subgraph.
+        model's prediction for the gene_node in the perturbed subgraph.
         """
-        if not nodes_to_remove:
-            return None
-
-        mask_tensor = getattr(sub_data, f"{self.mask_attr}_mask_loss")
-
-        # find nodes to remove
-        remove_local_idxs = set()
-        for global_id in nodes_to_remove:
-            loc = (sub_data.n_id == global_id).nonzero(as_tuple=True)[0]
-            if len(loc) > 0:
-                remove_local_idxs.add(loc.item())
-
-        if not remove_local_idxs:
-            return None
-
-        keep_mask = torch.tensor(
-            [i not in remove_local_idxs for i in range(sub_data.num_nodes)],
-            dtype=torch.bool,
-            device=self.device,
+        perturbed_sub = self._create_perturbed_subgraph(
+            sub_data, nodes_to_remove, gene_node
         )
-
-        # create perturbed subgraph
-        perturbed_edge_idx, _, _ = subgraph(
-            subset=keep_mask,
-            edge_index=sub_data.edge_index,
-            relabel_nodes=True,
-            num_nodes=sub_data.num_nodes,
-            return_edge_mask=True,
-        )
-
-        perturbed_x = sub_data.x[keep_mask]
-        perturbed_mask = mask_tensor[keep_mask]
-        perturbed_n_id = sub_data.n_id[keep_mask]
-
-        # ensure gene_node has not been removed
-        if (perturbed_n_id == gene_node).sum() == 0:
+        if perturbed_sub is None:
             return None
 
         idx_in_perturbed = (
-            (perturbed_n_id == gene_node).nonzero(as_tuple=True)[0].item()
+            (perturbed_sub.n_id == gene_node).nonzero(as_tuple=True)[0].item()
         )
 
-        # inference
         with torch.no_grad():
             perturbed_out, _ = self.runner.model(
-                x=perturbed_x,
-                edge_index=perturbed_edge_idx,
-                mask=perturbed_mask,
+                x=perturbed_sub.x,
+                edge_index=perturbed_sub.edge_index,
+                mask=getattr(perturbed_sub, f"{self.mask_attr}_mask_loss"),
             )
         return perturbed_out[idx_in_perturbed].item()
+
+    def _remove_nodes_and_predict_batch(
+        self,
+        sub_data: Data,
+        list_of_nodes_to_remove: List[int],
+        gene_node: int,
+        batch_size: int = 12,
+    ) -> List[Optional[float]]:
+        """For each node in list_of_nodes_to_remove, create a perturbed
+        subgraph. Then, process these perturbed subgraphs in mini-batches (of
+        size batch_size) to run inference in fewer forward passes. The method
+        returns a list of predictions (or None when a perturbed subgraph
+        could not be created) in the same order as list_of_nodes_to_remove.
+        """
+        # build a list of perturbed subgraphs
+        data_objs = [
+            self._create_perturbed_subgraph(sub_data, [global_id], gene_node)
+            for global_id in list_of_nodes_to_remove
+        ]
+
+        # build a mapping from original index to valid index
+        orig_to_valid = {}
+        valid_data_objs = []
+        for idx, d in enumerate(data_objs):
+            if d is not None:
+                orig_to_valid[idx] = len(valid_data_objs)
+                valid_data_objs.append(d)
+
+        if not valid_data_objs:
+            return [None] * len(list_of_nodes_to_remove)
+
+        predictions_by_valid_idx = {}
+
+        # batch inference
+        for start in range(0, len(valid_data_objs), batch_size):
+            batches = valid_data_objs[start : start + batch_size]
+            batch = Batch.from_data_list(batches).to(self.device)
+
+            with torch.no_grad():
+                out, _ = self.runner.model(
+                    x=batch.x,
+                    edge_index=batch.edge_index,
+                    mask=getattr(batch, f"{self.mask_attr}_mask_loss"),
+                )
+
+            for i in range(len(batches)):
+                node_mask = batch.batch == i
+                batch_n_id = batch.n_id[node_mask]
+                loc_gene = (batch_n_id == gene_node).nonzero(as_tuple=True)[0]
+                if loc_gene.numel() == 0:
+                    predictions_by_valid_idx[start + i] = None
+                else:
+                    idx_in_subgraph_output = loc_gene.item()
+                    pred_value = out[node_mask][idx_in_subgraph_output].item()
+                    predictions_by_valid_idx[start + i] = pred_value
+
+        # reconstruct the predictions in the original ordering of
+        # list_of_nodes_to_remove
+        predictions = []
+        for i in range(len(list_of_nodes_to_remove)):
+            if i in orig_to_valid:
+                valid_idx = orig_to_valid[i]
+                predictions.append(predictions_by_valid_idx.get(valid_idx))
+            else:
+                predictions.append(None)
+
+        return predictions
 
     def _perform_single_node_perturbations(
         self,
@@ -242,20 +321,20 @@ class ConnectedComponentPerturbation:
         if gene_name not in store_dict:
             store_dict[gene_name] = {}
 
-        for node_remove in selected_nodes:
-            new_pred = self._remove_nodes_and_predict(
-                sub_data, [node_remove], gene_node
-            )
+        predictions = self._remove_nodes_and_predict_batch(
+            sub_data, selected_nodes, gene_node
+        )
+
+        for node_to_remove, new_pred in zip(selected_nodes, predictions):
             if new_pred is None:
                 continue
+            node_name = self.idxs_inv.get(node_to_remove, str(node_to_remove))
 
-            node_name = self.idxs_inv.get(node_remove, str(node_remove))
-            # store in the dictionary under the specific gene
             store_dict[gene_name][node_name] = {
                 "fold_change": calculate_log2_fold_change(
                     baseline_prediction, new_pred
                 ),
-                "hop_distance": hop_dist_map.get(node_remove, -1),
+                "hop_distance": hop_dist_map.get(node_to_remove, -1),
             }
 
     def _perform_grouped_node_removal(
@@ -414,14 +493,12 @@ class ConnectedComponentPerturbation:
         Args:
             sub_data: Data subgraph batch
             gene_node: idx of the gene of interest
-            max_nodes_to_perturb: Max number of nodes to remove at once
 
         Returns:
             List of node indices to remove
         """
         # exclude the gene node itself
         nodes_to_perturb = sub_data.n_id[sub_data.n_id != gene_node]
-
         return [] if len(nodes_to_perturb) == 0 else nodes_to_perturb.tolist()
 
     @staticmethod
