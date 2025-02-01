@@ -318,7 +318,6 @@ class ConnectedComponentPerturbation:
     def run_perturbations(
         self,
         genes_to_analyze: List[int],
-        max_nodes_to_perturb: int = 1221,
     ) -> Dict[str, Any]:
         """
         For each gene in genes_to_analyze:
@@ -359,7 +358,6 @@ class ConnectedComponentPerturbation:
             selected_nodes = self._get_nodes_to_perturb(
                 sub_data=sub_data,
                 gene_node=gene_node,
-                max_nodes_to_perturb=max_nodes_to_perturb,
             )
             if not selected_nodes:
                 continue
@@ -410,11 +408,8 @@ class ConnectedComponentPerturbation:
     def _get_nodes_to_perturb(
         sub_data: Data,
         gene_node: int,
-        max_nodes_to_perturb: int,
     ) -> List[int]:
-        """Get list of candidate nodes to remove (excludes the gene_node itself). If
-        more nodes are specified than are available, randomly sample from the
-        available nodes.
+        """Get list of candidate nodes to remove (excludes the gene_node itself)
 
         Args:
             sub_data: Data subgraph batch
@@ -427,14 +422,7 @@ class ConnectedComponentPerturbation:
         # exclude the gene node itself
         nodes_to_perturb = sub_data.n_id[sub_data.n_id != gene_node]
 
-        if len(nodes_to_perturb) == 0:
-            return []
-
-        return (
-            random.sample(nodes_to_perturb.tolist(), max_nodes_to_perturb)
-            if len(nodes_to_perturb) > max_nodes_to_perturb
-            else nodes_to_perturb.tolist()
-        )
+        return [] if len(nodes_to_perturb) == 0 else nodes_to_perturb.tolist()
 
     @staticmethod
     def _compute_hop_distances(sub_data: Data, gene_node: int) -> Dict[int, int]:
