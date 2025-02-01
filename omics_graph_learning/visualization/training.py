@@ -30,8 +30,11 @@ def _load_tb_loss(tensorboard_log: Union[str, Path]) -> Dict[str, List[float]]:
 
     # get the loss values
     training_loss = event_acc.Scalars("Training loss")
-    val_rmse = event_acc.Scalars("Validation RMSE")
     test_rmse = event_acc.Scalars("Test RMSE")
+
+    # remove epoch 0
+    val_rmse = event_acc.Scalars("Validation RMSE")
+    val_rmse = [rmse for rmse in val_rmse if rmse.step > 0]
 
     return {
         "Epoch": [loss.step for loss in training_loss],
