@@ -13,10 +13,11 @@ from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
-from omics_graph_learning.model_metrics import ModelMetrics
-from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
+
+from omics_graph_learning.model_metrics import ModelMetrics
+from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 
 def plot_optimization_history(
@@ -287,45 +288,45 @@ def main() -> None:
     # plot_optimization_history(optuna_log="optuna_results.csv", output_dir=".")
 
     loop_construction_models = {
-        "regulatory_only_k562_adaptivecoarsegrain_100000": "Adaptive coarsegrain (100k)",
-        "regulatory_only_k562_adaptivecoarsegrain_300000": "Adaptive coarsegrain (300k)",
-        "regulatory_only_k562_adaptivecoarsegrain_500000": "Adaptive coarsegrain (500k)",
-        "regulatory_only_k562_allcontacts": "Combined contacts",
-        "regulatory_only_k562_allcontacts_cosine": "Combined contacts w/ cosine scheduler",
-        "regulatory_only_k562_allcontacts_global": "Combined contacts w/ global TADs",
-        "regulatory_only_k562_allloopshicfdr_global": "Combined loop callers + Hi-C (FDR=0.001) w/ global TADs",
-        "regulatory_only_k562_allloopshicfdr_GAT": "Combined loop callers + Hi-C (FDR=0.001)",
-        "regulatory_only_k562_combinedhic": "Combined Hi-C",
-        "regulatory_only_k562_combinedloopcallers": "Combined loop callers",
-        "regulatory_only_k562_deepanchor": "DeepAnchor",
-        "regulatory_only_k562_deeploop_100k": "DeepLoop (100k)",
-        "regulatory_only_k562_deeploop_300k": "DeepLoop (300k)",
-        "regulatory_only_k562_fdr_filtered_hic_0.001": "Hi-C (FDR=0.001)",
-        "regulatory_only_k562_fdr_filtered_hic_0.01": "Hi-C (FDR=0.01)",
-        "regulatory_only_k562_fdr_filtered_hic_0.1": "Hi-C (FDR=0.1)",
-        "regulatory_only_k562_peakachu": "Peakachu",
+        "k562_adaptivecoarsegrain_100000": "Adaptive coarsegrain (100k)",
+        "k562_adaptivecoarsegrain_300000": "Adaptive coarsegrain (300k)",
+        "k562_adaptivecoarsegrain_500000": "Adaptive coarsegrain (500k)",
+        "k562_allcontacts": "Combined contacts",
+        "k562_allcontacts_global": "Combined contacts w/ global TADs",
+        "k562_allcontacts_global_GAT": "Combined contacts w/ global TADs, GAT",
+        "k562_allloopshicfdr_global": "Combined loop callers + Hi-C (FDR=0.001) w/ global TADs",
+        "k562_allloopshicfdr_GAT": "Combined loop callers + Hi-C (FDR=0.001)",
+        "k562_combinedhic": "Combined Hi-C",
+        "k562_combinedloopcallers": "Combined loop callers",
+        "k562_deepanchor": "DeepAnchor",
+        "k562_deeploop_100k": "DeepLoop (100k)",
+        "k562_deeploop_300k": "DeepLoop (300k)",
+        "k562_fdr_filtered_hic_0.001": "Hi-C (FDR=0.001)",
+        "k562_fdr_filtered_hic_0.01": "Hi-C (FDR=0.01)",
+        "k562_fdr_filtered_hic_0.1": "Hi-C (FDR=0.1)",
+        "k562_peakachu": "Peakachu",
     }
 
     alpha_models = {
         "k562_release_0.65": "α=0.65",
-        "k562_release_0.70": "α=0.70",
+        # "k562_release_0.70": "α=0.70",
         "k562_release_0.75": "α=0.75",
-        "k562_release_0.80": "α=0.80",
+        # "k562_release_0.80": "α=0.80",
         "k562_release_0.85": "α=0.85",
-        "k562_release_0.90": "α=0.90",
+        # "k562_release_0.90": "α=0.90",
         "k562_release_0.95": "α=0.95",
         "k562_release_1.0": "α=1.0",
     }
 
     graph_construction_models = {
-        "k562_release_replicate_1": "Baseline",
+        "k562_release_replicate_3": "Baseline",
         "k562_release_encode": "ENCODE-only regulatory catalogue",
         "k562_release_epimap": "EpiMap-only regulatory catalogue",
         "k562_release_gene_gene": "+ Gene-gene interactions",
     }
 
     node_models = {
-        "k562_release_replicate_1": "Baseline",
+        "k562_release_replicate_3": "Baseline",
         "k562_release_cpgislands": "+ CpG islands",
         "k562_release_crms": "+ Cis-regulatory modules",
         "k562_release_ctcf": "+ CTCF cCREs",
@@ -336,7 +337,7 @@ def main() -> None:
     }
 
     interaction_models = {
-        "k562_release_replicate_1": "Baseline",
+        "k562_release_replicate_3": "Baseline",
         "k562_release_all_interact": "+ miRNA and RBP interactions",
         "k562_release_all_nodes_and_interact": "+ All additional node and interact types",
         "k562_release_mirna": "+ miRNA interactions",
@@ -377,7 +378,7 @@ def main() -> None:
         "k562_release_alpha_0.95_lr_0.0003": "batch=64, LR=0.0003",
         "k562_release_alpha_0.95_lr_0.001_batch_32": "batch=32, LR=0.001",
         "k562_release_alpha_0.95_lr_0.005_batch_32": "batch=32, LR=0.005",
-        "k562_release_replicate_1": "batch=16, LR=0.0005",
+        "k562_release_replicate_3": "batch=16, LR=0.0005",
     }
 
     dropout_models = {
@@ -417,11 +418,23 @@ def main() -> None:
         ("final_arch_models", final_arch_models, "final_arch"),
     ]
 
+    performance_df[["Model", "RMSE_Loss_Mean"]].sort_values(
+        "RMSE_Loss_Mean", ascending=False
+    )
+    
+    base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
     for category_name, models, model_type in model_categories:
-        base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
+
+        
+        category_name, models, model_type = 
         combined_metrics_df, performance_df = get_metric_dataframes(
             models, base_model_dir, model_type
         )
+        performance_df[["Model", "Validation_Pearson_Mean"]].sort_values("Validation_Pearson_Mean", ascending=False)
+        
+        performance_df[["Model", "Validation_Loss_Mean"]].sort_values("Validation_Loss_Mean", ascending=False)
+        
+        performance_df[["Model", "Validation_RMSE_Mean"]].sort_values("Validation_RMSE_Mean", ascending=False)
 
         # calculate Cohen's d between best and worst performing models
         co_d = compare_best_worst_within_category(combined_metrics_df)

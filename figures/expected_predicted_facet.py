@@ -87,7 +87,7 @@ def _load_expression_data(base_path: Union[str, Path]) -> pd.DataFrame:
 def create_correlation_heatmap(
     df_all: pd.DataFrame,
     experiments_map: Dict[str, str],
-    figsize: Tuple[float, float] = (3.65, 3.0),
+    figsize: Tuple[float, float] = (3.0, 2.65),
 ) -> None:
     """Create correlation heatmap by taking the correlation between the
     predicted and observed expression as the difference from the average
@@ -145,15 +145,20 @@ def create_correlation_heatmap(
     for i, tissue1 in enumerate(experiments):
         data1 = df_filtered[df_filtered["tissue"] == tissue1]
         for j, tissue2 in enumerate(experiments):
-            data2 = df_filtered[df_filtered["tissue"] == tissue2]
-            merged = pd.merge(
-                data1[["gene_symbol", "prediction_fc"]],
-                data2[["gene_symbol", "label_fc"]],
-                on="gene_symbol",
-            )
-            correlation_matrix[i, j] = np.corrcoef(
-                merged["prediction_fc"], merged["label_fc"]
-            )[0, 1]
+            if i == j:  # diagonal elements
+                correlation_matrix[i, j] = np.corrcoef(
+                    data1["prediction_fc"], data1["label_fc"]
+                )[0, 1]
+            else:  # off-diagonal elements
+                data2 = df_filtered[df_filtered["tissue"] == tissue2]
+                merged = pd.merge(
+                    data1[["gene_symbol", "prediction_fc"]],
+                    data2[["gene_symbol", "label_fc"]],
+                    on="gene_symbol",
+                )
+                correlation_matrix[i, j] = np.corrcoef(
+                    merged["prediction_fc"], merged["label_fc"]
+                )[0, 1]
 
     # get display names in order
     correlation_matrix = correlation_matrix[:, ::-1]
@@ -191,7 +196,8 @@ def create_correlation_heatmap(
     cbar.yaxis.set_ticklabels(["-0.4", "0", "0.4"])
     cbar.yaxis.set_label_coords(-0.5, 1.35)
     plt.tick_params(axis="both", which="both", length=0)
-    plt.xticks(rotation=90)
+    plt.xticks(rotation=90, ha="right")
+    plt.tick_params(axis="x", which="major", pad=2.5)
     plt.yticks(rotation=0)
 
     plt.tight_layout()
@@ -411,7 +417,7 @@ def main() -> None:
             node_idx_to_gene_id, gene_indices = get_gene_idx_mapping(idxs)
 
             # get baseline predictions
-            df = pd.read_csv(f"{graph_data_dir}/baseline_predictions.csv")
+            df = pd.read_csv(f"{graph_data_dir}/baseline_predictions_2_hop.csv")
             df["gene_id"] = df["node_idx"].map(node_idx_to_gene_id)
             df["gene_symbol"] = df["gene_id"].apply(
                 lambda g: map_symbol(g, gencode_to_symbol=gencode_to_symbol)
@@ -437,11 +443,11 @@ def main() -> None:
         "pancreas": "Pancreas",
         "ovary": "Ovary",
         "lung": "Lung",
-        "liver": "Liver",
         "left_ventricle": "Left ventricle",
         "hippocampus": "Hippocampus",
         "aorta": "Aorta",
         "adrenal": "Adrenal",
+        "liver": "Liver",
         "mammary": "Mammary",
         "imr90": "IMR90",
         "nhek": "NHEK",
@@ -452,7 +458,7 @@ def main() -> None:
         "gm12878": "GM12878",
     }
 
-    create_correlation_heatmap(df_all, experiments_corr, figsize=(3.65, 3.0))
+    create_correlation_heatmap(df_all, experiments_corr, figsize=(3.5, 3.2))
 
     # plot expected vs predict facet
     base_path = Path(".")
