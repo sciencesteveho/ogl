@@ -9,3 +9,9 @@ test/deprecated
 examples/slurm/submit.sh
 configs/deprecated
 requirements-dev.txt
+
+# python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
