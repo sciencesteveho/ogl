@@ -555,7 +555,7 @@ def prep_loader(
 def bootstrap_evaluation(
     predictions: torch.Tensor,
     labels: torch.Tensor,
-    n_bootstraps: int = 1000,
+    n_bootstraps: int = 10000,
     confidence: float = 0.95,
 ) -> Tuple[float, float, float]:
     """Perform bootstrap evaluation by resampling with replacement."""
@@ -956,8 +956,8 @@ def main() -> None:
         tb_logger=tb_logger,
         logger=logger,
         run_dir=run_dir,
-        # early_stop=early_stop,
         early_stop=True,
+        # early_stop=early_stop,
     )
 
 

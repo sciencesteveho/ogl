@@ -162,24 +162,24 @@ def compare_best_worst_within_category(
     """
     # mean performance per model group
     performance_grouped_df = (
-        combined_metrics_df.groupby("Model_Group")["Final_Test_Pearson"]
+        combined_metrics_df.groupby("Model_Group")["Validation_Pearson"]
         .mean()
         .reset_index()
     )
 
     # get best and worst models based on mean correlations
     best_model = performance_grouped_df.loc[
-        performance_grouped_df["Final_Test_Pearson"].idxmax(), "Model_Group"
+        performance_grouped_df["Validation_Pearson"].idxmax(), "Model_Group"
     ]
     worst_model = performance_grouped_df.loc[
-        performance_grouped_df["Final_Test_Pearson"].idxmin(), "Model_Group"
+        performance_grouped_df["Validation_Pearson"].idxmin(), "Model_Group"
     ]
 
     data_best = combined_metrics_df[combined_metrics_df["Model_Group"] == best_model][
-        "Final_Test_Pearson"
+        "Validation_Pearson"
     ].values
     data_worst = combined_metrics_df[combined_metrics_df["Model_Group"] == worst_model][
-        "Final_Test_Pearson"
+        "Validation_Pearson"
     ].values
 
     # convert to numpy arrays
@@ -197,115 +197,10 @@ def compare_best_worst_within_category(
     return co_d
 
 
-def _plot_iterative_performance(df: pd.DataFrame, outname: str) -> None:
-    """Plot both Mean Pearson and Bootstrap Mean with error bars one on top of
-    the other as scatter plots.
-    """
-    set_matplotlib_publication_parameters()
-
-    aspect = 0.04  # aspect ratio
-
-    fig, axes = plt.subplots(2, 1, sharex=True)
-
-    # adjust the spacing between subplots
-    plt.subplots_adjust(hspace=0.5)  # decrease hspace to bring subplots closer
-
-    # plot mean pearson
-    axes[0].scatter(
-        df["Final_Test_Pearson_Mean"],
-        df["Model_Group"],
-        color="skyblue",
-        edgecolor="steelblue",
-        s=12.5,
-    )
-    axes[0].set_xlabel("Mean Pearson correlation", fontsize=7)
-    axes[0].tick_params(axis="x", which="major", labelsize=7)
-    axes[0].tick_params(axis="y", which="major", labelsize=7, pad=2)
-
-    axes[0].set_aspect(aspect)  # decrease the aspect ratio for a more compact Y-axis
-    axes[0].tick_params(axis="y", which="major", labelsize=7, pad=1)
-
-    # plot bootstrap mean w/ error bars
-    axes[1].errorbar(
-        df["Bootstrap_Pearson_Mean"],
-        df["Model_Group"],
-        xerr=[
-            df["Bootstrap_Pearson_Mean"] - df["CI_Lower"],
-            df["CI_Upper"] - df["Bootstrap_Pearson_Mean"],
-        ],
-        fmt="o",
-        ecolor="gray",
-        capsize=3,
-        capthick=0.75,
-        elinewidth=0.75,
-        markerfacecolor="green",
-        markeredgecolor="darkgreen",
-        markersize=4,
-        linestyle="None",
-    )
-    axes[1].set_xlabel("Mean bootstrapped correlation", fontsize=7)
-    axes[1].tick_params(axis="x", which="major", labelsize=7)
-    axes[1].tick_params(axis="y", which="major", labelsize=7, pad=1)
-
-    axes[1].set_aspect(aspect)
-    axes[1].tick_params(axis="y", which="major", labelsize=7, pad=1)
-    axes[0].set_ylabel("")
-
-    plt.tight_layout()
-    plt.savefig(
-        f"{outname}.png",
-        dpi=450,
-        bbox_inches="tight",
-    )
-    plt.close()
-
-
-def plot_iterative_model(comparison_type: str) -> None:
-    """Prepare and plot the iterative model performance metrics."""
-    df = pd.read_csv(f"model_performance_summary_{comparison_type}.csv")
-
-    # calculate 95% confidence intervals using bootstrap statistics
-    df["CI_Lower"] = df["Bootstrap_Pearson_Mean"] - 1.96 * df["Bootstrap_Pearson_Std"]
-    df["CI_Upper"] = df["Bootstrap_Pearson_Mean"] + 1.96 * df["Bootstrap_Pearson_Std"]
-
-    # ensure CI bounds are within [-1, 1]
-    df["CI_Lower"] = df["CI_Lower"].clip(lower=-1)
-    df["CI_Upper"] = df["CI_Upper"].clip(upper=1)
-
-    # sort models by mean correlation
-    df = df.sort_values("Final_Test_Pearson_Mean", ascending=False).reset_index(
-        drop=True
-    )
-
-    _plot_iterative_performance(
-        df=df, outname=f"iterative_performance_{comparison_type}"
-    )
-
-
 def main() -> None:
     """Generate figures for iterative model construction."""
     # plot optimization history
     # plot_optimization_history(optuna_log="optuna_results.csv", output_dir=".")
-
-    loop_construction_models = {
-        "k562_adaptivecoarsegrain_100000": "Adaptive coarsegrain (100k)",
-        "k562_adaptivecoarsegrain_300000": "Adaptive coarsegrain (300k)",
-        "k562_adaptivecoarsegrain_500000": "Adaptive coarsegrain (500k)",
-        "k562_allcontacts": "Combined contacts",
-        "k562_allcontacts_global": "Combined contacts w/ global TADs",
-        "k562_allcontacts_global_GAT": "Combined contacts w/ global TADs, GAT",
-        "k562_allloopshicfdr_global": "Combined loop callers + Hi-C (FDR=0.001) w/ global TADs",
-        "k562_allloopshicfdr_GAT": "Combined loop callers + Hi-C (FDR=0.001)",
-        "k562_combinedhic": "Combined Hi-C",
-        "k562_combinedloopcallers": "Combined loop callers",
-        "k562_deepanchor": "DeepAnchor",
-        "k562_deeploop_100k": "DeepLoop (100k)",
-        "k562_deeploop_300k": "DeepLoop (300k)",
-        "k562_fdr_filtered_hic_0.001": "Hi-C (FDR=0.001)",
-        "k562_fdr_filtered_hic_0.01": "Hi-C (FDR=0.01)",
-        "k562_fdr_filtered_hic_0.1": "Hi-C (FDR=0.1)",
-        "k562_peakachu": "Peakachu",
-    }
 
     alpha_models = {
         "k562_release_0.65": "α=0.65",
@@ -318,13 +213,6 @@ def main() -> None:
         "k562_release_1.0": "α=1.0",
     }
 
-    graph_construction_models = {
-        "k562_release_replicate_3": "Baseline",
-        "k562_release_encode": "ENCODE-only regulatory catalogue",
-        "k562_release_epimap": "EpiMap-only regulatory catalogue",
-        "k562_release_gene_gene": "+ Gene-gene interactions",
-    }
-
     node_models = {
         "k562_release_replicate_3": "Baseline",
         "k562_release_cpgislands": "+ CpG islands",
@@ -332,34 +220,8 @@ def main() -> None:
         "k562_release_ctcf": "+ CTCF cCREs",
         "k562_release_superenhancers": "+ Superenhancers",
         "k562_release_tfbindingsites": "+ TF binding footprints",
-        "k562_release_tss": "+ Transcription start sites",
+        # "k562_release_tss": "+ Transcription start sites",
         "k562_release_all_nodes": "+ All node types (combined)",
-    }
-
-    interaction_models = {
-        "k562_release_replicate_3": "Baseline",
-        "k562_release_all_interact": "+ miRNA and RBP interactions",
-        "k562_release_all_nodes_and_interact": "+ All additional node and interact types",
-        "k562_release_mirna": "+ miRNA interactions",
-        "k562_release_rbp": "+ RNA-binding protein interactions",
-    }
-
-    best_models = {
-        "k562_release_all_interact_replicate_1": "+ miRNA and RBP interactions",
-        "k562_release_all_interact_replicate_2": "+ miRNA and RBP interactions",
-        "k562_release_all_interact_replicate_3": "+ miRNA and RBP interactions",
-        "k562_release_mirna": "+ miRNA interactions",
-        "k562_release_mirna_replicate_1": "+ miRNA interactions",
-        "k562_release_mirna_replicate_2": "+ miRNA interactions",
-        "k562_release_replicate_1": "Baseline",
-        "k562_release_replicate_2": "Baseline",
-        "k562_release_replicate_3": "Baseline",
-        "k562_release_se_plus_mirna": "+ Superenhancers and miRNA interactions",
-        "k562_release_se_plus_mirna_replicate_1": "+ Superenhancers and miRNA interactions",
-        "k562_release_se_plus_mirna_replicate_2": "+ Superenhancers and miRNA interactions",
-        "k562_release_superenhancers": "+ Superenhancers",
-        "k562_release_superenhancers_replicate_1": "+ Superenhancers",
-        "k562_release_superenhancers_replicate_2": "+ Superenhancers",
     }
 
     operator_models = {
@@ -368,6 +230,21 @@ def main() -> None:
         "k562_release_alpha_0.95_GraphSAGE": "GraphSAGE",
         "k562_release_alpha_0.95_PNA": "PNA",
         "k562_release_alpha_0.95_UniMPTransformer": "UniMPTransformer",
+    }
+
+    graph_construction_models = {
+        "k562_release_replicate_3": "Baseline",
+        "k562_allcontacts_global_encode": "ENCODE-only regulatory catalogue",
+        "k562_allcontacts_global_epimap": "EpiMap-only regulatory catalogue",
+        # "k562_release_gene_gene": "+ Gene-gene interactions",
+    }
+
+    interaction_models = {
+        "k562_release_replicate_3": "Baseline",
+        "k562_release_all_interact": "+ miRNA and RBP interactions",
+        "k562_release_all_nodes_and_interact": "+ All additional node and interact types",
+        "k562_release_mirna": "+ miRNA interactions",
+        "k562_release_rbp": "+ RNA-binding protein interactions",
     }
 
     batch_and_lr_models = {
@@ -389,53 +266,28 @@ def main() -> None:
         "k562_release_alpha_0.95_dropout_0.5": "dropout 0.5",
     }
 
-    final_arch_models = {
-        "k562_release_best_params_GAT_dropout_0.1": "GATv2, dropout 0.1, RMSE loss, LR 0.0005",
-        "k562_release_best_params_GAT_dropout_0.1_smoothl1": "GATv2, dropout 0.1, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_GAT_dropout_0.3": "GATv2, dropout 0.3, RMSE loss, LR 0.0005",
-        "k562_release_best_params_GAT_dropout_0.3_smoothl1": "GATv2, dropout 0.3, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_PNA_dropout_0.1": "PNA, dropout 0.1, RMSE loss, LR 0.0005",
-        "k562_release_best_params_PNA_dropout_0.1_smoothl1": "PNA, dropout 0.1, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_PNA_dropout_0.3": "PNA, dropout 0.3, RMSE loss, LR 0.0005",
-        "k562_release_best_params_PNA_dropout_0.3_smoothl1": "PNA, dropout 0.3, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_UniMPTransformer_dropout_0.1": "UniMPTransformer, dropout 0.1, RMSE loss, LR 0.0005",
-        "k562_release_best_params_UniMPTransformer_dropout_0.1_smoothl1": "UniMPTransformer, dropout 0.1, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_UniMPTransformer_dropout_0.3": "UniMPTransformer, dropout 0.3, RMSE loss, LR 0.0005",
-        "k562_release_best_params_UniMPTransformer_dropout_0.3_smoothl1": "UniMPTransformer, dropout 0.3, Smooth L1 loss, LR 0.0005",
-        "k562_release_best_params_UniMPTransformer_dropout_0.5": "UniMPTransformer, dropout 0.5, RMSE loss, LR 0.0005",
+    local_models = {
+        "k562_release_replicate_3": "Baseline",
+        "k562_allcontacts_global_gene_gene": "Local only",
     }
 
+    base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
+
     model_categories = [
-        ("loop_construction_models", loop_construction_models, "loop_construction"),
-        ("alpha_models", alpha_models, "alpha"),
-        ("graph_construction_models", graph_construction_models, "graph_construction"),
-        ("node_models", node_models, "node"),
-        ("interaction_models", interaction_models, "interaction"),
-        ("best_models", best_models, "best"),
-        ("operator_models", operator_models, "operator"),
-        ("batch_and_lr_models", batch_and_lr_models, "batch_and_lr"),
-        ("dropout_models", dropout_models, "dropout"),
-        ("final_arch_models", final_arch_models, "final_arch"),
+        ("Alpha", alpha_models, "alpha"),
+        ("Node", node_models, "node"),
+        ("Operator", operator_models, "operator"),
+        ("Graph Construction", graph_construction_models, "graph_construction"),
+        ("Interactions", interaction_models, "interaction"),
+        ("Batch and Learning Rate", batch_and_lr_models, "batch_and_lr"),
+        ("Dropout", dropout_models, "dropout"),
+        ("Local", local_models, "local"),
     ]
 
-    performance_df[["Model", "RMSE_Loss_Mean"]].sort_values(
-        "RMSE_Loss_Mean", ascending=False
-    )
-    
-    base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
     for category_name, models, model_type in model_categories:
-
-        
-        category_name, models, model_type = 
         combined_metrics_df, performance_df = get_metric_dataframes(
             models, base_model_dir, model_type
         )
-        performance_df[["Model", "Validation_Pearson_Mean"]].sort_values("Validation_Pearson_Mean", ascending=False)
-        
-        performance_df[["Model", "Validation_Loss_Mean"]].sort_values("Validation_Loss_Mean", ascending=False)
-        
-        performance_df[["Model", "Validation_RMSE_Mean"]].sort_values("Validation_RMSE_Mean", ascending=False)
-
         # calculate Cohen's d between best and worst performing models
         co_d = compare_best_worst_within_category(combined_metrics_df)
 
