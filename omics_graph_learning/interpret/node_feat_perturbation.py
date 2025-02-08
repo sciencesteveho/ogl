@@ -232,7 +232,6 @@ def perturb_node_features(
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
     mask: str = "all",
-    top_n: int = 100,
 ) -> Tuple[Dict[int, float], Dict[int, List[Tuple[str, float]]]]:
     """Zero out specified node features and measure the impact on model output.
 
@@ -290,7 +289,7 @@ def perturb_node_features(
     feature_top_genes = get_top_feature_genes(
         feature_indices=feature_indices,
         avg_diffs=avg_diffs,
-        top_n=top_n,
+        top_n=len(gene_nodes),
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=gencode_to_symbol,
     )
