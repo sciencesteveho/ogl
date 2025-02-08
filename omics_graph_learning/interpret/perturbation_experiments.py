@@ -58,24 +58,24 @@ def main() -> None:
     # invert symbol dict
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
-    # get baseline predictions
-    baseline_df = get_baseline_predictions_k_hop(
-        data=data,
-        runner=runner,
-        k=hops,
-    )
-    # baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
-    baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
+    # # get baseline predictions
+    # baseline_df = get_baseline_predictions_k_hop(
+    #     data=data,
+    #     runner=runner,
+    #     k=hops,
+    # )
+    # # baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
+    # baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
 
-    # get best predictions from model
-    print("Getting best predictions...")
-    best_prediction_df = get_best_predictions(
-        df=baseline_df,
-        gene_indices=gene_indices,
-        node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=gencode_to_symbol,
-    )
-    best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
+    # # get best predictions from model
+    # print("Getting best predictions...")
+    # best_prediction_df = get_best_predictions(
+    #     df=baseline_df,
+    #     gene_indices=gene_indices,
+    #     node_idx_to_gene_id=node_idx_to_gene_id,
+    #     gencode_to_symbol=gencode_to_symbol,
+    # )
+    # best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
 
     # experiment 1: run node feature ablation
     print("Running Node Feature Perturbation...")
@@ -93,24 +93,24 @@ def main() -> None:
     with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
         pickle.dump(feature_top_genes, f)
 
-    # experiment 2: run systematic connected component perturbations on the
-    # k-hop subgraph
-    print("Running Connected Component Perturbation...")
-    experiment = ConnectedComponentPerturbation(
-        data=data,
-        device=device,
-        runner=runner,
-        idxs_inv=idxs_inv,
-        mask_attr="all",
-    )
+    # # experiment 2: run systematic connected component perturbations on the
+    # # k-hop subgraph
+    # print("Running Connected Component Perturbation...")
+    # experiment = ConnectedComponentPerturbation(
+    #     data=data,
+    #     device=device,
+    #     runner=runner,
+    #     idxs_inv=idxs_inv,
+    #     mask_attr="all",
+    # )
 
-    best_prediction_df = pd.read_csv(outpath / f"best_predictions_{hops}_hop.csv")
-    genes_to_analyze = best_prediction_df["node_idx"].tolist()
-    component_perturbation_results = experiment.run_perturbations(
-        genes_to_analyze=genes_to_analyze,
-    )
-    with open(outpath / f"connected_component_perturbations_{hops}_hop.pkl", "wb") as f:
-        pickle.dump(component_perturbation_results, f)
+    # best_prediction_df = pd.read_csv(outpath / f"best_predictions_{hops}_hop.csv")
+    # genes_to_analyze = best_prediction_df["node_idx"].tolist()
+    # component_perturbation_results = experiment.run_perturbations(
+    #     genes_to_analyze=genes_to_analyze,
+    # )
+    # with open(outpath / f"connected_component_perturbations_{hops}_hop.pkl", "wb") as f:
+    #     pickle.dump(component_perturbation_results, f)
 
     # print("Running Essential Gene Perturbation...")
     # essential_fold_changes = essential_gene_perturbation(

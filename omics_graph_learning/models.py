@@ -53,7 +53,7 @@ class AttentionTaskHead(nn.Module):
 
     Attributes:
         embedding_size: hidden size
-        out_channels: output size (probably 1)
+        out_channels: output size (probably 1!)
         num_heads: number of attention heads (default: `2`)
         dropout_rate: % neurons to drop out (default: `0.1`)
     """
@@ -774,7 +774,6 @@ def apply_mlp_layers(
     """Apply linear layers, normalization, activation, and optional dropout."""
     for linear_layer, layer_norm in zip(linear_layers, layer_norms):
         x = activation(layer_norm(linear_layer(x)))
-        # x = layer_norm(activation(linear_layer(x)))
         if isinstance(dropout_rate, float):
             x = F.dropout(x, p=dropout_rate, training=training)
     return x

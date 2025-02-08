@@ -202,15 +202,40 @@ def main() -> None:
     # plot optimization history
     # plot_optimization_history(optuna_log="optuna_results.csv", output_dir=".")
 
-    alpha_models = {
-        "k562_release_0.65": "α=0.65",
-        # "k562_release_0.70": "α=0.70",
-        "k562_release_0.75": "α=0.75",
-        # "k562_release_0.80": "α=0.80",
-        "k562_release_0.85": "α=0.85",
-        # "k562_release_0.90": "α=0.90",
-        "k562_release_0.95": "α=0.95",
-        "k562_release_1.0": "α=1.0",
+    # alpha_models = {
+    #     "k562_release_0.65": "α=0.65",
+    #     # "k562_release_0.70": "α=0.70",
+    #     "k562_release_0.75": "α=0.75",
+    #     # "k562_release_0.80": "α=0.80",
+    #     "k562_release_0.85": "α=0.85",
+    #     # "k562_release_0.90": "α=0.90",
+    #     "k562_release_0.95": "α=0.95",
+    #     # "k562_release_1.0": "α=1.0",
+    # }
+
+    loop_construction_models = {
+        "k562_adaptivecoarsegrain_100000": "Adaptive coarsegrain (100k)",
+        "k562_adaptivecoarsegrain_300000": "Adaptive coarsegrain (300k)",
+        "k562_adaptivecoarsegrain_500000": "Adaptive coarsegrain (500k)",
+        "k562_allcontacts": "Combined contacts",
+        "k562_allcontacts_GAT": "Combined contacts, GAT",
+        "k562_allcontacts_global": "Combined contacts w/ global TADs",
+        "k562_allcontacts_global_GAT": "Combined contacts w/ global TADs, GAT",
+        "k562_allloopshicfdr_global": "Combined loop callers + Hi-C (FDR=0.001) w/ global TADs",
+        "k562_allloopshicfdr_GAT": "Combined loop callers + Hi-C (FDR=0.001)",
+        "k562_combinedhic": "Combined Hi-C",
+        "k562_combinedhic_GAT": "Combined Hi-C, GAT",
+        "k562_combinedhic_global_GAT": "Combined Hi-C w/ global TADs, GAT",
+        "k562_combinedloopcallers": "Combined loop callers",
+        "k562_combinedloopcallers_global": "Combined loop callers w/ global TADs",
+        "k562_combinedloopcallers_global_GAT": "Combined loop callers w/ global TADs, GAT",
+        "k562_deepanchor": "DeepAnchor",
+        "k562_deeploop_100k": "DeepLoop (100k)",
+        "k562_deeploop_300k": "DeepLoop (300k)",
+        "k562_fdr_filtered_hic_0.001": "Hi-C (FDR=0.001)",
+        "k562_fdr_filtered_hic_0.01": "Hi-C (FDR=0.01)",
+        "k562_fdr_filtered_hic_0.1": "Hi-C (FDR=0.1)",
+        "k562_peakachu": "Peakachu",
     }
 
     node_models = {
@@ -220,7 +245,7 @@ def main() -> None:
         "k562_release_ctcf": "+ CTCF cCREs",
         "k562_release_superenhancers": "+ Superenhancers",
         "k562_release_tfbindingsites": "+ TF binding footprints",
-        # "k562_release_tss": "+ Transcription start sites",
+        "k562_release_tss": "+ Transcription start sites",
         "k562_release_all_nodes": "+ All node types (combined)",
     }
 
@@ -233,7 +258,7 @@ def main() -> None:
     }
 
     graph_construction_models = {
-        "k562_release_replicate_3": "Baseline",
+        "k562_release_replicate_3": "EpiMap and ENCODE intersect",
         "k562_allcontacts_global_encode": "ENCODE-only regulatory catalogue",
         "k562_allcontacts_global_epimap": "EpiMap-only regulatory catalogue",
         # "k562_release_gene_gene": "+ Gene-gene interactions",
@@ -274,6 +299,7 @@ def main() -> None:
     base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
 
     model_categories = [
+        ("Loop Construction", loop_construction_models, "loop_construction"),
         ("Alpha", alpha_models, "alpha"),
         ("Node", node_models, "node"),
         ("Operator", operator_models, "operator"),

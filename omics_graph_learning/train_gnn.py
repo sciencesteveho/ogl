@@ -915,34 +915,34 @@ def main() -> None:
     )
     prof.start()
 
-    # # initialize trainer
-    # trainer = GNNTrainer(
-    #     model=model,
-    #     device=device,
-    #     data=data,
-    #     regression_loss_type=args.regression_loss_type,
-    #     alpha=args.alpha,
-    #     optimizer=optimizer,
-    #     scheduler=scheduler,
-    #     logger=logger,
-    #     tb_logger=tb_logger,
-    # )
+    # initialize trainer
+    trainer = GNNTrainer(
+        model=model,
+        device=device,
+        data=data,
+        regression_loss_type=args.regression_loss_type,
+        alpha=args.alpha,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        logger=logger,
+        tb_logger=tb_logger,
+    )
 
-    # logger.info(f"Training for {epochs} epochs (early stopping)")
-    # model, _, early_stop = trainer.train_model(
-    #     train_loader=train_loader,
-    #     val_loader=val_loader,
-    #     test_loader=test_loader,
-    #     epochs=epochs,
-    #     model_dir=run_dir,
-    #     args=args,
-    #     min_epochs=min_epochs,
-    # )
+    logger.info(f"Training for {epochs} epochs (early stopping)")
+    model, _, early_stop = trainer.train_model(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader,
+        epochs=epochs,
+        model_dir=run_dir,
+        args=args,
+        min_epochs=min_epochs,
+    )
 
-    # torch.save(
-    #     model.state_dict(),
-    #     run_dir / f"{args.model}_final_model.pt",
-    # )
+    torch.save(
+        model.state_dict(),
+        run_dir / f"{args.model}_final_model.pt",
+    )
 
     # generate loss and prediction plots for best model
     post_model_evaluation(
@@ -956,8 +956,7 @@ def main() -> None:
         tb_logger=tb_logger,
         logger=logger,
         run_dir=run_dir,
-        early_stop=True,
-        # early_stop=early_stop,
+        early_stop=early_stop,
     )
 
 
