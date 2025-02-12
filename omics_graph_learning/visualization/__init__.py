@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt  # type: ignore
 
 
 def set_matplotlib_publication_parameters() -> None:
-    """Set matplotlib parameters for publication quality plots."""
+    """Set matplotlib parameters for publication."""
     plt.rcParams.update(
         {
             "font.size": 7,
@@ -16,6 +16,11 @@ def set_matplotlib_publication_parameters() -> None:
             "figure.titlesize": 7,
             "figure.dpi": 450,
             "font.sans-serif": ["Arial", "Nimbus Sans"],
+            "axes.linewidth": 0.5,
+            "xtick.major.width": 0.5,
+            "ytick.major.width": 0.5,
+            "xtick.minor.width": 0.5,
+            "ytick.minor.width": 0.5,
         }
     )
 

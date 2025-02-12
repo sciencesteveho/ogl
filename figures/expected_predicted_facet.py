@@ -94,14 +94,30 @@ def create_correlation_heatmap(
     expression.
     """
     set_matplotlib_publication_parameters()
+    # colors = [
+    #     "#08306b",
+    #     "#083c9c",
+    #     "#08519c",
+    #     "#3182bd",
+    #     "#6b94d6",
+    #     "#6baed6",
+    #     "#e6e6e6",
+    #     "#fc9179",
+    #     "#fb6a4a",
+    #     "#fb504a",
+    #     "#db2727",
+    #     "#9c0505",
+    #     "#99000d",
+    # ]
+
     colors = [
         "#08306b",
         "#083c9c",
         "#08519c",
         "#3182bd",
-        "#6b94d6",
-        "#6baed6",
-        "#e6e6e6",
+        "#7cabf7",
+        "#81cffc",
+        "#ffffff",
         "#fc9179",
         "#fb6a4a",
         "#fb504a",
@@ -196,7 +212,7 @@ def create_correlation_heatmap(
     cbar.yaxis.set_ticklabels(["-0.4", "0", "0.4"])
     cbar.yaxis.set_label_coords(-0.5, 1.35)
     plt.tick_params(axis="both", which="both", length=0)
-    plt.xticks(rotation=90, ha="right")
+    plt.xticks(rotation=90, ha="center")
     plt.tick_params(axis="x", which="major", pad=2.5)
     plt.yticks(rotation=0)
 
@@ -460,10 +476,10 @@ def main() -> None:
 
     create_correlation_heatmap(df_all, experiments_corr, figsize=(3.5, 3.2))
 
-    # plot expected vs predict facet
-    base_path = Path(".")
-    results_df = _load_expression_data(base_path)
-    plot_facet(results_df, exclude_samples=["k562_release"], save_path=base_path)
+    # # plot expected vs predict facet
+    # base_path = Path(".")
+    # results_df = _load_expression_data(base_path)
+    # plot_facet(results_df, exclude_samples=["k562_release"], save_path=base_path)
 
 
 if __name__ == "__main__":

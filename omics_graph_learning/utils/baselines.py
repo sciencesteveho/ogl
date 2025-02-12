@@ -98,7 +98,7 @@ class BaselineAnalyzer:
         )
 
     def _get_genes(self) -> List[str]:
-        """Get genes from a gencode bed fiel, only including the test_set genes."""
+        """Get genes from a gencode bed file, only including the test_set genes."""
         gencode = BedTool(self.gencode_bed)
         if self.chromosomes:
             genes = [

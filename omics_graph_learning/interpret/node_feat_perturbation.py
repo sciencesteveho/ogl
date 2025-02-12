@@ -236,7 +236,7 @@ def perturb_node_features(
     """Zero out specified node features and measure the impact on model output.
 
     Computes the output per batch, zeroes out a selected feature, and computes
-    the difference. Differneces are then averaged per node.
+    the difference. Differences are then averaged per node.
 
     Args:
         data: torch_geometric Data object
