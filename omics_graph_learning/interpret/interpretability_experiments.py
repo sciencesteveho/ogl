@@ -155,33 +155,33 @@ def main() -> None:
     torch.save(saliency_map, outpath / "raw_saliency_map.pt")
     torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
 
-    # # attention weights for genes
-    # raw_attention_weights = get_attention_weights(
-    #     original_model=runner.model,
-    #     data=data,
-    #     mask=data.all_mask_loss,
-    #     in_channels=42,
-    #     hidden_channels=200,
-    #     out_channels=1,
-    #     heads=2,
-    #     num_layers=2,
-    # )
-    # avg_attention = compute_per_edge_attention(raw_attention_weights)
-    # torch.save(avg_attention, outpath / "attention_weights_genes.pt")
+    # attention weights for genes
+    raw_attention_weights = get_attention_weights(
+        original_model=runner.model,
+        data=data,
+        mask=data.all_mask_loss,
+        in_channels=42,
+        hidden_channels=200,
+        out_channels=1,
+        heads=2,
+        num_layers=2,
+    )
+    avg_attention = compute_per_edge_attention(raw_attention_weights)
+    torch.save(avg_attention, outpath / "attention_weights_genes.pt")
 
-    # # attention weights for all nodes
-    # raw_attention_weights_all = get_attention_weights(
-    #     original_model=runner.model,
-    #     data=data,
-    #     mask=data.all_mask,
-    #     in_channels=42,
-    #     hidden_channels=200,
-    #     out_channels=1,
-    #     heads=2,
-    #     num_layers=2,
-    # )
-    # avg_attention_all = compute_per_edge_attention(raw_attention_weights_all)
-    # torch.save(avg_attention_all, outpath / "attention_weights_all_nodes.pt")
+    # attention weights for all nodes
+    raw_attention_weights_all = get_attention_weights(
+        original_model=runner.model,
+        data=data,
+        mask=data.all_mask,
+        in_channels=42,
+        hidden_channels=200,
+        out_channels=1,
+        heads=2,
+        num_layers=2,
+    )
+    avg_attention_all = compute_per_edge_attention(raw_attention_weights_all)
+    torch.save(avg_attention_all, outpath / "attention_weights_all_nodes.pt")
 
     # # explainer
     # # we run explainer on the top 250 high/medium/low expression genes (750
