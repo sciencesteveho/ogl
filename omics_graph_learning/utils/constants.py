@@ -36,7 +36,7 @@ class NodePerturbation(Enum):
     polr2a = 21
     polyasites = 22
     rad21 = 23
-    rbpbindingsites = 24
+    rbpsiteclusters = 24
     recombination = 25
     repg1b = 26
     repg2 = 27

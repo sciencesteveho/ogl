@@ -451,6 +451,11 @@ def parse_interpret_args() -> argparse.Namespace:
         default=2,
         help="Number of hops for k-hop subgraph.",
     )
+    parser.add_argument(
+        "--sample",
+        type=str,
+        help="Sample name for perturbation experiments.",
+    )
     # parser.add_argument(
     #     "--experiment",
     #     type=str,

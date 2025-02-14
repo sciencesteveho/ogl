@@ -440,6 +440,18 @@ def main() -> None:
             )
             df_test = df[df["gene_symbol"].isin(test_genes)]
 
+            # plot predicted vs expected with k-hop
+            predicted = df_test["prediction"].values
+            expected = df_test["label"].values
+            rmse = sqrt(mean_squared_error(expected, predicted))
+            plot_predicted_versus_expected(
+                predicted=predicted,
+                expected=expected,
+                rmse=rmse,
+                save_path=Path(graph_data_dir),
+                title=True,
+            )
+
             # add a column for the tissue name
             tissue_name = "_".join(experiment.split("_")[:-1])
             df_test["tissue"] = tissue_name

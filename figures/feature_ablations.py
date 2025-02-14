@@ -132,7 +132,7 @@ def plot_node_feature_ablations(df: pd.DataFrame) -> None:
 
     # get different colors for each feature
     n_features = len(df.columns)
-    feature_colors = plt.cm.tab20(np.linspace(0, 1, n_features))
+    feature_colors = plt.cm.tab20(np.linspace(0, 1, n_features))  # type: ignore
 
     # melt df into long format
     df_melt = df.reset_index().melt(

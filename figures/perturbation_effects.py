@@ -3,461 +3,702 @@
 
 
 """Code for figure 3.
-
-    1. Produces expected vs predicted plots for each sample.
-    2. Produces expected vs predicted facet plot.
-    3. Produces expected vs predicted correlation heatmap, where expected and
-       predicted are measured as difference from the average expression.
 """
 
 
+from collections import defaultdict
 import csv
+import multiprocessing as mp
 from pathlib import Path
 import pickle
+import random
 from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib  # type: ignore
 from matplotlib.collections import PolyCollection  # type: ignore
-from matplotlib.colors import LogNorm  # type: ignore
+from matplotlib.colors import ListedColormap  # type: ignore
+from matplotlib.colors import TwoSlopeNorm  # type: ignore
 import matplotlib.colors as mcolors
 from matplotlib.figure import Figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 from numpy import sqrt
 import numpy as np
 import pandas as pd
+from pybedtools import BedTool  # type: ignore
 from scipy import stats  # type: ignore
 import seaborn as sns  # type: ignore
 from sklearn.metrics import mean_squared_error  # type: ignore
+import torch
+from tqdm import tqdm  # type: ignore
 
 from omics_graph_learning.interpret.interpret_utils import get_gene_idx_mapping
 from omics_graph_learning.interpret.interpret_utils import invert_symbol_dict
 from omics_graph_learning.interpret.interpret_utils import load_gencode_lookup
 from omics_graph_learning.interpret.interpret_utils import map_symbol
+from omics_graph_learning.utils.common import get_physical_cores
 from omics_graph_learning.visualization import set_matplotlib_publication_parameters
-from omics_graph_learning.visualization.training import plot_predicted_versus_expected
+
+TISSUES = {
+    "adrenal": "Adrenal",
+    "aorta": "Aorta",
+    "gm12878": "GM12878",
+    "h1_esc": "H1-hESC",
+    "hepg2": "HepG2",
+    "hippocampus": "Hippocampus",
+    "hmec": "HMEC",
+    "imr90": "IMR90",
+    "k562": "K562",
+    "left_ventricle": "Left ventricle",
+    "liver": "Liver",
+    "lung": "Lung",
+    "mammary": "Mammary",
+    "nhek": "NHEK",
+    "ovary": "Ovary",
+    "pancreas": "Pancreas",
+    "skeletal_muscle": "Skeletal muscle",
+    "skin": "Skin",
+    "small_intestine": "Small intestine",
+    "spleen": "Spleen",
+}
 
 
-def _gtf_gene_chr_pairing(
-    gtf: str,
-) -> Dict[str, str]:
-    """Get gene: chromosome dict from a gencode gtf file."""
-    with open(gtf, newline="") as file:
-        return {
-            line[3]: line[0]
-            for line in csv.reader(file, delimiter="\t")
-            if line[0] not in ["chrX", "chrY", "chrM"]
-        }
-
-
-def _load_expression_data(base_path: Union[str, Path]) -> pd.DataFrame:
-    """Loads predicted and expected data from multiple directories.
-
-    Args:
-        base_path: The base path containing the subdirectories.
-
-    Returns:
-        A DataFrame with 'predicted', 'expected', and 'plot_id' columns.
+def get_top_attn_connections_to_genes(
+    attn_mapped: Dict[Tuple[str, str], float], num_connections: int = 100
+) -> Dict[str, Dict[str, float]]:
+    """Given a dictionary of attention weights, return the top N connections for
+    each gene.
     """
-    base_path = Path(base_path)
-    data = []
-    for subdir in base_path.iterdir():
-        if subdir.is_dir():
-            try:
-                predicted = np.load(subdir / "outs.npy")
-                expected = np.load(subdir / "labels.npy")
+    # initialize storage for each gene (target)
+    sources_per_gene = defaultdict(list)
+    values_per_gene = defaultdict(list)
 
-                # Flatten the arrays if they are not 1D
-                predicted = predicted.flatten()
-                expected = expected.flatten()
+    # group by gene target
+    for (source, target), attention_value in attn_mapped.items():
+        if "ENSG" in target:  # only process if target is a gene
+            sources_per_gene[target].append(source)
+            values_per_gene[target].append(attention_value)
 
-                data.append(
-                    pd.DataFrame(
-                        {
-                            "predicted": predicted,
-                            "expected": expected,
-                            "plot_id": subdir.name,  # Use subdirectory name as plot_id
-                        }
-                    )
-                )
-            except FileNotFoundError:
-                print(f"Skipping {subdir} due to missing files.")
-    return pd.concat(data, ignore_index=True)
+    result = {}
+    for gene_target in sources_per_gene:
+        values = np.array(values_per_gene[gene_target])
+        sources = np.array(sources_per_gene[gene_target])
 
+        if len(values) <= num_connections:
+            top_indices = np.argsort(values)[::-1]
+        else:
+            top_indices = np.argpartition(values, -num_connections)[-num_connections:]
+            top_indices = top_indices[np.argsort(values[top_indices])][::-1]
 
-def create_correlation_heatmap(
-    df_all: pd.DataFrame,
-    experiments_map: Dict[str, str],
-    figsize: Tuple[float, float] = (3.65, 3.0),
-) -> None:
-    """Create correlation heatmap by taking the correlation between the
-    predicted and observed expression as the difference from the average
-    expression.
-    """
-    set_matplotlib_publication_parameters()
-    colors = [
-        "#08306b",
-        "#083c9c",
-        "#08519c",
-        "#3182bd",
-        "#6b94d6",
-        "#6baed6",
-        "#e6e6e6",
-        "#fc9179",
-        "#fb6a4a",
-        "#fb504a",
-        "#db2727",
-        "#9c0505",
-        "#99000d",
-    ]
+        result[gene_target] = {sources[i]: values[i] for i in top_indices}
 
-    custom_cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors, N=100)
-    experiments = list(experiments_map.keys())
-
-    df_filtered = df_all[df_all["tissue"].isin(experiments)]
-
-    # get common genes across samples
-    gene_counts = df_filtered.groupby("gene_symbol")["tissue"].nunique()
-    common_genes = gene_counts[gene_counts == len(experiments)].index
-    df_filtered = df_filtered[df_filtered["gene_symbol"].isin(common_genes)]
-
-    # calculate tissue average for each gene (in log2 space)
-    gene_means_pred = df_filtered.groupby("gene_symbol")["prediction"].mean()
-    gene_means_label = df_filtered.groupby("gene_symbol")["label"].mean()
-
-    # merge the tissue averages with the dataframe
-    df_filtered = df_filtered.merge(
-        gene_means_pred.to_frame("mean_prediction"),
-        left_on="gene_symbol",
-        right_index=True,
-    )
-    df_filtered = df_filtered.merge(
-        gene_means_label.to_frame("mean_label"), left_on="gene_symbol", right_index=True
-    )
-
-    # calculate fold changes
-    df_filtered["prediction_fc"] = (
-        df_filtered["prediction"] - df_filtered["mean_prediction"]
-    )
-    df_filtered["label_fc"] = df_filtered["label"] - df_filtered["mean_label"]
-
-    # calculate correlation matrix
-    correlation_matrix = np.zeros((len(experiments), len(experiments)))
-    for i, tissue1 in enumerate(experiments):
-        data1 = df_filtered[df_filtered["tissue"] == tissue1]
-        for j, tissue2 in enumerate(experiments):
-            data2 = df_filtered[df_filtered["tissue"] == tissue2]
-            merged = pd.merge(
-                data1[["gene_symbol", "prediction_fc"]],
-                data2[["gene_symbol", "label_fc"]],
-                on="gene_symbol",
-            )
-            correlation_matrix[i, j] = np.corrcoef(
-                merged["prediction_fc"], merged["label_fc"]
-            )[0, 1]
-
-    # get display names in order
-    correlation_matrix = correlation_matrix[:, ::-1]
-    experiments = list(experiments_map.keys())
-    display_names = [experiments_map[tissue] for tissue in experiments]
-
-    # create heatmap
-    plt.figure(figsize=figsize)
-    sns.heatmap(
-        correlation_matrix,
-        xticklabels=display_names[::-1],
-        yticklabels=display_names,
-        cmap=custom_cmap,
-        vmin=-0.4,
-        vmax=0.4,
-        linewidths=0.1,
-        linecolor="white",
-        square=True,
-        center=0,
-        cbar_kws={
-            "shrink": 0.2,
-            "aspect": 4.5,
-            "label": "Correlation",
-            "orientation": "vertical",
-        },
-    )
-
-    plt.xlabel("Predicted cell-type specific expression")
-    plt.ylabel("Observed cell-type specific expression")
-
-    plt.gcf().axes[-1].tick_params(size=0)
-    cbar = plt.gcf().axes[-1]
-    cbar.set_ylabel("Correlation", rotation=0, ha="left", va="center")
-    cbar.yaxis.set_ticks([-0.4, 0, 0.4])
-    cbar.yaxis.set_ticklabels(["-0.4", "0", "0.4"])
-    cbar.yaxis.set_label_coords(-0.5, 1.35)
-    plt.tick_params(axis="both", which="both", length=0)
-    plt.xticks(rotation=90)
-    plt.yticks(rotation=0)
-
-    plt.tight_layout()
-    print(
-        f"Number of genes present in all {len(experiments)} tissues: {len(common_genes)}"
-    )
-    plt.savefig("correlation_heatmap.png", dpi=450)
+    return result
 
 
-def plot_facet(
-    df: pd.DataFrame,
-    save_path: Optional[Union[str, Path]],
-    exclude_samples: Optional[List[str]] = None,
-) -> None:
-    """Plots predicted versus expected values for multiple experiments in a
-    facet grid.
-    """
-    set_matplotlib_publication_parameters()
+def load_single_perturbation_effects(
+    tissue: str, working_dir: str = "/Users/steveho/gnn_plots/interpretation"
+) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Load the systematic single perturbations."""
+    tissue_dir = f"{tissue}_release"
+    with open(
+        f"{working_dir}/{tissue_dir}/connected_component_perturbations_2_hop.pkl", "rb"
+    ) as f:
+        perturbations_stored = pickle.load(f)
+        perturbations = perturbations_stored["single"]
 
-    titles = {
-        "adrenal_release": "Adrenal",
-        "aorta_release": "Aorta",
-        "gm12878_release": "GM12878",
-        "h1_esc_release": "H1-hESC",
-        "hepg2_release": "HepG2",
-        "hippocampus_release": "Hippocampus",
-        "hmec_release": "HMEC",
-        "imr90_release": "IMR90",
-        "left_ventricle_release": "Left ventricle",
-        "liver_release": "Liver",
-        "lung_release": "Lung",
-        "mammary_release": "Mammary",
-        "nhek_release": "NHEK",
-        "ovary_release": "Ovary",
-        "pancreas_release": "Pancreas",
-        "skeletal_muscle_release": "Skeletal muscle",
-        "skin_release": "Skin",
-        "small_intestine_release": "Small intestine",
-        "spleen_release": "Spleen",
-        "cell_lines_release": "Cell lines (combined)",
+    return perturbations
+
+
+def get_noderefs(resource_dir: str) -> Dict[str, str]:
+    """Return the appropriate node reference file for each node type."""
+    return {
+        "enhancer": f"{resource_dir}/enhancer_epimap_screen_overlap.bed",
+        "promoter": f"{resource_dir}/promoter_epimap_screen_overlap.bed",
+        "dyadic": f"{resource_dir}/dyadic_epimap_screen_overlap.bed",
+        "gene": f"{resource_dir}/gencode_v26_genes_only_with_GTEx_targets.bed",
     }
 
-    # filter out excluded samples if specified
-    if exclude_samples:
-        df = df[~df["plot_id"].isin(exclude_samples)]
 
-    graph = sns.FacetGrid(
-        df,
-        col="plot_id",
-        col_wrap=5,
-        col_order=titles,
-        height=1.15,
-        aspect=0.95,
-        sharex=False,
-        sharey=False,
-    )
+def get_node_type(element: str) -> str:
+    """Classify a node into one of four types based on string matching."""
+    if "enhancer" in element:
+        return "enhancer"
+    elif "promoter" in element:
+        return "promoter"
+    elif "dyadic" in element:
+        return "dyadic"
+    else:
+        return "gene"
 
-    def plot_hexbin(x: np.ndarray, y: np.ndarray, **kwargs) -> PolyCollection:
-        """Plot hexbin with log scale and linear regression line."""
-        hb = plt.hexbin(
-            x,
-            y,
-            gridsize=30,
-            cmap="viridis",
-            norm=LogNorm(),
-            edgecolors="white",
-            linewidths=0.025,
-            mincnt=1,
-            label="",
+
+def process_tissue(
+    tissue: str,
+) -> Tuple[
+    str,
+    Dict[str, Dict[str, str]],
+    Dict[str, Dict[str, str]],
+    Dict[str, Dict[str, Dict[str, float]]],
+]:
+    """Process a single tissue by:
+    1. Loading its perturbation effects
+    2. Aggregating fold changes for each element (max and avg)
+    3. Sorting and collecting the top 25 fold changes for each node type
+    """
+    perturbations = load_single_perturbation_effects(tissue=tissue)
+
+    store_effects: Dict[str, Dict[str, List[float]]] = {}
+    node_entries: Dict[str, List[Tuple[float, str, str]]] = {
+        "enhancer": [],
+        "promoter": [],
+        "dyadic": [],
+        "gene": [],
+    }
+
+    # aggregate fold changes for each element
+    for gene, gene_values in perturbations.items():
+        for source, data in gene_values.items():
+            element = source.rsplit(f"_{tissue}", 1)[0]
+            fold_change = data["fold_change"]
+
+            store_effects.setdefault(gene, {}).setdefault(element, []).append(
+                fold_change
+            )
+
+            # accumulate for later sorting
+            node_type = get_node_type(element)
+            node_entries[node_type].append((fold_change, gene, element))
+
+    # get all fold changes for each element
+    element_fc_map: Dict[str, List[Tuple[str, float]]] = {}
+    for gene, elem_vals in store_effects.items():
+        for element, fc_list in elem_vals.items():
+            for fc in fc_list:
+                element_fc_map.setdefault(element, []).append((gene, fc))
+
+    # build max and avg dictionaries
+    max_perturbations: Dict[str, Dict[str, str]] = {}
+    average_perturbations: Dict[str, Dict[str, str]] = {}
+
+    for element, gene_fc_list in element_fc_map.items():
+        # get max
+        best_gene, max_val = max(gene_fc_list, key=lambda x: x[1])
+
+        # compute average
+        all_fcs = [fc for (_, fc) in gene_fc_list]
+        avg_val = sum(all_fcs) / len(all_fcs)
+
+        # if there's only one gene, use that gene's name; else store "multiple"
+        unique_genes = {g for (g, _) in gene_fc_list}
+        if len(unique_genes) == 1:
+            (sole_gene,) = unique_genes
+            avg_gene_name = sole_gene
+        else:
+            avg_gene_name = "multiple"
+
+        max_perturbations[element] = {
+            "fc": str(max_val),
+            "gene": best_gene,
+        }
+        average_perturbations[element] = {
+            "fc": str(avg_val),
+            "gene": avg_gene_name,
+        }
+
+    top_subgraphs: Dict[str, Dict[str, Dict[str, float]]] = {
+        "enhancer": {},
+        "promoter": {},
+        "dyadic": {},
+        "gene": {},
+    }
+
+    for nodetype, entries in node_entries.items():
+        # sort descending by absolute fc
+        entries.sort(key=lambda x: abs(x[0]), reverse=True)
+
+        top_distinct = []
+        seen_elements = set()
+
+        for fc, gene, element in entries:
+            if element not in seen_elements:
+                top_distinct.append((fc, gene, element))
+                seen_elements.add(element)
+            if len(top_distinct) >= 25:
+                break
+
+        # insert into the nested dictionaries
+        for fc, gene, element in top_distinct:
+            # safest way for mypy
+            if gene not in top_subgraphs[nodetype]:
+                top_subgraphs[nodetype][gene] = {}
+            top_subgraphs[nodetype][gene][element] = fc
+
+    return tissue, max_perturbations, average_perturbations, top_subgraphs
+
+
+def collate_perturbation_effect() -> Tuple[
+    Dict[str, Dict[str, Dict[str, str]]],
+    Dict[str, Dict[str, Dict[str, str]]],
+    Dict[str, Dict[str, Dict[str, Dict[str, float]]]],
+]:
+    """Collate perturbation effects across all tissues by computing both the
+    maximum and average fold changes, plus a nested dictionary describing the
+    top 25 largest fc for distinct elements.
+    """
+    max_effects: Dict[str, Dict[str, Dict[str, str]]] = {}
+    avg_effects: Dict[str, Dict[str, Dict[str, str]]] = {}
+    top_subgraphs: Dict[str, Dict[str, Dict[str, Dict[str, float]]]] = {}
+
+    for t in tqdm(TISSUES, desc="Processing tissues"):
+        tissue, tissue_max, tissue_avg, tissue_top = process_tissue(t)
+        max_effects[tissue] = tissue_max
+        avg_effects[tissue] = tissue_avg
+        top_subgraphs[tissue] = tissue_top
+
+    return max_effects, avg_effects, top_subgraphs
+
+
+def _get_noderef_bedtool(element: str, noderefs: Dict[str, str]) -> List[str]:
+    """Return a BedTool object for a given element type and its corresponding
+    node order.
+    """
+    node_file = noderefs[element]
+    return [line[3] for line in BedTool(node_file)]
+
+
+def _filter_perturbation_effects(
+    effects: Dict[str, Dict[str, float]],
+    threshold: float = 0.0144,
+) -> Dict[str, Dict[str, float]]:
+    """Filter out perturbation effects below a certain threshold."""
+    return {
+        tissue: {
+            element: effect
+            for element, effect in data.items()
+            if abs(effect) > threshold
+        }
+        for tissue, data in effects.items()
+    }
+
+
+def plot_global_perturbation_effects(
+    effects: Dict[str, Dict[str, float]],
+    element: str,
+    noderefs: Dict[str, str],
+    effect_mode: str,
+    filter: bool = True,
+) -> None:
+    """Plot the perturbation effects.
+    X axis: element index, sorted by linear genomic coordinate
+    Y axis: perturbation effect
+    Cbar: tissue
+
+    We add a boolean flag to filter out lower effect elements for better
+    visualization. We filter out elements with less than a 1% predicted fold
+    change, which is the average effect size for K562 crispri cCREs. Thus is
+    equivalent to a 0.0144 fold change in the log2 space.
+    """
+    n_features = len(TISSUES)
+    feature_colors = plt.cm.tab10(np.linspace(0, 1, n_features))  # type: ignore
+
+    # get node order for x axis
+    node_order = _get_noderef_bedtool(element, noderefs)
+
+    # mapping from enhancer to index
+    node_to_idx = {node: idx for idx, node in enumerate(node_order)}
+
+    # filter out lower effect elements
+    if filter:
+        effects = _filter_perturbation_effects(effects)
+
+    # create figure with minimal margins
+    plt.figure(figsize=(5, 2.25))
+
+    # store all points to avoid dominance by last tissue
+    all_x = []
+    all_y = []
+    all_colors = []
+    element_count = 0
+
+    # plot each tissue for global view
+    # color each tissue differently
+    for tissue in sorted(TISSUES):
+        x_points = []
+        y_points = []
+        for node, effect in effects[tissue].items():
+            if (
+                element in {"enhancer", "promoter", "dyadic"}
+                and element in node
+                or element not in ["enhancer", "promoter", "dyadic"]
+                and "ENSG" in node
+            ):
+                x_points.append(node_to_idx[node])
+                y_points.append(effect)
+
+        all_x.extend(x_points)
+        all_y.extend(y_points)
+        all_colors.extend(
+            [feature_colors[list(sorted(TISSUES)).index(tissue)]] * len(x_points)
         )
+        element_count += len(x_points)
 
-        #  store current axis limits
-        xlim = plt.gca().get_xlim()
-        ylim = plt.gca().get_ylim()
+    # randomize order of points to avoid color dominance
+    indices = np.random.permutation(len(all_x))
+    all_x = np.array(all_x)[indices]
+    all_y = np.array(all_y)[indices]
+    all_colors = np.array(all_colors)[indices]
 
-        # calculate and plot linear regression line
-        slope, intercept, *_ = stats.linregress(x, y)
-        x_fit = np.linspace(np.min(x) - 0.5, np.max(x) + 0.5, 100)
-        y_fit = slope * x_fit + intercept
-        plt.plot(x_fit, y_fit, color="indianred", linewidth=0.9, linestyle="--")
+    plt.scatter(all_x, all_y, alpha=0.75, s=4, linewidth=0, marker=".", c=all_colors)
 
-        # restore axis limits
-        plt.gca().set_xlim(xlim)
-        plt.gca().set_ylim(ylim)
+    # adjust layout to minimize whitespace
+    plt.margins(x=0, y=0.01)
+    if element == "gene":
+        plt.ylim(top=5)
+        plt.ylim(bottom=-1.35)
 
-        # add box and remove ticks
-        plt.gca().spines["top"].set_visible(True)
-        plt.gca().spines["right"].set_visible(True)
-        plt.tick_params(axis="both", which="both", length=0)
+    # set labels
+    plt.ylabel(r"Log$_2$ fold change")
+    plt.title(f"Global view of {element} perturbation effects ({effect_mode})")
+    plt.xticks([])
 
-        return hb
+    # add x-axis label with line annotation
+    fig = plt.gcf()
+    ax = plt.gca()
 
-    # map hb to each facet
-    graph.map(plot_hexbin, "predicted", "expected")
+    # remove the current xlabel
+    ax.set_xlabel("")
 
-    # remove titles from subplots
-    for ax, name in zip(graph.axes.flat, graph.col_names):
+    # add text label aligned to the left
+    element_label = f"{element}s" if element != "dyadic" else element
 
-        # get data for this subplot
-        subplot_data = df[df["plot_id"] == name]
-        pearson_r = stats.pearsonr(subplot_data["predicted"], subplot_data["expected"])[
-            0
-        ]
-
-        # add correlation to title
-        display_name = titles.get(name, name)
-        ax.set_title(
-            f"{display_name}\n" + r"$\mathit{r}$ = " + f"{pearson_r:.4f}",
-            size=7,
-            y=0.98,
-        )
-
-    graph.figure.text(
-        0.5125, -0.01, "Predicted Log2 Expression", ha="center", va="center", size=7
+    text = ax.text(
+        0.01,
+        -0.085,
+        f"{element_count:,} {element_label}",
+        transform=ax.transAxes,
+        horizontalalignment="left",
+        verticalalignment="top",
     )
-    graph.figure.text(
-        -0.01,
-        0.5,
-        "Expected Log2 Expression",
-        ha="center",
-        va="center",
-        rotation=90,
-        size=7,
+
+    # add arrow
+    ax.annotate(
+        "",
+        xy=(0.3, -0.045),
+        xytext=(0, -0.045),
+        xycoords="axes fraction",
+        arrowprops=dict(
+            arrowstyle="-|>", color="black", linewidth=0.5, shrinkA=0, shrinkB=0
+        ),
     )
-    graph.set_axis_labels("", "")
-    graph.figure.subplots_adjust(right=0.925)
-    cbar_ax = graph.figure.add_axes([1.025, 0.4, 0.03, 0.15])
-    graph.figure.colorbar(graph.axes[0].collections[0], cax=cbar_ax)
+
     plt.tight_layout()
+    plt.savefig(
+        f"{element}_{effect_mode}_effect_global.png", dpi=450, bbox_inches="tight"
+    )
+    plt.close()
+    plt.clf()
 
-    if save_path:
-        graph.savefig(
-            f"{save_path}/performance_facet.png", dpi=450, bbox_inches="tight"
-        )
+
+def load_gene_coordinates(gencode_bed: BedTool) -> Dict[str, Tuple[str, int, int]]:
+    """Convert gencode bedtool into dict structure."""
+    return {
+        feature.name: (feature.chrom, int(feature.start), int(feature.end))
+        for feature in gencode_bed
+    }
+
+
+def load_element_coordinates(element_bed: BedTool) -> Dict[str, Tuple[str, int, int]]:
+    """Convert element bedtool into dict structure."""
+    return {
+        feature.name: (feature.chrom, int(feature.start), int(feature.end))
+        for feature in element_bed
+    }
+
+
+def build_assigned_gene_distances(
+    effects_for_tissue: Dict[str, dict[str, str]],
+    gene_coords: Dict[str, tuple[str, int, int]],
+    element_coords: Dict[str, tuple[str, int, int]],
+) -> Dict[str, int]:
+    """For each element in effects_for_tissue, compute the
+    signed distance to *its assigned gene* from 'gene_coords'.
+
+    If an element or gene is missing from coords, skip it.
+    """
+    distances = {}
+    for element_id, data in effects_for_tissue.items():
+        gene_id = data.get("gene")
+        if not gene_id:
+            continue
+
+        # remove tissue identifier
+        gene_id = gene_id.split("_")[0]
+
+        # ensure we have coords
+        if gene_id not in gene_coords:
+            continue
+        if element_id not in element_coords:
+            continue
+
+        try:
+            dist_bp = compute_signed_distance(
+                gene_coords[gene_id], element_coords[element_id]
+            )
+        except ValueError:
+            print(f"Error computing distance for {element_id} and {gene_id}")
+
+        distances[element_id] = dist_bp
+    return distances
+
+
+def compute_signed_distance(
+    gene_info: tuple[str, int, int],
+    elem_info: tuple[str, int, int],
+) -> int:
+    """Signed distance from element midpoint to gene body midpoint."""
+    g_chrom, g_start, g_end = gene_info
+    e_chrom, e_start, e_end = elem_info
+
+    # ensure same chromosome
+    if g_chrom != e_chrom:
+        print(f"Chromosomes do not match: {g_chrom} vs {e_chrom}")
+        print(f"Gene: {g_chrom}:{g_start}-{g_end}")
+        print(f"Element: {e_chrom}:{e_start}-{e_end}")
+        raise ValueError("Chromosomes do not match")
+
+    anchor = (g_start + g_end) // 2
+
+    elem_mid = (e_start + e_end) // 2
+    return elem_mid - anchor
+
+
+def sort_elements_by_coordinate(
+    element_coords: Dict[str, Tuple[str, int, int]]
+) -> List[str]:
+    """Returns a list of element_ids sorted by (chrom, start)."""
+    items = list(element_coords.items())
+
+    def chromosome_to_int(chrom: str) -> int:
+        """Convert chromosome string to integer for sorting."""
+        chrom = chrom.removeprefix("chr")
+        return int(chrom) if chrom.isdigit() else ord(chrom[0])
+
+    items.sort(key=lambda x: (chromosome_to_int(x[1][0]), x[1][1]))
+    return [elem_id for (elem_id, _) in items]
+
+
+def plot_sample_perturbation_effects(
+    tissue: str,
+    tissue_name: str,
+    effects_tissue: Dict[str, Dict[str, str]],
+    gencode_coordinates: Dict[str, Tuple[str, int, int]],
+    element_coordinates: Dict[str, Tuple[str, int, int]],
+    element: str,
+) -> None:
+    """Plot the perturbation effects.
+    X axis: element index, sorted by linear genomic coordinate
+    Y axis: linear genomic distance to gene
+    Cbar: effect strength
+
+    We use the same boolean flag as in plot_global to filter out lower effect
+    elements.
+    """
+    distances = build_assigned_gene_distances(
+        effects_for_tissue=effects_tissue,
+        gene_coords=gencode_coordinates,
+        element_coords=element_coordinates,
+    )
+    sorted_elements = sort_elements_by_coordinate(element_coordinates)
+
+    x_vals = []
+    y_vals = []
+    c_vals: List[float] = []
+
+    for i, elem_id in enumerate(sorted_elements):
+        if elem_id not in effects_tissue:
+            continue
+
+        if elem_id not in distances:
+            continue
+
+        fc = effects_tissue[elem_id].get("fc", None)
+        if not fc:
+            continue
+
+        try:
+            fc_val = float(fc)
+        except ValueError:
+            continue
+
+        # filter out small effects
+        if abs(fc_val) < 0.0144:
+            continue
+
+        # get the distance to the assigned gene in kb
+        dist_bp = distances[elem_id]
+        dist_kb = dist_bp / 1000.0
+
+        x_vals.append(i)
+        y_vals.append(dist_kb)
+        c_vals.append(fc_val)
+
+    if not x_vals:
+        print(f"No data to plot for {tissue}")
+        return
+
+    x_values = np.array(x_vals)
+    y_values = np.array(y_vals)
+    c_values = np.array(c_vals)
+
+    # sort points to plot higher fc values later so they dont drown
+    sort_idx = np.argsort(c_values)
+    x_values = x_values[sort_idx]
+    y_values = y_values[sort_idx]
+    c_values = c_values[sort_idx]
+
+    plt.figure(figsize=(5, 2.25))
+    plt.margins(x=0, y=0.01)
+    plt.title(f"Global view of {element} perturbation effects in {tissue_name}")
+
+    # scale color bar
+    max_abs_val = max(abs(min(c_values)), abs(max(c_values)))
+    norm = mcolors.TwoSlopeNorm(vmin=-max_abs_val, vcenter=0, vmax=max_abs_val)
+
+    sc = plt.scatter(
+        x_values,
+        y_values,
+        c=c_values,
+        cmap=plt.cm.RdBu_r,
+        s=3,
+        alpha=0.8,
+        linewidths=0,
+        norm=norm,
+    )  # type: ignore
+    cbar = plt.colorbar(sc, shrink=0.35, aspect=5)
+    cbar.set_label(r"Log$_2$ fold change")
+
+    plt.ylabel("Distance to assigned gene (kb)")
+    plt.xticks([])
+    # Mark the gene coordinate line
+    plt.axhline(0, color="gray", linestyle="--", linewidth=0.5)
+
+    # add x-axis label with line annotation
+    fig = plt.gcf()
+    ax = plt.gca()
+
+    # remove the current xlabel
+    ax.set_xlabel("")
+
+    # add text label aligned to the left
+    element_label = f"{element}s" if element != "dyadic" else element
+
+    text = ax.text(
+        0.01,
+        -0.085,
+        f"{len(x_values):,} {element_label}",
+        transform=ax.transAxes,
+        horizontalalignment="left",
+        verticalalignment="top",
+    )
+
+    # add arrow
+    ax.annotate(
+        "",
+        xy=(0.3, -0.045),
+        xytext=(0, -0.045),
+        xycoords="axes fraction",
+        arrowprops=dict(
+            arrowstyle="-|>", color="black", linewidth=0.5, shrinkA=0, shrinkB=0
+        ),
+    )
+
+    plt.tight_layout()
+    out_name = f"{tissue}_{element}.png"
+    plt.savefig(out_name, dpi=450)
+    plt.close()
 
 
 def main() -> None:
     """Main function."""
-    working_dir = "/Users/steveho/gnn_plots"
-    gencode_file = (
-        f"{working_dir}/graph_resources/local/gencode_to_genesymbol_lookup_table.txt"
+    set_matplotlib_publication_parameters()
+    resource_dir = "/Users/steveho/gnn_plots/graph_resources/local"
+
+    # get reference files for each node type
+    noderefs = get_noderefs(resource_dir)
+
+    # load gencode for gene coordinates
+    gencode_file = "/Users/steveho/gnn_plots/graph_resources/local/gencode_v26_genes_only_with_GTEx_targets.bed"
+    gencode = BedTool(gencode_file)
+
+    # load attention weights
+    attn = "/Users/steveho/gnn_plots/interpretation/k562_release/attention_weights_genes.pt"
+    attn_weights = torch.load(attn)
+
+    # load indexes
+    index_file = (
+        "/Users/steveho/gnn_plots/graph_resources/idxs/k562_release_full_graph_idxs.pkl"
+    )
+    idxs = pickle.load(open(index_file, "rb"))
+    idxs = {v: k for k, v in idxs.items()}  # reverse map
+
+    # map idx tuples in attn_weights back to genes and stuff
+    attn_mapped = {}
+    for (idx_1, idx_2), val in attn_weights.items():
+        node_1 = idxs[idx_1].strip("_k562")
+        node_2 = idxs[idx_2].strip("_k562")
+        attn_mapped[(node_1, node_2)] = val
+
+    # get top gene connections
+    top_attn_connections = get_top_attn_connections_to_genes(
+        attn_mapped, num_connections=100
     )
 
-    # load gencode to symbol mapping
-    symbol_to_gencode = load_gencode_lookup(gencode_file)
-    gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
+    max_effects, avg_effects, top_perturbations = collate_perturbation_effect()
 
-    # load chr to gene mapping
-    gtf_file = f"{working_dir}/graph_resources/local/gencode_v26_genes_only_with_GTEx_targets.bed"
-    ensg_to_chr = _gtf_gene_chr_pairing(gtf_file)
+    # save results for later
+    with open("max_effects.pkl", "wb") as f:
+        pickle.dump(max_effects, f)
 
-    # change to symbol to chr
-    symbol_to_chr = {
-        gencode_to_symbol[k]: v
-        for k, v in ensg_to_chr.items()
-        if k in gencode_to_symbol
-    }
+    with open("avg_effects.pkl", "wb") as f:
+        pickle.dump(avg_effects, f)
 
-    # get a list of genes in chr8 and chr9
-    test_chrs = ["chr8", "chr9"]
-    test_genes = [gene for gene, chr in symbol_to_chr.items() if chr in test_chrs]
+    with open("top_perturbations.pkl", "wb") as f:
+        pickle.dump(top_perturbations, f)
 
-    # make a dataframe to combine all the results
-    df_all = pd.DataFrame()
+    # plot global perturbation effects
+    for effects in [max_effects, avg_effects]:
+        effect_mode = "max" if effects == max_effects else "average"
+        print(f"Plotting global perturbation effects for {effect_mode} effects")
+        for element in ["enhancer", "promoter", "dyadic", "gene"]:
+            flattened_effects = {
+                tissue: {
+                    element_idx: float(data["fc"])
+                    for element_idx, data in effects[tissue].items()
+                }
+                for tissue in effects
+            }
 
-    experiments = [
-        "adrenal_release",
-        "aorta_release",
-        "gm12878_release",
-        "h1_esc_release",
-        "hepg2_release",
-        "hippocampus_release",
-        "hmec_release",
-        "imr90_release",
-        "k562_release",
-        "left_ventricle_release",
-        "liver_release",
-        "lung_release",
-        "mammary_release",
-        "nhek_release",
-        "ovary_release",
-        "pancreas_release",
-        "skeletal_muscle_release",
-        "skin_release",
-        "small_intestine_release",
-        "spleen_release",
-        "cell_lines_release",
-    ]
-
-    for experiment in experiments:
-        # plot the expected vs predicted values for individual experiments
-        model_out_dir = f"{working_dir}/figure_3/{experiment}"
-        predicted = np.load(f"{model_out_dir}/outs.npy")
-        expected = np.load(f"{model_out_dir}/labels.npy")
-        rmse = sqrt(mean_squared_error(expected, predicted))
-
-        # plot the expected vs predicted values for individual experiments
-        plot_predicted_versus_expected(
-            predicted=predicted,
-            expected=expected,
-            rmse=rmse,
-            save_path=Path(model_out_dir),
-            title=True,
-        )
-
-        if experiment != "cell_lines_release":
-            # first, make a collective df
-            graph_data_dir = f"{working_dir}/interpretation/{experiment}"
-            idx_file = (
-                f"{working_dir}/graph_resources/idxs/{experiment}_full_graph_idxs.pkl"
+            plot_global_perturbation_effects(
+                effects=flattened_effects,
+                element=element,
+                noderefs=noderefs,
+                filter=True,
+                effect_mode=effect_mode,
             )
 
-            # load graph idxs
-            with open(idx_file, "rb") as f:
-                idxs = pickle.load(f)
+    # plot individual perturbation effects
+    gencode_coordinates = load_gene_coordinates(gencode)
+    for tissue in TISSUES:
+        for element in ["enhancer", "promoter", "dyadic", "gene"]:
+            # get coordinates for the element
+            element_coordinates = load_element_coordinates(BedTool(noderefs[element]))
 
-            node_idx_to_gene_id, gene_indices = get_gene_idx_mapping(idxs)
-
-            # get baseline predictions
-            df = pd.read_csv(f"{graph_data_dir}/baseline_predictions.csv")
-            df["gene_id"] = df["node_idx"].map(node_idx_to_gene_id)
-            df["gene_symbol"] = df["gene_id"].apply(
-                lambda g: map_symbol(g, gencode_to_symbol=gencode_to_symbol)
+            plot_sample_perturbation_effects(
+                tissue=tissue,
+                tissue_name=TISSUES[tissue],
+                effects_tissue=max_effects[tissue],
+                gencode_coordinates=gencode_coordinates,
+                element_coordinates=element_coordinates,
+                element=element,
             )
-            df_test = df[df["gene_symbol"].isin(test_genes)]
-
-            # add a column for the tissue name
-            tissue_name = "_".join(experiment.split("_")[:-1])
-            df_test["tissue"] = tissue_name
-
-            # add df to the collective df
-            df_all = pd.concat([df_all, df_test])
-
-    # clear memory
-    plt.clf()
-
-    # create correlation heatmap
-    experiments_corr = {
-        "small_intestine": "Small intestine",
-        "spleen": "Spleen",
-        "skin": "Skin",
-        "skeletal_muscle": "Skeletal muscle",
-        "pancreas": "Pancreas",
-        "ovary": "Ovary",
-        "lung": "Lung",
-        "liver": "Liver",
-        "left_ventricle": "Left ventricle",
-        "hippocampus": "Hippocampus",
-        "aorta": "Aorta",
-        "adrenal": "Adrenal",
-        "mammary": "Mammary",
-        "imr90": "IMR90",
-        "nhek": "NHEK",
-        "k562": "K562",
-        "hmec": "HMEC",
-        "hepg2": "HepG2",
-        "h1_esc": "H1-hESC",
-        "gm12878": "GM12878",
-    }
-
-    create_correlation_heatmap(df_all, experiments_corr, figsize=(3.65, 3.0))
-
-    # plot expected vs predict facet
-    base_path = Path(".")
-    results_df = _load_expression_data(base_path)
-    plot_facet(results_df, exclude_samples=["k562_release"], save_path=base_path)
 
 
 if __name__ == "__main__":
