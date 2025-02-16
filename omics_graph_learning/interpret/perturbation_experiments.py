@@ -87,11 +87,11 @@ def main() -> None:
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
     # get baseline predictions
-    baseline_df = get_baseline_predictions_k_hop(
-        data=data,
-        runner=runner,
-        k=hops,
-    )
+    # baseline_df = get_baseline_predictions_k_hop(
+    #     data=data,
+    #     runner=runner,
+    #     k=hops,
+    # )
     # baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
     # baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
 
