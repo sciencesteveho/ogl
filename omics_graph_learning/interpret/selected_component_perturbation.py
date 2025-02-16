@@ -164,7 +164,7 @@ class SelectedComponentPerturbation:
             sub_data = self._build_k_hop_subgraph(gene_node).to(self.device)
 
             # find the local index of node_to_perturb inside the subgraph
-            loc_idxs = (sub_data.n_id == node_to_perturb).nonzero(as_tuple=True)
+            loc_idxs = (sub_data.n_id == node_to_perturb).nonzero(as_tuple=True)[0]
             if loc_idxs.numel() == 0:
                 continue
             local_node_to_perturb = loc_idxs[0].item()
