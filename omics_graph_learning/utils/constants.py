@@ -36,7 +36,7 @@ class NodePerturbation(Enum):
     polr2a = 21
     polyasites = 22
     rad21 = 23
-    rbpbindingsites = 24
+    rbpsiteclusters = 24
     recombination = 25
     repg1b = 26
     repg2 = 27
@@ -58,7 +58,10 @@ class NodePerturbation(Enum):
 ANCHOR_GRACE = 1500
 EARLY_STOP_PATIENCE = 12
 HG38_TOTAL_BASEPAIRS = 3088269227
+<<<<<<< HEAD
 MAX_FEAT_LEN = 39  # 37 node features + is_gene + is_tf
+=======
+>>>>>>> development
 N_TRIALS = 200
 RANDOM_SEEDS = [42, 84, 168]
 

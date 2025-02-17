@@ -30,8 +30,11 @@ def _load_tb_loss(tensorboard_log: Union[str, Path]) -> Dict[str, List[float]]:
 
     # get the loss values
     training_loss = event_acc.Scalars("Training loss")
-    val_rmse = event_acc.Scalars("Validation RMSE")
     test_rmse = event_acc.Scalars("Test RMSE")
+
+    # remove epoch 0
+    val_rmse = event_acc.Scalars("Validation RMSE")
+    val_rmse = [rmse for rmse in val_rmse if rmse.step > 0]
 
     return {
         "Epoch": [loss.step for loss in training_loss],
@@ -66,6 +69,10 @@ def plot_predicted_versus_expected(
     expected: np.ndarray,
     rmse: float,
     save_path: Union[str, Path] = None,
+<<<<<<< HEAD
+=======
+    title: bool = True,
+>>>>>>> development
 ) -> Figure:
     """Plots predicted versus expected values for a given model"""
     set_matplotlib_publication_parameters()
@@ -100,12 +107,22 @@ def plot_predicted_versus_expected(
     # set labels and title
     plot.ax_joint.set_xlabel("Predicted Log2 Expression")
     plot.ax_joint.set_ylabel("Expected Log2 Expression")
+<<<<<<< HEAD
     plot.figure.suptitle(
         f"Predicted versus expected TPM\n"
         rf"Spearman's $\rho$: {spearman_r:.4f}"
         f"\nRMSE: {rmse:.4f}",
         y=0.95,
     )
+=======
+    if title:
+        plot.figure.suptitle(
+            f"Predicted versus expected TPM\n"
+            rf"Spearman's $\rho$: {spearman_r:.4f}"
+            f"\nRMSE: {rmse:.4f}",
+            y=0.95,
+        )
+>>>>>>> development
 
     # add colorbar
     plot.figure.colorbar(
@@ -123,7 +140,17 @@ def plot_predicted_versus_expected(
     slope, intercept, _, _, _ = stats.linregress(predicted, expected)
     x_fit = np.linspace(np.min(predicted) - 0.5, np.max(predicted) + 0.5, 100)
     y_fit = slope * x_fit + intercept
+<<<<<<< HEAD
     plot.ax_joint.plot(x_fit, y_fit, color="indianred", linewidth=0.9)
+=======
+    plot.ax_joint.plot(
+        x_fit,
+        y_fit,
+        color="indianred",
+        linewidth=0.9,
+        linestyle="--",
+    )
+>>>>>>> development
 
     # add a best-fit line at 45 degrees
     min_val = min(plot.ax_joint.get_xlim()[0], plot.ax_joint.get_ylim()[0])
@@ -132,15 +159,23 @@ def plot_predicted_versus_expected(
         [min_val, max_val],
         [min_val, max_val],
         color="lightgray",
+<<<<<<< HEAD
         linestyle="--",
+=======
+>>>>>>> development
         linewidth=0.9,
         label="Perfect Fit",
     )
 
     # add pearson R
     plot.ax_joint.text(
+<<<<<<< HEAD
         0.05,
         0.95,
+=======
+        0.025,
+        1.05,
+>>>>>>> development
         r"$\mathit{r}$ = " + f"{pearson_r:.4f}",
         transform=plot.ax_joint.transAxes,
         fontsize=7,

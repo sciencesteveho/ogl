@@ -98,7 +98,11 @@ class BaselineAnalyzer:
         )
 
     def _get_genes(self) -> List[str]:
+<<<<<<< HEAD
         """Get genes from a gencode bed fiel, only including the test_set genes."""
+=======
+        """Get genes from a gencode bed file, only including the test_set genes."""
+>>>>>>> development
         gencode = BedTool(self.gencode_bed)
         if self.chromosomes:
             genes = [
@@ -264,8 +268,13 @@ class BaselineAnalyzer:
         plot.ax_joint.set_xlim(np.min(expected) - 0.5, np.max(expected) + 0.5)
         plot.ax_joint.set_ylim(np.min(predicted) - 0.5, np.max(predicted) + 0.5)
         plot.ax_joint.text(
+<<<<<<< HEAD
             0.85,
             0.15,
+=======
+            0.025,
+            1.05,
+>>>>>>> development
             r"$\mathit{r}$ = " + f"{pearson_r:.4f}",
             transform=plot.ax_joint.transAxes,
             fontsize=7,

@@ -555,7 +555,7 @@ def prep_loader(
 def bootstrap_evaluation(
     predictions: torch.Tensor,
     labels: torch.Tensor,
-    n_bootstraps: int = 1000,
+    n_bootstraps: int = 10000,
     confidence: float = 0.95,
 ) -> Tuple[float, float, float]:
     """Perform bootstrap evaluation by resampling with replacement."""
@@ -622,12 +622,17 @@ def make_model_plots(
 
 
 def post_model_evaluation(
-    model_name: str,
     model: torch.nn.Module,
+    model_name: str,
     device: torch.device,
     data: torch_geometric.data.Data,
     regression_loss_type: str,
+<<<<<<< HEAD
     data_loader: torch_geometric.data.DataLoader,
+=======
+    test_loader: torch_geometric.data.DataLoader,
+    val_loader: torch_geometric.data.DataLoader,
+>>>>>>> development
     tb_logger: TensorBoardLogger,
     logger: logging.Logger,
     run_dir: Path,
@@ -659,7 +664,11 @@ def post_model_evaluation(
     )
 
     loss, rmse, outs, labels, pearson_r, accuracy = post_eval_trainer.evaluate(
+<<<<<<< HEAD
         data_loader=data_loader,
+=======
+        data_loader=test_loader,
+>>>>>>> development
         mask="test",
         epoch=0,
     )
@@ -671,20 +680,49 @@ def post_model_evaluation(
         tb_logger.writer.add_scalar("Predictions", out.item(), step)
         tb_logger.writer.add_scalar("Labels", label.item(), step)
 
-    # bootstrap evaluation
+    loss_val, rmse_val, outs_val, labels_val, pearson_r_val, accuracy_val = (
+        post_eval_trainer.evaluate(
+            data_loader=val_loader,
+            mask="val",
+            epoch=0,
+        )
+    )
+
+    # bootstrap evaluations
     mean_correlation, ci_lower, ci_upper = bootstrap_evaluation(
         predictions=outs,
         labels=labels,
     )
 
+<<<<<<< HEAD
+=======
+    mean_correlation_val, ci_lower_val, ci_upper_val = bootstrap_evaluation(
+        predictions=outs_val,
+        labels=labels_val,
+    )
+
+>>>>>>> development
     metrics = {
         "Final test loss": loss,
         "Final test pearson": pearson_r,
         "Final test RMSE": rmse,
         "Final test accuracy": accuracy,
+<<<<<<< HEAD
         "Bootstrap pearson": mean_correlation,
         "CI lower": ci_lower,
         "CI upper": ci_upper,
+=======
+        "Validation loss": loss_val,
+        "Validation pearson": pearson_r_val,
+        "Validation RMSE": rmse_val,
+        "Validation accuracy": accuracy_val,
+        "Bootstrap pearson test": mean_correlation,
+        "CI lower test": ci_lower,
+        "CI upper test": ci_upper,
+        "Bootstrap pearson val": mean_correlation_val,
+        "CI lower val": ci_lower_val,
+        "CI upper val": ci_upper_val,
+>>>>>>> development
     }
 
     for metric, value in metrics.items():
@@ -918,8 +956,6 @@ def main() -> None:
         min_epochs=min_epochs,
     )
 
-    # close out tensorboard utilities and save final model
-    prof.stop()
     torch.save(
         model.state_dict(),
         run_dir / f"{args.model}_final_model.pt",
@@ -927,12 +963,17 @@ def main() -> None:
 
     # generate loss and prediction plots for best model
     post_model_evaluation(
-        model_name=args.model,
         model=model,
+        model_name=args.model,
         device=device,
         data=data,
         regression_loss_type=args.regression_loss_type,
+<<<<<<< HEAD
         data_loader=test_loader,
+=======
+        test_loader=test_loader,
+        val_loader=val_loader,
+>>>>>>> development
         tb_logger=tb_logger,
         logger=logger,
         run_dir=run_dir,

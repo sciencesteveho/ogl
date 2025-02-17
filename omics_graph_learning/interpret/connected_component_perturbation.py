@@ -10,6 +10,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx  # type: ignore
 import torch
+<<<<<<< HEAD
+=======
+from torch_geometric.data import Batch  # type: ignore
+>>>>>>> development
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
@@ -66,6 +70,10 @@ class ConnectedComponentPerturbation:
         device: torch.device,
         runner: PerturbRunner,
         idxs_inv: Dict[int, str],
+<<<<<<< HEAD
+=======
+        hops: int = 2,
+>>>>>>> development
         mask_attr: str = "all",
     ) -> None:
         """Initialize the ConnectedComponentPerturbation object."""
@@ -74,16 +82,27 @@ class ConnectedComponentPerturbation:
         self.runner = runner
         self.idxs_inv = idxs_inv
         self.mask_attr = mask_attr
+<<<<<<< HEAD
+=======
+        self.hops = hops
+>>>>>>> development
 
     def _build_k_hop_subgraph(
         self,
         gene_node: int,
+<<<<<<< HEAD
         num_hops: int = 3,
+=======
+>>>>>>> development
     ) -> Data:
         """Build a k-hop subgraph around the gene node."""
         node_subgraph, edge_subgraph, mapping, _ = k_hop_subgraph(
             node_idx=gene_node,
+<<<<<<< HEAD
             num_hops=num_hops,
+=======
+            num_hops=self.hops,
+>>>>>>> development
             edge_index=self.data.edge_index,
             relabel_nodes=True,
             num_nodes=self.data.num_nodes,
@@ -137,6 +156,65 @@ class ConnectedComponentPerturbation:
             )
         return baseline_out[idx_in_subgraph].item()
 
+<<<<<<< HEAD
+=======
+    def _create_perturbed_subgraph(
+        self,
+        sub_data: Data,
+        nodes_to_remove: List[int],
+        gene_node: int,
+    ) -> Optional[Data]:
+        """Given a subgraph, remove the specified nodes and return the resulting
+        perturbed subgraph as a new Data object. Returns None if none of the
+        nodes to remove are found or if the gene_node is no longer present
+        after perturbation.
+        """
+        if not nodes_to_remove:
+            return None
+
+        mask_tensor = getattr(sub_data, f"{self.mask_attr}_mask_loss")
+        remove_local_idxs = set()
+        for global_id in nodes_to_remove:
+            loc = (sub_data.n_id == global_id).nonzero(as_tuple=True)[0]
+            if loc.numel() > 0:
+                remove_local_idxs.add(loc.item())
+
+        if not remove_local_idxs:
+            return None
+
+        keep_mask = torch.tensor(
+            [i not in remove_local_idxs for i in range(sub_data.num_nodes)],
+            dtype=torch.bool,
+            device=self.device,
+        )
+
+        # create perturbed subgraph using the keep mask
+        perturbed_edge_idx, _, _ = subgraph(
+            subset=keep_mask,
+            edge_index=sub_data.edge_index,
+            relabel_nodes=True,
+            num_nodes=sub_data.num_nodes,
+            return_edge_mask=True,
+        )
+
+        perturbed_x = sub_data.x[keep_mask]
+        perturbed_mask = mask_tensor[keep_mask]
+        perturbed_n_id = sub_data.n_id[keep_mask]
+
+        # ensure the gene_node still exists
+        if (perturbed_n_id == gene_node).sum() == 0:
+            return None
+
+        mini_data = Data(
+            x=perturbed_x,
+            edge_index=perturbed_edge_idx,
+        )
+        mini_data.n_id = perturbed_n_id
+        setattr(mini_data, f"{self.mask_attr}_mask_loss", perturbed_mask)
+
+        return mini_data
+
+>>>>>>> development
     def _get_elements_in_subgraph(
         self,
         sub_data: Data,
@@ -160,6 +238,7 @@ class ConnectedComponentPerturbation:
         gene_node: int,
     ) -> Optional[float]:
         """Remove the specified nodes from the subgraph, then compute the
+<<<<<<< HEAD
         model's prediction for the gene node in the perturbed subgraph.
 
         Args:
@@ -225,10 +304,104 @@ class ConnectedComponentPerturbation:
             )
         return perturbed_out[idx_in_perturbed].item()
 
+=======
+        model's prediction for the gene_node in the perturbed subgraph.
+        """
+        perturbed_sub = self._create_perturbed_subgraph(
+            sub_data, nodes_to_remove, gene_node
+        )
+        if perturbed_sub is None:
+            return None
+
+        idx_in_perturbed = (
+            (perturbed_sub.n_id == gene_node).nonzero(as_tuple=True)[0].item()
+        )
+
+        with torch.no_grad():
+            perturbed_out, _ = self.runner.model(
+                x=perturbed_sub.x,
+                edge_index=perturbed_sub.edge_index,
+                mask=getattr(perturbed_sub, f"{self.mask_attr}_mask_loss"),
+            )
+        return perturbed_out[idx_in_perturbed].item()
+
+    def _remove_nodes_and_predict_batch(
+        self,
+        sub_data: Data,
+        list_of_nodes_to_remove: List[int],
+        gene_node: int,
+        # batch_size: int = 8,
+        batch_size: int = 6,
+    ) -> List[Optional[float]]:
+        """For each node in list_of_nodes_to_remove, create a perturbed
+        subgraph. Then, process these perturbed subgraphs in mini-batches (of
+        size batch_size) to run inference in fewer forward passes. The method
+        returns a list of predictions (or None when a perturbed subgraph
+        could not be created) in the same order as list_of_nodes_to_remove.
+        """
+        # build a list of perturbed subgraphs
+        data_objs = [
+            self._create_perturbed_subgraph(sub_data, [global_id], gene_node)
+            for global_id in list_of_nodes_to_remove
+        ]
+
+        # build a mapping from original index to valid index
+        orig_to_valid = {}
+        valid_data_objs = []
+        for idx, d in enumerate(data_objs):
+            if d is not None:
+                orig_to_valid[idx] = len(valid_data_objs)
+                valid_data_objs.append(d)
+
+        if not valid_data_objs:
+            return [None] * len(list_of_nodes_to_remove)
+
+        predictions_by_valid_idx = {}
+
+        # batch inference
+        for start in range(0, len(valid_data_objs), batch_size):
+            batches = valid_data_objs[start : start + batch_size]
+            batch = Batch.from_data_list(batches).to(self.device)
+
+            with torch.no_grad():
+                out, _ = self.runner.model(
+                    x=batch.x,
+                    edge_index=batch.edge_index,
+                    mask=getattr(batch, f"{self.mask_attr}_mask_loss"),
+                )
+
+            for i in range(len(batches)):
+                node_mask = batch.batch == i
+                batch_n_id = batch.n_id[node_mask]
+                loc_gene = (batch_n_id == gene_node).nonzero(as_tuple=True)[0]
+                if loc_gene.numel() == 0:
+                    predictions_by_valid_idx[start + i] = None
+                else:
+                    idx_in_subgraph_output = loc_gene.item()
+                    pred_value = out[node_mask][idx_in_subgraph_output].item()
+                    predictions_by_valid_idx[start + i] = pred_value
+
+        # reconstruct the predictions in the original ordering of
+        # list_of_nodes_to_remove
+        predictions = []
+        for i in range(len(list_of_nodes_to_remove)):
+            if i in orig_to_valid:
+                valid_idx = orig_to_valid[i]
+                predictions.append(predictions_by_valid_idx.get(valid_idx))
+            else:
+                predictions.append(None)
+
+        return predictions
+
+>>>>>>> development
     def _perform_single_node_perturbations(
         self,
         sub_data: Data,
         gene_node: int,
+<<<<<<< HEAD
+=======
+        gene_name: str,
+>>>>>>> development
         selected_nodes: List[int],
         baseline_prediction: float,
         hop_dist_map: Dict[int, int],
@@ -237,6 +410,7 @@ class ConnectedComponentPerturbation:
         """Remove nodes in selected_nodes one at a time, compute fold_change,
         hop distance, and store in a dictionary.
         """
+<<<<<<< HEAD
         for node_remove in selected_nodes:
             new_pred = self._remove_nodes_and_predict(
                 sub_data, [node_remove], gene_node
@@ -250,6 +424,25 @@ class ConnectedComponentPerturbation:
                     baseline_prediction, new_pred
                 ),
                 "hop_distance": hop_dist_map.get(node_remove, -1),
+=======
+        if gene_name not in store_dict:
+            store_dict[gene_name] = {}
+
+        predictions = self._remove_nodes_and_predict_batch(
+            sub_data, selected_nodes, gene_node
+        )
+
+        for node_to_remove, new_pred in zip(selected_nodes, predictions):
+            if new_pred is None:
+                continue
+            node_name = self.idxs_inv.get(node_to_remove, str(node_to_remove))
+
+            store_dict[gene_name][node_name] = {
+                "fold_change": calculate_log2_fold_change(
+                    baseline_prediction, new_pred
+                ),
+                "hop_distance": hop_dist_map.get(node_to_remove, -1),
+>>>>>>> development
             }
 
     def _perform_grouped_node_removal(
@@ -282,12 +475,22 @@ class ConnectedComponentPerturbation:
         self,
         sub_data: Data,
         gene_node: int,
+<<<<<<< HEAD
+=======
+        gene_name: str,
+>>>>>>> development
         baseline_prediction: float,
         element_type: str,
         group_size: int,
         store_dict: Dict[Tuple[str, ...], float],
     ) -> None:
         """Do random removals of elements of type `element_type`."""
+<<<<<<< HEAD
+=======
+        if gene_name not in store_dict:
+            store_dict[gene_name] = {}
+
+>>>>>>> development
         element_ids = self._get_elements_in_subgraph(
             sub_data=sub_data, regulatory_element=element_type
         )
@@ -303,13 +506,20 @@ class ConnectedComponentPerturbation:
         )
         if result is not None:
             (names, fc) = result
+<<<<<<< HEAD
             store_dict[names] = fc
+=======
+            store_dict[gene_name][names] = fc
+>>>>>>> development
 
     def run_perturbations(
         self,
         genes_to_analyze: List[int],
+<<<<<<< HEAD
         num_hops: int = 3,
         max_nodes_to_perturb: int = 1221,
+=======
+>>>>>>> development
     ) -> Dict[str, Any]:
         """
         For each gene in genes_to_analyze:
@@ -335,10 +545,18 @@ class ConnectedComponentPerturbation:
         for gene_node in tqdm(
             genes_to_analyze, desc="Connected component pertubration experiments"
         ):
+<<<<<<< HEAD
             # build deterministic subgraph
             sub_data = self._build_k_hop_subgraph(
                 gene_node=gene_node, num_hops=num_hops
             ).to(self.device)
+=======
+            # get gene name
+            gene_name = self.idxs_inv.get(gene_node, str(gene_node))
+
+            # build deterministic subgraph
+            sub_data = self._build_k_hop_subgraph(gene_node=gene_node).to(self.device)
+>>>>>>> development
 
             # compute baseline
             baseline = self._compute_baseline_prediction(
@@ -349,7 +567,10 @@ class ConnectedComponentPerturbation:
             selected_nodes = self._get_nodes_to_perturb(
                 sub_data=sub_data,
                 gene_node=gene_node,
+<<<<<<< HEAD
                 max_nodes_to_perturb=max_nodes_to_perturb,
+=======
+>>>>>>> development
             )
             if not selected_nodes:
                 continue
@@ -363,12 +584,17 @@ class ConnectedComponentPerturbation:
             self._perform_single_node_perturbations(
                 sub_data=sub_data,
                 gene_node=gene_node,
+<<<<<<< HEAD
+=======
+                gene_name=gene_name,
+>>>>>>> development
                 selected_nodes=selected_nodes,
                 baseline_prediction=baseline,
                 hop_dist_map=hop_map,
                 store_dict=perturbations["single"],
             )
 
+<<<<<<< HEAD
             # run joint node perturbations
             for element_string, element in self.element_types:
                 # double removal
@@ -389,6 +615,31 @@ class ConnectedComponentPerturbation:
                     group_size=3,
                     store_dict=perturbations[f"triple_{element}"],
                 )
+=======
+            # only run joint perturbations on 2-hops
+            if self.hops == 2:
+                for element_string, element in self.element_types:
+                    # double removal
+                    self._perform_joint_re_perturbations(
+                        sub_data=sub_data,
+                        gene_node=gene_node,
+                        gene_name=gene_name,
+                        baseline_prediction=baseline,
+                        element_type=element_string,
+                        group_size=2,
+                        store_dict=perturbations[f"double_{element}"],
+                    )
+                    # triple removal
+                    self._perform_joint_re_perturbations(
+                        sub_data=sub_data,
+                        gene_node=gene_node,
+                        gene_name=gene_name,
+                        baseline_prediction=baseline,
+                        element_type=element_string,
+                        group_size=3,
+                        store_dict=perturbations[f"triple_{element}"],
+                    )
+>>>>>>> development
 
         return perturbations
 
@@ -396,22 +647,31 @@ class ConnectedComponentPerturbation:
     def _get_nodes_to_perturb(
         sub_data: Data,
         gene_node: int,
+<<<<<<< HEAD
         max_nodes_to_perturb: int,
     ) -> List[int]:
         """Get list of candidate nodes to remove (excludes the gene_node itself). If
         more nodes are specified than are available, randomly sample from the
         available nodes.
+=======
+    ) -> List[int]:
+        """Get list of candidate nodes to remove (excludes the gene_node itself)
+>>>>>>> development
 
         Args:
             sub_data: Data subgraph batch
             gene_node: idx of the gene of interest
+<<<<<<< HEAD
             max_nodes_to_perturb: Max number of nodes to remove at once
+=======
+>>>>>>> development
 
         Returns:
             List of node indices to remove
         """
         # exclude the gene node itself
         nodes_to_perturb = sub_data.n_id[sub_data.n_id != gene_node]
+<<<<<<< HEAD
 
         if len(nodes_to_perturb) == 0:
             return []
@@ -421,6 +681,9 @@ class ConnectedComponentPerturbation:
             if len(nodes_to_perturb) > max_nodes_to_perturb
             else nodes_to_perturb.tolist()
         )
+=======
+        return [] if len(nodes_to_perturb) == 0 else nodes_to_perturb.tolist()
+>>>>>>> development
 
     @staticmethod
     def _compute_hop_distances(sub_data: Data, gene_node: int) -> Dict[int, int]:

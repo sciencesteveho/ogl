@@ -38,9 +38,16 @@ from omics_graph_learning.interpret.saliency import compute_gradient_saliency
 
 def scale_saliency(saliency_map: torch.Tensor) -> torch.Tensor:
     """Scale saliency map to [0, 1]."""
+<<<<<<< HEAD
     saliency_min, _ = saliency_map.min(dim=0, keepdim=True)  # min feature
     saliency_max, _ = saliency_map.max(dim=0, keepdim=True)  # max feature
     return (saliency_map - saliency_min) / (saliency_max - saliency_min + 1e-9)
+=======
+    # percentile scaling
+    q_low = torch.quantile(saliency_map, 0.05, dim=0)
+    q_high = torch.quantile(saliency_map, 0.95, dim=0)
+    return torch.clamp((saliency_map - q_low) / (q_high - q_low + 1e-9), 0, 1)
+>>>>>>> development
 
 
 def compute_per_edge_attention(
@@ -151,6 +158,10 @@ def main() -> None:
 
     # scale saliency map
     scaled_saliency = scale_saliency(saliency_map)
+<<<<<<< HEAD
+=======
+    torch.save(saliency_map, outpath / "raw_saliency_map.pt")
+>>>>>>> development
     torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
 
     # attention weights for genes

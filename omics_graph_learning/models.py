@@ -53,7 +53,11 @@ class AttentionTaskHead(nn.Module):
 
     Attributes:
         embedding_size: hidden size
+<<<<<<< HEAD
         out_channels: output size (probably 1)
+=======
+        out_channels: output size (probably 1!)
+>>>>>>> development
         num_heads: number of attention heads (default: `2`)
         dropout_rate: % neurons to drop out (default: `0.1`)
     """

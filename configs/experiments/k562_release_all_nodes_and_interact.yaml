@@ -28,8 +28,11 @@ derived_directories:
   target_dir: shared_data/targets
   tpm_dir: shared_data/targets/tpm
 
+<<<<<<< HEAD
 differentiate_tf: false
 
+=======
+>>>>>>> development
 experiment_name: k562_release_all_nodes_all_interact
 
 fasta: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg38.fa
@@ -44,8 +47,11 @@ interaction_types:
   - mirna
   - rbp
 
+<<<<<<< HEAD
 k_fold: null
 
+=======
+>>>>>>> development
 liftover: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/liftOver
 
 liftover_chain: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/hg19ToHg38.over.chain.gz

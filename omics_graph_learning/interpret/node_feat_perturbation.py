@@ -232,12 +232,19 @@ def perturb_node_features(
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
     mask: str = "all",
+<<<<<<< HEAD
     top_n: int = 100,
+=======
+>>>>>>> development
 ) -> Tuple[Dict[int, float], Dict[int, List[Tuple[str, float]]]]:
     """Zero out specified node features and measure the impact on model output.
 
     Computes the output per batch, zeroes out a selected feature, and computes
+<<<<<<< HEAD
     the difference. Differneces are then averaged per node.
+=======
+    the difference. Differences are then averaged per node.
+>>>>>>> development
 
     Args:
         data: torch_geometric Data object
@@ -290,7 +297,11 @@ def perturb_node_features(
     feature_top_genes = get_top_feature_genes(
         feature_indices=feature_indices,
         avg_diffs=avg_diffs,
+<<<<<<< HEAD
         top_n=top_n,
+=======
+        top_n=len(gene_nodes),
+>>>>>>> development
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=gencode_to_symbol,
     )

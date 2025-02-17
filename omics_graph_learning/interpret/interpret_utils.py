@@ -107,6 +107,10 @@ def load_data_and_model(
     # load node index dictionary
     with open(idx_file, "rb") as f:
         idxs = pickle.load(f)
+<<<<<<< HEAD
+=======
+
+>>>>>>> development
     node_idx_to_gene_id, gene_indices = get_gene_idx_mapping(idxs)
 
     idxs_inv = {v: k for k, v in idxs.items()}  # inverse mapping
@@ -444,6 +448,20 @@ def parse_interpret_args() -> argparse.Namespace:
         help="Name of trained model checkpoint.",
         default="GAT_best_model.pt",
     )
+<<<<<<< HEAD
+=======
+    parser.add_argument(
+        "--hops",
+        type=int,
+        default=2,
+        help="Number of hops for k-hop subgraph.",
+    )
+    parser.add_argument(
+        "--sample",
+        type=str,
+        help="Sample name for perturbation experiments.",
+    )
+>>>>>>> development
     # parser.add_argument(
     #     "--experiment",
     #     type=str,

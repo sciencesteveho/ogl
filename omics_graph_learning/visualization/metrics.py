@@ -10,8 +10,13 @@ from typing import List
 import matplotlib.pyplot as plt  # type: ignore
 import seaborn as sns  # type: ignore
 
+<<<<<<< HEAD
 from omics_graph_learning.model_evaluation import ModelComparison
 from omics_graph_learning.model_evaluation import ModelMetrics
+=======
+from omics_graph_learning.model_metrics import ModelComparison
+from omics_graph_learning.model_metrics import ModelMetrics
+>>>>>>> development
 from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
 

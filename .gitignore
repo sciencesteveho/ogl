@@ -6,7 +6,19 @@ omics_graph_learning/__pycache__
 omics_graph_learning.egg-info/
 test/__pycache__
 test/deprecated
+<<<<<<< HEAD
 figures/
 examples/slurm/submit.sh
 configs/deprecated
 requirements-dev.txt
+=======
+examples/slurm/submit.sh
+configs/deprecated
+requirements-dev.txt
+
+# python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+>>>>>>> development
