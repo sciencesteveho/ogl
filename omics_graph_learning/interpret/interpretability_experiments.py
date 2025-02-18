@@ -183,9 +183,9 @@ def main() -> None:
     avg_attention_all = compute_per_edge_attention(raw_attention_weights_all)
     torch.save(avg_attention_all, outpath / "attention_weights_all_nodes.pt")
 
-    # # explainer
-    # # we run explainer on the top 250 high/medium/low expression genes (750
-    # # total) to identify subgraph structures
+    # explainer
+    # we run explainer on the top 250 high/medium/low expression genes (750
+    # total) to identify subgraph structures
     # target_genes = get_nodes_for_explaining(
     #     data=data,
     #     runner=runner,

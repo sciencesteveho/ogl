@@ -6,7 +6,7 @@
 
 
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import torch
 from torch_geometric.data import Data  # type: ignore
@@ -87,54 +87,80 @@ def compute_feature_perturbation(
     batch: Data,
     mask_tensor: torch.Tensor,
     baseline_output: torch.Tensor,
-    feature_indices: List[int],
-) -> Dict[int, Dict[int, List[float]]]:
-    """For each feature index, zero out that feature in the batch and compute
-    the difference in model output from the baseline.
+    feature_indices: Union[List[int], List[Tuple[int, int]]],
+) -> Dict[Union[int, Tuple[int, int]], Dict[int, List[float]]]:
+    """Zero out each single feature in feature_indices if it is a list of ints,
+    or zero out both features if it's a list of (idx1, idx2) tuples.
 
     Returns:
-        {feature_index: {node_index: [differences]}}
+        {
+            feature_index_or_pair: {
+                node_index: [differences]
+            }
+        }
     """
     feature_node_differences = defaultdict(lambda: defaultdict(list))
     node_indices = batch.n_id[mask_tensor].cpu()
 
-    for feat_idx in feature_indices:
-        x_perturbed = batch.x.clone()
-        x_perturbed[:, feat_idx] = 0  # zero out selected feature
+    if not feature_indices:
+        return feature_node_differences
 
-        with torch.no_grad():
-            perturbed_out, _ = runner.model(
-                x=x_perturbed,
-                edge_index=batch.edge_index,
-                mask=mask_tensor,
-            )
-        perturbed_out = perturbed_out[mask_tensor].cpu()
+    first = feature_indices[0]
+    if isinstance(first, int):
+        for feat_idx in feature_indices:
+            x_perturbed = batch.x.clone()
+            x_perturbed[:, feat_idx] = 0  # zero out the single feature
 
-        diff = baseline_output - perturbed_out
-        for idx, d in zip(node_indices, diff):
-            feature_node_differences[feat_idx][idx.item()].append(d.item())
+            with torch.no_grad():
+                perturbed_out, _ = runner.model(
+                    x=x_perturbed,
+                    edge_index=batch.edge_index,
+                    mask=mask_tensor,
+                )
+            perturbed_out = perturbed_out[mask_tensor].cpu()
+
+            diff = baseline_output - perturbed_out
+            for idx, d in zip(node_indices, diff):
+                feature_node_differences[feat_idx][idx.item()].append(d.item())
+
+    else:
+        for feat_idx1, feat_idx2 in feature_indices:
+            x_perturbed = batch.x.clone()
+            x_perturbed[:, feat_idx1] = 0
+            x_perturbed[:, feat_idx2] = 0
+
+            with torch.no_grad():
+                perturbed_out, _ = runner.model(
+                    x=x_perturbed,
+                    edge_index=batch.edge_index,
+                    mask=mask_tensor,
+                )
+            perturbed_out = perturbed_out[mask_tensor].cpu()
+
+            diff = baseline_output - perturbed_out
+            for idx, d in zip(node_indices, diff):
+                feature_node_differences[(feat_idx1, feat_idx2)][idx.item()].append(
+                    d.item()
+                )
 
     return feature_node_differences
 
 
 def compute_average_node_differences(
-    feature_node_differences: Dict[int, Dict[int, List[float]]]
-) -> Dict[int, Dict[int, float]]:
-    """Compute the average difference for each node, for each feature index.
-
-    Args:
-        feature_node_differences: {feature_index: node_index: [differences]}
-
-    Returns:
-        {feature_index: node_index: average difference}
+    feature_node_differences: Dict[Union[int, Tuple[int, int]], Dict[int, List[float]]]
+) -> Dict[Union[int, Tuple[int, int]], Dict[int, float]]:
+    """Compute the average difference for each node, for each feature index or
+    feature tuple.
     """
     return {
-        feat_idx: {node: sum(vals) / len(vals) for node, vals in node_diffs.items()}
-        for feat_idx, node_diffs in feature_node_differences.items()
+        feature_key: {node: sum(vals) / len(vals) for node, vals in node_diffs.items()}
+        for feature_key, node_diffs in feature_node_differences.items()
     }
 
 
-def compute_fold_changes(avg_diffs: Dict[int, Dict[int, float]]) -> Dict[int, float]:
+def compute_fold_changes(
+    avg_diffs: Dict[Union[int, Tuple[int, int]], Dict[int, float]]
+) -> Dict[Union[int, Tuple[int, int]], float]:
     """Compute the overall average difference (fold change) per feature index.
 
     Args:
@@ -202,24 +228,27 @@ def map_nodes_to_symbols(
 
 
 def get_top_feature_genes(
-    feature_indices: List[int],
-    avg_diffs: Dict[int, Dict[int, float]],
+    feature_indices: Union[List[int], List[Tuple[int, int]]],
+    avg_diffs: Dict[Union[int, Tuple[int, int]], Dict[int, float]],
     top_n: int,
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
-) -> Dict[int, List[Tuple[str, float]]]:
+) -> Dict[Union[int, Tuple[int, int]], List[Tuple[str, float]]]:
     """Get top nodes by average difference for each feature index and map them
     to gene symbols.
     """
+    if not feature_indices:
+        return {}
+
     feature_top_genes = {}
-    for feat_idx in feature_indices:
-        top_nodes = get_top_n_nodes(avg_diffs[feat_idx], n=top_n)
+    for feature_key in feature_indices:
+        top_nodes = get_top_n_nodes(avg_diffs[feature_key], n=top_n)
         top_genes = map_nodes_to_symbols(
             top_nodes,
             node_idx_to_gene_id=node_idx_to_gene_id,
             gencode_to_symbol=gencode_to_symbol,
         )
-        feature_top_genes[feat_idx] = top_genes
+        feature_top_genes[feature_key] = top_genes
 
     return feature_top_genes
 
@@ -227,12 +256,15 @@ def get_top_feature_genes(
 def perturb_node_features(
     data: Data,
     runner: PerturbRunner,
-    feature_indices: List[int],
+    feature_indices: Union[List[int], List[Tuple[int, int]]],
     device: torch.device,
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
     mask: str = "all",
-) -> Tuple[Dict[int, float], Dict[int, List[Tuple[str, float]]]]:
+) -> Tuple[
+    Dict[Union[int, Tuple[int, int]], float],
+    Dict[Union[int, Tuple[int, int]], List[Tuple[str, float]]],
+]:
     """Zero out specified node features and measure the impact on model output.
 
     Computes the output per batch, zeroes out a selected feature, and computes
@@ -250,7 +282,12 @@ def perturb_node_features(
         top_n (int): Number of top genes to save
 
     Returns:
-        ({feature_index: overall average diff}, {feature_index: list of top gene diffs})
+        (feature_fold_changes, feature_top_genes) where
+          feature_fold_changes = { feature_key -> overall average diff }
+          feature_top_genes     = { feature_key -> list of (gene_symbol, diff) }
+
+        For single-feature runs, keys = int
+        For pair-feature runs, keys = tuple(int, int)
     """
     global_differences = defaultdict(lambda: defaultdict(list))
 
