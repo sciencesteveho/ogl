@@ -271,11 +271,31 @@ class GraphToPytorch:
         )
 
 
-def get_subset_chromosomes(num_chrs: int = 8) -> List[str]:
-    """Return the subset of chromosomes to use for hyperparameter
-    optimization.
+def get_subset_chromosomes(
+    val_chrs: List[str], test_chrs: List[str], num_chrs: int = 8
+) -> List[str]:
+    """Return the subset of chromosomes to use for hyperparameter optimization.
+    If any chr in test_chrs or val_chrs, remove them and get the next
+    optimization chromosomes.
     """
-    return SUBSET_CHROMOSOMES[:num_chrs]
+    initial_subset = SUBSET_CHROMOSOMES[:num_chrs]
+
+    # remove chrs that appear in val or test
+    removed_count = 0
+    for chrom in val_chrs + test_chrs:
+        if chrom in initial_subset:
+            initial_subset.remove(chrom)
+            removed_count += 1
+
+    # get the next chromosomes to replace
+    next_chrs = []
+    for chrom in SUBSET_CHROMOSOMES[num_chrs:]:
+        if chrom not in val_chrs and chrom not in test_chrs:
+            next_chrs.append(chrom)
+        if len(next_chrs) == removed_count:
+            break
+
+    return initial_subset + next_chrs
 
 
 def _assign_nodes_to_split(

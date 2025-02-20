@@ -17,6 +17,7 @@ from matplotlib.collections import PolyCollection  # type: ignore
 from matplotlib.colors import LogNorm  # type: ignore
 import matplotlib.colors as mcolors
 from matplotlib.figure import Figure  # type: ignore
+import matplotlib.gridspec as gridspec  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 from numpy import sqrt
 import numpy as np
@@ -156,7 +157,7 @@ def plot_sample_level_saliency(
 
     # plot saliency heatmap
     fix, ax = plt.subplots()
-    sns.heatmap(saliency_reordered, cmap=plt.cm.RdBu_r, cbar=False, ax=ax)  # type: ignore
+    sns.heatmap(saliency_reordered, cmap="viridis", cbar=False, ax=ax)  # type: ignore
 
     cbar = plt.colorbar(
         ax.collections[0],
@@ -291,7 +292,7 @@ def plot_selected_saliency(
 
     # plot saliency heatmap for selected indices
     fig, ax = plt.subplots()
-    sns.heatmap(saliency_selected, cmap=plt.cm.RdBu_r, cbar=False, ax=ax)  # type: ignore
+    sns.heatmap(saliency_selected, cmap="viridis", cbar=False, ax=ax)  # type: ignore
 
     # add colorbar
     cbar = plt.colorbar(
@@ -329,6 +330,130 @@ def plot_selected_saliency(
 
     plt.tight_layout()
     plt.savefig(f"{outpath}/saliency_map_{node_type}.png", dpi=450, bbox_inches="tight")
+    plt.clf()
+    plt.close()
+
+
+def plot_avg_saliency_heatmap(df: pd.DataFrame) -> None:
+    """Plot the average saliency scores per node feature as an annotated heatmap
+    with violin plots that illustrate the distribution of scores across tissues.
+    """
+    set_matplotlib_publication_parameters()
+    df = df.iloc[:, 5:]
+    df = df.rename(columns=FEATURES)
+
+    fig = plt.figure(figsize=(12, 5))
+    gs = gridspec.GridSpec(2, 1, height_ratios=[1, 4], hspace=0.05)
+    ax_violin = fig.add_subplot(gs[0])
+    ax_heat = fig.add_subplot(gs[1])
+
+    # get colors
+    n_features = len(df.columns)
+    feature_colors = plt.cm.tab20(np.linspace(0, 1, n_features))  # type: ignore
+
+    # melt df
+    df_melt = df.reset_index().melt(
+        id_vars="index", var_name="Feature", value_name="AvgSaliency"
+    )
+    feature_order = list(df.columns)
+
+    sns.violinplot(
+        data=df_melt,
+        x="Feature",
+        y="AvgSaliency",
+        order=feature_order,
+        ax=ax_violin,
+        cut=0,
+        inner="box",
+        density_norm="width",
+        linewidth=0.5,
+        palette=list(feature_colors),
+        width=0.7,
+        saturation=1.0,
+        inner_kws=dict(box_width=2),
+        hue="Feature",
+        legend=False,
+    )
+
+    # clean up the violin plot axes
+    ax_violin.set_xlabel("")
+    ax_violin.set_ylabel("")
+    ax_violin.set_xticklabels([])
+    ax_violin.grid(False)
+    for spine in ["top", "right", "bottom", "left"]:
+        ax_violin.spines[spine].set_linewidth(0.5)
+        ax_violin.spines[spine].set_color("black")
+
+    # custom colormap cause pretty pretty
+    colors = [
+        "#08306b",
+        "#083c9c",
+        "#08519c",
+        "#3182bd",
+        "#7cabf7",
+        "#81cffc",
+        "#ffffff",
+        "#fc9179",
+        "#fb6a4a",
+        "#fb504a",
+        "#db2727",
+        "#9c0505",
+        "#99000d",
+    ]
+    cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors, N=100)
+
+    # set vmin and vmax for heatmap
+    vmin = df.min().min()
+    vmax = df.max().max()
+
+    # plot heatmap
+    sns.heatmap(
+        df,
+        cmap="viridis",
+        ax=ax_heat,
+        cbar_kws={
+            "label": "Average saliency score",
+            "shrink": 0.3,
+            "aspect": 6.5,
+            "orientation": "vertical",
+            "pad": 0.012,
+        },
+        xticklabels=feature_order,
+        linewidths=0.1,
+        linecolor="white",
+        square=True,
+        vmin=vmin,
+        vmax=vmax,
+    )
+
+    ax_heat.set_xticklabels(feature_order, rotation=90, ha="center", va="top", y=-0.005)
+
+    # add colored squares to the x-axis labels corresponding to each feature
+    for label, color in zip(ax_heat.get_xticklabels(), feature_colors):
+        text = label.get_text()
+        pos = label.get_position()
+        label._text = f"{text}"
+        ax_heat.text(
+            pos[0],
+            pos[1] + 0.04,
+            "■",
+            fontsize=10,
+            color=color,
+            transform=label.get_transform(),
+            rotation=90,
+            va=label.get_va(),
+            ha=label.get_ha(),
+        )
+
+    # align the violin plot with the heatmap.
+    heatmap_pos = ax_heat.get_position()
+    violin_pos = ax_violin.get_position()
+    ax_violin.set_position(
+        [heatmap_pos.x0, violin_pos.y0, heatmap_pos.width, violin_pos.height]
+    )
+
+    plt.tight_layout()
+    plt.savefig("average_saliency_heatmap.png", dpi=450, bbox_inches="tight")
     plt.clf()
     plt.close()
 
@@ -378,6 +503,22 @@ def main() -> None:
 
     # get average saliency per tissue per idx
     # combine into a single df for heatmap
+    all_tissue_avgs = []
+    for tissue in TISSUES:
+        outpath = f"{interp_path}/{tissue}_release"
+        saliency_map = f"{outpath}/scaled_saliency_map.pt"
+
+        # load saliency map
+        saliency = torch.load(saliency_map)
+        saliency_np = (
+            saliency.detach().cpu().numpy() if hasattr(saliency, "detach") else saliency
+        )
+
+        avg_saliency = np.mean(saliency_np, axis=0)
+        all_tissue_avgs.append(avg_saliency)
+
+    df = pd.DataFrame(all_tissue_avgs, index=list(TISSUES.values()))
+    plot_avg_saliency_heatmap(df)
 
 
 if __name__ == "__main__":
