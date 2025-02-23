@@ -272,7 +272,7 @@ class GraphToPytorch:
 
 
 def get_subset_chromosomes(
-    val_chrs: List[str], test_chrs: List[str], num_chrs: int = 8
+    val_chrs: List[str], test_chrs: List[str], num_chrs: int = 12
 ) -> List[str]:
     """Return the subset of chromosomes to use for hyperparameter optimization.
     If any chr in test_chrs or val_chrs, remove them and get the next
@@ -317,7 +317,11 @@ def _assign_nodes_to_split(
     coordinates = graph_data["node_coordinates"]
     train, test, validation, train_subset = [], [], [], []
 
-    subset_train_chrs = get_subset_chromosomes(num_chrs=num_optimization_chrs)
+    subset_train_chrs = get_subset_chromosomes(
+        val_chrs=val_chrs,
+        test_chrs=test_chrs,
+        num_chrs=num_optimization_chrs,
+    )
 
     for node in range(graph_data["num_nodes"]):
         chromosome = coordinates[node][0]
