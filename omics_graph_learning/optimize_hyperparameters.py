@@ -44,7 +44,6 @@ from omics_graph_learning.utils.common import check_cuda_env
 from omics_graph_learning.utils.common import dir_check_make
 from omics_graph_learning.utils.common import PyGDataChecker
 from omics_graph_learning.utils.common import setup_logging
-from omics_graph_learning.utils.common import tensor_out_to_array
 from omics_graph_learning.utils.config_handlers import ExperimentConfig
 
 # helpers for trial

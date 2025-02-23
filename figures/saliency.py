@@ -110,7 +110,6 @@ def sort_by_type(idxs: Dict[str, int]) -> Tuple[Dict[int, int], List[int]]:
     dyadic = {k: v for k, v in idxs.items() if "dyadic" in k}
     enhancer = {k: v for k, v in idxs.items() if "enhancer" in k}
 
-    # create a mapping from old indices to new positions
     old_to_new = {}
     current_pos = 0
 
@@ -121,13 +120,32 @@ def sort_by_type(idxs: Dict[str, int]) -> Tuple[Dict[int, int], List[int]]:
             current_pos += 1
 
     # calculate separation points
-    separation_points: List[int] = [
+    separation_points = [
         len(ensg),
         len(ensg) + len(promoter),
         len(ensg) + len(promoter) + len(dyadic),
     ]
 
     return old_to_new, separation_points
+
+
+def get_old_indices_for_type(idxs: Dict[str, int], node_type: str) -> List[int]:
+    """Return a sorted list of the old indices (original indexing) corresponding
+    to the requested node_type: 'genes', 'promoters', 'dyadic', or
+    'enhancers'.
+    """
+    if node_type == "genes":
+        subset = [v for (k, v) in idxs.items() if k.startswith("ENSG")]
+    elif node_type == "promoters":
+        subset = [v for (k, v) in idxs.items() if "promoter" in k]
+    elif node_type == "dyadic":
+        subset = [v for (k, v) in idxs.items() if "dyadic" in k]
+    elif node_type == "enhancers":
+        subset = [v for (k, v) in idxs.items() if "enhancer" in k]
+    else:
+        raise ValueError(f"Unknown node_type '{node_type}'.")
+
+    return sorted(subset)
 
 
 def plot_sample_level_saliency(
@@ -226,8 +244,8 @@ def plot_sample_level_saliency(
     )
 
     # add plot descriptors
-    plt.xlabel("Features")
-    plt.ylabel("Nodes")
+    num_nodes = saliency_reordered.shape[0]
+    plt.ylabel(f"{num_nodes:,} nodes")
     plt.title(f"{tissue} input x gradient saliency map")
 
     plt.tight_layout()
@@ -251,13 +269,6 @@ def plot_selected_saliency(
     corresponding to the provided original (pre-reordering) indices is selected.
     The y-axis is labeled with the original indices.
     """
-    import pickle
-    from typing import List, Union
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import seaborn as sns
-    import torch
 
     # load indices
     with open(idx_file, "rb") as f:
@@ -324,8 +335,8 @@ def plot_selected_saliency(
     )
 
     # plot descriptors
-    plt.xlabel("Features")
-    plt.ylabel("Nodes")
+    num_nodes = saliency_selected.shape[0]
+    plt.ylabel(f"{num_nodes:,} nodes")
     plt.title(f"{tissue} input x gradient saliency map ({node_type})")
 
     plt.tight_layout()
@@ -334,7 +345,7 @@ def plot_selected_saliency(
     plt.close()
 
 
-def plot_avg_saliency_heatmap(df: pd.DataFrame) -> None:
+def plot_avg_saliency_heatmap(df: pd.DataFrame, node_type: str) -> None:
     """Plot the average saliency scores per node feature as an annotated heatmap
     with violin plots that illustrate the distribution of scores across tissues.
     """
@@ -412,7 +423,7 @@ def plot_avg_saliency_heatmap(df: pd.DataFrame) -> None:
         cmap="viridis",
         ax=ax_heat,
         cbar_kws={
-            "label": "Average saliency score",
+            "label": "Gradient saliency",
             "shrink": 0.3,
             "aspect": 6.5,
             "orientation": "vertical",
@@ -453,7 +464,9 @@ def plot_avg_saliency_heatmap(df: pd.DataFrame) -> None:
     )
 
     plt.tight_layout()
-    plt.savefig("average_saliency_heatmap.png", dpi=450, bbox_inches="tight")
+    plt.savefig(
+        f"average_saliency_heatmap_{node_type}.png", dpi=450, bbox_inches="tight"
+    )
     plt.clf()
     plt.close()
 
@@ -472,53 +485,65 @@ def main() -> None:
         plot_sample_level_saliency(TISSUES[tissue], saliency_map, idx_file, outpath)
 
     # plot selected saliency
-    tissue = "k562"
-    outpath = f"{interp_path}/{tissue}_release"
-    saliency_map = f"{outpath}/scaled_saliency_map.pt"
-    idx_file = f"{idx_path}/{tissue}_release_full_graph_idxs.pkl"
     # k562 separation points
     # [46346, 72678, 158781]
     # for k562, run selected saliency for genes, promoters, dyadic, enhancers
-    for node_type in ["genes", "promoters", "dyadic", "enhancers"]:
-        plot_selected_saliency(
-            tissue=TISSUES["k562"],
-            saliency_map=saliency_map,
-            idx_file=idx_file,
-            outpath=outpath,
-            selected_idxs=(
-                range(46346)
-                if node_type == "genes"
-                else (
-                    range(46346, 72678)
-                    if node_type == "promoters"
-                    else (
-                        range(72678, 158781)
-                        if node_type == "dyadic"
-                        else range(158781, 833700)
-                    )
-                )
-            ),
-            node_type=node_type,
-        )
-
-    # get average saliency per tissue per idx
-    # combine into a single df for heatmap
-    all_tissue_avgs = []
     for tissue in TISSUES:
         outpath = f"{interp_path}/{tissue}_release"
         saliency_map = f"{outpath}/scaled_saliency_map.pt"
+        idx_file = f"{idx_path}/{tissue}_release_full_graph_idxs.pkl"
+        for node_type in ["genes", "promoters", "dyadic", "enhancers"]:
+            with open(idx_file, "rb") as f:
+                idxs = pickle.load(f)
 
-        # load saliency map
-        saliency = torch.load(saliency_map)
-        saliency_np = (
-            saliency.detach().cpu().numpy() if hasattr(saliency, "detach") else saliency
-        )
+            type_specific_idxs = get_old_indices_for_type(idxs, node_type)
+            plot_selected_saliency(
+                tissue=TISSUES[tissue],
+                saliency_map=saliency_map,
+                idx_file=idx_file,
+                outpath=outpath,
+                selected_idxs=type_specific_idxs,
+                node_type=node_type,
+            )
 
-        avg_saliency = np.mean(saliency_np, axis=0)
-        all_tissue_avgs.append(avg_saliency)
+    # get average saliency per tissue per idx
+    # combine into a single df for heatmap
+    for node_type in ["genes", "promoters", "dyadic", "enhancers"]:
+        all_tissue_avgs = []
+        for tissue in TISSUES:
+            outpath = f"{interp_path}/{tissue}_release"
+            saliency_map = f"{outpath}/scaled_saliency_map.pt"
+            idx_file = f"{idx_path}/{tissue}_release_full_graph_idxs.pkl"
 
-    df = pd.DataFrame(all_tissue_avgs, index=list(TISSUES.values()))
-    plot_avg_saliency_heatmap(df)
+            with open(idx_file, "rb") as f:
+                idxs = pickle.load(f)
+
+            type_specific_idxs = get_old_indices_for_type(idxs, node_type)
+
+            # load saliency map
+            saliency = torch.load(saliency_map)
+            saliency_np = (
+                saliency.detach().cpu().numpy()
+                if hasattr(saliency, "detach")
+                else saliency
+            )
+
+            # filter for selected indices
+            saliency_selected = saliency_np[type_specific_idxs]
+            avg_saliency = np.mean(saliency_selected, axis=0)
+            all_tissue_avgs.append(avg_saliency)
+
+        df = pd.DataFrame(all_tissue_avgs, index=list(TISSUES.values()))
+        plot_avg_saliency_heatmap(df, node_type)
+
+    """
+    get promoter idxs > 0.9 for cpg
+    row_indices = np.where(saliency_selected[:, 9] == 1)[0]
+    print(idxs)
+    
+    # subset saliency_selected for these rows
+    saliency_subset = saliency_selected[row_indices]
+    """
 
 
 if __name__ == "__main__":

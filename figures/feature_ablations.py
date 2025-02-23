@@ -117,7 +117,31 @@ def load_node_feature_ablations() -> pd.DataFrame:
     return df
 
 
-def plot_node_feature_ablations(df: pd.DataFrame) -> None:
+def load_double_node_feature_ablations() -> pd.DataFrame:
+    """Load the node feature ablations for double perturbations."""
+    data_frames = []
+    for tissue, tissue_name in TISSUES.items():
+        file = f"{tissue}_release/node_feature_perturbations_double.pkl"
+        with open(file, "rb") as f:
+            node_feat_ablation = pickle.load(f)
+            df_sample = pd.DataFrame(
+                node_feat_ablation.values(), index=node_feat_ablation.keys()
+            ).T
+            df_sample.index = pd.Index([tissue_name])
+            data_frames.append(df_sample)
+
+    # concatenate all the dataframes
+    # change column idx names to proper feature names
+    df = pd.concat(data_frames)
+    df.columns = pd.Index(
+        [f"{FEATURES.get(idx[0])} & {FEATURES.get(idx[1])}" for idx in df.columns]
+    )
+    return df
+
+
+def plot_node_feature_ablations(
+    df: pd.DataFrame, savename: str, log2: bool = True
+) -> None:
     """Plot the node features ablations as an annotated heatmap, where the
     heatmap has violin plots to illustrate distribution of fold changes.
     """
@@ -193,6 +217,7 @@ def plot_node_feature_ablations(df: pd.DataFrame) -> None:
 
     # plot heatmap
     vmax = max(abs(df.max().max()), abs(df.min().min()))
+    heatmap_label = r"Log$_2$ fold change" if log2 else "Difference from additivity"
     sns.heatmap(
         df,
         cmap=cmap,
@@ -201,7 +226,7 @@ def plot_node_feature_ablations(df: pd.DataFrame) -> None:
         # vmin=-vmax,
         ax=ax_heat,
         cbar_kws={
-            "label": "Log fold change",
+            "label": heatmap_label,
             "shrink": 0.3,
             "aspect": 6.5,
             "orientation": "vertical",
@@ -242,7 +267,7 @@ def plot_node_feature_ablations(df: pd.DataFrame) -> None:
     )
 
     # save
-    plt.savefig("node_feature_ablations.png", dpi=450, bbox_inches="tight")
+    plt.savefig(f"{savename}.png", dpi=450, bbox_inches="tight")
     plt.clf()
 
 
@@ -433,11 +458,183 @@ def collate_enrichment_results(
 
 def main() -> None:
     """Main function to generate ablation figures."""
-    # # make node_ablation heatmap figures
-    # df = load_node_feature_ablations()
+    # make node_ablation heatmap figures
+    df = load_node_feature_ablations()
+    plot_node_feature_ablations(df, savename="node_feature_ablations")
 
-    # # plot the heatmap
-    # plot_node_feature_ablations(df)
+    double_df = load_double_node_feature_ablations()
+    plot_node_feature_ablations(double_df, savename="double_node_feature_ablations")
+
+    # combine df and double df
+    df = pd.concat([df, double_df], axis=1)
+
+    # get atac combinations
+    # string_matches = ['ATAC', 'H3', 'CpG', 'DNase', 'Micro']
+    atac_columns = [col for col in df.columns if "ATAC" in col]
+    atac_df = df[atac_columns]
+    plot_node_feature_ablations(atac_df, savename="atac_node_feature_ablations")
+
+    # get H3K27ac combinations
+    h3k27ac_columns = [
+        col for col in df.columns if "H3K27ac" in col and "ATAC" not in col
+    ]
+    h3k27ac_df = df[h3k27ac_columns]
+    plot_node_feature_ablations(h3k27ac_df, savename="h3k27ac_node_feature_ablations")
+
+    # get all histones
+    # get H3K27ac combinations
+    h3_columns = [col for col in df.columns if "H3" in col and "ATAC" not in col]
+    h3_df = df[h3_columns]
+    plot_node_feature_ablations(h3_df, savename="h3_node_feature_ablations")
+
+    # additive analysis
+    double_cols = [c for c in h3_df.columns if " & " in c]
+    synergy_df = df[double_cols]
+
+    for combo_col in double_cols:
+        single1, single2 = combo_col.split(" & ")
+
+        # observed combined effect
+        observed = h3_df[combo_col]
+
+        # predicted additive effect = sum of each single
+        predicted = h3_df[single1] + h3_df[single2]
+
+        # synergy (positive => synergy, negative => antagonism)
+        synergy_col_name = combo_col + " (synergy)"
+        synergy_df[synergy_col_name] = observed - predicted
+
+    # only keep synergy columns
+    synergy_df = synergy_df[[c for c in synergy_df.columns if "synergy" in c]]
+
+    # remove (synergy) from column names
+    synergy_df.columns = [c.replace(" (synergy)", "") for c in synergy_df.columns]
+    plot_node_feature_ablations(synergy_df, savename="h3_additive", log2=False)
+
+    # plot scatter
+    for combo_col in double_cols:
+        single1, single2 = combo_col.split(" & ")
+        observed = h3_df[combo_col]
+        predicted = h3_df[single1] + h3_df[single2]
+
+        # Make a small scatter for each pair, 1 point per tissue
+        plt.figure(figsize=(2, 2))
+        plt.scatter(predicted, observed, c="dodgerblue", alpha=0.7, s=7.5, linewidth=0)
+
+        # Add identity line for reference
+        min_val = min(predicted.min(), observed.min())
+        max_val = max(predicted.max(), observed.max())
+        plt.plot(
+            [min_val, max_val], [min_val, max_val], "k--", linewidth=0.5, c="darkgray"
+        )
+
+        # remove whitespace
+        plt.xlim(min_val, max_val)
+        plt.ylim(min_val, max_val)
+
+        plt.xlabel("Predicted additive effect")
+        plt.ylabel("Observed combined effect")
+        plt.title(f"{single1} + {single2}")
+        plt.tight_layout()
+        plt.savefig(f"{combo_col}_scatter.png", dpi=450)
+        plt.clf()
+        plt.close()
+
+    # additive analysis for ATAC
+    atac_double_cols = [c for c in atac_df.columns if " & " in c]
+    atac_synergy_df = df[atac_double_cols]
+
+    for combo_col in atac_double_cols:
+        single1, single2 = combo_col.split(" & ")
+
+        # observed combined effect
+        observed = df[combo_col]
+
+        # predicted additive effect = sum of each single
+        predicted = df[single1] + df[single2]
+
+        # synergy (positive => synergy, negative => antagonism)
+        synergy_col_name = combo_col + " (synergy)"
+        atac_synergy_df[synergy_col_name] = observed - predicted
+
+    # only keep synergy columns
+    atac_synergy_df = atac_synergy_df[
+        [c for c in atac_synergy_df.columns if "synergy" in c]
+    ]
+
+    # remove (synergy) from column names
+    atac_synergy_df.columns = [
+        c.replace(" (synergy)", "") for c in atac_synergy_df.columns
+    ]
+    plot_node_feature_ablations(atac_synergy_df, savename="atac_additive", log2=False)
+
+    # plot scatter
+    for combo_col in atac_double_cols:
+        single1, single2 = combo_col.split(" & ")
+        observed = df[combo_col]
+        predicted = df[single1] + df[single2]
+
+        # Make a small scatter for each pair, 1 point per tissue
+        plt.figure(figsize=(2, 2))
+        plt.scatter(predicted, observed, c="dodgerblue", alpha=0.7, s=7.5, linewidth=0)
+
+        # Add identity line for reference
+        min_val = min(predicted.min(), observed.min())
+        max_val = max(predicted.max(), observed.max())
+        plt.plot(
+            [min_val, max_val], [min_val, max_val], "k--", linewidth=0.5, c="darkgray"
+        )
+
+        # remove whitespace
+        plt.xlim(min_val, max_val)
+        plt.ylim(min_val, max_val)
+
+        plt.xlabel("Predicted additive effect")
+        plt.ylabel("Observed combined effect")
+        plt.title(f"{single1} + {single2}")
+        plt.tight_layout()
+        plt.savefig(f"{combo_col}_scatter.png", dpi=450)
+        plt.clf()
+        plt.close()
+
+    # plot facet
+    n_rows = 4
+    n_cols = 4
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3.5, 4))
+    for i, combo_col in enumerate(double_cols):
+        row = i // n_cols
+        col = i % n_cols
+        ax = axes[row, col]
+        single1, single2 = combo_col.split(" & ")
+
+        observed = h3_df[combo_col]
+        predicted = h3_df[single1] + h3_df[single2]
+
+        ax.scatter(predicted, observed, c="dodgerblue", alpha=0.7, s=4, linewidth=0)
+
+        min_val = min(predicted.min(), observed.min())
+        max_val = max(predicted.max(), observed.max())
+        ax.plot(
+            [min_val, max_val], [min_val, max_val], "k--", linewidth=0.5, c="darkgray"
+        )
+
+        ax.set_xlim(min_val, max_val)
+        ax.set_ylim(min_val, max_val)
+
+        ax.set_title(f"{single1} + {single2}")
+
+    for ax in axes.flat:
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+
+    fig.supxlabel("Predicted additive effect", y=0.04)
+    fig.supylabel("Observed combined effect", x=0.04)
+
+    plt.tight_layout()
+    plt.savefig("facet_scatter_plots.png", dpi=450)
+    plt.clf()
+    plt.close()
 
     # make individual GO enrichment figures
     working_dir = "/Users/steveho/gnn_plots"
@@ -531,3 +728,44 @@ if __name__ == "__main__":
 #     cutoff=0.25,
 # )
 # ax.figure.savefig("test_gsea_reactome.png", dpi=300)
+
+
+# import math
+# import seaborn as sns
+# import matplotlib.pyplot as plt
+
+# n_rows = 4
+# n_cols = 2
+
+# fig, axes = plt.subplots(n_rows, n_cols, figsize=(3.5, 4))
+# for i, combo_col in enumerate(double_cols[:8]):
+#     row = i // n_cols
+#     col = i % n_cols
+#     ax = axes[row, col]
+#     single1, single2 = combo_col.split(" & ")
+
+#     observed = h3_df[combo_col]
+#     predicted = h3_df[single1] + h3_df[single2]
+
+#     ax.scatter(predicted, observed, c="dodgerblue", alpha=0.7, s=4, linewidth=0)
+
+#     min_val = min(predicted.min(), observed.min())
+#     max_val = max(predicted.max(), observed.max())
+#     ax.plot([min_val, max_val], [min_val, max_val], "k--", linewidth=0.5, c="darkgray")
+
+#     ax.set_xlim(min_val, max_val)
+#     ax.set_ylim(min_val, max_val)
+
+#     ax.set_title(f"{single1} + {single2}")
+
+# for ax in axes.flat:
+#     ax.set_xlabel("")
+#     ax.set_ylabel("")
+
+# fig.supxlabel("Predicted additive effect", y=0.04)
+# fig.supylabel("Observed combined effect", x=0.04)
+
+# plt.tight_layout()
+# plt.savefig("facet_scatter_plots.png", dpi=450)
+# plt.clf()
+# plt.close()
