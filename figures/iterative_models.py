@@ -19,6 +19,46 @@ import seaborn as sns  # type: ignore
 from omics_graph_learning.model_metrics import ModelMetrics
 from omics_graph_learning.visualization import set_matplotlib_publication_parameters
 
+FEATURES = {
+    5: "Size",
+    6: "GC-content",
+    7: "ATAC",
+    8: "CNV",
+    9: "CpG methylation",
+    10: "CTCF",
+    11: "DNase",
+    12: "H3K27ac",
+    13: "H3K27me3",
+    14: "H3K36me3",
+    15: "H3K4me1",
+    16: "H3K4me2",
+    17: "H3K4me3",
+    18: "H3K79me2",
+    19: "H3K9ac",
+    20: "H3K9me3",
+    21: "Indels",
+    22: "LINE",
+    23: "Long terminal repeats",
+    24: "Microsatellites",
+    25: "PhastCons",
+    26: "POLR2A",
+    27: "PolyA sites",
+    28: "RAD21",
+    29: "RBP binding sites",
+    30: "Recombination rate",
+    31: "Rep G1b",
+    32: "Rep G2",
+    33: "Rep S1",
+    34: "Rep S2",
+    35: "Rep S3",
+    36: "Rep S4",
+    37: "RNA repeat",
+    38: "Simple repeats",
+    39: "SINE",
+    40: "SMC3",
+    41: "SNP",
+}
+
 
 def plot_optimization_history(
     optuna_log: str,
@@ -296,18 +336,68 @@ def main() -> None:
         "k562_allcontacts_global_gene_gene": "Local only",
     }
 
+    randomized_node_features = {
+        "k562_release_replicate_3": "Baseline",
+        "k562_release_randomize_all_feats": "All features randomized",
+        "k562_release_randomize_node_5": "Size randomized",
+        "k562_release_randomize_node_6": "GC-content randomized",
+        "k562_release_randomize_node_7": "ATAC randomized",
+        "k562_release_randomize_node_8": "CNV randomized",
+        "k562_release_randomize_node_9": "CpG methylation randomized",
+        "k562_release_randomize_node_10": "CTCF randomized",
+        "k562_release_randomize_node_11": "DNase randomized",
+        "k562_release_randomize_node_12": "H3K27ac randomized",
+        "k562_release_randomize_node_13": "H3K27me3 randomized",
+        "k562_release_randomize_node_14": "H3K36me3 randomized",
+        "k562_release_randomize_node_15": "H3K4me1 randomized",
+        "k562_release_randomize_node_16": "H3K4me2 randomized",
+        "k562_release_randomize_node_17": "H3K4me3 randomized",
+        "k562_release_randomize_node_18": "H3K79me2 randomized",
+        "k562_release_randomize_node_19": "H3K9ac randomized",
+        "k562_release_randomize_node_20": "H3K9me3 randomized",
+        "k562_release_randomize_node_21": "Indels randomized",
+        "k562_release_randomize_node_22": "LINE randomized",
+        "k562_release_randomize_node_23": "Long terminal repeats randomized",
+        "k562_release_randomize_node_24": "Microsatellites randomized",
+        "k562_release_randomize_node_25": "PhastCons randomized",
+        "k562_release_randomize_node_26": "POLR2A randomized",
+        "k562_release_randomize_node_27": "PolyA sites randomized",
+        "k562_release_randomize_node_28": "RAD21 randomized",
+        "k562_release_randomize_node_29": "RBP binding sites randomized",
+        "k562_release_randomize_node_30": "Recombination rate randomized",
+        "k562_release_randomize_node_31": "Rep G1b randomized",
+        "k562_release_randomize_node_32": "Rep G2 randomized",
+        "k562_release_randomize_node_33": "Rep S1 randomized",
+        "k562_release_randomize_node_34": "Rep S2 randomized",
+        "k562_release_randomize_node_35": "Rep S3 randomized",
+        "k562_release_randomize_node_36": "Rep S4 randomized",
+        "k562_release_randomize_node_37": "RNA repeat randomized",
+        "k562_release_randomize_node_38": "Simple repeats randomized",
+        "k562_release_randomize_node_39": "SINE randomized",
+        "k562_release_randomize_node_40": "SMC3 randomized",
+        "k562_release_randomize_node_41": "SNP randomized",
+    }
+
     base_model_dir = Path("/Users/steveho/gnn_plots/figure_2/model_performance")
 
+    # model_categories = [
+    #     ("Loop Construction", loop_construction_models, "loop_construction"),
+    #     ("Alpha", alpha_models, "alpha"),
+    #     ("Node", node_models, "node"),
+    #     ("Operator", operator_models, "operator"),
+    #     ("Graph Construction", graph_construction_models, "graph_construction"),
+    #     ("Interactions", interaction_models, "interaction"),
+    #     ("Batch and Learning Rate", batch_and_lr_models, "batch_and_lr"),
+    #     ("Dropout", dropout_models, "dropout"),
+    #     ("Local", local_models, "local"),
+    # ]
+
     model_categories = [
-        ("Loop Construction", loop_construction_models, "loop_construction"),
-        ("Alpha", alpha_models, "alpha"),
-        ("Node", node_models, "node"),
-        ("Operator", operator_models, "operator"),
-        ("Graph Construction", graph_construction_models, "graph_construction"),
-        ("Interactions", interaction_models, "interaction"),
-        ("Batch and Learning Rate", batch_and_lr_models, "batch_and_lr"),
-        ("Dropout", dropout_models, "dropout"),
-        ("Local", local_models, "local"),
+        (
+            "Randomized Node Features",
+            randomized_node_features,
+            "randomized_node_features",
+        ),
     ]
 
     for category_name, models, model_type in model_categories:

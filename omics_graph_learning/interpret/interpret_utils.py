@@ -373,9 +373,9 @@ def get_best_predictions(
     df_agg = df_genes.groupby("node_idx", as_index=False).agg(
         {
             "prediction": "mean",
-            "label": "mean",  # will be the same as using 'first' but safer
+            "label": "mean",
             "class_logits": "mean",
-            "class_label": "mean",  # will be the same as using 'first' but safer
+            "class_label": "mean",
         }
     )
 

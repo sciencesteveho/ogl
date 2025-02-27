@@ -21,6 +21,7 @@ from matplotlib.colors import TwoSlopeNorm  # type: ignore
 import matplotlib.colors as mcolors
 from matplotlib.figure import Figure  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
+import matplotlib.ticker as ticker  # type: ignore
 from numpy import sqrt
 import numpy as np
 import pandas as pd
@@ -558,29 +559,55 @@ def plot_sample_perturbation_effects(
     plt.margins(x=0, y=0.01)
     plt.title(f"Global view of {element} perturbation effects in {tissue_name}")
 
-    # scale color bar
-    max_abs_val = max(abs(min(c_values)), abs(max(c_values)))
-    norm = mcolors.TwoSlopeNorm(vmin=-max_abs_val, vcenter=0, vmax=max_abs_val)
+    min_val = min(c_values)
+    max_val = max(c_values)
+    max_abs_val = max(abs(min_val), abs(max_val))
+
+    # custom normalization class to enhance color contrast
+    class EnhancedNorm(mcolors.Normalize):
+        def __init__(self, vmin=None, vmax=None, enhance_factor=0.3):
+            self.enhance_factor = enhance_factor
+            super().__init__(vmin, vmax)
+
+        def __call__(self, value, clip=None):
+            # sigmoidal enhancement of mid-range values
+            result = np.ma.masked_array(value)
+            if not self.vmin == self.vmax:
+                # scale to [-1, 1] range first
+                result = 2 * (result - self.vmin) / (self.vmax - self.vmin) - 1
+                # apply enhancement that strengthens mid-range values
+                result = np.sign(result) * (np.abs(result) ** self.enhance_factor)
+                # scale back to [0, 1] for colormap
+                result = (result + 1) / 2
+            return result
+
+    norm = EnhancedNorm(vmin=-max_abs_val, vmax=max_abs_val, enhance_factor=0.7)
 
     sc = plt.scatter(
         x_values,
         y_values,
         c=c_values,
-        cmap=plt.cm.RdBu_r,
+        cmap="RdBu_r",
         s=3,
         alpha=0.8,
         linewidths=0,
         norm=norm,
-    )  # type: ignore
-    cbar = plt.colorbar(sc, shrink=0.35, aspect=5)
+    )
+
+    ticks = [-max_abs_val, 0, max_abs_val]
+    cbar = plt.colorbar(sc, shrink=0.35, aspect=5, ticks=ticks)
+
+    # Format tick labels nicely
+    tick_labels = [f"{t:.1f}" for t in ticks]
+    cbar.ax.set_yticklabels(tick_labels)
+
     cbar.set_label(r"Log$_2$ fold change")
+    cbar.ax.tick_params(labelsize=8)
 
     plt.ylabel("Distance to assigned gene (kb)")
     plt.xticks([])
-    # Mark the gene coordinate line
     plt.axhline(0, color="gray", linestyle="--", linewidth=0.5)
 
-    # add x-axis label with line annotation
     fig = plt.gcf()
     ax = plt.gca()
 

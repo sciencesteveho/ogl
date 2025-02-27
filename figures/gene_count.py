@@ -22,6 +22,11 @@ rename = {
     "snoRNA": "Small nucleolar RNA",
     "rRNA": "Ribosomal RNA",
     "sense_overlapping": "Sense overlapping transcript",
+    "unitary_pseudogene": "Unitary pseudogene",
+    "polymorphic_pseudogene": "Polymorphic pseudogene",
+    "transcribed_unitary_pseudogene": "Transcribed unitary pseudogene",
+    "IG_V_pseudogene": "Immunoglobulin variable gene pseudogene",
+    "IG_V_gene": "Immunoglobulin variable gene",
 }
 
 
@@ -31,7 +36,7 @@ df = pd.DataFrame(data.items(), columns=["Type", "Count"])
 df = df.sort_values(by="Count", ascending=False)
 
 # Aggregate small categories into "Other" for clarity
-threshold = 500
+threshold = 10
 df["Type"] = df.apply(
     lambda row: row["Type"] if row["Count"] >= threshold else "Other", axis=1
 )
@@ -48,12 +53,12 @@ df_agg = (
 df_agg["Type"] = df_agg["Type"].apply(lambda x: rename.get(x, x))
 
 # Plot
-# plt.figure(figsize=(4, 2.25))
-plt.figure(figsize=(2, 1))
+plt.figure(figsize=(4.25, 2.75))
+# plt.figure(figsize=(2, 1))
 plt.barh(df_agg["Type"], df_agg["Count"], color="skyblue")
 plt.xlabel("Count")
-plt.title("Gene type annotation")
+plt.title("Gene type annotation (K562)")
 plt.tight_layout()
-plt.savefig("enhancers_gene_count.png")
+plt.savefig("K562_gene_count.png", dpi=450)
 plt.clf()
 plt.close()

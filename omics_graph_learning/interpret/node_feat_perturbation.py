@@ -6,8 +6,10 @@
 
 
 from collections import defaultdict
+import os
 from typing import Dict, List, Tuple, Union
 
+import joblib  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.loader import NeighborLoader  # type: ignore
@@ -88,6 +90,7 @@ def compute_feature_perturbation(
     mask_tensor: torch.Tensor,
     baseline_output: torch.Tensor,
     feature_indices: Union[List[int], List[Tuple[int, int]]],
+    scalers: Dict[int, object] = None,
 ) -> Dict[Union[int, Tuple[int, int]], Dict[int, List[float]]]:
     """Zero out each single feature in feature_indices if it is a list of ints,
     or zero out both features if it's a list of (idx1, idx2) tuples.
@@ -99,6 +102,15 @@ def compute_feature_perturbation(
             }
         }
     """
+
+    def scaled_zero(feat: int) -> float:
+        """Return the scaled zero value for a feature index."""
+        if scalers and scalers.get(feat) is not None:
+            return scalers[feat].transform([[0.0]])[0, 0]  # from shape (1,1)
+        else:
+            # fallback if no scaler
+            return 0.0
+
     feature_node_differences = defaultdict(lambda: defaultdict(list))
     node_indices = batch.n_id[mask_tensor].cpu()
 
@@ -109,7 +121,9 @@ def compute_feature_perturbation(
     if isinstance(first, int):
         for feat_idx in feature_indices:
             x_perturbed = batch.x.clone()
-            x_perturbed[:, feat_idx] = 0  # zero out the single feature
+            x_perturbed[:, feat_idx] = scaled_zero(
+                feat_idx
+            )  # zero out the single feature
 
             with torch.no_grad():
                 perturbed_out, _ = runner.model(
@@ -261,6 +275,7 @@ def perturb_node_features(
     node_idx_to_gene_id: Dict[int, str],
     gencode_to_symbol: Dict[str, str],
     mask: str = "all",
+    scalers: Dict[int, object] = None,
 ) -> Tuple[
     Dict[Union[int, Tuple[int, int]], float],
     Dict[Union[int, Tuple[int, int]], List[Tuple[str, float]]],
@@ -311,6 +326,7 @@ def perturb_node_features(
             mask_tensor=mask_tensor,
             baseline_output=baseline_out,
             feature_indices=feature_indices,
+            scalers=scalers,
         )
 
         # aggregate differences across batches

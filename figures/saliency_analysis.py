@@ -96,13 +96,17 @@ gencodefile = "/Users/steveho/gnn_plots/graph_resources/local/gencode_v26_genes_
 
 for tissue in TISSUES:
     # for tissue in ["k562"]:
+    # tissue = 'hepg2'
+    feat_idx = 11
+    tissue = "pancreas"
     outpath = f"{interp_path}/{tissue}_release"
     saliency_map = f"{outpath}/scaled_saliency_map.pt"
     idx_file = f"{idx_path}/{tissue}_release_full_graph_idxs.pkl"
     dfpath = f"/Users/steveho/gnn_plots/interpretation/{tissue}_release/best_predictions_2_hop.csv"
 
     # for node_type in ["promoters", "enhancers", "genes", "dyadic"]:
-    for node_type in ["promoters"]:
+    for node_type in ["enhancers"]:
+        node_type = "enhancers"
         # for node_type in ["genes"]:
         with open(idx_file, "rb") as f:
             idxs = pickle.load(f)
@@ -125,7 +129,7 @@ for tissue in TISSUES:
         for old_idx, new_idx in old_to_new.items():
             saliency_reordered[new_idx] = saliency_np[old_idx]
 
-        # 3) Map selected original indices -> new positions
+        # map selected original indices -> new positions
         selected_mapping = [
             (old_to_new[i], i) for i in type_specific_idxs if i in old_to_new
         ]
@@ -146,54 +150,57 @@ for tissue in TISSUES:
         # subset saliency according to new_indices
         saliency_selected = saliency_reordered[np.array(new_indices), :]
 
+        row_indices = np.where(saliency_selected[:, feat_idx] == 1)[0]
+
         # saliency_selected has shape (46346, num_features)
         row_sums = np.sum(saliency_selected, axis=1)
 
-        # Sort row indices by descending row sum
+        # sort row indices by descending row sum
         sorted_indices = np.argsort(row_sums)[::-1]
 
-        # Pick the top 500 rows
+        # pick the top 10000 rows
         top_indices = sorted_indices[:10000]
 
         # get the original labels
         top_labels = [new_idx_to_node[new_indices[row_idx]] for row_idx in top_indices]
+        top_labels = [label.split(f"_{tissue}")[0] for label in top_labels]
 
         # top_labels = [label.split("_")[0] for label in top_labels]
 
         # open k-hops
         # focused on subset where difference in prediction <= 0.5 log2tpm
-        prtfile = f"/Users/steveho/gnn_plots/interpretation/{tissue}_release/connected_component_perturbations_2_hop.pkl"
-        with open(prtfile, "rb") as f:
-            perts = pickle.load(f)
+        # prtfile = f"/Users/steveho/gnn_plots/interpretation/{tissue}_release/connected_component_perturbations_2_hop.pkl"
+        # with open(prtfile, "rb") as f:
+        #     perts = pickle.load(f)
 
-        perts = perts["single"]
-        subset_nodes = set(top_labels)  # for O(1) lookups
-        genes_of_interest = set()  # store deduped gene keys here
+        # perts = perts["single"]
+        # subset_nodes = set(top_labels)
+        # genes_of_interest = set()  # store deduped gene keys here
 
-        for top_gene, sub_dict in perts.items():
-            for sub_key in sub_dict.keys():
-                if sub_key in subset_nodes:
-                    genes_of_interest.add(top_gene)
-                    break
+        # for top_gene, sub_dict in perts.items():
+        #     for sub_key in sub_dict.keys():
+        #         if sub_key in subset_nodes:
+        #             genes_of_interest.add(top_gene)
+        #             break
 
-        genes_of_interest = list(genes_of_interest)
-        genes_of_interest = [gene.split("_")[0] for gene in genes_of_interest]
+        # genes_of_interest = list(genes_of_interest)
+        # genes_of_interest = [gene.split("_")[0] for gene in genes_of_interest]
 
-        genes = pybedtools.BedTool(gencodefile)
-        genes_filtered = genes.filter(lambda x: x[3] in genes_of_interest).saveas()
+        # genes_of_interest = top_labels
 
-        for feature in genes_filtered:
-            annotation = feature[9]
-            if match := pattern.search(annotation):
-                gene_type = match[1]
-                gene_type_counter[gene_type] += 1
+        # genes = pybedtools.BedTool(gencodefile)
+        # genes_filtered = genes.filter(lambda x: x[3] in genes_of_interest).saveas()
 
-        for gene_type, count in gene_type_counter.items():
-            print(f"{gene_type}: {count}")
+        # for feature in genes_filtered:
+        #     annotation = feature[9]
+        #     if match := pattern.search(annotation):
+        #         gene_type = match[1]
+        #         gene_type_counter[gene_type] += 1
+
+        # for gene_type, count in gene_type_counter.items():
+        #     print(f"{gene_type}: {count}")
 
         # get protein_coding count and non-pr
-
-        # row_indices = np.where(saliency_selected[:, feat_idx] == 1)[0]
 
         # subset_new_indices = np.array(new_indices)[row_indices]
         # subset_original_labels = [
@@ -275,54 +282,54 @@ for tissue in TISSUES:
         # )
         # plt.clf()
 
-        # # plot saliency heatmap for selected indices
-        # saliency_subset = saliency_selected[row_indices, :]
+        # plot saliency heatmap for selected indices
+        saliency_subset = saliency_selected[row_indices, :]
 
-        # fig, ax = plt.subplots()
-        # sns.heatmap(saliency_subset, cmap="viridis", cbar=False, ax=ax)  # type: ignore
+        fig, ax = plt.subplots()
+        sns.heatmap(saliency_subset, cmap="viridis", cbar=False, ax=ax)  # type: ignore
 
-        # # add colorbar
-        # cbar = plt.colorbar(
-        #     ax.collections[0],
-        #     shrink=0.25,
-        #     aspect=7.5,
-        #     ax=ax,
-        #     location="left",
-        #     pad=0.08,
-        # )
-        # cbar.outline.set_linewidth(0.5)  # type: ignore
-        # cbar.ax.set_title("Contribution", pad=10)
+        # add colorbar
+        cbar = plt.colorbar(
+            ax.collections[0],
+            shrink=0.25,
+            aspect=7.5,
+            ax=ax,
+            location="left",
+            pad=0.08,
+        )
+        cbar.outline.set_linewidth(0.5)  # type: ignore
+        cbar.ax.set_title("Contribution", pad=10)
 
-        # # add feature labels
-        # n_cols = saliency_np.shape[1]
-        # xtick_positions = np.arange(5, n_cols) + 0.5
-        # xtick_labels = [FEATURES_name[i] for i in range(5, n_cols)]
-        # plt.xticks(xtick_positions, xtick_labels, rotation=90, ha="center")
-        # plt.yticks([])
+        # add feature labels
+        n_cols = saliency_np.shape[1]
+        xtick_positions = np.arange(5, n_cols) + 0.5
+        xtick_labels = [FEATURES_name[i] for i in range(5, n_cols)]
+        plt.xticks(xtick_positions, xtick_labels, rotation=90, ha="center")
+        plt.yticks([])
 
-        # # add positional encoding bracket for first 5 features
-        # ax.text(
-        #     2.3,
-        #     -0.03,
-        #     "positional\nencoding",
-        #     ha="center",
-        #     va="top",
-        #     transform=ax.get_xaxis_transform(),
-        # )
+        # add positional encoding bracket for first 5 features
+        ax.text(
+            2.3,
+            -0.03,
+            "positional\nencoding",
+            ha="center",
+            va="top",
+            transform=ax.get_xaxis_transform(),
+        )
 
-        # # plot descriptors
-        # num_nodes = len(subset_original_labels)
-        # plt.xlabel("Features")
-        # plt.ylabel(f"{num_nodes:,} nodes")
-        # plt.title(
-        #     f"{tissue} input x gradient saliency map ({node_type}) where {nodefeat} = 1"
-        # )
+        # plot descriptors
+        num_nodes = len(subset_original_labels)
+        plt.xlabel("Features")
+        plt.ylabel(f"{num_nodes:,} nodes")
+        plt.title(
+            f"{tissue} input x gradient saliency map ({node_type}) where {nodefeat} = 1"
+        )
 
-        # plt.tight_layout()
-        # plt.savefig(
-        #     f"{outpath}/saliency_{nodefeat}_{node_type}.png",
-        #     dpi=450,
-        #     bbox_inches="tight",
-        # )
-        # plt.clf()
-        # plt.close()
+        plt.tight_layout()
+        plt.savefig(
+            f"{outpath}/saliency_{nodefeat}_{node_type}.png",
+            dpi=450,
+            bbox_inches="tight",
+        )
+        plt.clf()
+        plt.close()

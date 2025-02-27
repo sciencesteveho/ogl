@@ -8,8 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pybedtools
+from scipy.stats import chi2_contingency  # type: ignore
+from scipy.stats import fisher_exact  # type: ignore
 import scipy.stats as stats  # type: ignore
 import seaborn as sns  # type: ignore
+import statsmodels.stats.multitest as smm  # type: ignore
 import torch
 
 from omics_graph_learning.visualization import set_matplotlib_publication_parameters
@@ -171,9 +174,6 @@ print("\nChi-square test across all microsatellite types:")
 print(f"chi2={chi2:.2f}, p-value={pval:.2e}, dof={dof}")
 
 
-from scipy.stats import fisher_exact
-import statsmodels.stats.multitest as smm
-
 # Get top 10 most common motifs overall
 top_motifs = df.sum(axis=1).sort_values(ascending=False).head(10).index
 
@@ -206,6 +206,33 @@ for motif, or_, pval, corr_pval, sig in zip(
     print(
         f"Motif: {motif}, OR={or_:.2f}, p-value={pval:.4f}, corrected p={corr_pval:.4f}, significant={sig}"
     )
+
+# Top Genes Microsatellite Counts (most common):
+# 18xAC: 41
+# 15xTG: 38
+# 20xAC: 35
+# 22xAC: 35
+# 17xAC: 34
+# 16xTG: 33
+# 19xTG: 33
+# 15xAC: 33
+# 18xTG: 31
+# 20xTG: 31
+
+# Bottom Genes Microsatellite Counts (most common):
+# 16xAC: 49
+# 15xAC: 39
+# 20xAC: 38
+# 18xTG: 38
+# 17xAC: 35
+# 18xAC: 34
+# 15xTG: 33
+# 19xAC: 32
+# 17xGT: 27
+# 21xAC: 26
+
+# Chi-square test across all microsatellite types:
+# chi2=192.44, p-value=3.02e-01, dof=183
 
 # Motif: 16xAC, OR=0.58, p-value=0.0225, corrected p=0.2253, significant=False
 # Motif: 18xAC, OR=1.14, p-value=0.6395, corrected p=0.7948, significant=False
@@ -330,49 +357,143 @@ df["top_count"] = df.index.map(counter_top)
 df["bottom_count"] = df.index.map(counter_bottom)
 df = df.fillna(0).astype(int)
 
+total_top = df["top_count"].sum()
+total_bottom = df["bottom_count"].sum()
 
-# For a global test, you could do a chi-square test on the entire contingency table:
-#   "top_count" vs "bottom_count" across all motifs
-from scipy.stats import chi2_contingency
-
-contingency = df[["top_count", "bottom_count"]].values
-chi2, pval, dof, expected = chi2_contingency(contingency)
-print("\nChi-square test across all microsatellite types:")
-print(f"chi2={chi2:.2f}, p-value={pval:.2e}, dof={dof}")
-
-
-from scipy.stats import fisher_exact
-import statsmodels.stats.multitest as smm
-
-# Get top 10 most common motifs overall
-top_motifs = df.sum(axis=1).sort_values(ascending=False).head(10).index
-
-# Store p-values
-p_values = []
 odds_ratios = []
-
-for motif in top_motifs:
+p_values = []
+for motif in df.index:
     top_count = df.loc[motif, "top_count"]
     bottom_count = df.loc[motif, "bottom_count"]
-    total_top = df["top_count"].sum()
-    total_bottom = df["bottom_count"].sum()
-
     contingency_table = [
         [top_count, total_top - top_count],
         [bottom_count, total_bottom - bottom_count],
     ]
+    or_val, p_val = fisher_exact(contingency_table)
+    odds_ratios.append(or_val)
+    p_values.append(p_val)
 
-    odds_ratio, p_value = fisher_exact(contingency_table)
-    odds_ratios.append(odds_ratio)
-    p_values.append(p_value)
+# Multiple-testing correction (FDR)
+rejected, fdr_vals, _, _ = smm.multipletests(p_values, method="fdr_bh")
 
-# Multiple testing correction (FDR)
-rejected, corrected_pvals, _, _ = smm.multipletests(p_values, method="fdr_bh")
+# Add new columns directly to df
+df["odds_ratio"] = odds_ratios
+df["p_value"] = p_values
+df["fdr"] = fdr_vals
+df["significant"] = rejected
+df["log2_or"] = np.log2(df["odds_ratio"].replace(0, np.nan))
+df["neg_log10_fdr"] = -np.log10(df["fdr"].clip(lower=1e-300))
 
-# Display results
-for motif, or_, pval, corr_pval, sig in zip(
-    top_motifs, odds_ratios, p_values, corrected_pvals, rejected
-):
-    print(
-        f"Motif: {motif}, OR={or_:.2f}, p-value={pval:.4f}, corrected p={corr_pval:.4f}, significant={sig}"
-    )
+
+# For a global test, you could do a chi-square test on the entire contingency table:
+#   "top_count" vs "bottom_count" across all motifs
+
+
+# contingency = df[["top_count", "bottom_count"]].values
+# chi2, pval, dof, expected = chi2_contingency(contingency)
+# print("\nChi-square test across all microsatellite types:")
+# print(f"chi2={chi2:.2f}, p-value={pval:.2e}, dof={dof}")
+
+
+# # Get top 10 most common motifs overall
+# top_motifs = df.sum(axis=1).sort_values(ascending=False).head(193).index
+
+# # Store p-values
+# p_values = []
+# odds_ratios = []
+
+# for motif in df.index:
+#     top_count = df.loc[motif, "top_count"]
+#     bottom_count = df.loc[motif, "bottom_count"]
+
+#     contingency_table = [
+#         [top_count, total_top - top_count],
+#         [bottom_count, total_bottom - bottom_count],
+#     ]
+
+#     or_val, p_val = fisher_exact(contingency_table)
+#     odds_ratios.append(or_val)
+#     p_values.append(p_val)
+
+# # Multiple-testing correction (FDR)
+# rejected, fdr_vals, _, _ = smm.multipletests(p_values, method="fdr_bh")
+
+# # Add these stats as new columns to df
+# df["odds_ratio"] = odds_ratios
+# df["p_value"] = p_values
+# df["fdr"] = fdr_vals  # corrected p-value
+# df["significant"] = rejected
+
+# # Compute log2(OR) and −log10(FDR); protect against zero or negative
+# # values by clipping them to avoid -inf or inf.
+# df["log2_or"] = np.log2(df["odds_ratio"].replace(0, np.nan))
+# df["neg_log10_fdr"] = -np.log10(df["fdr"].clip(lower=1e-300))
+
+# df.head()
+
+# # Display results
+# for motif, or_, pval, corr_pval, sig in zip(
+#     top_motifs, odds_ratios, p_values, corrected_pvals, rejected
+# ):
+#     print(
+#         f"Motif: {motif}, OR={or_:.2f}, p-value={pval:.4f}, corrected p={corr_pval:.4f}, significant={sig}"
+#     )
+
+# Chi-square test across all microsatellite types:
+# chi2=276.98, p-value=5.75e-05, dof=192
+
+# Top Genes Microsatellite Counts (most common):
+# 17xAC: 64
+# 15xAC: 62
+# 16xTG: 55
+# 19xAC: 53
+# 22xAC: 51
+# 18xGT: 48
+# 18xAC: 44
+# 20xAC: 43
+# 16xAC: 41
+# 17xGT: 40
+
+# Bottom Genes Microsatellite Counts (most common):
+# 17xAC: 41
+# 18xAC: 38
+# 19xTG: 37
+# 15xAC: 36
+# 21xGT: 36
+# 19xGT: 35
+# 22xTG: 34
+# 16xAC: 32
+# 23xAC: 32
+# 20xTG: 31
+
+
+# Motif: 17xAC, OR=1.11, p-value=0.6159, corrected p=1.0000, significant=False
+# Motif: 15xAC, OR=1.23, p-value=0.3494, corrected p=0.9770, significant=False
+# Motif: 19xAC, OR=1.22, p-value=0.4321, corrected p=0.9846, significant=False
+# Motif: 18xAC, OR=0.82, p-value=0.3660, corrected p=0.9770, significant=False
+# Motif: 20xAC, OR=0.98, p-value=1.0000, corrected p=1.0000, significant=False
+# Motif: 16xAC, OR=0.91, p-value=0.7188, corrected p=1.0000, significant=False
+# Motif: 16xTG, OR=2.34, p-value=0.0015, corrected p=0.0997, significant=False
+# Motif: 22xAC, OR=1.75, p-value=0.0388, corrected p=0.6818, significant=False
+# Motif: 20xGT, OR=1.01, p-value=1.0000, corrected p=1.0000, significant=False
+# Motif: 18xGT, OR=1.72, p-value=0.0459, corrected p=0.6818, significant=False
+# Motif: 19xTG, OR=0.53, p-value=0.0149, corrected p=0.5763, significant=False
+# Motif: 19xGT, OR=0.60, p-value=0.0553, corrected p=0.7119, significant=False
+# Motif: 21xGT, OR=0.56, p-value=0.0297, corrected p=0.6818, significant=False
+# Motif: 18xTG, OR=1.04, p-value=1.0000, corrected p=1.0000, significant=False
+# Motif: 20xTG, OR=0.75, p-value=0.3047, corrected p=0.9770, significant=False
+# Motif: 22xTG, OR=0.60, p-value=0.0519, corrected p=0.7119, significant=False
+# Motif: 17xGT, OR=1.30, p-value=0.3635, corrected p=0.9770, significant=False
+# Motif: 21xAC, OR=1.13, p-value=0.6973, corrected p=1.0000, significant=False
+# Motif: 23xAC, OR=0.61, p-value=0.0645, corrected p=0.7207, significant=False
+# Motif: 17xTG, OR=0.78, p-value=0.3533, corrected p=0.9770, significant=False
+# Motif: 21xTG, OR=1.21, p-value=0.5778, corrected p=1.0000, significant=False
+# Motif: 15xTG, OR=1.15, p-value=0.7657, corrected p=1.0000, significant=False
+# Motif: 18xCA, OR=1.34, p-value=0.3703, corrected p=0.9770, significant=False
+# Motif: 19xCA, OR=1.17, p-value=0.6502, corrected p=1.0000, significant=False
+# Motif: 17xCA, OR=0.59, p-value=0.0898, corrected p=0.7532, significant=False
+# Motif: 22xGT, OR=3.81, p-value=0.0003, corrected p=0.0314, significant=True
+# Motif: 16xGT, OR=0.78, p-value=0.4336, corrected p=0.9846, significant=False
+# Motif: 24xAC, OR=1.37, p-value=0.4251, corrected p=0.9846, significant=False
+# Motif: 23xGT, OR=0.30, p-value=0.0003, corrected p=0.0314, significant=True
+# Motif: 21xCA, OR=0.93, p-value=0.8675, corrected p=1.0000, significant=False

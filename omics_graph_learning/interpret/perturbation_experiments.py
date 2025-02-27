@@ -10,6 +10,7 @@ from pathlib import Path
 import pickle
 from typing import Dict, List, Tuple
 
+import joblib  # type: ignore
 import pandas as pd
 from scipy.stats import ttest_ind  # type: ignore
 import torch
@@ -28,6 +29,7 @@ from omics_graph_learning.interpret.node_feat_perturbation import perturb_node_f
 from omics_graph_learning.interpret.selected_component_perturbation import (
     SelectedComponentPerturbation,
 )
+from omics_graph_learning.utils.config_handlers import ExperimentConfig
 
 # from omics_graph_learning.interpret.coessential_pair_perturbation import (
 #     load_coessential_pairs,
@@ -38,6 +40,22 @@ from omics_graph_learning.interpret.selected_component_perturbation import (
 # from omics_graph_learning.interpret.essential_gene_perturbation import (
 #     essential_gene_perturbation,
 # )
+
+
+def load_scalers(scaler_dir: str, num_features: int = 37) -> Dict[int, object]:
+    """Load each feat_{i}_scaler.joblib into a dictionary:
+    {feature_idx -> scaler_pipeline}.
+
+    The first 5 dimensions are embedding features that don't have scalers.
+    Original features (with scalers) now start at index 5.
+    """
+    scalers = {i: None for i in range(5)}
+    for feat_idx in range(num_features):
+        path = os.path.join(scaler_dir, f"feat_{feat_idx}_scaler.joblib")
+        if os.path.isfile(path):
+            scalers[feat_idx + 5] = joblib.load(path)
+
+    return scalers
 
 
 def convert_top_perturbations(
@@ -70,6 +88,11 @@ def main() -> None:
     args = parse_interpret_args()
     hops = args.hops
 
+    experiment_config = ExperimentConfig.from_yaml(args.experiment_config)
+    splitname = "tpm_0.5_samples_0.1_test_8-9_val_10_rna_seq"
+    scaler_path = experiment_config.graph_dir / splitname / "scalers"
+    scalers = load_scalers(str(scaler_path))
+
     # load experiment setup
     (
         data,
@@ -86,16 +109,15 @@ def main() -> None:
     # invert symbol dict
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
-    # get baseline predictions
-    baseline_df = get_baseline_predictions_k_hop(
-        data=data,
-        runner=runner,
-        k=hops,
-    )
-    # baseline_df.to_csv(outpath / "baseline_predictions.csv", index=False)
+    # # get baseline predictions
+    # baseline_df = get_baseline_predictions_k_hop(
+    #     data=data,
+    #     runner=runner,
+    #     k=hops,
+    # )
     # baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
 
-    # get best predictions from model
+    # # get best predictions from model
     # print("Getting best predictions...")
     # best_prediction_df = get_best_predictions(
     #     df=baseline_df,
@@ -104,6 +126,24 @@ def main() -> None:
     #     gencode_to_symbol=gencode_to_symbol,
     # )
     # best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
+
+    # experiment 1: run node feature ablation doubles
+    print("Running Node Feature Perturbation...")
+    feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        feature_indices=list(range(5, 42)),
+        # feature_indices=deletion_pairs,
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
+    )
+
+    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
 
     deletion_pairs = [
         (7, 9),  # ATAC + CpG
@@ -129,7 +169,7 @@ def main() -> None:
         (12, 20),  # H3K27ac + H3K9me3
     ]
 
-    # experiment 1: run node feature ablation
+    # experiment 2: run node feature ablation doubles
     print("Running Node Feature Perturbation...")
     feature_fold_changes, feature_top_genes = perturb_node_features(
         data=data,
@@ -139,6 +179,7 @@ def main() -> None:
         device=device,
         node_idx_to_gene_id=node_idx_to_gene_id,
         gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
     )
 
     with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
@@ -167,34 +208,35 @@ def main() -> None:
 
     # experiment 3: run systematic selected component perturbations on the node
     # features for top genes
-    # print("Running Selected Component Perturbation...")
-    # experiment = SelectedComponentPerturbation(
-    #     data=data,
-    #     device=device,
-    #     runner=runner,
-    #     idxs_inv=idxs_inv,
-    #     mask_attr="all",
-    # )
+    print("Running Selected Component Perturbation...")
+    experiment = SelectedComponentPerturbation(
+        data=data,
+        device=device,
+        runner=runner,
+        idxs_inv=idxs_inv,
+        mask_attr="all",
+        scalers=scalers,
+    )
 
-    # # load the top perturbations
-    # top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations.pkl"
-    # with open(top_pert, "rb") as f:
-    #     top_perturbations = pickle.load(f)
+    # load the top perturbations
+    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations.pkl"
+    with open(top_pert, "rb") as f:
+        top_perturbations = pickle.load(f)
 
-    # perturbations = convert_top_perturbations(
-    #     top_perturbations=top_perturbations,
-    #     sample=args.sample,
-    #     idxs=idxs,
-    # )
+    perturbations = convert_top_perturbations(
+        top_perturbations=top_perturbations,
+        sample=args.sample,
+        idxs=idxs,
+    )
 
-    # # run perturbations
-    # results = experiment.run_perturbations(
-    #     gene_node_pairs=perturbations,
-    # )
+    # run perturbations
+    results = experiment.run_perturbations(
+        gene_node_pairs=perturbations,
+    )
 
-    # # save results
-    # with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
-    #     pickle.dump(results, f)
+    # save results
+    with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
+        pickle.dump(results, f)
 
     # print("Running Essential Gene Perturbation...")
     # essential_fold_changes = essential_gene_perturbation(

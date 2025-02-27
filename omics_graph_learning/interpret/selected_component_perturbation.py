@@ -4,8 +4,10 @@
 
 """_summary_ of project"""
 
+import os
 from typing import Dict, List, Tuple
 
+import joblib  # type: ignore
 import torch
 from torch_geometric.data import Data  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
@@ -51,6 +53,7 @@ class SelectedComponentPerturbation:
         device: torch.device,
         runner: PerturbRunner,
         idxs_inv: dict,
+        scalers: Dict[int, object],
         hops: int = 2,
         mask_attr: str = "all",
     ) -> None:
@@ -61,6 +64,9 @@ class SelectedComponentPerturbation:
         self.idxs_inv = idxs_inv
         self.hops = hops
         self.mask_attr = mask_attr
+
+        # loader scaler to transform back into original space
+        self.scalers = scalers
 
     def _build_k_hop_subgraph(self, gene_node: int) -> Data:
         """
@@ -124,6 +130,14 @@ class SelectedComponentPerturbation:
         # copy the sub_data.x so we do not modify the original
         perturbed_x = sub_data.x.clone()
         perturbed_x[local_node_to_perturb, feature_idx] = 0.0
+
+        # if we have a scaler for this feature, transform raw 0
+        scaler = self.scalers.get(feature_idx, None)
+        if scaler is not None:
+            scaled_value_of_zero = scaler.transform([[0.0]])[0, 0]
+            perturbed_x[local_node_to_perturb, feature_idx] = scaled_value_of_zero
+        else:
+            perturbed_x[local_node_to_perturb, feature_idx] = 0.0
 
         with torch.no_grad():
             out, _ = self.runner.model(

@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from gseapy import dotplot  # type: ignore
 import gseapy as gp  # type: ignore
+import matplotlib as mpl  # type: ignore
 from matplotlib.colors import LinearSegmentedColormap  # type: ignore
 import matplotlib.colors as mcolors  # type: ignore
 import matplotlib.gridspec as gridspec  # type: ignore
@@ -91,43 +92,73 @@ FEATURES = {
 }
 
 
-def plot_average_effect(df, tissue):
+def plot_average_effect(df, tissue, tissue_name):
     """
     Plots the average 'effect' for each node index in the dataframe.
-
     Parameters:
     df (pd.DataFrame): DataFrame containing at least 'node' and 'effect' columns.
     """
     avg_effect = df.groupby("node")["effect"].mean().reset_index()
 
-    # map node indices to feature names (fallback to the node index as string)
+    # Map node indices to feature names
     avg_effect["feature"] = (
         avg_effect["node"].map(FEATURES).fillna(avg_effect["node"].astype(str))
     )
 
-    # sort the dataframe by the effect values
+    # Sort the dataframe by effect values
     avg_effect.sort_values("effect", inplace=True)
 
-    # calculate symmetrical limits around zero
+    # Calculate limits
     min_val = avg_effect["effect"].min()
     max_val = avg_effect["effect"].max()
     abs_max = max(abs(min_val), abs(max_val))
 
-    # set up normalization for the colormap based on the effect range
+    # Set up normalization for the colormap
     norm = mpl.colors.Normalize(vmin=-abs_max, vmax=abs_max)
 
-    # use the 'coolwarm' colormap where negative values appear blue and positive values red
+    # Use the coolwarm colormap
     colors = plt.cm.coolwarm(norm(avg_effect["effect"]))
 
-    plt.figure(figsize=(3.5, 5))
-    bars = plt.barh(avg_effect["feature"], avg_effect["effect"], color=colors)
-    plt.xlabel("Average effect")
-    plt.axvline(x=0, color="black", linestyle="--", linewidth=0.5)  # plot vertical line
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=(3.5, 5))
+
+    # Remove unwanted spines
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", which="both", left=False)
+
+    # Create horizontal bars
+    bars = ax.barh(avg_effect["feature"], avg_effect["effect"], color=colors)
+
+    # Add colored squares to y-tick labels
+    # Use a small colored rectangle as a marker for each y-tick
+    for i, (label, color) in enumerate(zip(ax.get_yticklabels(), colors)):
+        label.set_bbox(
+            dict(
+                edgecolor=color,
+                facecolor="white",
+                boxstyle="square,pad=0.1",
+                linewidth=0.5,
+                alpha=1.0,
+            )
+        )
+
+    # Add vertical line at x=0
+    ax.axvline(x=0, color="black", linestyle="--", linewidth=0.5)
+
+    # Add x-label
+    ax.set_xlabel(r"Average log$_2$ fold change")
+
+    # add title
+    ax.set_title(f"{tissue_name}")
+
+    # Set margins
+    ax.margins(0.01)
 
     plt.tight_layout()
     plt.savefig(f"effect_size/{tissue}_average_effect_per_node.png")
-    plt.clf()
-    plt.close()
+    plt.close(fig)
 
 
 def plot_average_effect_for_gene(df, tissue, gene_id):
@@ -205,6 +236,7 @@ all_tissue_effects = []  # will store dicts with {tissue, node, feature, avg_eff
 
 
 for tissue in TISSUES:
+    # for tissue in ["spleen"]:
     perturb_file = f"{tissue}_release/selected_component_perturbations.pkl"
     with open(perturb_file, "rb") as f:
         perts = pickle.load(f)
@@ -225,7 +257,7 @@ for tissue in TISSUES:
 
     df = pd.DataFrame(data)
     df["gene"] = df["gene"].str.replace(f"_{tissue}", "")
-    plot_average_effect(df, tissue)
+    plot_average_effect(df, tissue, TISSUES[tissue])
 
     # Compute average effect per node for this tissue
     avg_effect = df.groupby("node")["effect"].mean().reset_index()
