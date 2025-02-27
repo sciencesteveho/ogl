@@ -127,6 +127,38 @@ def main() -> None:
     # )
     # best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
 
+    # experiment 3: run systematic selected component perturbations on the node
+    # features for top genes
+    print("Running Selected Component Perturbation...")
+    experiment = SelectedComponentPerturbation(
+        data=data,
+        device=device,
+        runner=runner,
+        idxs_inv=idxs_inv,
+        mask_attr="all",
+        scalers=scalers,
+    )
+
+    # load the top perturbations
+    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations.pkl"
+    with open(top_pert, "rb") as f:
+        top_perturbations = pickle.load(f)
+
+    perturbations = convert_top_perturbations(
+        top_perturbations=top_perturbations,
+        sample=args.sample,
+        idxs=idxs,
+    )
+
+    # run perturbations
+    results = experiment.run_perturbations(
+        gene_node_pairs=perturbations,
+    )
+
+    # save results
+    with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
+        pickle.dump(results, f)
+
     # experiment 1: run node feature ablation doubles
     print("Running Node Feature Perturbation...")
     feature_fold_changes, feature_top_genes = perturb_node_features(
@@ -205,38 +237,6 @@ def main() -> None:
     # )
     # with open(outpath / f"connected_component_perturbations_{hops}_hop.pkl", "wb") as f:
     #     pickle.dump(component_perturbation_results, f)
-
-    # experiment 3: run systematic selected component perturbations on the node
-    # features for top genes
-    print("Running Selected Component Perturbation...")
-    experiment = SelectedComponentPerturbation(
-        data=data,
-        device=device,
-        runner=runner,
-        idxs_inv=idxs_inv,
-        mask_attr="all",
-        scalers=scalers,
-    )
-
-    # load the top perturbations
-    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations.pkl"
-    with open(top_pert, "rb") as f:
-        top_perturbations = pickle.load(f)
-
-    perturbations = convert_top_perturbations(
-        top_perturbations=top_perturbations,
-        sample=args.sample,
-        idxs=idxs,
-    )
-
-    # run perturbations
-    results = experiment.run_perturbations(
-        gene_node_pairs=perturbations,
-    )
-
-    # save results
-    with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
-        pickle.dump(results, f)
 
     # print("Running Essential Gene Perturbation...")
     # essential_fold_changes = essential_gene_perturbation(

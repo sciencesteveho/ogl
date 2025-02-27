@@ -133,11 +133,8 @@ class SelectedComponentPerturbation:
 
         # if we have a scaler for this feature, transform raw 0
         scaler = self.scalers.get(feature_idx, None)
-        if scaler is not None:
-            scaled_value_of_zero = scaler.transform([[0.0]])[0, 0]
-            perturbed_x[local_node_to_perturb, feature_idx] = scaled_value_of_zero
-        else:
-            perturbed_x[local_node_to_perturb, feature_idx] = 0.0
+        scaled_value_of_zero = scaler.transform([[0.0]])[0, 0]
+        perturbed_x[local_node_to_perturb, feature_idx] = scaled_value_of_zero
 
         with torch.no_grad():
             out, _ = self.runner.model(

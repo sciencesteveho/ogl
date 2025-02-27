@@ -105,11 +105,7 @@ def compute_feature_perturbation(
 
     def scaled_zero(feat: int) -> float:
         """Return the scaled zero value for a feature index."""
-        if scalers and scalers.get(feat) is not None:
-            return scalers[feat].transform([[0.0]])[0, 0]  # from shape (1,1)
-        else:
-            # fallback if no scaler
-            return 0.0
+        return scalers[feat].transform([[0.0]])[0, 0]  # from shape (1,1)
 
     feature_node_differences = defaultdict(lambda: defaultdict(list))
     node_indices = batch.n_id[mask_tensor].cpu()
@@ -140,8 +136,8 @@ def compute_feature_perturbation(
     else:
         for feat_idx1, feat_idx2 in feature_indices:
             x_perturbed = batch.x.clone()
-            x_perturbed[:, feat_idx1] = 0
-            x_perturbed[:, feat_idx2] = 0
+            x_perturbed[:, feat_idx1] = scaled_zero(feat_idx1)
+            x_perturbed[:, feat_idx2] = scaled_zero(feat_idx2)
 
             with torch.no_grad():
                 perturbed_out, _ = runner.model(
