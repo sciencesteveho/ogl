@@ -156,7 +156,7 @@ def main() -> None:
     )
 
     # save results
-    with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
+    with open(outpath / "selected_component_perturbations_500.pkl", "wb") as f:
         pickle.dump(results, f)
 
     # # experiment 1: run node feature ablation doubles
