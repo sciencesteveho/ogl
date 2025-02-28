@@ -140,7 +140,7 @@ def main() -> None:
     )
 
     # load the top perturbations
-    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations.pkl"
+    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations_500.pkl"
     with open(top_pert, "rb") as f:
         top_perturbations = pickle.load(f)
 
@@ -159,65 +159,65 @@ def main() -> None:
     with open(outpath / "selected_component_perturbations.pkl", "wb") as f:
         pickle.dump(results, f)
 
-    # experiment 1: run node feature ablation doubles
-    print("Running Node Feature Perturbation...")
-    feature_fold_changes, feature_top_genes = perturb_node_features(
-        data=data,
-        runner=runner,
-        feature_indices=list(range(5, 42)),
-        # feature_indices=deletion_pairs,
-        device=device,
-        node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=symbol_to_gencode,
-        scalers=scalers,
-    )
+    # # experiment 1: run node feature ablation doubles
+    # print("Running Node Feature Perturbation...")
+    # feature_fold_changes, feature_top_genes = perturb_node_features(
+    #     data=data,
+    #     runner=runner,
+    #     feature_indices=list(range(5, 42)),
+    #     # feature_indices=deletion_pairs,
+    #     device=device,
+    #     node_idx_to_gene_id=node_idx_to_gene_id,
+    #     gencode_to_symbol=symbol_to_gencode,
+    #     scalers=scalers,
+    # )
 
-    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
-        pickle.dump(feature_fold_changes, f)
-    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
-        pickle.dump(feature_top_genes, f)
+    # with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
+    #     pickle.dump(feature_fold_changes, f)
+    # with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
+    #     pickle.dump(feature_top_genes, f)
 
-    deletion_pairs = [
-        (7, 9),  # ATAC + CpG
-        (7, 10),  # ATAC + CTCF
-        (7, 11),  # ATAC + DNase
-        (7, 12),  # ATAC + H3K27ac
-        (7, 13),  # ATAC + H3K27me3
-        (7, 14),  # ATAC + H3K36me3
-        (7, 15),  # ATAC + H3K4me1
-        (7, 16),  # ATAC + H3K4me2
-        (7, 17),  # ATAC + H3K4me3
-        (7, 18),  # ATAC + H3K79me2
-        (7, 19),  # ATAC + H3K9ac
-        (7, 20),  # ATAC + H3K9me3
-        (7, 24),  # ATAC + microsatellites
-        (12, 13),  # H3K27ac + H3K27me3
-        (12, 14),  # H3K27ac + H3K36me3
-        (12, 15),  # H3K27ac + H3K4me1
-        (12, 16),  # H3K27ac + H3K4me2
-        (12, 17),  # H3K27ac + H3K4me3
-        (12, 18),  # H3K27ac + H3K79me2
-        (12, 19),  # H3K27ac + H3K9ac
-        (12, 20),  # H3K27ac + H3K9me3
-    ]
+    # deletion_pairs = [
+    #     (7, 9),  # ATAC + CpG
+    #     (7, 10),  # ATAC + CTCF
+    #     (7, 11),  # ATAC + DNase
+    #     (7, 12),  # ATAC + H3K27ac
+    #     (7, 13),  # ATAC + H3K27me3
+    #     (7, 14),  # ATAC + H3K36me3
+    #     (7, 15),  # ATAC + H3K4me1
+    #     (7, 16),  # ATAC + H3K4me2
+    #     (7, 17),  # ATAC + H3K4me3
+    #     (7, 18),  # ATAC + H3K79me2
+    #     (7, 19),  # ATAC + H3K9ac
+    #     (7, 20),  # ATAC + H3K9me3
+    #     (7, 24),  # ATAC + microsatellites
+    #     (12, 13),  # H3K27ac + H3K27me3
+    #     (12, 14),  # H3K27ac + H3K36me3
+    #     (12, 15),  # H3K27ac + H3K4me1
+    #     (12, 16),  # H3K27ac + H3K4me2
+    #     (12, 17),  # H3K27ac + H3K4me3
+    #     (12, 18),  # H3K27ac + H3K79me2
+    #     (12, 19),  # H3K27ac + H3K9ac
+    #     (12, 20),  # H3K27ac + H3K9me3
+    # ]
 
-    # experiment 2: run node feature ablation doubles
-    print("Running Node Feature Perturbation...")
-    feature_fold_changes, feature_top_genes = perturb_node_features(
-        data=data,
-        runner=runner,
-        # feature_indices=list(range(5, 42)),
-        feature_indices=deletion_pairs,
-        device=device,
-        node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=symbol_to_gencode,
-        scalers=scalers,
-    )
+    # # experiment 2: run node feature ablation doubles
+    # print("Running Node Feature Perturbation...")
+    # feature_fold_changes, feature_top_genes = perturb_node_features(
+    #     data=data,
+    #     runner=runner,
+    #     # feature_indices=list(range(5, 42)),
+    #     feature_indices=deletion_pairs,
+    #     device=device,
+    #     node_idx_to_gene_id=node_idx_to_gene_id,
+    #     gencode_to_symbol=symbol_to_gencode,
+    #     scalers=scalers,
+    # )
 
-    with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
-        pickle.dump(feature_fold_changes, f)
-    with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
-        pickle.dump(feature_top_genes, f)
+    # with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
+    #     pickle.dump(feature_fold_changes, f)
+    # with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
+    #     pickle.dump(feature_top_genes, f)
 
     # experiment 2: run systematic connected component perturbations on the
     # k-hop subgraph
