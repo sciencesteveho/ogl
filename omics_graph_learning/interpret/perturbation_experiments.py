@@ -140,7 +140,7 @@ def main() -> None:
     )
 
     # load the top perturbations
-    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations_500.pkl"
+    top_pert = "/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/interpretation/top_perturbations_1000.pkl"
     with open(top_pert, "rb") as f:
         top_perturbations = pickle.load(f)
 
@@ -159,23 +159,25 @@ def main() -> None:
     with open(outpath / "selected_component_perturbations_500.pkl", "wb") as f:
         pickle.dump(results, f)
 
-    # # experiment 1: run node feature ablation doubles
-    # print("Running Node Feature Perturbation...")
-    # feature_fold_changes, feature_top_genes = perturb_node_features(
-    #     data=data,
-    #     runner=runner,
-    #     feature_indices=list(range(5, 42)),
-    #     # feature_indices=deletion_pairs,
-    #     device=device,
-    #     node_idx_to_gene_id=node_idx_to_gene_id,
-    #     gencode_to_symbol=symbol_to_gencode,
-    #     scalers=scalers,
-    # )
+    # experiment 1: run node feature ablation doubles
+    print("Running Node Feature Perturbation...")
+    avg_diffs, feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        feature_indices=list(range(5, 42)),
+        # feature_indices=deletion_pairs,
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
+    )
 
-    # with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
-    #     pickle.dump(feature_fold_changes, f)
-    # with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
-    #     pickle.dump(feature_top_genes, f)
+    with open(outpath / "node_feature_perturbations_avg_diffs.pkl", "wb") as f:
+        pickle.dump(avg_diffs, f)
+    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
 
     # deletion_pairs = [
     #     (7, 9),  # ATAC + CpG

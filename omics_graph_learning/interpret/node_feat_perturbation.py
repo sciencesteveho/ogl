@@ -161,6 +161,9 @@ def compute_average_node_differences(
 ) -> Dict[Union[int, Tuple[int, int]], Dict[int, float]]:
     """Compute the average difference for each node, for each feature index or
     feature tuple.
+
+    Returns:
+        {feature_key: {node: average_difference}}
     """
     return {
         feature_key: {node: sum(vals) / len(vals) for node, vals in node_diffs.items()}
@@ -273,6 +276,7 @@ def perturb_node_features(
     mask: str = "all",
     scalers: Dict[int, object] = None,
 ) -> Tuple[
+    Dict[Union[int, Tuple[int, int]], Dict[int, float]],
     Dict[Union[int, Tuple[int, int]], float],
     Dict[Union[int, Tuple[int, int]], List[Tuple[str, float]]],
 ]:
@@ -343,4 +347,4 @@ def perturb_node_features(
         gencode_to_symbol=gencode_to_symbol,
     )
 
-    return feature_fold_changes, feature_top_genes
+    return avg_diffs, feature_fold_changes, feature_top_genes
