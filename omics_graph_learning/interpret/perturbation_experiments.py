@@ -172,6 +172,9 @@ def main() -> None:
         scalers=scalers,
     )
 
+    # rename idx keys in avg_diffs to gene_ids
+    avg_diffs = {node_idx_to_gene_id[k]: v for k, v in avg_diffs.items()}
+
     with open(outpath / "node_feature_perturbations_avg_diffs.pkl", "wb") as f:
         pickle.dump(avg_diffs, f)
     with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
