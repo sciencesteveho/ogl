@@ -153,6 +153,7 @@ def main() -> None:
     # run perturbations
     results = experiment.run_perturbations(
         gene_node_pairs=perturbations,
+        feature_indices=list(range(37)),
     )
 
     # save results

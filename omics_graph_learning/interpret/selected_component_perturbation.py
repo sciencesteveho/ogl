@@ -5,7 +5,7 @@
 """_summary_ of project"""
 
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import joblib  # type: ignore
 import torch
@@ -167,6 +167,7 @@ class SelectedComponentPerturbation:
     def run_perturbations(
         self,
         gene_node_pairs: List[Tuple[int, int]],
+        feature_indices: Union[List[int], List[Tuple[int, int]]],
     ) -> Dict[str, Dict[str, Dict[int, float]]]:
         """For each (gene_node, node_to_perturb) in gene_node_pairs:
           1. Build k-hop subgraph for gene_node.
@@ -207,8 +208,7 @@ class SelectedComponentPerturbation:
                 results[gene_name][node_to_perturb_name] = {}
 
             # systematically zero out features
-            max_feat_idx = sub_data.x.shape[1]  # e.g., 42
-            for feat_idx in range(5, max_feat_idx):
+            for feat_idx in feature_indices:
                 # print the real name of the node to perturb
                 print(f"Node to perturb: {node_to_perturb_name}")
                 fc = self._perturb_feature_and_predict(
