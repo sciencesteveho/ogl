@@ -45,15 +45,12 @@ from omics_graph_learning.utils.config_handlers import ExperimentConfig
 def load_scalers(scaler_dir: str, num_features: int = 37) -> Dict[int, object]:
     """Load each feat_{i}_scaler.joblib into a dictionary:
     {feature_idx -> scaler_pipeline}.
-
-    The first 5 dimensions are embedding features that don't have scalers.
-    Original features (with scalers) now start at index 5.
     """
-    scalers = {i: None for i in range(5)}
+    scalers = {}
     for feat_idx in range(num_features):
         path = os.path.join(scaler_dir, f"feat_{feat_idx}_scaler.joblib")
         if os.path.isfile(path):
-            scalers[feat_idx + 5] = joblib.load(path)
+            scalers[feat_idx] = joblib.load(path)
 
     return scalers
 
@@ -94,7 +91,7 @@ def main() -> None:
     scalers = load_scalers(str(scaler_path))
 
     # check that scalers are real from idx 5 onwards
-    assert all(scalers[i] is not None for i in range(5, 42))
+    assert all(scalers[i] is not None for i in range(37))
 
     # load experiment setup
     (
@@ -112,23 +109,23 @@ def main() -> None:
     # invert symbol dict
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
-    # # get baseline predictions
-    # baseline_df = get_baseline_predictions_k_hop(
-    #     data=data,
-    #     runner=runner,
-    #     k=hops,
-    # )
-    # baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
+    # get baseline predictions
+    baseline_df = get_baseline_predictions_k_hop(
+        data=data,
+        runner=runner,
+        k=hops,
+    )
+    baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
 
-    # # get best predictions from model
-    # print("Getting best predictions...")
-    # best_prediction_df = get_best_predictions(
-    #     df=baseline_df,
-    #     gene_indices=gene_indices,
-    #     node_idx_to_gene_id=node_idx_to_gene_id,
-    #     gencode_to_symbol=gencode_to_symbol,
-    # )
-    # best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
+    # get best predictions from model
+    print("Getting best predictions...")
+    best_prediction_df = get_best_predictions(
+        df=baseline_df,
+        gene_indices=gene_indices,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=gencode_to_symbol,
+    )
+    best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
 
     # experiment 3: run systematic selected component perturbations on the node
     # features for top genes
@@ -162,135 +159,89 @@ def main() -> None:
     with open(outpath / "selected_component_perturbations_1000.pkl", "wb") as f:
         pickle.dump(results, f)
 
-    # # experiment 1: run node feature ablation doubles
-    # print("Running Node Feature Perturbation...")
-    # avg_diffs, feature_fold_changes, feature_top_genes = perturb_node_features(
-    #     data=data,
-    #     runner=runner,
-    #     feature_indices=list(range(5, 42)),
-    #     # feature_indices=deletion_pairs,
-    #     device=device,
-    #     node_idx_to_gene_id=node_idx_to_gene_id,
-    #     gencode_to_symbol=symbol_to_gencode,
-    #     scalers=scalers,
-    # )
+    # experiment 1: run node feature ablation doubles
+    print("Running Node Feature Perturbation...")
+    avg_diffs, feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        feature_indices=list(range(37)),
+        # feature_indices=deletion_pairs,
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
+    )
 
-    # # rename idx keys in avg_diffs to gene_ids
-    # avg_diffs = {node_idx_to_gene_id[k]: v for k, v in avg_diffs.items()}
+    # rename idx keys in avg_diffs to gene_ids
+    avg_diffs = {node_idx_to_gene_id[k]: v for k, v in avg_diffs.items()}
 
-    # with open(outpath / "node_feature_perturbations_avg_diffs.pkl", "wb") as f:
-    #     pickle.dump(avg_diffs, f)
-    # with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
-    #     pickle.dump(feature_fold_changes, f)
-    # with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
-    #     pickle.dump(feature_top_genes, f)
+    with open(outpath / "node_feature_perturbations_avg_diffs.pkl", "wb") as f:
+        pickle.dump(avg_diffs, f)
+    with open(outpath / "node_feature_perturbations.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
 
-    # deletion_pairs = [
-    #     (7, 9),  # ATAC + CpG
-    #     (7, 10),  # ATAC + CTCF
-    #     (7, 11),  # ATAC + DNase
-    #     (7, 12),  # ATAC + H3K27ac
-    #     (7, 13),  # ATAC + H3K27me3
-    #     (7, 14),  # ATAC + H3K36me3
-    #     (7, 15),  # ATAC + H3K4me1
-    #     (7, 16),  # ATAC + H3K4me2
-    #     (7, 17),  # ATAC + H3K4me3
-    #     (7, 18),  # ATAC + H3K79me2
-    #     (7, 19),  # ATAC + H3K9ac
-    #     (7, 20),  # ATAC + H3K9me3
-    #     (7, 24),  # ATAC + microsatellites
-    #     (12, 13),  # H3K27ac + H3K27me3
-    #     (12, 14),  # H3K27ac + H3K36me3
-    #     (12, 15),  # H3K27ac + H3K4me1
-    #     (12, 16),  # H3K27ac + H3K4me2
-    #     (12, 17),  # H3K27ac + H3K4me3
-    #     (12, 18),  # H3K27ac + H3K79me2
-    #     (12, 19),  # H3K27ac + H3K9ac
-    #     (12, 20),  # H3K27ac + H3K9me3
-    # ]
+    deletion_pairs = [
+        (2, 4),  # ATAC + CpG
+        (2, 5),  # ATAC + CTCF
+        (2, 6),  # ATAC + DNase
+        (2, 7),  # ATAC + H3K27ac
+        (2, 8),  # ATAC + H3K27me3
+        (2, 9),  # ATAC + H3K36me3
+        (2, 10),  # ATAC + H3K4me1
+        (2, 11),  # ATAC + H3K4me2
+        (2, 12),  # ATAC + H3K4me3
+        (2, 13),  # ATAC + H3K79me2
+        (2, 14),  # ATAC + H3K9ac
+        (2, 15),  # ATAC + H3K9me3
+        (2, 19),  # ATAC + microsatellites
+        (7, 8),  # H3K27ac + H3K27me3
+        (7, 9),  # H3K27ac + H3K36me3
+        (7, 10),  # H3K27ac + H3K4me1
+        (7, 11),  # H3K27ac + H3K4me2
+        (7, 12),  # H3K27ac + H3K4me3
+        (7, 13),  # H3K27ac + H3K79me2
+        (7, 14),  # H3K27ac + H3K9ac
+        (7, 15),  # H3K27ac + H3K9me3
+    ]
 
-    # # experiment 2: run node feature ablation doubles
-    # print("Running Node Feature Perturbation...")
-    # feature_fold_changes, feature_top_genes = perturb_node_features(
-    #     data=data,
-    #     runner=runner,
-    #     # feature_indices=list(range(5, 42)),
-    #     feature_indices=deletion_pairs,
-    #     device=device,
-    #     node_idx_to_gene_id=node_idx_to_gene_id,
-    #     gencode_to_symbol=symbol_to_gencode,
-    #     scalers=scalers,
-    # )
+    # experiment 2: run node feature ablation doubles
+    print("Running Node Feature Perturbation...")
+    feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        # feature_indices=list(range(5, 42)),
+        feature_indices=deletion_pairs,
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
+    )
 
-    # with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
-    #     pickle.dump(feature_fold_changes, f)
-    # with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
-    #     pickle.dump(feature_top_genes, f)
+    with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
 
-    # # experiment 2: run systematic connected component perturbations on the
-    # # k-hop subgraph
-    # print("Running Connected Component Perturbation...")
-    # experiment = ConnectedComponentPerturbation(
-    #     data=data,
-    #     device=device,
-    #     runner=runner,
-    #     idxs_inv=idxs_inv,
-    #     mask_attr="all",
-    # )
+    # experiment 2: run systematic connected component perturbations on the
+    # k-hop subgraph
+    print("Running Connected Component Perturbation...")
+    experiment = ConnectedComponentPerturbation(
+        data=data,
+        device=device,
+        runner=runner,
+        idxs_inv=idxs_inv,
+        mask_attr="all",
+    )
 
-    # best_prediction_df = pd.read_csv(outpath / f"best_predictions_{hops}_hop.csv")
-    # genes_to_analyze = best_prediction_df["node_idx"].tolist()
-    # component_perturbation_results = experiment.run_perturbations(
-    #     genes_to_analyze=genes_to_analyze,
-    # )
-    # with open(outpath / f"connected_component_perturbations_{hops}_hop.pkl", "wb") as f:
-    #     pickle.dump(component_perturbation_results, f)
-
-    # print("Running Essential Gene Perturbation...")
-    # essential_fold_changes = essential_gene_perturbation(
-    #     data=data,
-    #     runner=runner,
-    #     idxs=idxs,
-    #     gencode_to_symbol=gencode_to_symbol,
-    #     output_prefix=outpath,
-    #     sample=sample,
-    #     lethal_file=lethal_file,
-    #     mask=mask,
-    #     device=device,
-    #     essential=True,
-    # )
-
-    # print("Running Non-Essential Gene Perturbation...")
-    # nonessential_fold_changes = essential_gene_perturbation(
-    #     data=data,
-    #     runner=runner,
-    #     idxs=idxs,
-    #     gencode_to_symbol=gencode_to_symbol,
-    #     output_prefix=outpath,
-    #     sample=sample,
-    #     lethal_file=lethal_file,
-    #     mask=mask,
-    #     device=device,
-    #     essential=False,
-    # )
-
-    # print("Running Coessential Pair Perturbation...")
-    # pos_pairs, neg_pairs = load_coessential_pairs(pos_pairs_file, neg_pairs_file, idxs)
-    # coessential_changes, random_changes = paired_gene_perturbation(
-    #     data=data,
-    #     runner=runner,
-    #     pairs=pos_pairs,  # or neg_pairs
-    #     num_hops=6,
-    #     device=device,
-    #     random_comparison=True,
-    # )
-
-    # # simple t-test for coessential vs random perturbations
-    # t_stat, p_value = ttest_ind(coessential_changes, random_changes, equal_var=False)
-    # print("T-test results for positive coessential pairs vs random perturbations:")
-    # print(f"T-statistic: {t_stat}, P-value: {p_value}")
-
-    # print("All experiments complete.")
+    best_prediction_df = pd.read_csv(outpath / f"best_predictions_{hops}_hop.csv")
+    genes_to_analyze = best_prediction_df["node_idx"].tolist()
+    component_perturbation_results = experiment.run_perturbations(
+        genes_to_analyze=genes_to_analyze,
+    )
+    with open(outpath / f"connected_component_perturbations_{hops}_hop.pkl", "wb") as f:
+        pickle.dump(component_perturbation_results, f)
 
 
 if __name__ == "__main__":
