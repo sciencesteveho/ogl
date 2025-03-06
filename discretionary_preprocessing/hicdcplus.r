@@ -15,7 +15,7 @@ args <- parser$parse_args()
 #'
 #' @param gen_ver (string) Genome version ["hg19", "hg38"]
 #' @return (BSgenome object) Reference genome
-#' 
+#'
 
 load_ref <- function(gen_ver = NULL) {
     if (gen_ver == "hg38") {
@@ -28,14 +28,14 @@ load_ref <- function(gen_ver = NULL) {
 }
 
 #' Estimate statistical significance of Hi-C interactions usinf HiCDCPlus
-#' 
+#'
 #' @param tissue (string) Name of tissue or cell line
 #' @param working_dir (string) Path to the working directory
 #' @param gen_ver (string) Genome version ["hg19", "hg38"]
 #' @param binsize (numeric) Bin size
 #' @param ncore (numeric) Number of cores to use
 #' @return (file) HiCDCPlus output file
-#' 
+#'
 
 hic_processing <- function(tissue = NULL,
                            working_dir = NULL,
@@ -61,7 +61,7 @@ hic_processing <- function(tissue = NULL,
                     #  chrs = c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
                     #           "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
                     #           "chr20", "chr21", "chr22", "chrX", "chrY"),)
-  
+
   gi_list <- generate_bintolen_gi_list(bintolen_path = bintolen, gen = "Hsapiens", gen_ver = gen_ver)
   gi_list <- add_hic_counts(gi_list, hic_path = hicfile)
   gi_list <- expand_1D_features(gi_list)

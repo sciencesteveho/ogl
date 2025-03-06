@@ -38,7 +38,7 @@ resource_dir="/ocean/projects/bio210019p/stevesho/resources"
 # Append specific directory names to the base directory
 working_dir="${base_dir}/coolers"
 final_dir="${base_dir}/contact_matrices"
-tmp_dir="${working_dir}/tmp" 
+tmp_dir="${working_dir}/tmp"
 
 # Set-up array for tissue names
 declare -A tissue_names

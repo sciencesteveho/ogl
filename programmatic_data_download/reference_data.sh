@@ -13,7 +13,7 @@
 # $   --postar3_file /path/to/postar3/file \
 # $   --script_directory /path/to/programmatic_data_download \
 # $   [--cleanup]
-# 
+#
 # The script will also prepare the necessary directory structure for the rest of
 # OGL. Provided is a schematic of the directory layout:
 #
@@ -215,7 +215,7 @@ function _tss () {
 # evidence (remove Non-functional MTI).
 # =============================================================================
 function _mirtarbase_targets () {
-    local unprocessed_dir=$1  
+    local unprocessed_dir=$1
     local raw_mirtarbase_file=$2  # absolute path to mirtarbase xlsx
     local raw_mirtarbase_csv=$3  # absolute path to mirtarbase csv
     local parsed_mirtarbase=$4  # absolute path to final parsed file
@@ -244,7 +244,7 @@ function _mirtarbase_targets () {
 
 
 # =============================================================================
-# MicroRNA coordinates 
+# MicroRNA coordinates
 # We download coordinates of human miRNAs from miRBase release 22.1 For the
 # miRBase catalog, we remove unceccessary information and only keep the
 # coordinates and name (casefolded). Because there are some repeat entrys
@@ -299,7 +299,7 @@ function _biomart_mirna_coordinates () {
 # RNA Binding protein sites were downloaded from POSTAR 3. We take the list of
 # RBPs and their binding sites and intersect their binding sites with gene
 # bodies. To get RBP --> Gene interactions. We then keep RBP --> Gene
-# interactions that occur in multiple samples, removing singletons. 
+# interactions that occur in multiple samples, removing singletons.
 #
 # To determine RBP binding site clusters, we calculate the node feature (overlap
 # with rna binding site clusters), we merge binding sites within 10bp, given
@@ -552,7 +552,7 @@ echo "Finished preparing reference data. Total time: $(convertsecs SECONDS)"
 # we removed the lines with:
 # for file in *; do
 #     echo "Processing $file"
-    
+
 #     # check if there are any malformed lines
 #     if awk '{ if ($2 > $3) exit 1 }' "$file"; then
 #         echo "No malformed lines found in $file"
@@ -565,7 +565,7 @@ echo "Finished preparing reference data. Total time: $(convertsecs SECONDS)"
 # additionally, some lines have "chr23" which we also removed along with "chrX", "chrY", "chrM" and "chrMT"
 # for file in *; do
 #     echo "Processing $file"
-    
+
 #     # check if there are any malformed lines
 #     if awk '{ if ($1 ~ /chr23|chrX|chrY|chrM|chrMT/) exit 1 }' "$file"; then
 #         echo "No malformed lines found in $file"

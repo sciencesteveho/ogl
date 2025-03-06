@@ -209,17 +209,17 @@ class GenomeDataPreprocessor:
     ) -> None:
         """Liftovers bed file, sorts it, and deletes the unlifted regions. The
         command is a subprocess call and is set up like:
-        
+
         ./liftOver \
             input.bed \
             hg19ToHg38.over.chain \
             output.bed \
             unlifted.bed
-            
+
         bedtools sort -i output.bed > output_sorted.bed && \
             mv output_sorted output.bed \
             && rm unlifted.bed
-            
+
         Returns none, but creates an output file *path/bed_lifted*
         """
         cmd = f"{liftover} \

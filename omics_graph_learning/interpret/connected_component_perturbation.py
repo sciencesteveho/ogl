@@ -18,7 +18,8 @@ from torch_geometric.utils import subgraph  # type: ignore
 from torch_geometric.utils import to_networkx  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from omics_graph_learning.interpret.interpret_utils import calculate_log2_fold_change
+from omics_graph_learning.interpret.interpret_utils import \
+    calculate_log2_fold_change
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
 
 

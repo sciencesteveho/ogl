@@ -13,7 +13,7 @@ geometric Data object. Two masks are produced:
     "split_loss" masks are a subset of the "split" masks containing only genes
     that passed the preceding filter steps for loss calculation (i.e. loss is
     only calculated over these gene nodes)
-    
+
 Additionally code is provided to subset the chromosomes for hyperparameter
 tuning. List of chrs is explictly defined in constants.py."""
 
@@ -103,13 +103,16 @@ class GraphToPytorch:
         else:
             self.train_positional_encoding = experiment_config.train_positional_encoding
 
-        self.graph_indexes, self.split, self.graph_data, self.targets = (
-            self._load_data_object_prerequisites(
-                experiment_config=experiment_config,
-                graph_type=experiment_config.graph_type,
-                split_name=split_name,
-                scaled_targets=scaled_targets,
-            )
+        (
+            self.graph_indexes,
+            self.split,
+            self.graph_data,
+            self.targets,
+        ) = self._load_data_object_prerequisites(
+            experiment_config=experiment_config,
+            graph_type=experiment_config.graph_type,
+            split_name=split_name,
+            scaled_targets=scaled_targets,
         )
 
     def generate_edge_index(self) -> torch.Tensor:

@@ -9,15 +9,15 @@ the nature of our regression targets. Code is included for:
     (2) Providing an average expected fold change (combining all genes) between
         experimental replicates
     (3) Building cell-line specific baseline predictors using average activity
-    
+
 EXPERIMENT LEVEL ACCURACY:
     We use replicate 1 and replicate 2 of rna-seq experiments as `predicted` vs
     `expected`
-    
+
 AVERAGE FOLD CHANGE:
     We take the fold change between all genes of replicate 1 and replicate 2 and
     return an average across all the fold changes
-    
+
 AVERAGE ACTIVITY BASELINE (cell lines):
     For the seven cell lines in OGL (and two replicates each), we take the
     Log2TPM of the protein coding genes for each experiment, then take the

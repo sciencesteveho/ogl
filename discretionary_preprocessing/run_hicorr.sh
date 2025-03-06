@@ -51,14 +51,14 @@ $lib/reads_2_cis_frag_loop.pl \
     ${workingdir}/${name}.loop.outward \
     ${workingdir}/${name}.loop.samestrand \
     ${workingdir}/${name} \
-    ${workingdir}/${name}.temp 
+    ${workingdir}/${name}.temp
 
 # get trans fragment pairs
 $lib/reads_2_trans_frag_loop.pl \
     $bed \
     $maplen \
     ${workingdir}/${name}.loop.trans \
-    ${workingdir}/${name}.temp 
+    ${workingdir}/${name}.temp
 wait
 
 # sort fragment pairs
@@ -94,7 +94,7 @@ wait
 
 echo ${workingdir}/${name} "trans:" `cat ${workingdir}/frag_loop.${name}.trans | awk '{sum+=$3}END{print sum/2}'` "cis:" `cat ${workingdir}/frag_loop.${name}.cis | awk '{sum+=$3}END{print sum/2}'` "cis2M:" `cat ${workingdir}/frag_loop.${name}.cis | awk '{if($4<=2000000)print}' | awk '{sum+=$3}END{print sum/2}'`
 
-# 8. clean UP, frag_loop.$expt.cis and frag_loop.${workingdir}/${name}.trans are the input files for HiCorr 
+# 8. clean UP, frag_loop.$expt.cis and frag_loop.${workingdir}/${name}.trans are the input files for HiCorr
 # rm -f temp.${workingdir}/${name}.loop.inward.filter temp.${workingdir}/${name}.loop.outward.filter temp.${workingdir}/${name}.loop.inward temp.${workingdir}/${name}.loop.outward
 
 bash /ocean/projects/bio210019p/stevesho/data/preprocess/raw_files/chromatin_loops/hic/HiCorr/HiCorr_DPNII.sh \

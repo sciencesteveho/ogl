@@ -35,4 +35,3 @@ tissue_yaml=$2
 python -u omics_graph_learning/omics_graph_learning/pipeline_node_and_edge_generation.py \
     --experiment_config ${experiment_yaml} \
     --tissue_config ${tissue_yaml}
-

@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
 import seaborn as sns  # type: ignore
 
-from omics_graph_learning.visualization import set_matplotlib_publication_parameters
+from omics_graph_learning.visualization import \
+    set_matplotlib_publication_parameters
 
 CHROM_SIZES = {
     "chr1": 248956422,

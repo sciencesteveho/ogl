@@ -11,8 +11,9 @@ import random
 from typing import Any, Dict
 
 import numpy as np
-from omics_graph_learning.constants import ATTRIBUTES
 import pybedtools  # type: ignore
+
+from omics_graph_learning.constants import ATTRIBUTES
 
 
 class NodeFeatureAccuracy:

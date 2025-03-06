@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 from scipy import stats  # type: ignore
 import seaborn as sns  # type: ignore
-from tensorboard.backend.event_processing.event_accumulator import (
-    EventAccumulator,
-)  # type: ignore
+from tensorboard.backend.event_processing.event_accumulator import \
+    EventAccumulator  # type: ignore
 
-from omics_graph_learning.visualization import set_matplotlib_publication_parameters
+from omics_graph_learning.visualization import \
+    set_matplotlib_publication_parameters
 
 
 def _load_tb_loss(tensorboard_log: Union[str, Path]) -> Dict[str, List[float]]:

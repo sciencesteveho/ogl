@@ -7,7 +7,7 @@
 # To run the script:
 # $ bash tissue_specific_datasets.sh
 # $     --root_directory <root_directory>
-# 
+#
 # The script will add the following directory (with asterisks indicating)
 # root_directory
 # ├── unprocessed
@@ -98,7 +98,7 @@ function _encode_downloader () {
                 local file_extension=".bed.gz"
                 local output_path="${unprocessed_dir}/${accession}${file_extension}"
             fi
-            
+
             local url="${base_url}/${accession}/@@download/${accession}${file_extension}"
 
             if [ -f "${output_path}" ]; then
@@ -226,7 +226,7 @@ _sedb() {
 
 
 # =============================================================================
-# run main_func function! 
+# run main_func function!
 # =============================================================================
 main () {
     local root_dir=$1

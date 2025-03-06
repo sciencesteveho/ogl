@@ -83,7 +83,7 @@ function pair_getter () {
 
 # run pairsam-merge --> marking --> filter
 # filtered pairsam --> cooler --> individual .cool
-# filtered pairsam --> add fragment information --> juicer pre --> .hic 
+# filtered pairsam --> add fragment information --> juicer pre --> .hic
 # =============================================================================
 # Step 3: Merge pairs
 # Args:
@@ -203,7 +203,7 @@ singularity exec --bind ${script_dir},${outdir},${resource_dir} \
 #   3 - binsize
 #   4 - num_cores
 #   5 - output_prefix
-#   6 - max_split 
+#   6 - max_split
 # Output:
 #   Cooler with the name `${output_dir}/${tissue}.cool`
 # =============================================================================

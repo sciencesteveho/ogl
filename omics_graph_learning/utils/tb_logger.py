@@ -101,7 +101,6 @@ class TensorBoardLogger:
 
             module_type = type(module).__name__
             for param_name, param in module.named_parameters(recurse=False):
-
                 # separate weights and biases
                 if "bias" in param_name:
                     bias_stats[module_type].append(param.data.view(-1))

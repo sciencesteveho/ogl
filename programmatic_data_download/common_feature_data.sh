@@ -7,7 +7,7 @@
 # And use four different combinations: SCREEN only, EpiMap only, an
 # intersection, and a union of elements. The EpiMap catalogue is in hg18 and is
 # lifted over to hg38.
-# 
+#
 # $ bash common_feature_data.sh \
 # $   --root_directory /path/to/your/root/directory
 #
@@ -75,7 +75,7 @@ function _download_raw_file () {
 
 
 # =============================================================================
-# Utility function to perform reference liftover 
+# Utility function to perform reference liftover
 # =============================================================================
 function _liftover_19_to_38 () {
     local liftover_dir="$1"  # path/to/liftover/directory
@@ -160,7 +160,7 @@ function _replication_hotspots () {
         | awk -v OFS='\t' '{print $1, $2, $3, "rep"$6}' \
         | sed 's/^/chr/g' \
         | tr '[:upper:]' '[:lower:]' \
-        > ${unprocessed_dir}/rep_formatted_hg18.bed 
+        > ${unprocessed_dir}/rep_formatted_hg18.bed
 
     # liftover to hg38
     _liftover_19_to_38 \
@@ -240,7 +240,7 @@ function _repeatmasker () {
                 else if ($4 == "LTR" || $4 == "Retroposon") { match_type = "ltr" }
                 else if ($4 == "SINE") { match_type = "sine" }
                 else if ($4 ~ /RNA/) { match_type = "rnarepeat" }
-                
+
                 if (match_type != "") {
                     output_file = dir "/" match_type file_suffix;
                     print $1, $2, $3, $4 > output_file;

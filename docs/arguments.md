@@ -100,13 +100,12 @@ The parser includes several validation rules to ensure the consistency and corre
 
 3. **GPU Requirement for Parameter Optimization**:
    - If `--optimize_params` is enabled, the `--n_gpus` argument **must** be specified.
-   
+
 <br>
 
 4. **Edge Perturbation Consistency**:
    - If `--total_random_edges` is set, `--edge_perturbation` **must** be `"randomize_edges"`.
-   
+
 <br>
 
 Ensure that these conditions are met when executing the pipeline to avoid runtime errors.
-

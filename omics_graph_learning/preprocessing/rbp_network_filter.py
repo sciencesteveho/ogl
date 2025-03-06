@@ -9,7 +9,7 @@ network (in edges) to be used in the edge_parser module.
 The RBP network is downloaded from POSTAR 3 and is a list of the
     RBP --> Gene
     Where the binding site for the RBP intersects the gene body.
-    
+
 The TPM values are from ENCODE RNA-seq data. If they pass a TPM threshold, we
 consider them active, and keep the RBP --> Gene edge.
 """

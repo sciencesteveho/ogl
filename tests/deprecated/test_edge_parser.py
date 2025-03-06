@@ -16,12 +16,13 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from omics_graph_learning.config_handlers import ExperimentConfig
-from omics_graph_learning.config_handlers import TissueConfig
-from omics_graph_learning.edge_parser import EdgeParser
 import pandas as pd
 import pybedtools  # type: ignore
 import pytest
+
+from omics_graph_learning.config_handlers import ExperimentConfig
+from omics_graph_learning.config_handlers import TissueConfig
+from omics_graph_learning.edge_parser import EdgeParser
 
 
 # TODO replace mock config with a mock_config.yaml

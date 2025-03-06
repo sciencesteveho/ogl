@@ -17,10 +17,11 @@ from pathlib import Path
 import pickle
 import random
 
+import pytest
+
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.config_handlers import TissueConfig
 from omics_graph_learning.local_context_parser import LocalContextParser
-import pytest
 
 
 # TODO replace with mock config files mock_config.yaml

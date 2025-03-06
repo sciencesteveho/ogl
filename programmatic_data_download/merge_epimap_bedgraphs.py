@@ -22,7 +22,7 @@ root_directory
 For posterity, the job to run epimap processing is shown below:
 for tissue in k562 imr90 gm12878 hepg2 h1-esc hmec nhek hippocampus lung
 pancreas skeletal_muscle small_intestine liver aorta skin left_ventricle mammary
-spleen ovary adrenal; do 
+spleen ovary adrenal; do
     script_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/omics_graph_learning/omics_graph_learning/programmatic_data_download
     root_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing
     resource_dir=/ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references

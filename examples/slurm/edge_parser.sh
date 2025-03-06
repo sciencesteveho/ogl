@@ -26,4 +26,3 @@ conda activate ogl
 
 yaml=$1
 python -u omics_graph_learning/omics_graph_learning/edge_parser.py --config ${yaml}
-

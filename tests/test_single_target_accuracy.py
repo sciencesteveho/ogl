@@ -32,9 +32,10 @@ import sys
 from typing import cast, Dict, Tuple, Union
 
 import numpy as np
+import pandas as pd
+
 from omics_graph_learning.config_handlers import ExperimentConfig
 from omics_graph_learning.config_handlers import TissueConfig
-import pandas as pd
 
 TARGET_FILE = "targets_combined.pkl"
 

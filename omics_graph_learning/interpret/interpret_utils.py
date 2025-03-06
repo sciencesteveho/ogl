@@ -140,7 +140,9 @@ def load_data_and_model(
     )
 
 
-def _interpret_setup(args: argparse.Namespace) -> Tuple[
+def _interpret_setup(
+    args: argparse.Namespace,
+) -> Tuple[
     Data,
     torch.device,
     PerturbRunner,

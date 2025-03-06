@@ -55,10 +55,10 @@ function _format_deepanchor_loops () {
     local prefix=$4  # prefix for .bigInteract file
     local output_dir=$5  # final directory to place lifted and formatted calls
     local output_prefix=$6  # tissue naming for final file
-    
+
     "$resource_dir/bigBedToBed" \
         "$raw_chr_loop_dir/${prefix}.bigInteract" \
-        "$raw_chr_loop_dir/${prefix}.bedpe" 
+        "$raw_chr_loop_dir/${prefix}.bedpe"
 
     # Split bedpe and extend regions to approximate 5kb resolution, and to
     # determine a cutoff for anchor overlap to create edges to regulatory
@@ -71,7 +71,7 @@ function _format_deepanchor_loops () {
         -r 4981 \
         -l 0 \
         > "$raw_chr_loop_dir/${prefix}.bedpe_1"
-    
+
     awk -v OFS='\t' '{print $14,$15,$16,NR}' "$raw_chr_loop_dir/${prefix}.bedpe" \
         | bedtools slop \
         -i stdin \
@@ -90,7 +90,7 @@ function _format_deepanchor_loops () {
             "$resource_dir/hg19ToHg38.over.chain.gz" \
             "$outfile" \
             "$unmappedfile"
-        
+
         sort -k4,4 -o "$outfile" "$outfile"
     done
 

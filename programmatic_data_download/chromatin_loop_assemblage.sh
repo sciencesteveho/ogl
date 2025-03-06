@@ -34,7 +34,7 @@ function _combine_chr_loops () {
     local output_dir=$3  # directory to store combined loops
     local prefix=$4  # name of tissue for combined loop file
     local suffix=$5  # file prefix or num loops
-    
+
     cat \
         "$input_file1" \
         "$input_file2" \
@@ -119,7 +119,7 @@ combine_hic() {
     if [ -z "$tissue" ] || [ -z "$adaptive_number" ] || [ -z "$hic_fdr" ]; then
         echo "Usage: combine_hic <tissue_or_cell_line> <adaptive_number (e.g., 100000)> <hic_fdr (e.g., 0.001)>"
         return 1
-    fi    
+    fi
 
     local adaptive_file="adaptivecoarsegrain/${adaptive_number}/${tissue}_contacts.bedpe"
     local hic_file="fdr_filtered_hic/${hic_fdr}/${tissue}_contacts.bedpe"
@@ -313,7 +313,7 @@ function _main () {
         done
     done
 
-    # adaptive coarsegrain 
+    # adaptive coarsegrain
     for tissue in "${tissues[@]}"; do
         for k in 100000 300000 500000; do
             mkdir -p "${processed_loops_dir}/adaptive_coarsegrain/${k}"
@@ -334,7 +334,7 @@ function _main () {
 
 
 # =============================================================================
-# run main_func function! 
+# run main_func function!
 # =============================================================================
 _main \
     /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing \

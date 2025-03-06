@@ -1,4 +1,4 @@
-# Omics Graph Learning 
+# Omics Graph Learning
 
 ## Tools to construct, train, optimize, and interpret omics-based GNNs
 <div align="center">
@@ -124,7 +124,7 @@ OGL is designed to run end to end on a computing cluster and requires:
 ### Required Argument(s)
 
 | Argument                    | Type    | Default                 | Choices                                       | Description                                                                                                                          |
-|-----------------------------|---------|-------------------------|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|                            
+|-----------------------------|---------|-------------------------|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | `--experiment_yaml`         | `str`   | _Required_              | N/A                                           | Path to the experiment YAML file.                                                                                                   |                                                       |
 
 Users can run OGL to two separate endpoints. <br>

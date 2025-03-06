@@ -42,7 +42,8 @@ from omics_graph_learning.utils.config_handlers import ExperimentConfig
 from omics_graph_learning.utils.constants import EARLY_STOP_PATIENCE
 from omics_graph_learning.utils.constants import RANDOM_SEEDS
 from omics_graph_learning.utils.tb_logger import TensorBoardLogger
-from omics_graph_learning.visualization.training import plot_predicted_versus_expected
+from omics_graph_learning.visualization.training import \
+    plot_predicted_versus_expected
 from omics_graph_learning.visualization.training import plot_training_losses
 
 
@@ -672,12 +673,17 @@ def post_model_evaluation(
         tb_logger.writer.add_scalar("Predictions", out.item(), step)
         tb_logger.writer.add_scalar("Labels", label.item(), step)
 
-    loss_val, rmse_val, outs_val, labels_val, pearson_r_val, accuracy_val = (
-        post_eval_trainer.evaluate(
-            data_loader=val_loader,
-            mask="val",
-            epoch=0,
-        )
+    (
+        loss_val,
+        rmse_val,
+        outs_val,
+        labels_val,
+        pearson_r_val,
+        accuracy_val,
+    ) = post_eval_trainer.evaluate(
+        data_loader=val_loader,
+        mask="val",
+        epoch=0,
     )
 
     # bootstrap evaluations

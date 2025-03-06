@@ -7,7 +7,7 @@
 # And use four different combinations: SCREEN only, EpiMap only, an
 # intersection, and a union of elements. The EpiMap catalogue is in hg18 and is
 # lifted over to hg38.
-# 
+#
 # >>> bash regulatory_element_assemblage.sh \
 # >>>   --root_directory /path/to/your/root/directory
 #
@@ -74,7 +74,7 @@ function _download_raw_file () {
 
 
 # =============================================================================
-# Utility function to perform reference liftover 
+# Utility function to perform reference liftover
 # =============================================================================
 function _liftover_elements_19_to_38 () {
     local liftover_dir="$1"  # path/to/liftover/directory
@@ -268,7 +268,7 @@ function main () {
     for key in "${!element_names[@]}"; do
         file="${key}_masterlist_locations"
         element="${element_names[$key]}"
-        
+
         _liftover_elements_19_to_38 \
             "${reference_dir}" \
             "${unprocessed_dir}" \

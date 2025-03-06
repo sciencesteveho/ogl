@@ -63,6 +63,12 @@ consistent, operators are proper, and layers are correctly implemented."""
 
 from typing import Any, Dict, Type, Union
 
+import pytest
+import torch
+from torch import Tensor
+import torch.nn as nn
+from torch_geometric.data import Data  # type: ignore
+
 from omics_graph_learning.models import DeeperGCN
 from omics_graph_learning.models import GATv2
 from omics_graph_learning.models import GCN
@@ -70,11 +76,6 @@ from omics_graph_learning.models import GraphSAGE
 from omics_graph_learning.models import ModularGNN
 from omics_graph_learning.models import PNA
 from omics_graph_learning.models import UniMPTransformer
-import pytest
-import torch
-from torch import Tensor
-import torch.nn as nn
-from torch_geometric.data import Data  # type: ignore
 
 
 @pytest.fixture

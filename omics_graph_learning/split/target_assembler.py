@@ -196,9 +196,10 @@ class TargetAssembler:
         # formally, this is defined as the average expression in the tissue minus
         # the average expression in all tissues, and is an absolute value. Uses the
         # first name in the keynames tuple, which are gtex names
-        diff_from_average_df, foldchange_from_average_df = (
-            self._make_difference_from_average_activity_df(tissue_names=tissue_names)
-        )
+        (
+            diff_from_average_df,
+            foldchange_from_average_df,
+        ) = self._make_difference_from_average_activity_df(tissue_names=tissue_names)
 
         # create dataframes with target medians and fold change(median in tissue /
         # median across all tissues) for TPM

@@ -30,8 +30,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import networkx as nx  # type: ignore
 import numpy as np
-from omics_graph_learning.architecture_builder import build_gnn_architecture
-from omics_graph_learning.combination_loss import CombinationLoss
 import pandas as pd
 import pybedtools
 from scipy import stats  # type: ignore
@@ -49,6 +47,9 @@ from torch_geometric.utils import from_networkx  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from torch_geometric.utils import to_networkx  # type: ignore
 from tqdm import tqdm  # type: ignore
+
+from omics_graph_learning.architecture_builder import build_gnn_architecture
+from omics_graph_learning.combination_loss import CombinationLoss
 
 
 class GNNTrainer:
@@ -936,9 +937,9 @@ def main() -> None:
                     )
 
                     # store fold change
-                    random_fold_changes[(random_node_subgraph_idx, gene_idx)] = (
-                        fold_change_random
-                    )
+                    random_fold_changes[
+                        (random_node_subgraph_idx, gene_idx)
+                    ] = fold_change_random
                 else:
                     print(
                         f"No eligible enhancer nodes available for random deletion in subgraph for gene {gene_idx}."

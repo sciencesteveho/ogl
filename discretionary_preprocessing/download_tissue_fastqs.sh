@@ -47,7 +47,7 @@ log_progress() {
 # Downloading SRA data
 # =============================================================================
 # Accession numbers
-# Add ovary, 
+# Add ovary,
 accessions=(
     "SRR4271997" "SRR4271998" "SRR4271999" "SRR4272000" # Hippocampus
     "SRR4272004" "SRR4272005" "SRR4272006" # Lung

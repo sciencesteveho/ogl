@@ -12,7 +12,7 @@ root_directory
         ├── expression
         ├── matrices  <- place to store matrix level data
         └── tpm  <- place to store tissue level tpm
-        
+
 Additionally, this script will generate a dataframe that provides the median TPM
 per gene across all samples within the GTEx V8 dataset (all samples meaning all
 tissues as well), as well as the average TPM per gene across all samples.

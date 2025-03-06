@@ -10,7 +10,7 @@ operator are hardcoded into the class definition.
 
 The models include four different classes of architectures:
 
-(1) Classic message passing neural networks (MPNNs): 
+(1) Classic message passing neural networks (MPNNs):
     Graph convolutional networks (GCN)
     GraphSAGE
     Principle neighborhood aggregation (PNA - MPNN w/ aggregators and scalers)

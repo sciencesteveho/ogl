@@ -45,7 +45,7 @@ class PipelineRunner:
     --------
     # Run the pipeline and train a model according to default params
     >>> python ogl.py \
-        --partition [PARTITION] 
+        --partition [PARTITION]
         --experiment_yaml [EXPERIMENT_YAML_PATH] \
 
     # Run the pipeline and train a model, overriding default params

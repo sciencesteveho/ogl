@@ -46,7 +46,7 @@ liftover_chain: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_proces
 
 log_transform: log2
 
-nodes: 
+nodes:
   - tads
 
 positional_encoding:

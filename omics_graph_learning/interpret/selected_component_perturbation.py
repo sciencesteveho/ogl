@@ -13,7 +13,8 @@ from torch_geometric.data import Data  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from omics_graph_learning.interpret.interpret_utils import calculate_log2_fold_change
+from omics_graph_learning.interpret.interpret_utils import \
+    calculate_log2_fold_change
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
 
 
@@ -128,13 +129,30 @@ class SelectedComponentPerturbation:
         Return the log2 fold change relative to baseline_prediction.
         """
         # copy the sub_data.x so we do not modify the original
+        print(f"Feature index: {feature_idx}")
+        print(f"Local node to perturb: {local_node_to_perturb}")
+        print(f"Gene node: {gene_node}")
+
         perturbed_x = sub_data.x.clone()
-        perturbed_x[local_node_to_perturb, feature_idx] = 0.0
+
+        # checking val
+        initial_scaled_value = perturbed_x[local_node_to_perturb, feature_idx].item()
+        print(
+            f"Initial scaled value (before perturbation): {initial_scaled_value:.10f}"
+        )
 
         # if we have a scaler for this feature, transform raw 0
         scaler = self.scalers.get(feature_idx, None)
         scaled_value_of_zero = scaler.transform([[0.0]])[0, 0]
         perturbed_x[local_node_to_perturb, feature_idx] = scaled_value_of_zero
+
+        # checking val
+        print(f"Calculated scaled_value_of_zero: {scaled_value_of_zero:.10f}")
+
+        final_scaled_value = perturbed_x[local_node_to_perturb, feature_idx].item()
+        print(
+            f"Scaled value after perturbation (set to scaled_zero): {final_scaled_value:.10f}"
+        )
 
         with torch.no_grad():
             out, _ = self.runner.model(

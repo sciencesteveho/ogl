@@ -164,7 +164,7 @@ function _extract_top_pixels () {
 
     # Sort by e/o ratio to extract top pixels
     sort --parallel=8 -S 60% -k7,7nr "${intermediate_file}" > "${sorted_pixels_file}"
-    
+
     local thresholds=(100000 200000 300000)
     for threshold in "${thresholds[@]}"; do
         local top_n_dir="${working_dir}/top_n_pixels/${threshold}"
