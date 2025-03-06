@@ -21,14 +21,14 @@ from torch_geometric.utils import coalesce  # type: ignore
 from torch_geometric.utils import contains_self_loops  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from omics_graph_learning.interpret.attention_weights import \
-    get_attention_weights
+from omics_graph_learning.interpret.attention_weights import get_attention_weights
 from omics_graph_learning.interpret.explainer import build_explainer
 from omics_graph_learning.interpret.explainer import generate_explanations
 from omics_graph_learning.interpret.interpret_utils import _interpret_setup
 from omics_graph_learning.interpret.interpret_utils import combine_masks
-from omics_graph_learning.interpret.interpret_utils import \
-    get_baseline_predictions_k_hop
+from omics_graph_learning.interpret.interpret_utils import (
+    get_baseline_predictions_k_hop,
+)
 from omics_graph_learning.interpret.interpret_utils import get_best_predictions
 from omics_graph_learning.interpret.interpret_utils import invert_symbol_dict
 from omics_graph_learning.interpret.interpret_utils import parse_interpret_args
