@@ -265,6 +265,7 @@ class GraphToPytorch:
             / (TARGET_FILE_SCALED if scaled_targets else TARGET_FILE),
             "graph_data": experiment_dir / f"{experiment_name}_{graph_type}_scaled.pkl",
         }
+        print(f"Loading graph data from: {file_paths['graph_data']}")
 
         return (
             load_pickle(file_paths["index"]),
@@ -491,6 +492,15 @@ def create_node_tensors(
     else:
         node_feats = graph_data["node_feat"]
 
+    print(
+        "Shape of graph_data['node_feat'] BEFORE create_node_tensors:",
+        graph_data["node_feat"].shape,
+    )
+    print(
+        "Sample values of graph_data['node_feat'] BEFORE create_node_tensors:\n",
+        graph_data["node_feat"][0, :5],
+    )
+
     # apply perturbation from perturbation enum
     if perturbation is not None:
         node_feats = perturb_node_features(perturbation, node_feats)
@@ -509,6 +519,9 @@ def create_node_tensors(
             node_feats[:, randomize_node_feature_idx] = np.random.rand(
                 node_feats.shape[0]
             )
+
+    print("Shape of node_feats AFTER create_node_tensors:", node_feats.shape)
+    print("Sample values of node_feats AFTER create_node_tensors:\n", node_feats[0, :5])
 
     return torch.tensor(node_feats, dtype=torch.float)
 
