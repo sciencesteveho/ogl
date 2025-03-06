@@ -209,6 +209,8 @@ class SelectedComponentPerturbation:
             # systematically zero out features
             max_feat_idx = sub_data.x.shape[1]  # e.g., 42
             for feat_idx in range(5, max_feat_idx):
+                # print the real name of the node to perturb
+                print(f"Node to perturb: {node_to_perturb_name}")
                 fc = self._perturb_feature_and_predict(
                     sub_data,
                     gene_node,
