@@ -13,8 +13,7 @@ from torch_geometric.data import Data  # type: ignore
 from torch_geometric.utils import k_hop_subgraph  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from omics_graph_learning.interpret.interpret_utils import \
-    calculate_log2_fold_change
+from omics_graph_learning.interpret.interpret_utils import calculate_log2_fold_change
 from omics_graph_learning.interpret.perturb_runner import PerturbRunner
 
 

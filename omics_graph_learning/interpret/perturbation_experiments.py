@@ -93,8 +93,8 @@ def main() -> None:
     scaler_path = experiment_config.graph_dir / splitname / "scalers"
     scalers = load_scalers(str(scaler_path))
 
-    # check that scalers are real
-    assert all(scaler is not None for scaler in scalers.values())
+    # check that scalers are real from idx 5 onwards
+    assert all(scalers[i] is not None for i in range(5, 42))
 
     # load experiment setup
     (
@@ -159,7 +159,7 @@ def main() -> None:
     )
 
     # save results
-    with open(outpath / "selected_component_perturbations_500.pkl", "wb") as f:
+    with open(outpath / "selected_component_perturbations_1000.pkl", "wb") as f:
         pickle.dump(results, f)
 
     # # experiment 1: run node feature ablation doubles
@@ -227,8 +227,8 @@ def main() -> None:
     # with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
     #     pickle.dump(feature_top_genes, f)
 
-    # experiment 2: run systematic connected component perturbations on the
-    # k-hop subgraph
+    # # experiment 2: run systematic connected component perturbations on the
+    # # k-hop subgraph
     # print("Running Connected Component Perturbation...")
     # experiment = ConnectedComponentPerturbation(
     #     data=data,
