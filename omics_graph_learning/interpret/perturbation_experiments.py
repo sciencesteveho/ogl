@@ -93,6 +93,9 @@ def main() -> None:
     scaler_path = experiment_config.graph_dir / splitname / "scalers"
     scalers = load_scalers(str(scaler_path))
 
+    # check that scalers are real
+    assert all(scaler is not None for scaler in scalers.values())
+
     # load experiment setup
     (
         data,
@@ -109,23 +112,23 @@ def main() -> None:
     # invert symbol dict
     gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
-    # get baseline predictions
-    baseline_df = get_baseline_predictions_k_hop(
-        data=data,
-        runner=runner,
-        k=hops,
-    )
-    baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
+    # # get baseline predictions
+    # baseline_df = get_baseline_predictions_k_hop(
+    #     data=data,
+    #     runner=runner,
+    #     k=hops,
+    # )
+    # baseline_df.to_csv(outpath / f"baseline_predictions_{hops}_hop.csv", index=False)
 
-    # get best predictions from model
-    print("Getting best predictions...")
-    best_prediction_df = get_best_predictions(
-        df=baseline_df,
-        gene_indices=gene_indices,
-        node_idx_to_gene_id=node_idx_to_gene_id,
-        gencode_to_symbol=gencode_to_symbol,
-    )
-    best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
+    # # get best predictions from model
+    # print("Getting best predictions...")
+    # best_prediction_df = get_best_predictions(
+    #     df=baseline_df,
+    #     gene_indices=gene_indices,
+    #     node_idx_to_gene_id=node_idx_to_gene_id,
+    #     gencode_to_symbol=gencode_to_symbol,
+    # )
+    # best_prediction_df.to_csv(outpath / f"best_predictions_{hops}_hop.csv", index=False)
 
     # experiment 3: run systematic selected component perturbations on the node
     # features for top genes
