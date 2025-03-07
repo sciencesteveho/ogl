@@ -157,7 +157,7 @@ def compute_feature_perturbation(
 
 
 def compute_average_node_differences(
-    feature_node_differences: Dict[Union[int, Tuple[int, int]], Dict[int, List[float]]]
+    feature_node_differences: Dict[Union[int, Tuple[int, int]], Dict[int, List[float]]],
 ) -> Dict[Union[int, Tuple[int, int]], Dict[int, float]]:
     """Compute the average difference for each node, for each feature index or
     feature tuple.
@@ -172,7 +172,7 @@ def compute_average_node_differences(
 
 
 def compute_fold_changes(
-    avg_diffs: Dict[Union[int, Tuple[int, int]], Dict[int, float]]
+    avg_diffs: Dict[Union[int, Tuple[int, int]], Dict[int, float]],
 ) -> Dict[Union[int, Tuple[int, int]], float]:
     """Compute the overall average difference (fold change) per feature index.
 
