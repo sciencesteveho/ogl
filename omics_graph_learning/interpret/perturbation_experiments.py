@@ -15,18 +15,20 @@ import pandas as pd
 from scipy.stats import ttest_ind  # type: ignore
 import torch
 
-from omics_graph_learning.interpret.connected_component_perturbation import \
-    ConnectedComponentPerturbation
+from omics_graph_learning.interpret.connected_component_perturbation import (
+    ConnectedComponentPerturbation,
+)
 from omics_graph_learning.interpret.interpret_utils import _interpret_setup
-from omics_graph_learning.interpret.interpret_utils import \
-    get_baseline_predictions_k_hop
+from omics_graph_learning.interpret.interpret_utils import (
+    get_baseline_predictions_k_hop,
+)
 from omics_graph_learning.interpret.interpret_utils import get_best_predictions
 from omics_graph_learning.interpret.interpret_utils import invert_symbol_dict
 from omics_graph_learning.interpret.interpret_utils import parse_interpret_args
-from omics_graph_learning.interpret.node_feat_perturbation import \
-    perturb_node_features
-from omics_graph_learning.interpret.selected_component_perturbation import \
-    SelectedComponentPerturbation
+from omics_graph_learning.interpret.node_feat_perturbation import perturb_node_features
+from omics_graph_learning.interpret.selected_component_perturbation import (
+    SelectedComponentPerturbation,
+)
 from omics_graph_learning.utils.config_handlers import ExperimentConfig
 
 # from omics_graph_learning.interpret.coessential_pair_perturbation import (

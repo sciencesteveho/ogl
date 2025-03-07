@@ -513,7 +513,7 @@ def create_node_tensors(
             node_feats = np.random.rand(*node_feats.shape)
         else:
             print(f"Randomizing node feature at index {randomize_node_feature_idx}")
-            if positional_encoding and randomize_node_feature_idx < 5:
+            if positional_encoding and randomize_node_feature_idx > 37:
                 raise ValueError("Cannot randomize positional encoding")
 
             node_feats[:, randomize_node_feature_idx] = np.random.rand(
