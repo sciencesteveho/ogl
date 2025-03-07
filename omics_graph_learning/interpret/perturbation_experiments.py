@@ -106,8 +106,8 @@ def main() -> None:
         outpath,
     ) = _interpret_setup(args)
 
-    # invert symbol dict
-    gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
+    # # invert symbol dict
+    # gencode_to_symbol = invert_symbol_dict(symbol_to_gencode)
 
     # # get baseline predictions
     # baseline_df = get_baseline_predictions_k_hop(
@@ -183,51 +183,52 @@ def main() -> None:
     # with open(outpath / "node_feature_top_genes.pkl", "wb") as f:
     #     pickle.dump(feature_top_genes, f)
 
-    # deletion_pairs = [
-    #     (2, 12),  # ATAC + H3K4me3
-    #     (4, 12),  # CpG methylation + H3K4me3
-    #     (5, 12),  # CTCF + H3K4me3
-    #     (6, 12),  # DNase + H3K4me3
-    #     (7, 12),  # H3K27ac + H3K4me3
-    #     (8, 12),  # H3K27me3 + H3K4me3
-    #     (9, 12),  # H3K36me3 + H3K4me3
-    #     (10, 12),  # H3K4me1 + H3K4me3
-    #     (11, 12),  # H3K4me2 + H3K4me3
-    #     (12, 13),  # H3K4me3 + H3K79me2
-    #     (12, 14),  # H3K4me3 + H3K9ac
-    #     (12, 15),  # H3K4me3 + H3K9me3
-    #     (2, 24),  # ATAC + RBP binding sites
-    #     (4, 24),  # CpG methylation + RBP binding sites
-    #     (5, 24),  # CTCF + RBP binding sites
-    #     (6, 24),  # DNase + RBP binding sites
-    #     (7, 24),  # H3K27ac + RBP binding sites
-    #     (8, 24),  # H3K27me3 + RBP binding sites
-    #     (9, 24),  # H3K36me3 + RBP binding sites
-    #     (10, 24),  # H3K4me1 + RBP binding sites
-    #     (11, 24),  # H3K4me2 + RBP binding sites
-    #     (12, 24),  # H3K4me3 + RBP binding sites
-    #     (13, 24),  # H3K79me2 + RBP binding sites
-    #     (14, 24),  # H3K9ac + RBP binding sites
-    #     (15, 24),  # H3K9me3 + RBP binding sites
-    # ]
+    deletion_pairs = [
+        (2, 12),  # ATAC + H3K4me3
+        (4, 12),  # CpG methylation + H3K4me3
+        (5, 12),  # CTCF + H3K4me3
+        (6, 12),  # DNase + H3K4me3
+        (7, 12),  # H3K27ac + H3K4me3
+        (8, 12),  # H3K27me3 + H3K4me3
+        (9, 12),  # H3K36me3 + H3K4me3
+        (10, 12),  # H3K4me1 + H3K4me3
+        (11, 12),  # H3K4me2 + H3K4me3
+        (12, 13),  # H3K4me3 + H3K79me2
+        (12, 14),  # H3K4me3 + H3K9ac
+        (12, 15),  # H3K4me3 + H3K9me3
+        (2, 24),  # ATAC + RBP binding sites
+        (4, 24),  # CpG methylation + RBP binding sites
+        (5, 24),  # CTCF + RBP binding sites
+        (6, 24),  # DNase + RBP binding sites
+        (7, 24),  # H3K27ac + RBP binding sites
+        (8, 24),  # H3K27me3 + RBP binding sites
+        (9, 24),  # H3K36me3 + RBP binding sites
+        (10, 24),  # H3K4me1 + RBP binding sites
+        (11, 24),  # H3K4me2 + RBP binding sites
+        (12, 24),  # H3K4me3 + RBP binding sites
+        (13, 24),  # H3K79me2 + RBP binding sites
+        (14, 24),  # H3K9ac + RBP binding sites
+        (15, 24),  # H3K9me3 + RBP binding sites
+    ]
 
-    # # experiment 2: run node feature ablation doubles
-    # print("Running Node Feature Perturbation...")
-    # feature_fold_changes, feature_top_genes = perturb_node_features(
-    #     data=data,
-    #     runner=runner,
-    #     # feature_indices=list(range(5, 42)),
-    #     feature_indices=deletion_pairs,
-    #     device=device,
-    #     node_idx_to_gene_id=node_idx_to_gene_id,
-    #     gencode_to_symbol=symbol_to_gencode,
-    #     scalers=scalers,
-    # )
-
-    # with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
-    #     pickle.dump(feature_fold_changes, f)
-    # with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
-    #     pickle.dump(feature_top_genes, f)
+    # experiment 2: run node feature ablation doubles
+    print("Running Node Feature Perturbation...")
+    avg_diffs, feature_fold_changes, feature_top_genes = perturb_node_features(
+        data=data,
+        runner=runner,
+        # feature_indices=list(range(5, 42)),
+        feature_indices=deletion_pairs,
+        device=device,
+        node_idx_to_gene_id=node_idx_to_gene_id,
+        gencode_to_symbol=symbol_to_gencode,
+        scalers=scalers,
+    )
+    with open(outpath / "node_feature_perturbations_avg_diffs_double.pkl", "wb") as f:
+        pickle.dump(avg_diffs, f)
+    with open(outpath / "node_feature_perturbations_double.pkl", "wb") as f:
+        pickle.dump(feature_fold_changes, f)
+    with open(outpath / "node_feature_top_genes_double.pkl", "wb") as f:
+        pickle.dump(feature_top_genes, f)
 
     # # experiment 2: run systematic connected component perturbations on the
     # # k-hop subgraph
