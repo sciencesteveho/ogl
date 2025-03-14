@@ -21,14 +21,14 @@ from torch_geometric.utils import coalesce  # type: ignore
 from torch_geometric.utils import contains_self_loops  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-from omics_graph_learning.interpret.attention_weights import \
-    get_attention_weights
+from omics_graph_learning.interpret.attention_weights import get_attention_weights
 from omics_graph_learning.interpret.explainer import build_explainer
 from omics_graph_learning.interpret.explainer import generate_explanations
 from omics_graph_learning.interpret.interpret_utils import _interpret_setup
 from omics_graph_learning.interpret.interpret_utils import combine_masks
-from omics_graph_learning.interpret.interpret_utils import \
-    get_baseline_predictions_k_hop
+from omics_graph_learning.interpret.interpret_utils import (
+    get_baseline_predictions_k_hop,
+)
 from omics_graph_learning.interpret.interpret_utils import get_best_predictions
 from omics_graph_learning.interpret.interpret_utils import invert_symbol_dict
 from omics_graph_learning.interpret.interpret_utils import parse_interpret_args
@@ -147,12 +147,14 @@ def main() -> None:
         data=data,
         device=device,
         gene_indices=gene_indices,
+        saliency_type="integrated_gradients",
+        n_steps=50,
     )
 
-    # scale saliency map
-    scaled_saliency = scale_saliency(saliency_map)
-    torch.save(saliency_map, outpath / "raw_saliency_map.pt")
-    torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
+    # # scale saliency map
+    # scaled_saliency = scale_saliency(saliency_map)
+    torch.save(saliency_map, outpath / "integrated_saliency_map.pt")
+    # torch.save(scaled_saliency, outpath / "scaled_saliency_map.pt")
 
     # # attention weights for genes
     # raw_attention_weights = get_attention_weights(
