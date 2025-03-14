@@ -96,6 +96,9 @@ def compute_gradient_saliency(
         model.zero_grad()
         loss.backward()
 
+        # get raw gradient
+        grad_sub = x_sub.grad
+
         # compute gradient × input
         grad_sub_x_input = (x_sub * x_sub.grad).detach().cpu()
         accumulated_saliency[node_subgraph_cpu] += grad_sub_x_input
