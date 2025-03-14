@@ -303,8 +303,8 @@ function _biomart_mirna_coordinates () {
 #
 # To determine RBP binding site clusters, we calculate the node feature (overlap
 # with rna binding site clusters), we merge binding sites within 10bp, given
-# that RBP binding sites are often small yet clustered (see Li et al., Genome
-# Biology, 2017). To keep higher confidence sites we apply two filters: (1) we
+# that RBP binding sites are often small yet clustered. To keep higher
+# confidence sites we apply two filters: (1) we
 # only keep sites that target multiple target genes and (2) we ensure that the
 # site exists in at least 3 different samples, because filtering at 2 samples
 # will still keep singletons (e.g. HEK293T,HEK_293_FRT could effectively be
