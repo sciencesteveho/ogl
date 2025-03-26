@@ -265,6 +265,6 @@ Each node is accompanied by either a 39 or 44-dimensional feature vector consist
   title        = {Contextualizing gene expression with feature rich graph neural networks},
   year         = {2025},
   doi          = {10.1101/2025.03.17.643816},
-  url          = {https://www.biorxiv.org/content/10.1101/2025.03.17.643816v1}, 
+  url          = {https://www.biorxiv.org/content/10.1101/2025.03.17.643816v1},
   note         = {Preprint}
 }
