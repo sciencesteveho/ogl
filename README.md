@@ -2,7 +2,7 @@
 
 ## Tools to construct, train, optimize, and interpret omics-based GNNs
 <div align="center">
-    <img src='docs/_static/ogl_figure_1.pdf'>
+    <img src='docs/_static/ogl_figure_1.png'>
 </div>
 <br>
 
@@ -234,7 +234,7 @@ OGL adopts a GNN "solution space" as opposed to hard architecture. The models ar
 <summary>Flexible architecture schematic</summary>
 
 <div align="left">
-    <img src='docs/_static/architecture.png'>
+    <img src='docs/_static/extended_data_figure_1.png'>
 </div>
 
 </details>
@@ -247,7 +247,7 @@ Graphs are constructed using knowledge-graph inspired representations: nodes rep
 <summary>Graph construction schematic</summary>
 
 <div align="left">
-    <img src='docs/_static/graph_construction.png'>
+    <img src='docs/_static/extended_data_construction.png'>
 </div>
 
 </details>
