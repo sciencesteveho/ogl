@@ -69,8 +69,7 @@ resources:
   se_ref: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/se_node_attr.bed
   tf_motifs: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/references/collapsed_motifs_overlapping_consensus_footprints_hg38.bed
   tissue: ovary
-  # gtex_name: Ovary
-  rna: /ocean/projects/bio210019p/stevesho/data/preprocess/graph_processing/shared_data/targets/tpm/ENCFF380WQC.tsv
+  gtex_name: Ovary
   marker_name: ovary
   ppi_tissue: ovary
 

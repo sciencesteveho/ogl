@@ -488,7 +488,7 @@ class TargetAssembler:
     @staticmethod
     @time_decorator(print_args=False)
     def scale_targets(
-        targets: Dict[str, Dict[str, np.ndarray]]
+        targets: Dict[str, Dict[str, np.ndarray]],
     ) -> Dict[str, Dict[str, np.ndarray]]:
         """Scale targets using StandardScaler."""
         scaled_targets = deepcopy(targets)

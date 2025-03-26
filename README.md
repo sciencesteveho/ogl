@@ -2,7 +2,7 @@
 
 ## Tools to construct, train, optimize, and interpret omics-based GNNs
 <div align="center">
-    <img src='docs/_static/high_level_schematic.png'>
+    <img src='docs/_static/ogl_figure_1.pdf'>
 </div>
 <br>
 
@@ -152,10 +152,10 @@ python ogl/omics_graph_learning/ogl_pipeline.py \
 
 Trial history, feature importance, and slice plots will be output, as well as `optuna_results.csv` which contains trial history sorted by performance.
 <div align="left">
-    <img src='docs/_static/history.png'>
+    <img src='docs/_static/optuna_history.png'>
 </div>
 <div align="left">
-    <img src='docs/_static/importances.png'>
+    <img src='docs/_static/importances_new.png'>
 </div>
 
 
@@ -259,12 +259,12 @@ Each node is accompanied by either a 39 or 44-dimensional feature vector consist
 <br>
 
 ## Citation
-An associated preprint is coming soon.
-
 ```bibtex
-@misc{Ho/Mills/2025,
-  author       = {Ho, Steve and Mills, Ryan E.},
-  title        = {A Graph Neural Network Approach to Interpret Expression},
+@article{Ho/Mills/2025,
+  author       = {Ho, Steve S., and Mills, Ryan E.},
+  title        = {Contextualizing gene expression with feature rich graph neural networks},
   year         = {2025},
-  note         = {Pre-release version},
+  doi          = {10.1101/2025.03.17.643816},
+  url          = {https://www.biorxiv.org/content/10.1101/2025.03.17.643816v1}, 
+  note         = {Preprint}
 }
